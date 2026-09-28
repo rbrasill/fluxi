@@ -14,6 +14,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 8 | 2026-09-28 | Fluxograma | XML do draw.io gerado direto, com a biblioteca de estilos BPMN (ver `docs/fluxograma.md`) | Aceita |
 | 9 | 2026-09-28 | Banco de dados | ~~MySQL~~ → PostgreSQL 17 na Absam (absam.io) | Aceita |
 | 10 | 2026-09-28 | Fluxograma | Todo fluxograma gerado é editável antes de publicar: editor draw.io, ajuste por instrução e versões (ver `docs/fluxograma.md`) | Aceita |
+| 11 | 2026-09-28 | Infra do MVP | Supabase (Postgres + Storage) para MVP e testes; Postgres 17 na Absam fica para produção | Aceita |
 
 ---
 
@@ -62,6 +63,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - ORM: a definir (Prisma ou Drizzle; Drizzle facilita o `SET LOCAL` por transação para o RLS).
 - Pontos a verificar na Absam: se é banco gerenciado ou VPS, backups automáticos (e retenção), limite de conexões (usar pool/PgBouncer se for baixo), acesso remoto com SSL, extensões disponíveis.
 - Arquivos (áudio, vídeo, imagens) não ficam no banco: vão para um storage de objetos, com o caminho salvo no Postgres.
+
+## 11. Supabase no MVP e nos testes
+- Banco (Postgres, com RLS) e arquivos (Supabase Storage) do MVP ficam no Supabase. A produção segue prevista no Postgres 17 da Absam (decisão 9); o schema é Postgres puro, então a migração é direta.
+- Evitar prender o código ao Supabase: migrações em SQL versionadas no repo, acesso ao banco pelo ORM via connection string e storage atrás de uma interface (`packages/core/storage`), para trocar por S3/Absam depois.
+- Storage: buckets privados, caminho `tenants/{tenant_id}/...`, acesso só por URLs assinadas geradas pela API.
+- A chave `service_role` fica só no back-end (API/worker), nunca no front-end.
+- Configuração pelo conector Supabase (MCP) ou pela Management API (HTTPS); a porta 5432 não é acessível do ambiente de desenvolvimento em nuvem.
 
 ---
 
