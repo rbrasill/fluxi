@@ -11,7 +11,7 @@ Modelo padrão de Procedimento Operacional Padrão da plataforma.
 |---|---|---|
 | Cabeçalho | Logo, área | Tenant / usuário |
 | Procedimento | Nome, mês/ano, versão | Usuário (nome) / sistema |
-| Identificação | Data de criação, código do procedimento (ex.: `CONT-PERM`), identificação do POP (ex.: `COME-001`) | Sistema |
+| Identificação | Data de criação, código do processo (ex.: `A7K2-9QXM`), identificação do POP (ex.: `COME-001`) | Sistema |
 | Executor do Processo | Cargo do executor | IA sugere, usuário confirma |
 | Objetivo do Processo | Texto | IA |
 | Envolvidos | Pares área ↔ cargo | IA |
@@ -47,8 +47,8 @@ const PopSchema = z.object({
 | Onde | Marcador |
 |---|---|
 | Cabeçalho | `{area}`, logo `{%logo}` |
-| Procedimento | `{nomeProcedimento}`, `{mesAno}`, `Versão: {versao}` |
-| Identificação | `{dataCriacao}`, `{codigoProcedimento}`, `{identificacaoPop}` |
+| Procedimento | `{nomeProcedimento}`, `{mesAno}` (derivado de `dataCriacao`), `Versão: {versao}` |
+| Identificação | `{dataCriacao}`, `{codigoProcesso}`, `{identificacaoPop}` |
 | Executor | `{executor}` |
 | Objetivo | `{objetivo}` |
 | Envolvidos | `{#envolvidos}{area} · {cargo}{/envolvidos}` |
@@ -63,10 +63,17 @@ const PopSchema = z.object({
 - 5 imagens (logo e ícones). A logo será substituível por tenant.
 - Personalização por tenant (proposta): logo e cor de destaque (laranja atual).
 
+## Regras de identificação
+
+- **Código do processo:** 8 caracteres alfanuméricos em dois blocos de 4, separados por `-` (formato `XXXX-XXXX`, ex.: `A7K2-9QXM`).
+  - Gerado pelo sistema, único dentro do tenant e imutável (não muda entre versões).
+  - Proposta: letras maiúsculas e números, excluindo caracteres ambíguos (`0/O`, `1/I/L`).
+- **Identificação do POP:** prefixo da área (4 letras) + sequencial de 3 dígitos por área no tenant (ex.: `COME-001`).
+- **Envolvidos:** cada linha é um par área ↔ cargo; a numeração (1, 2… / A, B…) é gerada no documento.
+- **Datas:** não há distinção entre "mês/ano" e "Data Criação"; o mês/ano exibido é derivado da data de criação.
+
 ## Em aberto
 
-1. Regra de geração do código do procedimento e da identificação do POP (prefixo da área + sequencial?).
-2. Envolvidos: área e cargo são pares na mesma linha ou listas independentes?
-3. "Mês/ano" é a data da versão vigente e "Data Criação" a data original?
-4. Campos opcionais extras (sistemas, entradas/saídas, indicadores, riscos)?
-5. Tenants poderão criar modelos próprios ou só personalizar logo/cor?
+1. Confirmar o formato do código do processo: `XXXX-XXXX` (4+4)?
+2. Campos opcionais extras (sistemas, entradas/saídas, indicadores, riscos)?
+3. Tenants poderão criar modelos próprios ou só personalizar logo/cor?
