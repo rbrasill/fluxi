@@ -12,6 +12,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
 | 7 | 2026-09-28 | LLM de extração | Claude Sonnet 5 (`claude-sonnet-5`) via API da Anthropic | Aceita |
 | 8 | 2026-09-28 | Fluxograma | XML do draw.io gerado direto, com a biblioteca de estilos BPMN (ver `docs/fluxograma.md`) | Aceita |
+| 9 | 2026-09-28 | Banco de dados | MySQL | Aceita |
 
 ---
 
@@ -22,7 +23,7 @@ Uma linguagem só (TypeScript) no front e no back, com tipos compartilhados entr
 Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação), `helmet`, `cors`, `express-rate-limit`, `pino-http`.
 
 ## 3. Multitenant desde o início
-- Proposta (a confirmar): banco compartilhado com `tenant_id` + Row Level Security no Postgres.
+- Banco compartilhado com coluna `tenant_id` em todas as tabelas de dados. Como o MySQL não tem Row Level Security, o isolamento é garantido na aplicação (ver decisão 9).
 - Usuário pode pertencer a vários tenants (tabela `Membership`).
 - Arquivos, jobs de fila, integrações e limites de uso sempre separados por tenant.
 
@@ -34,7 +35,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 ## 5. draw.io via `embed.diagrams.net`
 - Editor em iframe (`embed=1&proto=json`), com comunicação por `postMessage`.
 - Fluxo: `init` → `load(xml)` → `autosave`/`save` → `export(png/svg)` para o POP.
-- O XML fica no Postgres do Fluxi (com `tenant_id` e versão); o draw.io não armazena nada.
+- O XML fica no banco do Fluxi (MySQL) (com `tenant_id` e versão); o draw.io não armazena nada.
 - Licença Apache 2.0.
 - **Futuro:** migrar para draw.io auto-hospedado (`jgraph/docker-drawio`) quando clientes exigirem que os diagramas não saiam da infraestrutura do Fluxi.
 
@@ -46,6 +47,18 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Extração isolada em `packages/ai` (`extrairPop(transcricao)`) para permitir troca de modelo/fornecedor.
 - Estimativa: ~US$ 0,08 de LLM + ~US$ 0,23 de transcrição por hora de reunião.
 - LGPD: Anthropic passa a ser processadora de dados (incluir nos termos).
+
+## 9. Banco de dados MySQL
+- Banco MySQL já provisionado (hospedagem HostGator).
+- Credenciais **somente** por variáveis de ambiente (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`), nunca com valor padrão no código nem versionadas. `.env` fica no `.gitignore`.
+- A aplicação usa um usuário próprio com permissões mínimas (SELECT/INSERT/UPDATE/DELETE no schema do Fluxi), não o usuário DBA master. Migrações rodam com um usuário separado.
+- **Multitenant sem RLS:** o MySQL não tem Row Level Security, então o isolamento fica na aplicação:
+  - toda tabela de dados tem `tenant_id` + índice composto começando por `tenant_id`;
+  - acesso ao banco só por uma camada de repositório que exige o `tenantId` em toda consulta (nada de consultas soltas nas rotas);
+  - testes automáticos que tentam ler/alterar dados de outro tenant e precisam falhar.
+- ORM: a definir (Prisma ou Drizzle, ambos suportam MySQL).
+- Pontos a verificar na hospedagem: versão do MySQL (8.0+ para JSON e CTEs), limite de conexões simultâneas, acesso remoto liberado para o servidor da API, backups e SSL na conexão.
+- Arquivos (áudio, vídeo, imagens) não ficam no banco: vão para um storage de objetos, com o caminho salvo no MySQL.
 
 ---
 
