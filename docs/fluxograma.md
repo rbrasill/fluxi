@@ -85,6 +85,16 @@ const FluxoSchema = z.object({
 - **Imagens (logos) embutidas em base64** no XML (6 imagens), o que aumenta o arquivo (~245 KB). No Fluxi, preferir referenciar as imagens por URL do storage.
 - **Link "Acessar Documentação"** aponta para `https://notion.meuinc.com.br/{codigo-do-processo}`: o código do processo é a chave que liga o fluxograma à documentação no Notion.
 
+## Edição e revisão (obrigatório)
+A transcrição e a extração da IA podem errar, então **todo fluxograma gerado é um rascunho editável** antes de ser publicado.
+- **Editor visual completo:** o draw.io embed (`embed.diagrams.net`) abre o XML gerado com a biblioteca de estilos BPMN carregada. O usuário move, cria e apaga elementos, reconecta setas e troca raias.
+- **Ajuste por instrução:** o usuário descreve a mudança em texto ("a aprovação é do Jurídico, não do Financeiro") e a IA altera o **FluxoSchema** (não o XML). O código regera o diagrama, que volta para o editor para revisão.
+- **Rastreio da transcrição:** ao selecionar uma tarefa, o painel mostra o trecho da transcrição (e o áudio, via `trechoAudio`) que a originou, para conferir se a IA entendeu certo.
+- **Alertas de consistência** antes de publicar: gateway sem saída "Sim"/"Não", tarefa sem conexão, raia vazia, fluxo sem início ou fim.
+- **Versões:** cada salvamento gera uma versão (XML + autor + data). Dá para comparar e restaurar. Publicar congela a versão e atualiza o POP e o Notion.
+- **Edição manual preservada:** depois de uma edição manual no draw.io, o XML passa a ser a fonte da verdade. Um novo ajuste por instrução avisa que vai regerar o layout, e o usuário escolhe se aplica.
+- **Sincronia com o POP:** renomear ou criar tarefas no fluxograma sugere a mesma mudança nos passos do POP, e o contrário também (o usuário confirma).
+
 ## Definições
 
 - **Código do processo:** mantém o formato `XXXX-XXXX` (ver `docs/modelo-pop.md`). O `VE7QGM098T` do exemplo é legado.
