@@ -85,10 +85,12 @@ const FluxoSchema = z.object({
 - **Imagens (logos) embutidas em base64** no XML (6 imagens), o que aumenta o arquivo (~245 KB). No Fluxi, preferir referenciar as imagens por URL do storage.
 - **Link "Acessar Documentação"** aponta para `https://notion.meuinc.com.br/{codigo-do-processo}`: o código do processo é a chave que liga o fluxograma à documentação no Notion.
 
+## Definições
+
+- **Código do processo:** mantém o formato `XXXX-XXXX` (ver `docs/modelo-pop.md`). O `VE7QGM098T` do exemplo é legado.
+- **Cores das raias:** fixas por área. Cada área recebe uma cor ao ser cadastrada no tenant, e essa cor se mantém em todos os fluxogramas.
+- **Logos de sistemas:** não haverá cadastro de sistemas nem logos de sistemas nos fluxogramas gerados.
+
 ## Em aberto
 
-0. Qual é a fonte da verdade para as cores: a biblioteca (`#005F73` / `#415A77`) ou o arquivo real (`#264653`)?
-
-1. Código do processo: o exemplo usa `VE7QGM098T` (10 caracteres, sem hífen); a decisão registrada é `XXXX-XXXX`.
-2. Cores das raias: fixas por área, paleta automática ou definidas pelo tenant?
-3. Logos de sistemas (CV CRM, EmCash etc.): cadastro de sistemas por tenant?
+1. Qual é a fonte da verdade para as cores de tarefas e conectores: a biblioteca (`#005F73` / `#415A77`) ou o arquivo real (`#264653`)?
