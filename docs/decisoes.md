@@ -12,7 +12,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
 | 7 | 2026-09-28 | LLM de extração | Claude Sonnet 5 (`claude-sonnet-5`) via API da Anthropic | Aceita |
 | 8 | 2026-09-28 | Fluxograma | XML do draw.io gerado direto, com a biblioteca de estilos BPMN (ver `docs/fluxograma.md`) | Aceita |
-| 9 | 2026-09-28 | Banco de dados | MySQL | Aceita |
+| 9 | 2026-09-28 | Banco de dados | ~~MySQL~~ → PostgreSQL 17 na Absam (absam.io) | Aceita |
 
 ---
 
@@ -23,7 +23,7 @@ Uma linguagem só (TypeScript) no front e no back, com tipos compartilhados entr
 Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação), `helmet`, `cors`, `express-rate-limit`, `pino-http`.
 
 ## 3. Multitenant desde o início
-- Banco compartilhado com coluna `tenant_id` em todas as tabelas de dados. Como o MySQL não tem Row Level Security, o isolamento é garantido na aplicação (ver decisão 9).
+- Banco compartilhado com coluna `tenant_id` em todas as tabelas de dados. Isolamento na aplicação e reforçado por Row Level Security no Postgres (ver decisão 9).
 - Usuário pode pertencer a vários tenants (tabela `Membership`).
 - Arquivos, jobs de fila, integrações e limites de uso sempre separados por tenant.
 
@@ -35,7 +35,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 ## 5. draw.io via `embed.diagrams.net`
 - Editor em iframe (`embed=1&proto=json`), com comunicação por `postMessage`.
 - Fluxo: `init` → `load(xml)` → `autosave`/`save` → `export(png/svg)` para o POP.
-- O XML fica no banco do Fluxi (MySQL) (com `tenant_id` e versão); o draw.io não armazena nada.
+- O XML fica no banco do Fluxi (PostgreSQL) (com `tenant_id` e versão); o draw.io não armazena nada.
 - Licença Apache 2.0.
 - **Futuro:** migrar para draw.io auto-hospedado (`jgraph/docker-drawio`) quando clientes exigirem que os diagramas não saiam da infraestrutura do Fluxi.
 
@@ -48,24 +48,19 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Estimativa: ~US$ 0,08 de LLM + ~US$ 0,23 de transcrição por hora de reunião.
 - LGPD: Anthropic passa a ser processadora de dados (incluir nos termos).
 
-## 9. Banco de dados MySQL
-- Banco MySQL já provisionado (hospedagem HostGator).
-- Credenciais **somente** por variáveis de ambiente (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`), nunca com valor padrão no código nem versionadas. `.env` fica no `.gitignore`.
-- A aplicação usa um usuário próprio com permissões mínimas (SELECT/INSERT/UPDATE/DELETE no schema do Fluxi), não o usuário DBA master. Migrações rodam com um usuário separado.
-- **Multitenant sem RLS:** o MySQL não tem Row Level Security, então o isolamento fica na aplicação:
+## 9. Banco de dados PostgreSQL 17 (Absam)
+- **Troca:** o MySQL da HostGator (5.7.44, fora de suporte desde 2023, sem RLS/CTEs/`CHECK`) foi descartado. O banco do Fluxi será **PostgreSQL 17 hospedado na Absam** (absam.io), com dados no Brasil (bom para a LGPD).
+- Credenciais **somente** por variáveis de ambiente (`DATABASE_URL` ou `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`), nunca com valor padrão no código nem versionadas. `.env` fica no `.gitignore`. Conexão sempre com SSL.
+- Usuários separados: um dono do schema (migrações) e um da aplicação, **sem** `BYPASSRLS` e sem ser dono das tabelas, com permissões mínimas.
+- **Multitenant com duas travas:**
   - toda tabela de dados tem `tenant_id` + índice composto começando por `tenant_id`;
-  - acesso ao banco só por uma camada de repositório que exige o `tenantId` em toda consulta (nada de consultas soltas nas rotas);
+  - camada de repositório que exige o `tenantId` em toda consulta;
+  - **Row Level Security** em todas as tabelas de tenant: a aplicação abre a transação com `SET LOCAL app.tenant_id = '...'` e as políticas filtram por `tenant_id = current_setting('app.tenant_id')::uuid`;
   - testes automáticos que tentam ler/alterar dados de outro tenant e precisam falhar.
-- ORM: a definir (Prisma ou Drizzle, ambos suportam MySQL).
-- Situação verificada na hospedagem (2026-09-28): MySQL **5.7.44** (build Percona), SSL ativo na conexão, acesso remoto funcionando, banco `rentis39_fluxi` vazio.
-- **Restrições do MySQL 5.7** (o modelo e as consultas precisam respeitar):
-  - tem tipo `JSON` e colunas geradas, mas **não tem CTEs (`WITH`) nem funções de janela** (`ROW_NUMBER` etc.);
-  - `CHECK` é aceito mas ignorado: validações ficam na aplicação (Zod);
-  - sem `DEFAULT` com expressão (só `CURRENT_TIMESTAMP`): IDs e códigos gerados na aplicação;
-  - charset `utf8mb4` + collation `utf8mb4_unicode_ci` em todas as tabelas; engine InnoDB.
-- **Risco:** o MySQL 5.7 saiu de suporte em outubro de 2023 (sem correções de segurança). Pedir à HostGator a migração para 8.0+; o modelo será compatível com as duas versões para a troca não exigir mudanças.
-- Pontos ainda a verificar: limite de conexões simultâneas e backups.
-- Arquivos (áudio, vídeo, imagens) não ficam no banco: vão para um storage de objetos, com o caminho salvo no MySQL.
+- Recursos usados: `uuid` (`gen_random_uuid()`), `JSONB` para FluxoSchema/PopSchema, `CHECK` para regras simples, `timestamptz`, busca textual com dicionário `portuguese`. Futuro: `pgvector` para busca semântica, se a Absam permitir a extensão.
+- ORM: a definir (Prisma ou Drizzle; Drizzle facilita o `SET LOCAL` por transação para o RLS).
+- Pontos a verificar na Absam: se é banco gerenciado ou VPS, backups automáticos (e retenção), limite de conexões (usar pool/PgBouncer se for baixo), acesso remoto com SSL, extensões disponíveis.
+- Arquivos (áudio, vídeo, imagens) não ficam no banco: vão para um storage de objetos, com o caminho salvo no Postgres.
 
 ---
 
