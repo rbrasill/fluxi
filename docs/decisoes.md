@@ -57,7 +57,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
   - acesso ao banco só por uma camada de repositório que exige o `tenantId` em toda consulta (nada de consultas soltas nas rotas);
   - testes automáticos que tentam ler/alterar dados de outro tenant e precisam falhar.
 - ORM: a definir (Prisma ou Drizzle, ambos suportam MySQL).
-- Pontos a verificar na hospedagem: versão do MySQL (8.0+ para JSON e CTEs), limite de conexões simultâneas, acesso remoto liberado para o servidor da API, backups e SSL na conexão.
+- Situação verificada na hospedagem (2026-09-28): MySQL **5.7.44** (build Percona), SSL ativo na conexão, acesso remoto funcionando, banco `rentis39_fluxi` vazio.
+- **Restrições do MySQL 5.7** (o modelo e as consultas precisam respeitar):
+  - tem tipo `JSON` e colunas geradas, mas **não tem CTEs (`WITH`) nem funções de janela** (`ROW_NUMBER` etc.);
+  - `CHECK` é aceito mas ignorado: validações ficam na aplicação (Zod);
+  - sem `DEFAULT` com expressão (só `CURRENT_TIMESTAMP`): IDs e códigos gerados na aplicação;
+  - charset `utf8mb4` + collation `utf8mb4_unicode_ci` em todas as tabelas; engine InnoDB.
+- **Risco:** o MySQL 5.7 saiu de suporte em outubro de 2023 (sem correções de segurança). Pedir à HostGator a migração para 8.0+; o modelo será compatível com as duas versões para a troca não exigir mudanças.
+- Pontos ainda a verificar: limite de conexões simultâneas e backups.
 - Arquivos (áudio, vídeo, imagens) não ficam no banco: vão para um storage de objetos, com o caminho salvo no MySQL.
 
 ---
