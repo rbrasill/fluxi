@@ -9,6 +9,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 3 | 2026-09-28 | Arquitetura | Plataforma multitenant desde o início | Aceita |
 | 4 | 2026-09-28 | Transcrição | AssemblyAI | Aceita |
 | 5 | 2026-09-28 | Fluxogramas | draw.io em modo embed via `embed.diagrams.net` | Aceita |
+| 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
 
 ---
 
@@ -41,5 +42,5 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - LLM para extração das etapas
 - Autenticação (Clerk, Supabase Auth ou própria)
 - Geração do fluxograma: XML do draw.io direto ou Mermaid → importação
-- Estrutura do modelo de POP
+- Detalhes do modelo de POP (ver `docs/modelo-pop.md`)
 - Integração com o Notion
