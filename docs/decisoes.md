@@ -10,6 +10,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 4 | 2026-09-28 | Transcrição | AssemblyAI | Aceita |
 | 5 | 2026-09-28 | Fluxogramas | draw.io em modo embed via `embed.diagrams.net` | Aceita |
 | 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
+| 7 | 2026-09-28 | LLM de extração | Claude Sonnet 5 (`claude-sonnet-5`) via API da Anthropic | Aceita |
 
 ---
 
@@ -36,10 +37,18 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Licença Apache 2.0.
 - **Futuro:** migrar para draw.io auto-hospedado (`jgraph/docker-drawio`) quando clientes exigirem que os diagramas não saiam da infraestrutura do Fluxi.
 
+## 7. Claude Sonnet 5 via API da Anthropic
+- Modelo `claude-sonnet-5` pelo SDK oficial `@anthropic-ai/sdk` (US$ 2 / US$ 10 por MTok de entrada/saída).
+- Descartado o LLM Gateway do AssemblyAI: não oferece o Sonnet 5, e o Sonnet 4.6 de lá custa US$ 3 / US$ 15.
+- Saída estruturada (`output_config.format`) com o `PopSchema`, validada com Zod.
+- Batch API (-50%) para extrações sem urgência; cache de prompt para instruções e schema fixos.
+- Extração isolada em `packages/ai` (`extrairPop(transcricao)`) para permitir troca de modelo/fornecedor.
+- Estimativa: ~US$ 0,08 de LLM + ~US$ 0,23 de transcrição por hora de reunião.
+- LGPD: Anthropic passa a ser processadora de dados (incluir nos termos).
+
 ---
 
 ## Em aberto
-- LLM para extração das etapas
 - Autenticação (Clerk, Supabase Auth ou própria)
 - Geração do fluxograma: XML do draw.io direto ou Mermaid → importação
 - Integração com o Notion
