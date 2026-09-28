@@ -11,6 +11,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 5 | 2026-09-28 | Fluxogramas | draw.io em modo embed via `embed.diagrams.net` | Aceita |
 | 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
 | 7 | 2026-09-28 | LLM de extração | Claude Sonnet 5 (`claude-sonnet-5`) via API da Anthropic | Aceita |
+| 8 | 2026-09-28 | Fluxograma | XML do draw.io gerado direto, com a biblioteca de estilos BPMN (ver `docs/fluxograma.md`) | Aceita |
 
 ---
 
@@ -50,5 +51,4 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 
 ## Em aberto
 - Autenticação (Clerk, Supabase Auth ou própria)
-- Geração do fluxograma: XML do draw.io direto ou Mermaid → importação
 - Integração com o Notion
