@@ -61,19 +61,21 @@ const PopSchema = z.object({
 - Layout construído com tabelas (15 no documento); blocos repetíveis viram linhas com loop.
 - Texto do DOCX está fragmentado em vários trechos internos (revisão ortográfica/formatação). Ao criar a versão com marcadores, cada marcador precisa ficar em um trecho contínuo.
 - 5 imagens (logo e ícones). A logo será substituível por tenant.
-- Personalização por tenant (proposta): logo e cor de destaque (laranja atual).
 
 ## Regras de identificação
 
-- **Código do processo:** 8 caracteres alfanuméricos em dois blocos de 4, separados por `-` (formato `XXXX-XXXX`, ex.: `A7K2-9QXM`).
+- **Código do processo:** 8 caracteres alfanuméricos em dois blocos de 4, separados por `-` (formato `XXXX-XXXX`, ex.: `A7K2-9QXM`) — confirmado.
   - Gerado pelo sistema, único dentro do tenant e imutável (não muda entre versões).
   - Proposta: letras maiúsculas e números, excluindo caracteres ambíguos (`0/O`, `1/I/L`).
 - **Identificação do POP:** prefixo da área (4 letras) + sequencial de 3 dígitos por área no tenant (ex.: `COME-001`).
 - **Envolvidos:** cada linha é um par área ↔ cargo; a numeração (1, 2… / A, B…) é gerada no documento.
 - **Datas:** não há distinção entre "mês/ano" e "Data Criação"; o mês/ano exibido é derivado da data de criação.
 
-## Em aberto
+## Personalização por tenant
 
-1. Confirmar o formato do código do processo: `XXXX-XXXX` (4+4)?
-2. Campos opcionais extras (sistemas, entradas/saídas, indicadores, riscos)?
-3. Tenants poderão criar modelos próprios ou só personalizar logo/cor?
+- Cada tenant pode trocar apenas a **logo** e a **cor de destaque** (laranja no modelo padrão).
+- Tenants não criam modelos próprios: o Modelo POP v3 é o único modelo da plataforma.
+
+## Futuro
+
+- Campos opcionais extras no POP: sistemas utilizados, entradas/saídas, indicadores, riscos/pontos de atenção.

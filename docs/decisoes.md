@@ -42,5 +42,4 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - LLM para extração das etapas
 - Autenticação (Clerk, Supabase Auth ou própria)
 - Geração do fluxograma: XML do draw.io direto ou Mermaid → importação
-- Detalhes do modelo de POP (ver `docs/modelo-pop.md`)
 - Integração com o Notion
