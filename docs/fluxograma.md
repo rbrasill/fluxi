@@ -90,7 +90,4 @@ const FluxoSchema = z.object({
 - **Código do processo:** mantém o formato `XXXX-XXXX` (ver `docs/modelo-pop.md`). O `VE7QGM098T` do exemplo é legado.
 - **Cores das raias:** fixas por área. Cada área recebe uma cor ao ser cadastrada no tenant, e essa cor se mantém em todos os fluxogramas.
 - **Logos de sistemas:** não haverá cadastro de sistemas nem logos de sistemas nos fluxogramas gerados.
-
-## Em aberto
-
-1. Qual é a fonte da verdade para as cores de tarefas e conectores: a biblioteca (`#005F73` / `#415A77`) ou o arquivo real (`#264653`)?
+- **Fonte da verdade dos estilos:** a biblioteca (`biblioteca-estilos.xml`). Tarefas com borda `#005F73` e conectores `#415A77`; as cores `#264653` do arquivo de exemplo não são usadas.
