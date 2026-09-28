@@ -1,7 +1,7 @@
 # Fluxi — Fluxograma (draw.io)
 
 - Biblioteca de estilos: [`templates/drawio/biblioteca-estilos.xml`](../templates/drawio/biblioteca-estilos.xml)
-- Exemplo de resultado final: [`templates/drawio/exemplo-fluxograma-emcash.pdf`](../templates/drawio/exemplo-fluxograma-emcash.pdf)
+- Exemplo de resultado final: [`templates/drawio/exemplo-fluxograma-emcash.drawio`](../templates/drawio/exemplo-fluxograma-emcash.drawio) (fonte) e [`.pdf`](../templates/drawio/exemplo-fluxograma-emcash.pdf) (visual)
 
 ## Abordagem
 
@@ -73,7 +73,21 @@ const FluxoSchema = z.object({
 })
 ```
 
+## Observações do arquivo de exemplo (`.drawio`)
+
+- Arquivo `mxfile` não comprimido, 1 página A3 paisagem (1654×1169), 162 elementos.
+- **Estilos reais diferem da biblioteca em alguns pontos:**
+  - Tarefas e conectores usam `#264653` (a biblioteca define `#005F73` para tarefas e `#415A77` para conectores).
+  - Tarefas: `rounded=1`, `arcSize=16`, fonte Calibri 12.
+  - Alertas: `fillColor=#ffe6cc`, `strokeColor=#d79b00`.
+  - Anotações ligadas às tarefas por conector tracejado rosa `#FF3399`; fluxo principal com conector sólido ortogonal.
+  - Raias com cor de borda por área: `#FB8500` (Comercial INC), `#006600` (ImobJF), `#0000FF` (EmCash).
+- **Imagens (logos) embutidas em base64** no XML (6 imagens), o que aumenta o arquivo (~245 KB). No Fluxi, preferir referenciar as imagens por URL do storage.
+- **Link "Acessar Documentação"** aponta para `https://notion.meuinc.com.br/{codigo-do-processo}`: o código do processo é a chave que liga o fluxograma à documentação no Notion.
+
 ## Em aberto
+
+0. Qual é a fonte da verdade para as cores: a biblioteca (`#005F73` / `#415A77`) ou o arquivo real (`#264653`)?
 
 1. Código do processo: o exemplo usa `VE7QGM098T` (10 caracteres, sem hífen); a decisão registrada é `XXXX-XXXX`.
 2. Cores das raias: fixas por área, paleta automática ou definidas pelo tenant?
