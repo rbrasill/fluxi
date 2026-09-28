@@ -15,6 +15,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 9 | 2026-09-28 | Banco de dados | ~~MySQL~~ → PostgreSQL 17 na Absam (absam.io) | Aceita |
 | 10 | 2026-09-28 | Fluxograma | Todo fluxograma gerado é editável antes de publicar: editor draw.io, ajuste por instrução e versões (ver `docs/fluxograma.md`) | Aceita |
 | 11 | 2026-09-28 | Infra do MVP | Supabase (Postgres + Storage) para MVP e testes; Postgres 17 na Absam fica para produção | Aceita |
+| 12 | 2026-09-28 | Front-end e hospedagem | React (Vite + TypeScript) no front; back em Node.js (Express); Vercel para front e API, worker à parte | Aceita |
 
 ---
 
@@ -70,6 +71,15 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Storage: buckets privados, caminho `tenants/{tenant_id}/...`, acesso só por URLs assinadas geradas pela API.
 - A chave `service_role` fica só no back-end (API/worker), nunca no front-end.
 - Configuração pelo conector Supabase (MCP) ou pela Management API (HTTPS); a porta 5432 não é acessível do ambiente de desenvolvimento em nuvem.
+
+## 12. React no front, Node.js no back
+- **Front-end:** React com Vite e TypeScript, como SPA (sem Next.js, já que a API é separada). Roteamento com React Router; dados com TanStack Query; cliente `@supabase/supabase-js` para login e upload direto ao Storage.
+- **Back-end:** Node.js + Express (decisão 2), com tipos compartilhados via `packages/core`.
+- **Variáveis do front** usam o prefixo `VITE_` (só as públicas: URL e chave `anon` do Supabase). As secretas ficam só no back.
+- **Hospedagem no MVP:**
+  - Vercel: front (estático) e API Express (como funções);
+  - uploads de áudio e vídeo vão direto do navegador para o Supabase Storage, com URL assinada gerada pela API (a Vercel limita requisições a ~4,5 MB);
+  - worker (fila, ffmpeg, IA, geração de POP e fluxograma) roda fora da Vercel, num processo contínuo (Railway, Render ou Fly.io). Fila a definir: BullMQ + Redis ou `pgmq` no próprio Supabase.
 
 ---
 
