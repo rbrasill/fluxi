@@ -56,6 +56,14 @@ const PopSchema = z.object({
 | Procedimentos | `{#procedimentos}{nome}` + `{#passos}• {.}{/passos}{/procedimentos}` |
 | Históricos | `{#historico}{data} · {elaboradoPor} · {revisao}{/historico}` |
 
+## Implementação (MVP)
+- **Template:** `templates/pop/modelo-pop-v3.template.docx` é gerado a partir do original por `npm run modelo-pop` (`scripts/preparar-modelo-pop.mjs`), que troca os textos de exemplo pelos marcadores e une os trechos fragmentados, mantendo a formatação. Não editar o template à mão: ajustar o script e gerar de novo.
+- **Geração:** `lib/pop/docx.ts` (docxtemplater, sem módulos pagos). Imagens das telas e o hiperlink "Abrir diagrama" são inseridos como XML próprio.
+- **Procedimentos:** uma tabela por procedimento (nome × passos em tópicos). As telas da gravação vêm logo abaixo da tabela, na largura da página, com legenda "Figura N: passo X · instrução".
+- **Dados:** tabela `pops` (migração `0003_pops.sql`): código do processo (o mesmo do fluxograma, se vinculado), identificação, versão, `conteudo` (área, executor, objetivo, envolvidos, procedimentos com passos) e `historico`.
+- **Criar a partir de uma gravação:** as telas marcadas com "Incluir no POP" viram os passos de um procedimento "Passo a passo no sistema", com a instrução digitada (ou a sugerida pela IA, quando houver).
+- PDF fica para depois (precisa de conversão no servidor).
+
 ## Notas técnicas
 
 - Layout construído com tabelas (15 no documento); blocos repetíveis viram linhas com loop.

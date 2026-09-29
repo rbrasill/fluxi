@@ -18,6 +18,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 12 | 2026-09-29 | Front-end e hospedagem | Next.js (React + TypeScript) no front; back em Node.js (Express); Vercel para front e API, worker à parte | Aceita |
 | 13 | 2026-09-29 | MVP: API e IA | API do MVP em rotas do Next.js (sem login, tenant padrão); IA por créditos, com criação manual sempre disponível | Aceita |
 | 14 | 2026-09-29 | Gravação de tela | Gravação no navegador com janela flutuante (Document PiP) e botão "Incluir esta tela no POP" (ver `docs/gravacao-tela.md`) | Aceita |
+| 15 | 2026-09-29 | POP | Editor de POP e geração do DOCX no Modelo POP v3 (docxtemplater), com as telas da gravação como passos ilustrados | Aceita |
 
 ---
 

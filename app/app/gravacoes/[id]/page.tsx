@@ -1,9 +1,10 @@
 'use client';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
+import { criarPop } from '@/lib/pops';
 import { atualizarGravacao, atualizarMarcacao, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; aoIr: () => void; aoExcluir: () => void }) {
@@ -58,6 +59,8 @@ function Detalhe() {
   const [g, setG] = useState<Gravacao | null | undefined>(undefined);
   const [nome, setNome] = useState('');
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
+  const [criandoPop, setCriandoPop] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null));
@@ -71,6 +74,17 @@ function Detalhe() {
   }
 
   const incluidas = g.marcacoes.filter((m) => m.incluir_no_pop).length;
+
+  async function criarPopDaGravacao() {
+    setCriandoPop(true);
+    try {
+      const { id: popId } = await criarPop({ gravacao_id: g!.id });
+      router.push(`/app/pops/${popId}`);
+    } catch {
+      setCriandoPop(false);
+      alert('Não foi possível criar o POP.');
+    }
+  }
 
   async function remover(m: Marcacao) {
     if (!confirm('Excluir esta tela marcada?')) return;
@@ -93,8 +107,8 @@ function Detalhe() {
           <p>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} no POP</p>
         </div>
         <div className="actions">
-          <button className="btn" disabled title="Na próxima etapa: transcrição da narração, instruções pela IA e geração do POP">
-            <Icone nome="ia" tamanho={16} />Gerar POP e fluxograma
+          <button className="btn btn-primary" onClick={criarPopDaGravacao} disabled={criandoPop || incluidas === 0} title={incluidas === 0 ? 'Marque ao menos uma tela como “Incluir no POP”' : undefined}>
+            <Icone nome="pop" tamanho={16} />{criandoPop ? 'Criando POP…' : 'Criar POP com estas telas'}
           </button>
         </div>
       </div>
