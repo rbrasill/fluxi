@@ -140,7 +140,8 @@ Estado atual do diagrama.
 | xml | text | XML do draw.io (`mxGraphModel`), o que o editor abre |
 | fonte_verdade | text | `schema` (gerado pela IA) ou `xml` (após edição manual) |
 | revisao_atual | int | número da última revisão salva |
-| png_path / svg_path | text | exportações no Storage (`tenants/{id}/fluxogramas/...`), para o POP e o Notion |
+| checksum | text | último checksum enviado pelo editor (usado no diff sync, futuro) |
+| png_path / svg_path | text | exportações no Storage (`tenants/{id}/fluxogramas/...`); o SVG é `xmlsvg` (continua editável) |
 | atualizado_por | uuid FK → perfis | |
 | criado_em / atualizado_em | timestamptz | |
 
