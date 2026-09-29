@@ -21,6 +21,8 @@ export class Gravador {
   largura = 0;
   altura = 0;
   temMicrofone = false;
+  /** 'monitor' (tela inteira), 'window' (janela) ou 'browser' (aba). */
+  superficie = '';
 
   private tela?: MediaStream;
   private mic?: MediaStream;
@@ -55,13 +57,15 @@ export class Gravador {
       },
       audio: op.audioDoSistema,
       // Não oferecer a própria aba do Fluxi; permitir trocar de aba durante a gravação.
-      ...({ selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: op.audioDoSistema ? 'include' : 'exclude' } as object),
+      // Abre o seletor na aba "Janela": gravando uma janela, a janelinha de controles não aparece nos prints.
+      ...({ displaySurface: 'window', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: op.audioDoSistema ? 'include' : 'exclude' } as object),
     } as DisplayMediaStreamOptions);
     this.tela = tela;
     const trilha = tela.getVideoTracks()[0];
     trilha.contentHint = 'detail'; // prioriza nitidez do texto sobre fluidez
     trilha.addEventListener('ended', () => void this.encerrar());
     const conf = trilha.getSettings();
+    this.superficie = (conf as { displaySurface?: string }).displaySurface ?? '';
     this.largura = conf.width ?? 0;
     this.altura = conf.height ?? 0;
 

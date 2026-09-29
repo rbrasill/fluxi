@@ -17,6 +17,7 @@ export type PropsPainel = {
   flash: number; // muda a cada tela incluída (animação de confirmação)
   previa?: MediaStream;
   flutuante?: boolean;
+  telaInteira?: boolean;
 };
 
 export function PainelGravacao(p: PropsPainel) {
@@ -70,6 +71,10 @@ export function PainelGravacao(p: PropsPainel) {
           aria-label="Instrução para esta tela"
         />
       </form>
+
+      {p.flutuante && p.telaInteira && (
+        <p className="painel-aviso">Você está gravando a tela inteira, então esta janelinha aparece nos prints. Arraste-a para um canto ou grave só a janela do sistema.</p>
+      )}
 
       <div className="painel-rodape">
         <span key={p.totalTelas} className="contador">{p.totalTelas} {p.totalTelas === 1 ? 'tela marcada' : 'telas marcadas'}</span>

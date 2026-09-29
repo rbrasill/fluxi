@@ -173,6 +173,7 @@ export default function NovaGravacaoPage() {
       flash={flash}
       previa={flutuante ? gravador.current?.previa : undefined}
       flutuante={flutuante}
+      telaInteira={gravador.current?.superficie === 'monitor'}
     />
   );
 
@@ -200,7 +201,7 @@ export default function NovaGravacaoPage() {
             <label className="check"><input type="checkbox" checked={audioSistema} onChange={(e) => setAudioSistema(e.target.checked)} />Incluir o áudio da tela (ex.: vídeo ou reunião)</label>
           </div>
           <ol className="dicas">
-            <li>Escolha a <b>janela do sistema</b> ou a aba que vai mostrar.</li>
+            <li>Escolha a <b>janela do sistema</b> (aba "Janela") ou a aba do navegador. Evite "Tela inteira": nela, a janelinha de controles aparece nos prints.</li>
             <li>{temPip ? <>Uma <b>janela flutuante</b> do Fluxi fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
             <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução; se não, a IA escreve a partir da narração.</li>
           </ol>

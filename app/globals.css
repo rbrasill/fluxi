@@ -263,3 +263,4 @@ input { font-family: inherit; }
 .salvo { font-size: 12px; color: var(--muted); }
 .salvo-erro { color: var(--danger); }
 @media (max-width: 1000px) { .grav-layout { grid-template-columns: 1fr; } .player { position: static; } }
+.painel-aviso { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fff6ea; color: #6b3406; font-size: 12px; line-height: 1.4; }
