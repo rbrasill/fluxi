@@ -14,6 +14,11 @@ const caminhos: Record<string, string> = {
   copiar: 'M9 9h12v12H9zM5 15H3V3h12v2',
   lixo: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   ia: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
+  camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+  pausa: 'M8 5v14M16 5v14',
+  play: 'M7 4l13 8-13 8z',
+  parar: 'M6 6h12v12H6z',
+  tela: 'M3 4h18v12H3zM8 20h8M12 16v4',
   salvar: 'M5 3h11l3 3v15H5zM8 3v5h8V3M8 21v-7h8v7',
 };
 

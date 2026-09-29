@@ -42,9 +42,18 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
    - o trecho de tempo, para abrir o vídeo exatamente naquele ponto.
 4. Tela de revisão: a pessoa confere, edita a instrução, reordena ou remove prints antes de gerar o POP.
 
+## Qualidade no MVP (Supabase)
+- Até 1080p, 15 quadros/s, VP9 a 1,5 Mbps (texto de sistema nítido) + áudio Opus 96 kbps. Configuração em `lib/gravacao/config.ts`.
+- O Supabase limita cada arquivo a 50 MB, então o vídeo é gravado em **partes independentes de 3 minutos** (~35 MB), enviadas enquanto a gravação continua. Uma parte é fechada antes se chegar a 85% do limite. Não há limite de duração total.
+- Cada parte recebe a duração no arquivo (`fix-webm-duration`), para o player conseguir avançar e voltar. O player toca as partes em sequência, com o tempo contado desde o início.
+- Prints das telas em **PNG** (texto nítido e compatível com o DOCX do POP).
+- Num storage sem esse limite (sistema definitivo), basta aumentar `SEGMENTO_MS` e a taxa de bits.
+
 ## Dados (novas tabelas)
-- `gravacoes`: tenant, processo/fluxograma, caminho do vídeo, duração, status (`gravando`, `enviando`, `transcrevendo`, `pronta`, `erro`), id da transcrição.
-- `gravacao_marcacoes`: gravação, tempo (ms), caminho da imagem, instrução digitada, instrução da IA, ordem, incluída no POP (sim/não).
+- `gravacoes`: tenant, fluxograma (opcional), nome, duração, resolução, status (`gravando`, `pronta`, `interrompida`, `erro`).
+- `gravacao_segmentos`: partes do vídeo (índice, caminho, início, duração, tamanho, formato).
+- `gravacao_marcacoes`: gravação, tempo (ms), caminho da imagem, resolução, instrução digitada, instrução da IA, incluída no POP (sim/não).
+- Migração: `supabase/migrations/0002_gravacoes.sql`.
 
 ## Limites e cuidados
 - **Tamanho:** no plano Free do Supabase, cada arquivo tem limite de 50 MB (≈ 10–15 min de tela em 720p). Para gravações longas: upload resumível (TUS) e plano Pro, ou gravar em 720p/baixa taxa de quadros (5–10 fps bastam para telas de sistema).
