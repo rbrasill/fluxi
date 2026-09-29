@@ -111,6 +111,8 @@ Permissões por papel (cada papel inclui os de baixo):
 
 ## Parte 2 — versões e fluxogramas (draw.io)
 
+> **MVP:** entram `processo_versoes` (simplificada) e `fluxogramas`. As tabelas `fluxograma_revisoes`, `fluxograma_ajustes` e `fluxograma_nos` e o campo `checksum` ficam para depois (ver `docs/mvp.md`).
+
 Foco no fluxograma. O POP da versão entra depois, ligado à mesma `processo_versoes`.
 
 ### `processo_versoes`
