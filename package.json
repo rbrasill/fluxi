@@ -7,13 +7,16 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "biblioteca": "node scripts/gerar-biblioteca.mjs"
+    "biblioteca": "node scripts/gerar-biblioteca.mjs",
+    "modelo-pop": "node scripts/preparar-modelo-pop.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
     "@supabase/supabase-js": "^2.117.2",
+    "docxtemplater": "^3.71.0",
     "fix-webm-duration": "^1.0.6",
     "next": "^16.3.7",
+    "pizzip": "^3.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "server-only": "^0.0.1",
