@@ -34,14 +34,18 @@ export function EditorDrawio({ id }: { id: string }) {
   const exportando = useRef<Exportacao | null>(null);
   const biblioteca = useRef<Promise<unknown[]>>(null);
 
+  const salvo = useRef('');
+
   useEffect(() => {
-    const f = obter(id);
-    setFluxo(f);
-    if (f) {
-      setNome(f.nome);
-      xmlAtual.current = f.xml;
-    }
     biblioteca.current = fetch('/drawio/biblioteca-inc.json').then((r) => r.json());
+    obter(id)
+      .then((f) => {
+        setFluxo(f);
+        setNome(f.nome);
+        xmlAtual.current = f.xml;
+        salvo.current = f.xml;
+      })
+      .catch(() => setFluxo(null));
   }, [id]);
 
   const enviar = useCallback((msg: object) => {
@@ -49,10 +53,12 @@ export function EditorDrawio({ id }: { id: string }) {
   }, []);
 
   const gravar = useCallback(
-    (xml: string) => {
+    async (xml: string) => {
+      if (xml === salvo.current) return setStatus('salvo');
       try {
-        salvar(id, { xml });
-        setStatus('salvo');
+        await salvar(id, { xml });
+        salvo.current = xml;
+        if (xmlAtual.current === xml) setStatus('salvo');
       } catch {
         setStatus('erro');
       }
@@ -86,12 +92,13 @@ export function EditorDrawio({ id }: { id: string }) {
           break;
         case 'load':
           setStatus('salvo');
+          enviar({ action: 'fit', border: 24, maxScale: 1 });
           break;
         case 'autosave':
           xmlAtual.current = msg.xml;
           setStatus('salvando');
           if (pendente.current) clearTimeout(pendente.current);
-          pendente.current = setTimeout(() => gravar(msg.xml), 600);
+          pendente.current = setTimeout(() => gravar(msg.xml), 1200);
           break;
         case 'save':
           xmlAtual.current = msg.xml;
@@ -104,7 +111,7 @@ export function EditorDrawio({ id }: { id: string }) {
           const tipo = exportando.current;
           exportando.current = null;
           const base = nome.trim() || 'fluxograma';
-          if (tipo === 'miniatura') salvar(id, { miniatura: msg.data });
+          if (tipo === 'miniatura') salvar(id, { miniatura: msg.data }).catch(() => {});
           else if (tipo === 'png') baixar(`${base}.png`, msg.data);
           else if (tipo === 'svg') baixar(`${base}.svg`, msg.data);
           break;
@@ -120,7 +127,11 @@ export function EditorDrawio({ id }: { id: string }) {
     const flush = () => {
       if (pendente.current) {
         clearTimeout(pendente.current);
-        salvar(id, { xml: xmlAtual.current });
+        pendente.current = null;
+        if (xmlAtual.current !== salvo.current) {
+          // keepalive só aceita corpos pequenos (~64 KB); acima disso, envia normal.
+          salvar(id, { xml: xmlAtual.current }, xmlAtual.current.length < 60_000).catch(() => {});
+        }
       }
     };
     window.addEventListener('beforeunload', flush);
@@ -161,7 +172,7 @@ export function EditorDrawio({ id }: { id: string }) {
   function renomear() {
     const n = nome.trim();
     if (!n || n === fluxo?.nome) return;
-    salvar(id, { nome: n });
+    salvar(id, { nome: n }).catch(() => setStatus('erro'));
     setFluxo((f) => (f ? { ...f, nome: n } : f));
   }
 
@@ -170,7 +181,7 @@ export function EditorDrawio({ id }: { id: string }) {
       <div className="page">
         <div className="empty">
           <h2>Fluxograma não encontrado</h2>
-          <p>Ele pode ter sido excluído ou foi criado em outro navegador.</p>
+          <p>Ele pode ter sido excluído, ou houve um erro de conexão.</p>
           <Link href="/app/fluxogramas" className="btn btn-primary">Voltar para a lista</Link>
         </div>
       </div>

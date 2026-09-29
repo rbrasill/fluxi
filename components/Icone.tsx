@@ -13,6 +13,7 @@ const caminhos: Record<string, string> = {
   layout: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4v7.5',
   copiar: 'M9 9h12v12H9zM5 15H3V3h12v2',
   lixo: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+  ia: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   salvar: 'M5 3h11l3 3v15H5zM8 3v5h8V3M8 21v-7h8v7',
 };
 
