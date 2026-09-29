@@ -25,6 +25,7 @@ let cliente: Anthropic | null = null;
 const claude = () => (cliente ??= new Anthropic());
 
 export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao'): Promise<Fluxo> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie o fluxograma manualmente por enquanto.');
   const intro =
     origem === 'transcricao'
       ? 'Transcrição da reunião de mapeamento do processo:'
