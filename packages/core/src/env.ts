@@ -4,8 +4,8 @@ import { z } from 'zod';
 // ou das Environment Variables da Vercel. Nenhum valor padrão: se faltar, falha na inicialização.
 
 const publicSchema = z.object({
-  VITE_SUPABASE_URL: z.string().url(),
-  VITE_SUPABASE_ANON_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
 });
 
 const serverSchema = publicSchema.extend({
