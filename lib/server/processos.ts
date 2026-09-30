@@ -1,9 +1,10 @@
 import 'server-only';
 import { gerarCodigo } from '@/lib/codigo';
+import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, area, descricao, criado_em, atualizado_em';
+const CAMPOS = 'id, codigo, nome, descricao, area_id, criado_em, atualizado_em, area:areas(id, nome)';
 
 export async function listar() {
   const { data, error } = await supabase().from('processos')
@@ -26,10 +27,11 @@ export async function tocar(id: string | null | undefined) {
   if (id) await supabase().from('processos').update({ atualizado_em: new Date().toISOString() }).eq('tenant_id', TENANT_PADRAO).eq('id', id);
 }
 
-export async function criar(d: { nome: string; area?: string; descricao?: string }) {
+export async function criar(d: { nome: string; area_id: string; descricao?: string }) {
+  await garantirArea(d.area_id);
   for (let i = 0; i < 3; i++) {
     const { data, error } = await supabase().from('processos')
-      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area: d.area ?? '', descricao: d.descricao ?? '' })
+      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '' })
       .select(CAMPOS).single();
     if (!error) return data;
     if (error.code !== '23505') throw error;
@@ -60,7 +62,8 @@ export async function obter(id: string) {
   };
 }
 
-export async function atualizar(id: string, dados: { nome?: string; area?: string; descricao?: string }) {
+export async function atualizar(id: string, dados: { nome?: string; area_id?: string; descricao?: string }) {
+  if (dados.area_id) await garantirArea(dados.area_id);
   const { data, error } = await supabase().from('processos').update({ ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
   if (error) throw error;

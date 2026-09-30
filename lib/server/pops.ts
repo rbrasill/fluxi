@@ -77,6 +77,12 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
     conteudo = { ...conteudo, procedimentos: [{ nome: 'Passo a passo no sistema', passos: passos.length ? passos : [{ texto: '' }] }] };
   }
 
+  if (processoId && !conteudo.area) {
+    const { data: pr } = await supabase().from('processos').select('area:areas(nome)').eq('id', processoId).maybeSingle();
+    const area = (pr?.area as { nome?: string } | null)?.nome;
+    if (area) conteudo = { ...conteudo, area };
+  }
+
   const { data, error } = await supabase().from('pops').insert({
     tenant_id: TENANT_PADRAO,
     nome,

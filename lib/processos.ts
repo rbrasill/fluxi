@@ -2,7 +2,7 @@
 import { ErroCliente } from './fluxogramas';
 
 export type ProcessoResumo = {
-  id: string; codigo: string; nome: string; area: string; descricao: string; criado_em: string; atualizado_em: string;
+  id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string } | null; criado_em: string; atualizado_em: string;
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
@@ -20,9 +20,9 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const listarProcessos = () => api<ProcessoResumo[]>('/api/processos');
 export const obterProcesso = (id: string) => api<Processo>(`/api/processos/${id}`);
-export const criarProcesso = (dados: { nome: string; area?: string; descricao?: string }) =>
+export const criarProcesso = (dados: { nome: string; area_id: string; descricao?: string }) =>
   api<ProcessoResumo>('/api/processos', { method: 'POST', body: JSON.stringify(dados) });
-export const atualizarProcesso = (id: string, dados: { nome?: string; area?: string; descricao?: string }) =>
+export const atualizarProcesso = (id: string, dados: { nome?: string; area_id?: string; descricao?: string }) =>
   api<{ id: string }>(`/api/processos/${id}`, { method: 'PATCH', body: JSON.stringify(dados) });
 export const excluirProcesso = (id: string) => api(`/api/processos/${id}`, { method: 'DELETE' });
 

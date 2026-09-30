@@ -1,45 +1,29 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { criarProcesso, listarProcessos, type ProcessoResumo } from '@/lib/processos';
+import { NovoProcesso } from '@/components/NovoProcesso';
+import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
 export default function ProcessosPage() {
-  const router = useRouter();
   const [itens, setItens] = useState<ProcessoResumo[] | null>(null);
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
   const [novo, setNovo] = useState(false);
-  const [nome, setNome] = useState('');
-  const [area, setArea] = useState('');
-  const [criando, setCriando] = useState(false);
 
   useEffect(() => { listarProcessos().then(setItens).catch((e) => { setErro(e.message); setItens([]); }); }, []);
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return (itens || []).filter((p) => !q || [p.nome, p.codigo, p.area].some((x) => x.toLowerCase().includes(q)));
+    return (itens || []).filter((p) => !q || [p.nome, p.codigo, p.area?.nome ?? ''].some((x) => x.toLowerCase().includes(q)));
   }, [itens, busca]);
-
-  async function criar(e: React.FormEvent) {
-    e.preventDefault();
-    setCriando(true);
-    try {
-      const p = await criarProcesso({ nome: nome.trim(), area: area.trim() || undefined });
-      router.push(`/app/processos/${p.id}`);
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : 'Erro ao criar');
-      setCriando(false);
-    }
-  }
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Processos</h1>
-          <p>Cada processo é uma pasta com tudo dele: gravações e transcrições, fluxogramas e POPs.</p>
+          <h1>Todos os processos</h1>
+          <p>Os processos de todas as áreas. Cada processo reúne suas gravações e transcrições, fluxogramas e POPs.</p>
         </div>
         <div className="actions">
           <button className="btn btn-primary" onClick={() => setNovo(true)}><Icone nome="mais" />Novo processo</button>
@@ -68,7 +52,7 @@ export default function ProcessosPage() {
             <span className="pop-icone"><Icone nome="pasta" tamanho={20} /></span>
             <span className="pop-nome">
               <strong>{p.nome}</strong>
-              <span>{p.area || 'Sem área'}</span>
+              <span>{p.area?.nome}</span>
             </span>
             <span className="contagens">
               <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>
@@ -81,25 +65,7 @@ export default function ProcessosPage() {
         ))}
       </div>
 
-      {novo && (
-        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="novo-processo" onClick={() => !criando && setNovo(false)}>
-          <form className="dialog" onClick={(e) => e.stopPropagation()} onSubmit={criar}>
-            <h2 id="novo-processo">Novo processo</h2>
-            <label className="field">
-              Nome do processo
-              <input autoFocus required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Aprovação de proposta comercial" />
-            </label>
-            <label className="field">
-              Área <span className="opcional">· opcional</span>
-              <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Ex.: Comercial" />
-            </label>
-            <div className="dialog-actions">
-              <button type="button" className="btn" onClick={() => setNovo(false)} disabled={criando}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={criando || !nome.trim()}>{criando ? 'Criando…' : 'Criar e abrir'}</button>
-            </div>
-          </form>
-        </div>
-      )}
+      {novo && <NovoProcesso aoFechar={() => setNovo(false)} />}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { creditos as buscarCreditos } from '@/lib/fluxogramas';
 import { formatarTempo } from '@/lib/gravacoes';
 import { criarPop } from '@/lib/pops';
+import { listarAreas, type AreaResumo } from '@/lib/areas';
 import { atualizarProcesso, excluirProcesso, obterProcesso, type Processo } from '@/lib/processos';
 
 const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
@@ -16,13 +17,14 @@ export default function ProcessoPage() {
   const router = useRouter();
   const [p, setP] = useState<Processo | null | undefined>(undefined);
   const [nome, setNome] = useState('');
-  const [area, setArea] = useState('');
+  const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [novoFluxo, setNovoFluxo] = useState(false);
   const [creditos, setCreditos] = useState<number | null>(null);
   const [criandoPop, setCriandoPop] = useState(false);
 
   useEffect(() => {
-    obterProcesso(id).then((d) => { setP(d); setNome(d.nome); setArea(d.area); }).catch(() => setP(null));
+    obterProcesso(id).then((d) => { setP(d); setNome(d.nome); }).catch(() => setP(null));
+    listarAreas().then(setAreas).catch(() => {});
     buscarCreditos().then((c) => setCreditos(c.creditos)).catch(() => {});
   }, [id]);
 
@@ -43,22 +45,32 @@ export default function ProcessoPage() {
   async function excluir() {
     if (!confirm(`Excluir o processo "${p!.nome}"? Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.`)) return;
     await excluirProcesso(p!.id);
-    router.push('/app/processos');
+    router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/areas');
   }
 
-  const salvar = (dados: { nome?: string; area?: string }) => void atualizarProcesso(p.id, dados);
+  const salvar = (dados: { nome?: string }) => void atualizarProcesso(p.id, dados);
+
+  async function mudarArea(areaId: string) {
+    if (!areaId || areaId === p!.area_id) return;
+    await atualizarProcesso(p!.id, { area_id: areaId });
+    setP({ ...p!, area_id: areaId, area: areas.find((a) => a.id === areaId) ?? p!.area });
+  }
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <Link href="/app/processos" className="voltar"><Icone nome="voltar" tamanho={16} />Processos</Link>
+          <nav className="migalha" aria-label="Caminho">
+            <Link href="/app/areas">Áreas</Link><span>›</span>
+            {p.area && <Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link>}
+          </nav>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo"
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <p className="processo-meta">
             <span className="code">{p.codigo}</span>
-            <input className="area-editavel" value={area} onChange={(e) => setArea(e.target.value)} placeholder="Área do processo" aria-label="Área"
-              onBlur={() => area !== p.area && salvar({ area: area.trim() })} />
+            <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área">
+              {(areas.length ? areas : p.area ? [p.area] : []).map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+            </select>
           </p>
         </div>
         <div className="actions">
