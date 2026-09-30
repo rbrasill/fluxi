@@ -15,7 +15,7 @@ export default function ProcessosPage() {
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
-    return (itens || []).filter((p) => !q || [p.nome, p.codigo, p.area?.nome ?? ''].some((x) => x.toLowerCase().includes(q)));
+    return (itens || []).filter((p) => !q || [p.nome, p.codigo, p.area?.nome ?? '', p.area?.organizacao?.nome ?? ''].some((x) => x.toLowerCase().includes(q)));
   }, [itens, busca]);
 
   return (
@@ -23,7 +23,7 @@ export default function ProcessosPage() {
       <div className="page-head">
         <div>
           <h1>Todos os processos</h1>
-          <p>Os processos de todas as áreas. Cada processo reúne suas gravações e transcrições, fluxogramas e POPs.</p>
+          <p>Os processos de todas as organizações e áreas. Cada processo reúne suas gravações e transcrições, fluxogramas e POPs.</p>
         </div>
         <div className="actions">
           <button className="btn btn-primary" onClick={() => setNovo(true)}><Icone nome="mais" />Novo processo</button>
@@ -33,7 +33,7 @@ export default function ProcessosPage() {
 
       <label className="search">
         <Icone nome="busca" />
-        <input type="search" placeholder="Buscar por nome, código ou área" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar processos" />
+        <input type="search" placeholder="Buscar por nome, código, organização ou área" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar processos" />
       </label>
 
       {itens === null && <p className="notice">Carregando…</p>}
@@ -52,7 +52,7 @@ export default function ProcessosPage() {
             <span className="pop-icone"><Icone nome="pasta" tamanho={20} /></span>
             <span className="pop-nome">
               <strong>{p.nome}</strong>
-              <span>{p.area?.nome}</span>
+              <span>{p.area?.organizacao?.nome} · {p.area?.nome}</span>
             </span>
             <span className="contagens">
               <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>

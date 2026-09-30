@@ -1,8 +1,9 @@
 import 'server-only';
 import { ErroApi } from './http';
+import { garantir as garantirOrganizacao } from './organizacoes';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, nome, descricao, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, descricao, organizacao_id, criado_em, atualizado_em, organizacao:organizacoes(id, nome)';
 
 export async function listar() {
   const { data, error } = await supabase().from('areas').select(`${CAMPOS}, processos(count)`).eq('tenant_id', TENANT_PADRAO).order('nome');
@@ -18,12 +19,14 @@ export async function garantir(id: string) {
 }
 
 const duplicada = (e: { code?: string }) => {
-  if (e.code === '23505') throw new ErroApi(409, 'Já existe uma área com esse nome.');
+  if (e.code === '23505') throw new ErroApi(409, 'Já existe uma área com esse nome nesta organização.');
   throw e;
 };
 
-export async function criar(d: { nome: string; descricao?: string }) {
-  const { data, error } = await supabase().from('areas').insert({ tenant_id: TENANT_PADRAO, nome: d.nome, descricao: d.descricao ?? '' }).select(CAMPOS).single();
+export async function criar(d: { nome: string; organizacao_id: string; descricao?: string }) {
+  await garantirOrganizacao(d.organizacao_id);
+  const { data, error } = await supabase().from('areas')
+    .insert({ tenant_id: TENANT_PADRAO, organizacao_id: d.organizacao_id, nome: d.nome, descricao: d.descricao ?? '' }).select(CAMPOS).single();
   if (error) duplicada(error);
   return data!;
 }

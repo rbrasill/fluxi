@@ -40,9 +40,9 @@ export function NovoProcesso({ areaId, aoFechar }: { areaId?: string; aoFechar: 
             Área
             <select required value={area} onChange={(e) => setArea(e.target.value)}>
               <option value="">Escolha…</option>
-              {areas.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              {areas.map((a) => <option key={a.id} value={a.id}>{a.organizacao ? `${a.organizacao.nome} · ` : ''}{a.nome}</option>)}
             </select>
-            {areas.length === 0 && <span className="notice">Crie uma área primeiro, em Áreas.</span>}
+            {areas.length === 0 && <span className="notice">Crie uma organização e uma área primeiro, em Organizações.</span>}
           </label>
         )}
         {erro && <p className="form-erro" role="alert">{erro}</p>}

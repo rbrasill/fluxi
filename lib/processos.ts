@@ -2,7 +2,7 @@
 import { ErroCliente } from './fluxogramas';
 
 export type ProcessoResumo = {
-  id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string } | null; criado_em: string; atualizado_em: string;
+  id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null; criado_em: string; atualizado_em: string;
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {

@@ -4,7 +4,7 @@ import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, descricao, area_id, criado_em, atualizado_em, area:areas(id, nome)';
+const CAMPOS = 'id, codigo, nome, descricao, area_id, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
 
 export async function listar() {
   const { data, error } = await supabase().from('processos')

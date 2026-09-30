@@ -45,7 +45,7 @@ export default function ProcessoPage() {
   async function excluir() {
     if (!confirm(`Excluir o processo "${p!.nome}"? Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.`)) return;
     await excluirProcesso(p!.id);
-    router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/areas');
+    router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/organizacoes');
   }
 
   const salvar = (dados: { nome?: string }) => void atualizarProcesso(p.id, dados);
@@ -61,7 +61,7 @@ export default function ProcessoPage() {
       <div className="page-head">
         <div>
           <nav className="migalha" aria-label="Caminho">
-            <Link href="/app/areas">Áreas</Link><span>›</span>
+            {p.area?.organizacao && <><Link href={`/app/organizacoes/${p.area.organizacao.id}`}>{p.area.organizacao.nome}</Link><span>›</span></>}
             {p.area && <Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link>}
           </nav>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo"
@@ -69,7 +69,7 @@ export default function ProcessoPage() {
           <p className="processo-meta">
             <span className="code">{p.codigo}</span>
             <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área">
-              {(areas.length ? areas : p.area ? [p.area] : []).map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              {(areas.length ? areas.filter((a) => a.organizacao_id === p.area?.organizacao?.id) : p.area ? [p.area] : []).map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
             </select>
           </p>
         </div>

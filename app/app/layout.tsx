@@ -6,13 +6,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="shell">
       <aside className="side">
-        <Link href="/app/areas" className="brand">
+        <Link href="/app/organizacoes" className="brand">
           <span className="brand-mark"><Icone nome="fluxo" tamanho={20} /></span>
           <span className="brand-name">Fluxi</span>
         </Link>
         <nav className="nav" aria-label="Principal">
           <span className="nav-label">GERAL</span>
-          <NavLink href="/app/areas"><Icone nome="areas" />Áreas</NavLink>
+          <NavLink href="/app/organizacoes"><Icone nome="empresa" />Organizações</NavLink>
           <NavLink href="/app/processos"><Icone nome="pasta" />Todos os processos</NavLink>
           <span className="nav-label">TODOS OS ITENS</span>
           <NavLink href="/app/fluxogramas"><Icone nome="fluxo" />Fluxogramas</NavLink>

@@ -17,7 +17,7 @@ export default function AreaPage() {
   useEffect(() => { obterArea(id).then((d) => { setA(d); setNome(d.nome); }).catch(() => setA(null)); }, [id]);
 
   if (a === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/areas" className="btn btn-primary">Voltar</Link></div></div>;
+  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/organizacoes" className="btn btn-primary">Voltar</Link></div></div>;
 
   async function renomear() {
     if (!nome.trim() || nome === a!.nome) return;
@@ -26,14 +26,17 @@ export default function AreaPage() {
 
   async function excluir() {
     if (!confirm(`Excluir a área "${a!.nome}"?`)) return;
-    try { await excluirArea(a!.id); router.push('/app/areas'); } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao excluir'); }
+    try { await excluirArea(a!.id); router.push(a!.organizacao ? `/app/organizacoes/${a!.organizacao.id}` : '/app/organizacoes'); } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao excluir'); }
   }
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
-          <Link href="/app/areas" className="voltar"><Icone nome="voltar" tamanho={16} />Áreas</Link>
+          <nav className="migalha" aria-label="Caminho">
+            <Link href="/app/organizacoes">Organizações</Link><span>›</span>
+            {a.organizacao && <Link href={`/app/organizacoes/${a.organizacao.id}`}>{a.organizacao.nome}</Link>}
+          </nav>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={renomear} aria-label="Nome da área" />
           <p>{a.processos.length} {a.processos.length === 1 ? 'processo' : 'processos'}</p>
         </div>

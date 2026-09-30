@@ -113,11 +113,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Excluir o processo exclui só a pasta: os itens continuam nas listas de "Todos os itens", sem processo. Assim nada se perde por engano.
 - Os itens que já existiam foram migrados: um processo por fluxograma, com o mesmo código e nome, junto dos POPs e gravações ligados a ele (`0005_processos.sql`).
 
-## 16. Área → Processo → itens
-- A navegação (e, com o login, o acesso) segue três níveis: **Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial é a lista de áreas.
+## 16. Organização → Área → Processo → itens
+- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial é a lista de organizações.
+- **Conta (tenant) ≠ organização:** a conta é quem usa o Fluxi (créditos de IA e, depois, usuários); a organização é a empresa cujos processos são modelados. Uma conta modela várias organizações (`0007_organizacoes.sql`). Nome de área é único dentro da organização; organização só é excluída sem áreas. As áreas que existiam foram para "INC Empreendimentos".
 - Todo processo pertence a uma área (`processos.area_id`, obrigatório). O processo pode ser movido de área; a área só pode ser excluída vazia. Nome de área é único por empresa.
 - O POP criado num processo já vem com a área preenchida.
-- **Acesso por área (quando entrar o login):** cada pessoa recebe as áreas que pode ver ou editar (tabela de membros por área), e as consultas e o RLS filtram por elas. Hoje, sem login, todos veem tudo.
+- **Acesso (quando entrar o login):** cada pessoa recebe as organizações e/ou áreas que pode ver ou editar (membros por organização e por área), e as consultas e o RLS filtram por elas. Hoje, sem login, todos veem tudo.
 - Os processos que já existiam foram para a área "Geral" (`0006_areas.sql`). A coluna texto `processos.area` ficou só por compatibilidade.
 
 ---
