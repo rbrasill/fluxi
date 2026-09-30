@@ -140,7 +140,9 @@ function Detalhe() {
     <div className="page">
       <div className="page-head">
         <div>
-          <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>
+          {g.processo
+            ? <Link href={`/app/processos/${g.processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{g.processo.nome}</Link>
+            : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
           <input
             className="titulo-editavel"
             value={nome}
@@ -169,6 +171,20 @@ function Detalhe() {
           ))}
         </section>
       </div>
+
+      {g.falas.length > 0 && (
+        <details className="transcricao" open>
+          <summary>Transcrição da narração</summary>
+          <div className="falas">
+            {g.falas.map((f, i) => (
+              <p key={i} className="fala">
+                <button onClick={() => setIrPara({ ms: f.inicio_ms, n: Date.now() })} title="Ver este momento no vídeo">{formatarTempo(f.inicio_ms)}</button>
+                <span><b>Falante {f.falante}</b>{f.texto}</span>
+              </p>
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

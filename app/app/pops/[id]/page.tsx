@@ -89,7 +89,7 @@ export default function EditorPop() {
     <div className="page page-pop">
       <div className="page-head">
         <div>
-          <Link href="/app/pops" className="voltar"><Icone nome="voltar" tamanho={16} />POPs</Link>
+          <Link href={pop.processo_id ? `/app/processos/${pop.processo_id}` : '/app/pops'} className="voltar"><Icone nome="voltar" tamanho={16} />{pop.processo_id ? 'Processo' : 'POPs'}</Link>
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" />
           <p className="status-linha"><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</p>
         </div>

@@ -1,5 +1,6 @@
 import 'server-only';
 import { ErroApi } from './http';
+import { garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 const BUCKET = 'gravacoes';
@@ -20,20 +21,23 @@ async function garantirGravacao(id: string) {
 export async function listar() {
   const { data, error } = await supabase()
     .from('gravacoes')
-    .select('id, nome, status, duracao_ms, criado_em, marcacoes:gravacao_marcacoes(count)')
+    .select('id, nome, status, duracao_ms, processo_id, criado_em, marcacoes:gravacao_marcacoes(count)')
     .eq('tenant_id', TENANT_PADRAO)
     .order('criado_em', { ascending: false });
   if (error) throw error;
   return data.map(({ marcacoes, ...g }) => ({ ...g, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }));
 }
 
-export async function criar(nome: string) {
-  const { data, error } = await supabase().from('gravacoes').insert({ tenant_id: TENANT_PADRAO, nome }).select('id, nome, status').single();
+export async function criar(nome: string, processoId?: string) {
+  if (processoId) await garantirProcesso(processoId);
+  const { data, error } = await supabase().from('gravacoes').insert({ tenant_id: TENANT_PADRAO, nome, processo_id: processoId ?? null }).select('id, nome, status').single();
   if (error) throw error;
+  await tocar(processoId);
   return data;
 }
 
-export async function atualizar(id: string, dados: { nome?: string; status?: string; duracao_ms?: number; largura?: number; altura?: number }) {
+export async function atualizar(id: string, dados: { nome?: string; status?: string; duracao_ms?: number; largura?: number; altura?: number; processo_id?: string | null }) {
+  if (dados.processo_id) await garantirProcesso(dados.processo_id);
   const { data, error } = await supabase()
     .from('gravacoes').update({ ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
@@ -97,8 +101,8 @@ async function assinar(caminhos: string[]) {
 export async function obter(id: string) {
   const db = supabase();
   const [g, segs, marcs] = await Promise.all([
-    db.from('gravacoes').select('id, nome, status, duracao_ms, largura, altura, criado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('gravacao_segmentos').select('indice, caminho, inicio_ms, duracao_ms, bytes, mime').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('indice'),
+    db.from('gravacoes').select('id, nome, status, duracao_ms, largura, altura, processo_id, processamento, criado_em, processo:processos(id, nome, codigo)').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
+    db.from('gravacao_segmentos').select('indice, caminho, inicio_ms, duracao_ms, bytes, mime, falas').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('indice'),
     db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('tempo_ms'),
   ]);
   for (const r of [g, segs, marcs]) if (r.error) throw r.error;
@@ -106,7 +110,9 @@ export async function obter(id: string) {
   const urls = await assinar([...(segs.data ?? []).map((s) => s.caminho), ...(marcs.data ?? []).map((m) => m.imagem_caminho)]);
   return {
     ...g.data,
-    segmentos: (segs.data ?? []).map((s) => ({ ...s, url: urls.get(s.caminho) ?? null })),
+    segmentos: (segs.data ?? []).map(({ falas: _f, ...s }) => ({ ...s, url: urls.get(s.caminho) ?? null })),
+    // Transcrição da narração (quando já foi feita), com o tempo da gravação inteira.
+    falas: (segs.data ?? []).flatMap((s) => (s.falas as { falante: string; inicio_ms: number; texto: string }[] | null) ?? []),
     marcacoes: (marcs.data ?? []).map((m) => ({ ...m, imagem_url: urls.get(m.imagem_caminho) ?? null })),
   };
 }

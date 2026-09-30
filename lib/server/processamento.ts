@@ -22,7 +22,7 @@ const mmss = (ms: number) => {
 
 async function gravacao(id: string) {
   const { data, error } = await supabase().from('gravacoes')
-    .select('id, nome, status, processamento, processamento_erro, pop_id, fluxograma_id')
+    .select('id, nome, status, processamento, processamento_erro, pop_id, fluxograma_id, processo_id')
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'Gravação não encontrada');
@@ -99,7 +99,7 @@ export async function avancar(id: string) {
   // Trava: só uma requisição faz a análise.
   if (!(await marcar(id, { processamento: 'analisando' }, 'transcrevendo'))) return estado(id);
   try {
-    await analisar(id, g.nome, segs.flatMap((s) => (s.falas as Fala[] | null) ?? []));
+    await analisar(id, g.nome, g.processo_id, segs.flatMap((s) => (s.falas as Fala[] | null) ?? []));
   } catch (e) {
     console.error('processamento', e);
     const msg = e instanceof ErroApi ? e.message : 'Erro ao analisar a gravação. Tente novamente.';
@@ -108,7 +108,7 @@ export async function avancar(id: string) {
   return estado(id);
 }
 
-async function analisar(id: string, nome: string, falas: Fala[]) {
+async function analisar(id: string, nome: string, processoId: string | null, falas: Fala[]) {
   const db = supabase();
   const { data: marcs, error } = await db.from('gravacao_marcacoes')
     .select('id, tempo_ms, imagem_caminho, largura, altura, instrucao')
@@ -121,7 +121,7 @@ async function analisar(id: string, nome: string, falas: Fala[]) {
   const transcricao = formatarFalas(falas, true) || '(sem fala na gravação)';
   const analise = await analisarGravacao(transcricao, [...porId].map(([k, t]) => ({ id: k, momento: mmss(t.tempo_ms), instrucao: t.instrucao })));
 
-  const fluxo = await fluxogramas.criar({ nome, xml: gerarXml(analise.fluxo), origem: 'ia', schema: analise.fluxo });
+  const fluxo = await fluxogramas.criar({ nome, xml: gerarXml(analise.fluxo), origem: 'ia', schema: analise.fluxo, processo_id: processoId });
   await debitar('fluxograma', { gravacao_id: id, fluxograma_id: fluxo.id });
 
   const usadas = new Set<string>();

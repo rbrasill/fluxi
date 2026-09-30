@@ -1,16 +1,9 @@
 import { z } from 'zod';
-import { atualizar, excluir, obter } from '@/lib/server/gravacoes';
+import { atualizar, excluir, obter } from '@/lib/server/areas';
 import { responder } from '@/lib/server/http';
 
 type Ctx = { params: Promise<{ id: string }> };
-const Patch = z.object({
-  nome: z.string().trim().min(1).max(200).optional(),
-  status: z.enum(['gravando', 'pronta', 'interrompida', 'erro']).optional(),
-  duracao_ms: z.number().int().min(0).optional(),
-  largura: z.number().int().positive().optional(),
-  altura: z.number().int().positive().optional(),
-  processo_id: z.string().uuid().nullable().optional(),
-});
+const Patch = z.object({ nome: z.string().trim().min(1).max(120).optional(), descricao: z.string().trim().max(2000).optional() });
 
 export const dynamic = 'force-dynamic';
 export const GET = (_: Request, { params }: Ctx) => responder(async () => obter((await params).id));

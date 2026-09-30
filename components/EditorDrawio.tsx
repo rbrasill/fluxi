@@ -191,7 +191,7 @@ export function EditorDrawio({ id }: { id: string }) {
   return (
     <div className="editor" ref={container}>
       <header className="editor-bar">
-        <Link href="/app/fluxogramas" className="btn btn-icon" aria-label="Voltar para a lista" title="Voltar"><Icone nome="voltar" /></Link>
+        <Link href={fluxo?.processo_id ? `/app/processos/${fluxo.processo_id}` : '/app/fluxogramas'} className="btn btn-icon" aria-label="Voltar" title={fluxo?.processo_id ? 'Voltar ao processo' : 'Voltar'}><Icone nome="voltar" /></Link>
         <input
           className="title-input"
           value={nome}

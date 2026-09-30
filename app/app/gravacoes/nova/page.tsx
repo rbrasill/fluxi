@@ -109,7 +109,8 @@ export default function NovaGravacaoPage() {
       return;
     }
     try {
-      const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`);
+      const processo = new URLSearchParams(location.search).get('processo') || undefined;
+      const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, processo);
       idGravacao.current = id;
       if (g.largura && g.altura) void atualizarGravacao(id, { largura: g.largura, altura: g.altura });
     } catch (e) {

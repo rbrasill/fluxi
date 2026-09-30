@@ -107,8 +107,28 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Fluxo:** um job de transcrição por segmento de 3 min (tempos somados ao início do segmento). O navegador consulta a cada 5 s e cada consulta avança o processamento (sem fila). Quando tudo está transcrito, uma trava atômica no banco garante que só uma requisição chama o Claude, que devolve **POP + fluxograma + instrução de cada tela numa chamada só**, para enviar a transcrição uma vez.
 - **Custo:** 3 créditos (transcrição, fluxograma, POP). Numa nova tentativa, as partes já transcritas são reaproveitadas. Custo real aproximado por 1 h de gravação: ~US$ 0,23 de transcrição + ~US$ 0,10 a 0,20 de Claude.
 
+## 15. Processo como pasta
+- **Processo** (`processos`) é a unidade de navegação: cada um tem código, nome e área, e reúne as gravações (com a transcrição), os fluxogramas e os POPs dele. A tela inicial é a lista de processos.
+- Os itens têm `processo_id`. Quem é criado dentro do processo já nasce nele; o POP herda o processo do fluxograma ou da gravação de origem, e a geração com IA a partir de uma gravação coloca POP e fluxograma no mesmo processo.
+- Excluir o processo exclui só a pasta: os itens continuam nas listas de "Todos os itens", sem processo. Assim nada se perde por engano.
+- Os itens que já existiam foram migrados: um processo por fluxograma, com o mesmo código e nome, junto dos POPs e gravações ligados a ele (`0005_processos.sql`).
+
+## 16. Organização → Área → Processo → itens
+- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial é a lista de organizações.
+- **Conta (tenant) ≠ organização:** a conta é quem usa o Fluxi (créditos de IA e, depois, usuários); a organização é a empresa cujos processos são modelados. Uma conta modela várias organizações (`0007_organizacoes.sql`). Nome de área é único dentro da organização; organização só é excluída sem áreas. As áreas que existiam foram para "INC Empreendimentos".
+- Todo processo pertence a uma área (`processos.area_id`, obrigatório). O processo pode ser movido de área; a área só pode ser excluída vazia. Nome de área é único por empresa.
+- O POP criado num processo já vem com a área preenchida.
+- **Acesso (quando entrar o login):** cada pessoa recebe as organizações e/ou áreas que pode ver ou editar (membros por organização e por área), e as consultas e o RLS filtram por elas. Hoje, sem login, todos veem tudo.
+- Os processos que já existiam foram para a área "Geral" (`0006_areas.sql`). A coluna texto `processos.area` ficou só por compatibilidade.
+
+## 17. Contas, pessoas e convites
+- **Conta (tenant)** é de quem usa o Fluxi; a pessoa que cria a conta é a **dona**. Os créditos de IA são da conta.
+- A conta **convida pessoas por e-mail**. Quem convida escolhe o papel (admin vê tudo; membro vê só o liberado) e **quais organizações** o convidado enxerga e pode editar (`membros`, `membro_organizacoes`, `convites`, em `0008_membros_convites.sql`).
+- **Uma pessoa pode estar em várias contas:** a própria (com suas organizações) e as em que foi convidada. Ao entrar, escolhe a conta em que vai trabalhar, e tudo (organizações, áreas, processos, créditos) é dessa conta.
+- Isso depende do **login**. Recomendação: Supabase Auth (e-mail com link mágico e Google), pois já é o MVP no Supabase e o RLS passa a filtrar por membro. Enquanto não há login, tudo usa a conta padrão INC.
+
 ---
 
 ## Em aberto
-- Autenticação (Clerk, Supabase Auth ou própria)
+- Autenticação: implementar o login (decisão 17 recomenda Supabase Auth)
 - Integração com o Notion
