@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
 import { criarPop } from '@/lib/pops';
-import { atualizarGravacao, atualizarMarcacao, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { atualizarGravacao, atualizarMarcacao, consultarProcessamento, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; aoIr: () => void; aoExcluir: () => void }) {
   const [instrucao, setInstrucao] = useState(m.instrucao ?? '');
@@ -50,6 +50,50 @@ function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: num
         {salvo && <span className={`salvo salvo-${salvo}`}>{salvo === 'salvando' ? 'Salvando…' : salvo === 'ok' ? 'Salvo' : 'Erro ao salvar'}</span>}
       </div>
     </article>
+  );
+}
+
+const ETAPA: Record<string, string> = {
+  transcrevendo: 'Transcrevendo a narração…',
+  analisando: 'A IA está escrevendo o POP e o fluxograma… (1 a 3 min)',
+};
+
+function PainelIA({ gravacaoId }: { gravacaoId: string }) {
+  const [e, setE] = useState<EstadoProcessamento | null>(null);
+  const [erro, setErro] = useState('');
+  const emAndamento = e?.processamento === 'transcrevendo' || e?.processamento === 'analisando';
+
+  useEffect(() => { consultarProcessamento(gravacaoId).then(setE).catch(() => {}); }, [gravacaoId]);
+  useEffect(() => {
+    if (!emAndamento) return;
+    const t = setTimeout(() => consultarProcessamento(gravacaoId).then(setE).catch(() => {}), 5000);
+    return () => clearTimeout(t);
+  }, [gravacaoId, e, emAndamento]);
+
+  async function gerar() {
+    setErro('');
+    try { setE(await iniciarProcessamento(gravacaoId)); } catch (x) { setErro(x instanceof Error ? x.message : 'Erro ao iniciar.'); }
+  }
+
+  if (!e) return null;
+  if (e.processamento === 'pronto') {
+    return (
+      <div className="aviso">
+        POP e fluxograma gerados pela IA. Revise antes de publicar.
+        {e.fluxograma_id && <Link className="btn" href={`/app/fluxogramas/${e.fluxograma_id}`}>Abrir fluxograma</Link>}
+        {e.pop_id && <Link className="btn btn-primary" href={`/app/pops/${e.pop_id}`}>Abrir POP</Link>}
+      </div>
+    );
+  }
+  if (emAndamento) {
+    const seg = e.processamento === 'transcrevendo' && e.segmentos.total > 1 ? ` (${e.segmentos.prontos}/${e.segmentos.total} partes)` : '';
+    return <div className="aviso">{ETAPA[e.processamento]}{seg} Pode sair desta página; o andamento continua quando você voltar.</div>;
+  }
+  return (
+    <div className={`aviso ${e.processamento === 'erro' || erro ? 'erro' : ''}`}>
+      {erro || e.erro || `A IA transcreve a narração e escreve o POP e o fluxograma a partir da gravação e das telas marcadas (${e.custo} créditos).`}
+      <button className="btn btn-primary" onClick={gerar}><Icone nome="pop" tamanho={16} />{e.processamento === 'erro' ? 'Tentar de novo' : 'Gerar POP e fluxograma com IA'}</button>
+    </div>
   );
 }
 
@@ -112,6 +156,7 @@ function Detalhe() {
           </button>
         </div>
       </div>
+      {g.status === 'pronta' && g.segmentos.length > 0 && <PainelIA gravacaoId={g.id} />}
       {(falhas || g.status === 'erro') && <div className="aviso erro">Parte dos arquivos não foi enviada (conexão instável). O que foi salvo está abaixo.</div>}
 
       <div className="grav-layout">

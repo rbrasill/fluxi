@@ -1,6 +1,7 @@
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import { z } from 'zod';
 import { FluxoSchema, type Fluxo } from '@/lib/fluxo/schema';
 import { ErroApi } from './http';
 
@@ -27,6 +28,88 @@ const claude = () =>
   (cliente ??= new Anthropic(
     process.env.ANTHROPIC_WORKSPACE_ID ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } } : {},
   ));
+
+async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, maxTokens = 16000): Promise<z.infer<T>> {
+  if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie manualmente por enquanto.');
+  try {
+    const resposta = await claude().beta.messages.parse({
+      model: MODELO,
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
+      max_tokens: maxTokens,
+      thinking: { type: 'adaptive' },
+      output_config: { effort: 'medium', format: zodOutputFormat(schema) },
+      system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: conteudo }],
+    }, { timeout: 290_000 }); // cabe no maxDuration (300 s) da rota
+    if (resposta.stop_reason === 'refusal') throw new ErroApi(422, 'A IA não conseguiu processar este conteúdo.');
+    if (resposta.stop_reason === 'max_tokens') throw new ErroApi(422, 'O processo ficou grande demais para gerar de uma vez. Tente uma gravação menor.');
+    if (!resposta.parsed_output) throw new ErroApi(502, 'A IA devolveu uma resposta inválida. Tente novamente.');
+    return resposta.parsed_output as z.infer<T>;
+  } catch (e) {
+    if (e instanceof ErroApi) throw e;
+    if (e instanceof Anthropic.AuthenticationError) throw new ErroApi(500, 'Chave da Anthropic inválida (ANTHROPIC_API_KEY).');
+    if (e instanceof Anthropic.RateLimitError) throw new ErroApi(429, 'Muitas solicitações à IA agora. Tente em instantes.');
+    if (e instanceof Anthropic.APIError) {
+      console.error('Erro na API da Anthropic:', e.status, e.message);
+      throw new ErroApi(502, `Erro na IA (${e.status}). Tente novamente.`);
+    }
+    throw e;
+  }
+}
+
+// --- Gravação de tela → POP + fluxograma numa única chamada (a transcrição é enviada uma vez só) ---
+
+export const AnaliseGravacaoSchema = z.object({
+  fluxo: FluxoSchema,
+  pop: z.object({
+    area: z.string().describe('Área dona do processo'),
+    executor: z.string().describe('Cargo que executa o processo'),
+    objetivo: z.string().describe('Para que serve o procedimento, em 1 a 3 frases'),
+    envolvidos: z.array(z.object({ area: z.string(), cargo: z.string() })),
+    procedimentos: z.array(
+      z.object({
+        nome: z.string(),
+        passos: z.array(
+          z.object({
+            texto: z.string().describe('Instrução no imperativo, curta e objetiva'),
+            tela: z.string().optional().describe('id da tela marcada que ilustra este passo, se houver'),
+          }),
+        ),
+      }),
+    ),
+  }),
+  telas: z
+    .array(z.object({ id: z.string(), instrucao: z.string().describe('Instrução para a tela, escrita a partir do que foi dito perto do momento em que foi marcada') }))
+    .describe('Uma entrada para cada tela marcada, na mesma ordem recebida'),
+});
+export type AnaliseGravacao = z.infer<typeof AnaliseGravacaoSchema>;
+
+const SISTEMA_GRAVACAO = `${SISTEMA}
+
+Você também vai redigir o POP (Procedimento Operacional Padrão) do mesmo processo.
+Recebe a transcrição da narração de uma gravação de tela (com tempo [mm:ss] e falante) e a lista de telas que a pessoa marcou durante a gravação, cada uma com id, momento e, às vezes, uma instrução digitada.
+
+Regras do POP:
+- Procedimentos agrupam passos por etapa ou por área; nomes curtos (ex.: "Cadastro da proposta").
+- Passos no imperativo, um por ação, na ordem em que são feitos ("Clique em Nova proposta", "Preencha o CPF do cliente").
+- Toda tela marcada deve aparecer em exatamente um passo (campo "tela"), no ponto do procedimento correspondente ao momento em que foi marcada.
+- Se a pessoa digitou uma instrução para a tela, respeite-a e só melhore a clareza.
+- Para telas sem instrução, escreva a instrução a partir do que foi dito nos segundos antes e logo depois do momento marcado.
+- Envolvidos: pares área e cargo citados ou claramente implicados.
+- Não invente sistemas, campos ou regras que não foram ditos.`;
+
+export async function analisarGravacao(transcricao: string, telas: { id: string; momento: string; instrucao?: string | null }[]) {
+  const lista = telas.length
+    ? telas.map((t) => `- id ${t.id} · momento ${t.momento}${t.instrucao ? ` · instrução digitada: "${t.instrucao}"` : ' · sem instrução'}`).join('\n')
+    : '(nenhuma tela marcada)';
+  return chamarEstruturado(
+    AnaliseGravacaoSchema,
+    SISTEMA_GRAVACAO,
+    `<transcricao>\n${transcricao}\n</transcricao>\n\n<telas_marcadas>\n${lista}\n</telas_marcadas>`,
+    32000,
+  );
+}
 
 export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao'): Promise<Fluxo> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie o fluxograma manualmente por enquanto.');

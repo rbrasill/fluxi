@@ -100,6 +100,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Três jeitos de gerar com IA:** descrição do processo, transcrição colada/arquivo (.txt, .vtt, .srt) e áudio/vídeo (vai para o Storage, é transcrito pelo AssemblyAI e segue para a IA).
 - **Geração:** Claude Sonnet 5 devolve o FluxoSchema (saída estruturada) e o código monta o XML com os estilos da biblioteca BPMN INC (`lib/fluxo/`), já editável no draw.io.
 
+## 14. Gravação → POP + fluxograma (AssemblyAI barato)
+- **Modelo de transcrição:** `universal-3-5-pro` com fallback `universal-2` (padrão do AssemblyAI para arquivo gravado). US$ 0,21/h, português com sotaque brasileiro. Diarização (`speaker_labels`) +US$ 0,02/h. Nenhum outro add-on pago (PII, entidades, keyterms, resumo).
+- **Universal-3.6 Pro não serve aqui:** é só para streaming (tempo real), a US$ 0,45/h. Como a gravação já existe, o arquivo gravado sai por menos da metade do preço.
+- **LGPD:** depois de salvar o texto no Fluxi, a transcrição é apagada no AssemblyAI (`DELETE /v2/transcript/{id}`). No plano pago, configurar TTL e opt-out de treino em Data Controls.
+- **Fluxo:** um job de transcrição por segmento de 3 min (tempos somados ao início do segmento). O navegador consulta a cada 5 s e cada consulta avança o processamento (sem fila). Quando tudo está transcrito, uma trava atômica no banco garante que só uma requisição chama o Claude, que devolve **POP + fluxograma + instrução de cada tela numa chamada só**, para enviar a transcrição uma vez.
+- **Custo:** 3 créditos (transcrição, fluxograma, POP). Numa nova tentativa, as partes já transcritas são reaproveitadas. Custo real aproximado por 1 h de gravação: ~US$ 0,23 de transcrição + ~US$ 0,10 a 0,20 de Claude.
+
 ---
 
 ## Em aberto
