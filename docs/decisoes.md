@@ -121,8 +121,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Acesso (quando entrar o login):** cada pessoa recebe as organizações e/ou áreas que pode ver ou editar (membros por organização e por área), e as consultas e o RLS filtram por elas. Hoje, sem login, todos veem tudo.
 - Os processos que já existiam foram para a área "Geral" (`0006_areas.sql`). A coluna texto `processos.area` ficou só por compatibilidade.
 
+## 17. Contas, pessoas e convites
+- **Conta (tenant)** é de quem usa o Fluxi; a pessoa que cria a conta é a **dona**. Os créditos de IA são da conta.
+- A conta **convida pessoas por e-mail**. Quem convida escolhe o papel (admin vê tudo; membro vê só o liberado) e **quais organizações** o convidado enxerga e pode editar (`membros`, `membro_organizacoes`, `convites`, em `0008_membros_convites.sql`).
+- **Uma pessoa pode estar em várias contas:** a própria (com suas organizações) e as em que foi convidada. Ao entrar, escolhe a conta em que vai trabalhar, e tudo (organizações, áreas, processos, créditos) é dessa conta.
+- Isso depende do **login**. Recomendação: Supabase Auth (e-mail com link mágico e Google), pois já é o MVP no Supabase e o RLS passa a filtrar por membro. Enquanto não há login, tudo usa a conta padrão INC.
+
 ---
 
 ## Em aberto
-- Autenticação (Clerk, Supabase Auth ou própria)
+- Autenticação: implementar o login (decisão 17 recomenda Supabase Auth)
 - Integração com o Notion
