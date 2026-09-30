@@ -10,7 +10,7 @@ Registro das decisões de arquitetura e produto tomadas durante o planejamento.
 | 4 | 2026-09-28 | Transcrição | AssemblyAI | Aceita |
 | 5 | 2026-09-28 | Fluxogramas | draw.io em modo embed via `embed.diagrams.net` | Aceita |
 | 6 | 2026-09-28 | POP | Modelo POP v3 como padrão da plataforma (ver `docs/modelo-pop.md`) | Aceita |
-| 7 | 2026-09-28 | LLM de extração | Claude Sonnet 5 (`claude-sonnet-5`) via API da Anthropic | Aceita |
+| 7 | 2026-09-30 | LLM de extração | Claude Sonnet 5.5 (`claude-sonnet-5-5`) via API da Anthropic (antes: Sonnet 5) | Aceita |
 | 8 | 2026-09-28 | Fluxograma | XML do draw.io gerado direto, com a biblioteca de estilos BPMN (ver `docs/fluxograma.md`) | Aceita |
 | 9 | 2026-09-28 | Banco de dados | ~~MySQL~~ → PostgreSQL 17 na Absam (absam.io) | Aceita |
 | 10 | 2026-09-28 | Fluxograma | Todo fluxograma gerado é editável antes de publicar: editor draw.io, ajuste por instrução e versões (ver `docs/fluxograma.md`) | Aceita |
@@ -45,8 +45,11 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Licença Apache 2.0.
 - **Futuro:** migrar para draw.io auto-hospedado (`jgraph/docker-drawio`) quando clientes exigirem que os diagramas não saiam da infraestrutura do Fluxi.
 
-## 7. Claude Sonnet 5 via API da Anthropic
-- Modelo `claude-sonnet-5` pelo SDK oficial `@anthropic-ai/sdk` (US$ 2 / US$ 10 por MTok de entrada/saída).
+## 7. Claude Sonnet 5.5 via API da Anthropic
+- Modelo `claude-sonnet-5-5` pelo SDK oficial `@anthropic-ai/sdk` (US$ 2 / US$ 10 por MTok de entrada/saída, mesmo preço do Sonnet 5, que era a escolha anterior).
+- Comparação (set/2026): Haiku 4.5 US$ 1/5 (mais barato, erra mais em reuniões longas); Opus 5.5 US$ 4/20 (desnecessário). Custo estimado por fluxograma de uma reunião de 1 h: ~US$ 0,09.
+- Fallback no servidor (`fallbacks: "default"`) para recusas indevidas do filtro de segurança.
+- Chave com workspace: `ANTHROPIC_API_KEY` + `ANTHROPIC_WORKSPACE_ID`.
 - Descartado o LLM Gateway do AssemblyAI: não oferece o Sonnet 5, e o Sonnet 4.6 de lá custa US$ 3 / US$ 15.
 - Saída estruturada (`output_config.format`) com o `PopSchema`, validada com Zod.
 - Batch API (-50%) para extrações sem urgência; cache de prompt para instruções e schema fixos.

@@ -4,8 +4,8 @@ import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { FluxoSchema, type Fluxo } from '@/lib/fluxo/schema';
 import { ErroApi } from './http';
 
-// Decisão 7: Claude Sonnet 5 via API da Anthropic.
-const MODELO = 'claude-sonnet-5';
+// Decisão 7: Claude Sonnet 5.5 via API da Anthropic.
+const MODELO = 'claude-sonnet-5-5';
 
 const SISTEMA = `Você é especialista em mapeamento de processos e notação BPMN.
 Recebe a descrição de um processo ou a transcrição de uma reunião em que pessoas explicam como trabalham, e devolve a estrutura do fluxograma.
@@ -22,7 +22,11 @@ Regras:
 - Escreva tudo em português do Brasil.`;
 
 let cliente: Anthropic | null = null;
-const claude = () => (cliente ??= new Anthropic());
+// Chaves sem workspace próprio exigem o id do workspace no cabeçalho (ANTHROPIC_WORKSPACE_ID).
+const claude = () =>
+  (cliente ??= new Anthropic(
+    process.env.ANTHROPIC_WORKSPACE_ID ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } } : {},
+  ));
 
 export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao'): Promise<Fluxo> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie o fluxograma manualmente por enquanto.');
@@ -31,8 +35,11 @@ export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcr
       ? 'Transcrição da reunião de mapeamento do processo:'
       : 'Descrição do processo:';
   try {
-    const resposta = await claude().messages.parse({
+    const resposta = await claude().beta.messages.parse({
       model: MODELO,
+      // Se o modelo recusar por engano (filtro de segurança), a API refaz com um modelo alternativo.
+      betas: ['server-side-fallback-2026-07-01'],
+      fallbacks: 'default',
       max_tokens: 16000,
       thinking: { type: 'adaptive' },
       output_config: { effort: 'medium', format: zodOutputFormat(FluxoSchema) },
@@ -47,7 +54,10 @@ export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcr
     if (e instanceof ErroApi) throw e;
     if (e instanceof Anthropic.AuthenticationError) throw new ErroApi(500, 'Chave da Anthropic inválida ou ausente (ANTHROPIC_API_KEY).');
     if (e instanceof Anthropic.RateLimitError) throw new ErroApi(429, 'Muitas solicitações à IA agora. Tente em instantes.');
-    if (e instanceof Anthropic.APIError) throw new ErroApi(502, `Erro na IA (${e.status}). Tente novamente.`);
+    if (e instanceof Anthropic.APIError) {
+      console.error('Erro na API da Anthropic:', e.status, e.message);
+      throw new ErroApi(502, `Erro na IA (${e.status}). Tente novamente.`);
+    }
     throw e;
   }
 }
