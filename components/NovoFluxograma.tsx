@@ -8,8 +8,9 @@ type Fonte = 'descricao' | 'transcricao' | 'audio';
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
 
-export function NovoFluxograma({ creditos, aoFechar, aoCriar }: {
+export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
   creditos: number | null;
+  processoId?: string;
   aoFechar: () => void;
   aoCriar: (id: string, creditos?: number) => void;
 }) {
@@ -33,13 +34,13 @@ export function NovoFluxograma({ creditos, aoFechar, aoCriar }: {
     try {
       if (modo === 'manual') {
         setEtapa('Criando…');
-        const f = await criar(nome.trim() || 'Novo fluxograma');
+        const f = await criar(nome.trim() || 'Novo fluxograma', '', 'manual', processoId);
         return aoCriar(f.id);
       }
       if (modo === 'exemplo') {
         setEtapa('Criando…');
         const xml = await (await fetch('/drawio/exemplo-emcash.drawio')).text();
-        const f = await criar(nome.trim() || 'Exemplo EmCash', xml, 'modelo');
+        const f = await criar(nome.trim() || 'Exemplo EmCash', xml, 'modelo', processoId);
         return aoCriar(f.id);
       }
       let conteudo = texto;
@@ -48,7 +49,7 @@ export function NovoFluxograma({ creditos, aoFechar, aoCriar }: {
         conteudo = await transcreverAudio(audio, setEtapa);
       }
       setEtapa('A IA está montando o fluxograma… (pode levar até 1 minuto)');
-      const f = await gerarComIa(conteudo, fonte === 'descricao' ? 'descricao' : 'transcricao', nome.trim() || undefined);
+      const f = await gerarComIa(conteudo, fonte === 'descricao' ? 'descricao' : 'transcricao', nome.trim() || undefined, processoId);
       aoCriar(f.id, f.creditos);
     } catch (e) {
       setEtapa('');

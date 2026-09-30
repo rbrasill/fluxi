@@ -4,6 +4,7 @@ const caminhos: Record<string, string> = {
   busca: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   fluxo: 'M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM10 4h6v5h-6zM10 15h6v5h-6zM7 12h1.5a1.5 1.5 0 0 0 1.5-1.5V6.5M7 12h1.5a1.5 1.5 0 0 1 1.5 1.5v4',
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
+  pasta: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
   gravacao: 'M9 3h6v11H9zM5 11a7 7 0 0 0 14 0M12 18v3',
   pop: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4',
   areas: 'M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6',

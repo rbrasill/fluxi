@@ -1,13 +1,17 @@
 // Cliente da API de gravações.
 import { ErroCliente } from './fluxogramas';
 
-export type GravacaoResumo = { id: string; nome: string; status: string; duracao_ms: number | null; criado_em: string; total_marcacoes: number };
+export type GravacaoResumo = { id: string; nome: string; status: string; duracao_ms: number | null; processo_id?: string | null; criado_em: string; total_marcacoes: number };
 export type SegmentoGravado = { indice: number; caminho: string; inicio_ms: number; duracao_ms: number; bytes: number; mime: string; url: string | null };
 export type Marcacao = {
   id: string; tempo_ms: number; imagem_caminho: string; imagem_url: string | null; largura: number | null; altura: number | null;
   instrucao: string | null; instrucao_ia: string | null; incluir_no_pop: boolean;
 };
-export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes'> & { largura: number | null; altura: number | null; segmentos: SegmentoGravado[]; marcacoes: Marcacao[] };
+export type Fala = { falante: string; inicio_ms: number; texto: string };
+export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes'> & {
+  largura: number | null; altura: number | null; segmentos: SegmentoGravado[]; marcacoes: Marcacao[];
+  processamento: string; falas: Fala[]; processo: { id: string; nome: string; codigo: string } | null;
+};
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -19,7 +23,7 @@ const json = (method: string, body: unknown): RequestInit => ({ method, body: JS
 
 export const listarGravacoes = () => api<GravacaoResumo[]>('/api/gravacoes');
 export const obterGravacao = (id: string) => api<Gravacao>(`/api/gravacoes/${id}`);
-export const criarGravacao = (nome: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome }));
+export const criarGravacao = (nome: string, processo_id?: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, processo_id }));
 export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: string; duracao_ms: number; largura: number; altura: number }>) =>
   api(`/api/gravacoes/${id}`, json('PATCH', dados));
 export const excluirGravacao = (id: string) => api(`/api/gravacoes/${id}`, { method: 'DELETE' });

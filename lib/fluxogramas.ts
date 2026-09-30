@@ -5,6 +5,7 @@ export type FluxogramaResumo = {
   nome: string;
   origem: 'manual' | 'ia' | 'modelo';
   miniatura?: string | null;
+  processo_id?: string | null;
   criado_em: string;
   atualizado_em: string;
 };
@@ -25,8 +26,8 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const listar = () => api<FluxogramaResumo[]>('/api/fluxogramas');
 export const obter = (id: string) => api<Fluxograma>(`/api/fluxogramas/${id}`);
-export const criar = (nome: string, xml = '', origem: 'manual' | 'modelo' = 'manual') =>
-  api<FluxogramaResumo>('/api/fluxogramas', { method: 'POST', body: JSON.stringify({ nome, xml, origem }) });
+export const criar = (nome: string, xml = '', origem: 'manual' | 'modelo' = 'manual', processo_id?: string) =>
+  api<FluxogramaResumo>('/api/fluxogramas', { method: 'POST', body: JSON.stringify({ nome, xml, origem, processo_id }) });
 export const salvar = (id: string, dados: { nome?: string; xml?: string; miniatura?: string }, keepalive = false) =>
   api<{ id: string }>(`/api/fluxogramas/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
 export const duplicar = (id: string) => api<FluxogramaResumo>(`/api/fluxogramas/${id}/duplicar`, { method: 'POST' });
@@ -34,8 +35,8 @@ export const excluir = (id: string) => api<{ ok: true }>(`/api/fluxogramas/${id}
 
 // IA
 export const creditos = () => api<{ creditos: number }>('/api/ia/creditos');
-export const gerarComIa = (texto: string, origem: 'descricao' | 'transcricao', nome?: string) =>
-  api<FluxogramaResumo & { creditos: number }>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify({ texto, origem, nome }) });
+export const gerarComIa = (texto: string, origem: 'descricao' | 'transcricao', nome?: string, processo_id?: string) =>
+  api<FluxogramaResumo & { creditos: number }>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify({ texto, origem, nome, processo_id }) });
 
 export async function transcreverAudio(arquivo: File, aoMudar: (etapa: string) => void): Promise<string> {
   aoMudar('Enviando áudio…');

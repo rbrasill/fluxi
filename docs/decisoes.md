@@ -107,6 +107,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Fluxo:** um job de transcrição por segmento de 3 min (tempos somados ao início do segmento). O navegador consulta a cada 5 s e cada consulta avança o processamento (sem fila). Quando tudo está transcrito, uma trava atômica no banco garante que só uma requisição chama o Claude, que devolve **POP + fluxograma + instrução de cada tela numa chamada só**, para enviar a transcrição uma vez.
 - **Custo:** 3 créditos (transcrição, fluxograma, POP). Numa nova tentativa, as partes já transcritas são reaproveitadas. Custo real aproximado por 1 h de gravação: ~US$ 0,23 de transcrição + ~US$ 0,10 a 0,20 de Claude.
 
+## 15. Processo como pasta
+- **Processo** (`processos`) é a unidade de navegação: cada um tem código, nome e área, e reúne as gravações (com a transcrição), os fluxogramas e os POPs dele. A tela inicial é a lista de processos.
+- Os itens têm `processo_id`. Quem é criado dentro do processo já nasce nele; o POP herda o processo do fluxograma ou da gravação de origem, e a geração com IA a partir de uma gravação coloca POP e fluxograma no mesmo processo.
+- Excluir o processo exclui só a pasta: os itens continuam nas listas de "Todos os itens", sem processo. Assim nada se perde por engano.
+- Os itens que já existiam foram migrados: um processo por fluxograma, com o mesmo código e nome, junto dos POPs e gravações ligados a ele (`0005_processos.sql`).
+
 ---
 
 ## Em aberto

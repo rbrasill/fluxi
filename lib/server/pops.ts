@@ -5,10 +5,11 @@ import { gerarCodigo } from '@/lib/codigo';
 import { gerarDocx } from '@/lib/pop/docx';
 import { conteudoVazio, type ConteudoPop, type Historico } from '@/lib/pop/schema';
 import { ErroApi } from './http';
+import { garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 const BUCKET_GRAVACOES = 'gravacoes';
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, fluxograma_id, gravacao_id, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, fluxograma_id, gravacao_id, processo_id, criado_em, atualizado_em';
 
 const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
@@ -24,7 +25,7 @@ async function buscar(id: string) {
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string;
-    fluxograma_id: string | null; gravacao_id: string | null; criado_em: string; atualizado_em: string;
+    fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; criado_em: string; atualizado_em: string;
     conteudo: ConteudoPop; historico: Historico[];
   };
 }
@@ -41,27 +42,31 @@ export async function obter(id: string) {
   return { ...pop, imagens: urls };
 }
 
-export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma_id?: string }) {
+export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) {
+  let processoId = p.processo_id ?? null;
+  if (processoId) await garantirProcesso(processoId);
   let conteudo = conteudoVazio();
   let nome = p.nome?.trim() || 'Novo POP';
   let codigo = gerarCodigo();
 
   if (p.fluxograma_id) {
-    const { data } = await supabase().from('fluxogramas').select('codigo, nome').eq('tenant_id', TENANT_PADRAO).eq('id', p.fluxograma_id).maybeSingle();
+    const { data } = await supabase().from('fluxogramas').select('codigo, nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.fluxograma_id).maybeSingle();
     if (!data) throw new ErroApi(404, 'Fluxograma não encontrado');
     codigo = data.codigo; // o código do processo é o mesmo do fluxograma
     if (!p.nome) nome = data.nome;
+    processoId ??= data.processo_id;
   }
 
   if (p.gravacao_id) {
     const db = supabase();
     const [g, m] = await Promise.all([
-      db.from('gravacoes').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', p.gravacao_id).maybeSingle(),
+      db.from('gravacoes').select('nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.gravacao_id).maybeSingle(),
       db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop')
         .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', p.gravacao_id).eq('incluir_no_pop', true).order('tempo_ms'),
     ]);
     if (!g.data) throw new ErroApi(404, 'Gravação não encontrada');
     if (!p.nome && !p.fluxograma_id) nome = g.data.nome;
+    processoId ??= g.data.processo_id;
     const passos = (m.data ?? []).map((t) => ({
       texto: t.instrucao || t.instrucao_ia || '',
       imagem_caminho: t.imagem_caminho,
@@ -80,12 +85,15 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
     historico: [{ data: hoje(), elaborado_por: '', revisao: 'Rev. 01' }],
     gravacao_id: p.gravacao_id ?? null,
     fluxograma_id: p.fluxograma_id ?? null,
+    processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
+  await tocar(processoId);
   return data;
 }
 
-export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; conteudo: ConteudoPop; historico: Historico[]; fluxograma_id: string | null; status: string }>) {
+export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; conteudo: ConteudoPop; historico: Historico[]; fluxograma_id: string | null; status: string; processo_id: string | null }>) {
+  if (dados.processo_id) await garantirProcesso(dados.processo_id);
   const { data, error } = await supabase().from('pops').update({ ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, atualizado_em').maybeSingle();
   if (error) throw error;
