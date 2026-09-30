@@ -46,3 +46,14 @@ export function formatarTempo(ms: number) {
   const ss = String(s % 60).padStart(2, '0');
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
+
+export type EstadoProcessamento = {
+  processamento: 'nenhum' | 'transcrevendo' | 'analisando' | 'pronto' | 'erro';
+  erro: string | null;
+  pop_id: string | null;
+  fluxograma_id: string | null;
+  segmentos: { total: number; prontos: number };
+  custo: number;
+};
+export const iniciarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
+export const consultarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`);

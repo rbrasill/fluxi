@@ -3,7 +3,7 @@ import { ErroApi } from './http';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Custo em créditos de cada operação de IA.
-export const CUSTO = { fluxograma: 1, transcricao: 1 } as const;
+export const CUSTO = { fluxograma: 1, transcricao: 1, pop: 1 } as const;
 
 export async function saldo(): Promise<number> {
   const { data, error } = await supabase().from('tenants').select('creditos_ia').eq('id', TENANT_PADRAO).single();
