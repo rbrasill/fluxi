@@ -30,7 +30,7 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 | `fluxogramas` | código, nome, `xml`, `schema` (FluxoSchema), origem `manual`/`ia`/`modelo`, miniatura, `processo_id` | 0001, 0005 |
 | `gravacoes` | nome, status, duração, `processamento` (`nenhum`→`transcrevendo`→`analisando`→`pronto`/`erro`), `pop_id`, `fluxograma_id`, `processo_id` | 0002, 0004, 0005 |
 | `gravacao_segmentos` | um arquivo WebM por 3 min: caminho, `inicio_ms`, `transcricao_id`, `transcricao_status`, `falas` (jsonb) | 0002, 0004 |
-| `gravacao_marcacoes` | telas marcadas: `tempo_ms`, imagem, `instrucao` (digitada), `instrucao_ia`, `incluir_no_pop` | 0002 |
+| `gravacao_marcacoes` | telas marcadas: `tempo_ms`, imagem, `instrucao` (digitada), `instrucao_ia`, `incluir_no_pop`; marcações desenhadas em `anotacoes` e a imagem final em `imagem_anotada_caminho` (+ largura/altura) | 0002, 0009 |
 | `pops` | nome, código (o mesmo do fluxograma), identificação, versão, status, `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `fluxograma_id`, `gravacao_id`, `processo_id` | 0003, 0005 |
 | `processos` | código, nome, descrição, `area_id` | 0005, 0006 |
 | `areas` | nome, descrição, `organizacao_id` | 0006, 0007 |

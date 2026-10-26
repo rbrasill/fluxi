@@ -1,16 +1,22 @@
 'use client';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
 import { criarPop } from '@/lib/pops';
-import { atualizarGravacao, atualizarMarcacao, consultarProcessamento, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { atualizarGravacao, atualizarMarcacao, consultarProcessamento, salvarMarcacaoDesenhada, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+
+const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
 function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; aoIr: () => void; aoExcluir: () => void }) {
   const [instrucao, setInstrucao] = useState(m.instrucao ?? '');
   const [incluir, setIncluir] = useState(m.incluir_no_pop);
   const [salvo, setSalvo] = useState<'' | 'salvando' | 'ok' | 'erro'>('');
+  const [marcando, setMarcando] = useState(false);
+  const [desenho, setDesenho] = useState({ url: m.imagem_anotada_url, anotacoes: m.anotacoes });
+  const imagem = desenho.url ?? m.imagem_url;
 
   async function salvar(dados: { instrucao?: string | null; incluir_no_pop?: boolean }) {
     setSalvo('salvando');
@@ -24,13 +30,15 @@ function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: num
 
   return (
     <article className={`tela-cartao ${incluir ? '' : 'excluida'}`}>
-      <a href={m.imagem_url ?? '#'} target="_blank" rel="noreferrer" className="tela-img">
-        {m.imagem_url ? <img src={m.imagem_url} alt={`Tela ${n}`} /> : <span>Imagem indisponível</span>}
+      <button type="button" className="tela-img" onClick={() => m.imagem_url && setMarcando(true)} title="Marcar onde clicar nesta tela">
+        {imagem ? <img src={imagem} alt={`Tela ${n}`} /> : <span>Imagem indisponível</span>}
         <span className="tela-num">{n}</span>
-      </a>
+        {desenho.url && <span className="tela-marcada">Marcada</span>}
+      </button>
       <div className="tela-corpo">
         <div className="tela-meta">
           <button className="btn btn-ghost" onClick={aoIr} title="Ver este momento no vídeo"><Icone nome="play" tamanho={14} />{formatarTempo(m.tempo_ms)}</button>
+          <button className="btn btn-ghost" onClick={() => setMarcando(true)} disabled={!m.imagem_url} title="Desenhar caixa, seta, número ou texto, e recortar"><Icone nome="marcar" tamanho={14} />Marcar</button>
           <label className="check">
             <input type="checkbox" checked={incluir} onChange={(e) => { setIncluir(e.target.checked); void salvar({ incluir_no_pop: e.target.checked }); }} />
             Incluir no POP
@@ -49,6 +57,19 @@ function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: num
         </label>
         {salvo && <span className={`salvo salvo-${salvo}`}>{salvo === 'salvando' ? 'Salvando…' : salvo === 'ok' ? 'Salvo' : 'Erro ao salvar'}</span>}
       </div>
+      {marcando && m.imagem_url && (
+        <EditorMarcacao
+          imagemUrl={m.imagem_url}
+          anotacoes={desenho.anotacoes}
+          titulo={`Tela ${n} · ${formatarTempo(m.tempo_ms)}`}
+          aoFechar={() => setMarcando(false)}
+          aoSalvar={async (r) => {
+            const url = await salvarMarcacaoDesenhada(gravacaoId, m.id, r);
+            setDesenho({ url, anotacoes: r?.anotacoes ?? null });
+            setMarcando(false);
+          }}
+        />
+      )}
     </article>
   );
 }

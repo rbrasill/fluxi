@@ -1,11 +1,13 @@
 // Cliente da API de gravações.
 import { ErroCliente } from './fluxogramas';
+import type { Anotacoes } from './marcacao/anotacoes';
 
 export type GravacaoResumo = { id: string; nome: string; status: string; duracao_ms: number | null; processo_id?: string | null; criado_em: string; total_marcacoes: number };
 export type SegmentoGravado = { indice: number; caminho: string; inicio_ms: number; duracao_ms: number; bytes: number; mime: string; url: string | null };
 export type Marcacao = {
   id: string; tempo_ms: number; imagem_caminho: string; imagem_url: string | null; largura: number | null; altura: number | null;
   instrucao: string | null; instrucao_ia: string | null; incluir_no_pop: boolean;
+  anotacoes: Anotacoes | null; imagem_anotada_url: string | null;
 };
 export type Fala = { falante: string; inicio_ms: number; texto: string };
 export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes'> & {
@@ -61,3 +63,23 @@ export type EstadoProcessamento = {
 };
 export const iniciarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
 export const consultarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`);
+
+/**
+ * Salva as marcações desenhadas numa tela: envia a imagem final ao Storage e registra.
+ * Com `null`, remove as marcações e volta ao print original. Devolve o link da imagem marcada.
+ */
+export async function salvarMarcacaoDesenhada(
+  gravacaoId: string, marcacaoId: string,
+  r: { anotacoes: Anotacoes; png: Blob; largura: number; altura: number } | null,
+): Promise<string | null> {
+  const url = `/api/gravacoes/${gravacaoId}/marcacoes/${marcacaoId}/anotacao`;
+  if (!r) {
+    await api(url, { method: 'DELETE' });
+    return null;
+  }
+  const caminho = await enviarArquivo(gravacaoId, 'imagem', r.png, 'png');
+  const j = await api<{ imagem_anotada_url: string | null }>(url, json('PUT', {
+    anotacoes: r.anotacoes, imagem_anotada_caminho: caminho, largura: r.largura, altura: r.altura,
+  }));
+  return j.imagem_anotada_url;
+}
