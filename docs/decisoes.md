@@ -114,7 +114,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Os itens que já existiam foram migrados: um processo por fluxograma, com o mesmo código e nome, junto dos POPs e gravações ligados a ele (`0005_processos.sql`).
 
 ## 16. Organização → Área → Processo → itens
-- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial é a lista de organizações.
+- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial passou a ser o Início, centrado no POP (decisão 21).
 - **Conta (tenant) ≠ organização:** a conta é quem usa o Fluxi (créditos de IA e, depois, usuários); a organização é a empresa cujos processos são modelados. Uma conta modela várias organizações (`0007_organizacoes.sql`). Nome de área é único dentro da organização; organização só é excluída sem áreas. As áreas que existiam foram para "INC Empreendimentos".
 - Todo processo pertence a uma área (`processos.area_id`, obrigatório). O processo pode ser movido de área; a área só pode ser excluída vazia. Nome de área é único por empresa.
 - O POP criado num processo já vem com a área preenchida.
@@ -145,9 +145,20 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - O controle de gasto fica nos painéis da Anthropic e do AssemblyAI (limites de uso por conta/workspace).
 - **No banco nada foi apagado:** `tenants.creditos_ia`, a tabela `uso_ia` e a função `debitar_creditos` continuam lá, sem uso pelo app, para voltar com a cobrança por créditos quando entrar o plano comercial (substitui a parte de créditos da decisão 13).
 
+## 21. Navegação centrada no POP
+- **O produto final é o POP e a gestão dos POPs.** Gravações e fluxogramas são materiais de apoio para chegar ao POP, e a navegação passou a refletir isso; antes, era organizada pela estrutura (organizações, gravações, fluxogramas).
+- **Início** (`/app/inicio`, a tela de entrada): números de POPs publicados, em rascunho e processos sem POP; "Continue de onde parou" (rascunhos recentes); processos sem POP, com atalho para documentar; botão "Documentar um processo".
+- **Menu:** Início e POPs no topo; "Estrutura" (Organizações, que inclui áreas e processos); "Materiais de apoio" (Gravações, Fluxogramas); "Conta". No celular o menu vira uma barra no topo (antes sumia e não havia navegação).
+- **POPs (gestão dos documentos):** busca por nome, identificação, código, área ou processo; filtro por status com contagem; cada linha mostra onde o POP está (organização · área · processo), versão, data, status e download em PDF e DOCX. Todo POP novo nasce num processo: o "Novo POP" pede o processo.
+- **Status do POP:** rascunho ou publicado (`pops.status`), com o botão "Publicar" / "Voltar para rascunho" no editor. Ainda não gera versão nova ao publicar.
+- **Página do processo começa pelo POP:** sem POP, mostra três caminhos (gravar a tela, recomendado; escrever o POP; começar pelo fluxograma); com POP, o POP em destaque com status e downloads. Gravações e fluxogramas ficam abaixo, como materiais de apoio.
+- **Editor do POP:** trilha Organização › Área › Processo (POP sem processo pode ser vinculado ali) e o fluxograma só lista os do mesmo processo.
+- **Gravação:** "Nova gravação" a partir do processo já vem com o processo escolhido. Com áudio pronto, a ação principal é gerar o POP com IA; "Criar POP sem IA" fica como secundária.
+
 ---
 
 ## Em aberto
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth)
 - Integração com o Notion
 - Sugestão automática de marcação pela IA (decisão 18)
+- Versão nova do POP ao publicar (decisão 21)

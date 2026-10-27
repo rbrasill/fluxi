@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { formatarTempo } from '@/lib/gravacoes';
-import { criarPop } from '@/lib/pops';
+import { SeloStatus } from '@/components/SeloStatus';
+import { criarPop, type StatusPop } from '@/lib/pops';
 import { listarAreas, type AreaResumo } from '@/lib/areas';
 import { atualizarProcesso, excluirProcesso, obterProcesso, type Processo } from '@/lib/processos';
 
@@ -75,12 +76,57 @@ export default function ProcessoPage() {
         </div>
       </div>
 
+      {/* O produto final é o POP: ele vem primeiro. */}
       <section className="secao-processo">
         <div className="secao-head">
-          <h2><Icone nome="tela" tamanho={18} />Gravações e transcrições</h2>
-          <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn btn-gravar"><span className="rec-dot" />Nova gravação</Link>
+          <h2><Icone nome="pop" tamanho={18} />{p.pops.length > 1 ? 'POPs do processo' : 'POP do processo'}</h2>
+          {p.pops.length > 0 && <button className="btn btn-ghost" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Outro POP'}</button>}
         </div>
-        {p.gravacoes.length === 0 && <p className="notice">Grave a tela narrando o processo. A IA transcreve e escreve o POP e o fluxograma a partir dela.</p>}
+        {p.pops.length === 0 ? (
+          <div className="comecar-pop">
+            <p><strong>Este processo ainda não tem POP.</strong> Como você quer começar?</p>
+            <div className="options options-3">
+              <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="option">
+                <strong><span className="rec-dot" /> Gravar a tela <span className="recomendado">Recomendado</span></strong>
+                <span>Faça o processo no sistema narrando cada passo. A IA escreve o POP e o fluxograma a partir da gravação.</span>
+              </Link>
+              <button type="button" className="option" onClick={novoPop} disabled={criandoPop}>
+                <strong><Icone nome="pop" tamanho={14} /> {criandoPop ? 'Criando…' : 'Escrever o POP'}</strong>
+                <span>Preencha o modelo do POP do zero, passo a passo.</span>
+              </button>
+              <button type="button" className="option" onClick={() => setNovoFluxo(true)}>
+                <strong><Icone nome="fluxo" tamanho={14} /> Começar pelo fluxograma</strong>
+                <span>Desenhe o fluxo (ou gere com IA a partir de uma descrição) e escreva o POP depois.</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="lista-pops">
+            {p.pops.map((o) => (
+              <article key={o.id} className="linha-pop pop-destaque">
+                <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
+                <Link href={`/app/pops/${o.id}`} className="pop-nome">
+                  <strong>{o.nome}</strong>
+                  <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {new Date(o.atualizado_em).toLocaleDateString('pt-BR')}</span>
+                </Link>
+                <SeloStatus status={o.status as StatusPop} />
+                <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
+                <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
+                <Link className="btn btn-primary" href={`/app/pops/${o.id}`}>Abrir POP</Link>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <h2 className="titulo-apoio">Materiais de apoio</h2>
+
+      <section className="secao-processo secao-apoio">
+        <div className="secao-head">
+          <h3><Icone nome="tela" tamanho={16} />Gravações e transcrições</h3>
+          <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn"><span className="rec-dot" />Nova gravação</Link>
+        </div>
+        {p.gravacoes.length === 0 && <p className="notice">Nenhuma gravação. Grave a tela narrando o processo: a IA transcreve e escreve o POP e o fluxograma.</p>}
         <div className="lista-pops">
           {p.gravacoes.map((g) => (
             <Link key={g.id} href={`/app/gravacoes/${g.id}`} className="linha-pop">
@@ -96,49 +142,19 @@ export default function ProcessoPage() {
         </div>
       </section>
 
-      <section className="secao-processo">
+      <section className="secao-processo secao-apoio">
         <div className="secao-head">
-          <h2><Icone nome="fluxo" tamanho={18} />Fluxogramas</h2>
+          <h3><Icone nome="fluxo" tamanho={16} />Fluxogramas</h3>
           <button className="btn" onClick={() => setNovoFluxo(true)}><Icone nome="mais" />Novo fluxograma</button>
         </div>
-        {p.fluxogramas.length === 0 && <p className="notice">Nenhum fluxograma ainda.</p>}
-        <div className="grid">
-          {p.fluxogramas.map((f) => (
-            <article key={f.id} className="card">
-              <Link href={`/app/fluxogramas/${f.id}`} className="card-thumb" aria-label={`Abrir ${f.nome}`}>
-                {f.miniatura ? <img src={f.miniatura} alt="" /> : <Icone nome="fluxo" tamanho={40} />}
-                {f.origem === 'ia' && <span className="tag-ia"><Icone nome="ia" tamanho={12} />IA</span>}
-              </Link>
-              <div className="card-body">
-                <Link href={`/app/fluxogramas/${f.id}`} className="card-title">{f.nome}</Link>
-                <div className="card-meta">
-                  <span className="code">{f.codigo}</span>
-                  <span>{new Date(f.atualizado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="secao-processo">
-        <div className="secao-head">
-          <h2><Icone nome="pop" tamanho={18} />POPs</h2>
-          <button className="btn" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Novo POP'}</button>
-        </div>
-        {p.pops.length === 0 && <p className="notice">Nenhum POP ainda. Crie em branco ou gere a partir de uma gravação.</p>}
+        {p.fluxogramas.length === 0 && <p className="notice">Nenhum fluxograma. O POP pode ter um link "Abrir diagrama" para o fluxograma do processo.</p>}
         <div className="lista-pops">
-          {p.pops.map((o) => (
-            <article key={o.id} className="linha-pop">
-              <span className="pop-icone"><Icone nome="pop" tamanho={20} /></span>
-              <Link href={`/app/pops/${o.id}`} className="pop-nome">
-                <strong>{o.nome}</strong>
-                <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao}</span>
-              </Link>
-              <span className="code">{o.codigo}</span>
-              <a className="btn" href={`/api/pops/${o.id}/docx`}><Icone nome="baixar" tamanho={16} />DOCX</a>
-              <a className="btn" href={`/api/pops/${o.id}/pdf`}><Icone nome="baixar" tamanho={16} />PDF</a>
-            </article>
+          {p.fluxogramas.map((f) => (
+            <Link key={f.id} href={`/app/fluxogramas/${f.id}`} className="linha-pop">
+              <span className="pop-icone"><Icone nome="fluxo" tamanho={20} /></span>
+              <span className="pop-nome"><strong>{f.nome}</strong><span>{f.origem === 'ia' ? 'Gerado com IA · ' : ''}atualizado em {new Date(f.atualizado_em).toLocaleDateString('pt-BR')}</span></span>
+              <span className="code">{f.codigo}</span>
+            </Link>
           ))}
         </div>
       </section>

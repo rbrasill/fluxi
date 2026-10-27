@@ -147,7 +147,13 @@ input { font-family: inherit; }
 .loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 14px; background: #fff; }
 .hide-sm { }
 @media (max-width: 900px) {
-  .side { display: none; }
+  /* Celular/tablet: o menu lateral vira uma barra no topo, rolável na horizontal. */
+  .shell { flex-direction: column; }
+  .side { width: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; overflow-x: auto; position: sticky; top: 0; z-index: 30; }
+  .side .brand-name { display: none; }
+  .nav { flex-direction: row; gap: 2px; }
+  .nav-label, .nav a[aria-disabled='true'] { display: none; }
+  .nav a { white-space: nowrap; padding: 8px 10px; }
   .hide-sm { display: none; }
   .title-input { width: 160px; }
   .page { padding: 20px 16px; }
@@ -364,3 +370,47 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .tela-marcada { position: absolute; right: 10px; bottom: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #E5252A; color: #fff; }
 @media (max-width: 800px) { .em-ferr span { display: none; } .em-titulo { display: none; } }
 .passo-img-acoes { display: flex; gap: 4px; flex-wrap: wrap; }
+
+/* Status do POP */
+.selo-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.selo-status::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.selo-rascunho { background: #fff4e0; color: #9a4a0b; }
+.selo-publicado { background: #e7f7f1; color: #0b6b50; }
+
+/* Início: resumo dos POPs */
+.resumo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+.resumo-item { display: flex; flex-direction: column; gap: 2px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; text-decoration: none; color: var(--ink); }
+.resumo-item:hover { border-color: var(--line-strong); }
+.resumo-item strong { font-family: var(--font-display); font-size: 28px; line-height: 1.1; }
+.resumo-item span { font-size: 13px; color: var(--muted); }
+@media (max-width: 700px) { .resumo-grid { grid-template-columns: 1fr; } }
+
+/* Processo: POP em destaque, materiais de apoio abaixo */
+.comecar-pop { display: flex; flex-direction: column; gap: 12px; padding: 18px; background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 16px; }
+.comecar-pop > p { margin: 0; font-size: 14px; }
+.comecar-pop .option { text-decoration: none; color: inherit; text-align: left; }
+.recomendado { margin-left: 6px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: #e7f7f1; color: #0b6b50; vertical-align: middle; }
+.pop-destaque { padding: 16px 18px; border-color: var(--line-strong); box-shadow: 0 4px 14px rgba(11,31,36,.05); }
+.pop-destaque .pop-nome strong { font-size: 16px; }
+.titulo-apoio { margin: 32px 0 0; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.secao-apoio { margin-top: 14px; }
+.secao-apoio .secao-head h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; margin: 0; }
+
+/* Lista de POPs: busca + filtro de status */
+.barra-filtros { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.barra-filtros .search { flex: 1; min-width: 260px; }
+.barra-filtros .segmented { width: auto; }
+.segmented .conta { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.linha-pop .pop-nome span + span { font-size: 12px; }
+button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+.barra-filtros .segmented button { padding: 0 14px; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.status-linha { display: flex; align-items: center; gap: 8px; }
+.migalha.sem-processo select { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 2px 6px; background: transparent; color: var(--muted); font: inherit; font-weight: 600; }
+
+/* Linhas de lista no celular: nome em cima, selo e botões embaixo. */
+@media (max-width: 700px) {
+  .linha-pop { flex-wrap: wrap; gap: 10px; }
+  .linha-pop .pop-nome { flex: 1 1 calc(100% - 60px); }
+  .linha-pop .notice { margin-left: auto; }
+  .page-head .actions { margin-left: 0; }
+}

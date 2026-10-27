@@ -139,6 +139,7 @@ function Detalhe() {
   }
 
   const incluidas = g.marcacoes.filter((m) => m.incluir_no_pop).length;
+  const comIa = g.status === 'pronta' && g.segmentos.length > 0;
 
   async function criarPopDaGravacao() {
     setCriandoPop(true);
@@ -174,12 +175,14 @@ function Detalhe() {
           <p>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} no POP</p>
         </div>
         <div className="actions">
-          <button className="btn btn-primary" onClick={criarPopDaGravacao} disabled={criandoPop || incluidas === 0} title={incluidas === 0 ? 'Marque ao menos uma tela como “Incluir no POP”' : undefined}>
-            <Icone nome="pop" tamanho={16} />{criandoPop ? 'Criando POP…' : 'Criar POP com estas telas'}
+          {/* Com áudio, o caminho principal é a IA (painel abaixo); este fica como alternativa sem IA. */}
+          <button className={`btn ${comIa ? '' : 'btn-primary'}`} onClick={criarPopDaGravacao} disabled={criandoPop || incluidas === 0}
+            title={incluidas === 0 ? 'Marque ao menos uma tela como “Incluir no POP”' : 'Cria o POP só com as telas marcadas e suas instruções, sem IA'}>
+            <Icone nome="pop" tamanho={16} />{criandoPop ? 'Criando POP…' : comIa ? 'Criar POP sem IA' : 'Criar POP com estas telas'}
           </button>
         </div>
       </div>
-      {g.status === 'pronta' && g.segmentos.length > 0 && <PainelIA gravacaoId={g.id} />}
+      {comIa && <PainelIA gravacaoId={g.id} />}
       {(falhas || g.status === 'erro') && <div className="aviso erro">Parte dos arquivos não foi enviada (conexão instável). O que foi salvo está abaixo.</div>}
 
       <div className="grav-layout">

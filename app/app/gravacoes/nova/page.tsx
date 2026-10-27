@@ -9,6 +9,7 @@ import { abrirPip, suportaPip } from '@/components/gravacao/pip';
 import { FilaDeEnvio } from '@/lib/gravacao/envio';
 import { Gravador, type Segmento } from '@/lib/gravacao/gravador';
 import { QUALIDADE, extensaoDe } from '@/lib/gravacao/config';
+import { obterProcesso } from '@/lib/processos';
 import { atualizarGravacao, criarGravacao, enviarArquivo, formatarTempo, registrarMarcacao, registrarSegmento } from '@/lib/gravacoes';
 
 type Fase = 'config' | 'preparando' | 'gravando' | 'encerrando';
@@ -36,6 +37,13 @@ export default function NovaGravacaoPage() {
   const [flash, setFlash] = useState(0);
   const [suportado, setSuportado] = useState(true);
   const [temPip, setTemPip] = useState(true);
+  // Processo de onde a gravação foi aberta (?processo=): título e "voltar" apontam para ele.
+  const [processo, setProcesso] = useState<{ id: string; nome: string } | null>(null);
+
+  useEffect(() => {
+    const pid = new URLSearchParams(location.search).get('processo');
+    if (pid) obterProcesso(pid).then((p) => { setProcesso({ id: p.id, nome: p.nome }); setNome((n) => n || p.nome); }).catch(() => {});
+  }, []);
 
   const gravador = useRef<Gravador | null>(null);
   const fila = useRef(new FilaDeEnvio(setEnviando));
@@ -183,8 +191,10 @@ export default function NovaGravacaoPage() {
       <div className="page page-estreita">
         <div className="page-head">
           <div>
-            <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>
-            <h1>Nova gravação de tela</h1>
+            {processo
+              ? <Link href={`/app/processos/${processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{processo.nome}</Link>
+              : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
+            <h1>{processo ? 'Gravar o processo na tela' : 'Nova gravação de tela'}</h1>
             <p>Grave o passo a passo no sistema narrando o que faz. Nos momentos importantes, clique em <b>Incluir esta tela no POP</b>.</p>
           </div>
         </div>

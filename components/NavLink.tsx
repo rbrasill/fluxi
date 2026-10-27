@@ -2,8 +2,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  const atual = usePathname()?.startsWith(href);
+/** Link do menu lateral; fica marcado também nas rotas de `tambem` (ex.: telas filhas da mesma seção). */
+export function NavLink({ href, tambem = [], children }: { href: string; tambem?: string[]; children: React.ReactNode }) {
+  const rota = usePathname() ?? '';
+  const atual = [href, ...tambem].some((r) => rota.startsWith(r));
   return (
     <Link href={href} aria-current={atual ? 'page' : undefined}>
       {children}

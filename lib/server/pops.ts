@@ -12,17 +12,19 @@ import { TENANT_PADRAO, supabase } from './supabase';
 
 const BUCKET_GRAVACOES = 'gravacoes';
 const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, fluxograma_id, gravacao_id, processo_id, criado_em, atualizado_em';
+// Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
+const ONDE = 'processo:processos(id, nome, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
 
 const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
 export async function listar() {
-  const { data, error } = await supabase().from('pops').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).order('atualizado_em', { ascending: false });
+  const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}`).eq('tenant_id', TENANT_PADRAO).order('atualizado_em', { ascending: false });
   if (error) throw error;
   return data;
 }
 
 async function buscar(id: string) {
-  const { data, error } = await supabase().from('pops').select(`${CAMPOS}, conteudo, historico`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}, conteudo, historico`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {

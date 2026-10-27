@@ -5,6 +5,8 @@ const caminhos: Record<string, string> = {
   fluxo: 'M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM10 4h6v5h-6zM10 15h6v5h-6zM7 12h1.5a1.5 1.5 0 0 0 1.5-1.5V6.5M7 12h1.5a1.5 1.5 0 0 1 1.5 1.5v4',
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
   empresa: 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
+  check: 'M5 12.5l4.5 4.5L19 7',
+  inicio: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
   pasta: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
   gravacao: 'M9 3h6v11H9zM5 11a7 7 0 0 0 14 0M12 18v3',
   pop: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4',

@@ -7,7 +7,9 @@ import { Icone } from '@/components/Icone';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo } from '@/lib/pop/schema';
 import { salvarMarcacaoDesenhada } from '@/lib/gravacoes';
-import { obterPop, salvarPop, urlDocx, urlPdf, type Pop } from '@/lib/pops';
+import { SeloStatus } from '@/components/SeloStatus';
+import { obterPop, salvarPop, urlDocx, urlPdf, type Pop, type StatusPop } from '@/lib/pops';
+import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -26,13 +28,18 @@ export default function EditorPop() {
   const [pop, setPop] = useState<Pop | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>('salvo');
   const [fluxogramas, setFluxogramas] = useState<FluxogramaResumo[]>([]);
+  const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
   // Tela sendo marcada: a marcação é da gravação, então aparece igual na gravação e em todo POP que usa a tela.
   const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
   const pendente = useRef<Partial<Pop>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    obterPop(id).then(setPop).catch(() => setPop(null));
+    obterPop(id).then((d) => {
+      setPop(d);
+      // POP sem processo: carrega a lista para poder vinculá-lo.
+      if (!d.processo_id) listarProcessos().then(setProcessos).catch(() => setProcessos([]));
+    }).catch(() => setPop(null));
     listarFluxogramas().then(setFluxogramas).catch(() => {});
   }, [id]);
 
@@ -89,18 +96,53 @@ export default function EditorPop() {
     window.location.href = formato === 'pdf' ? urlPdf(id) : urlDocx(id);
   }
 
+  function mudarStatus(novo: StatusPop) {
+    alterar({ status: novo });
+  }
+
+  function vincularProcesso(processoId: string) {
+    const pr = processos?.find((x) => x.id === processoId);
+    if (!pr) return;
+    alterar({ processo_id: pr.id });
+    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, area: pr.area } });
+  }
+
+  // Fluxogramas do mesmo processo (e o que já estiver vinculado).
+  const fluxosDoProcesso = fluxogramas.filter((f) => !pop.processo_id || f.processo_id === pop.processo_id || f.id === pop.fluxograma_id);
+  const onde = pop.processo;
+
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
 
   return (
     <div className="page page-pop">
       <div className="page-head">
         <div>
-          <Link href={pop.processo_id ? `/app/processos/${pop.processo_id}` : '/app/pops'} className="voltar"><Icone nome="voltar" tamanho={16} />{pop.processo_id ? 'Processo' : 'POPs'}</Link>
+          {onde ? (
+            <nav className="migalha" aria-label="Caminho">
+              {onde.area?.organizacao && <><Link href={`/app/organizacoes/${onde.area.organizacao.id}`}>{onde.area.organizacao.nome}</Link><span>›</span></>}
+              {onde.area && <><Link href={`/app/areas/${onde.area.id}`}>{onde.area.nome}</Link><span>›</span></>}
+              <Link href={`/app/processos/${onde.id}`}>{onde.nome}</Link>
+            </nav>
+          ) : (
+            <div className="migalha sem-processo">
+              <Link href="/app/pops">POPs</Link><span>›</span>
+              <select value="" onChange={(e) => vincularProcesso(e.target.value)} aria-label="Vincular a um processo" disabled={processos === null}>
+                <option value="">Sem processo · vincular a um processo…</option>
+                {(processos ?? []).map((pr) => <option key={pr.id} value={pr.id}>{[pr.area?.organizacao?.nome, pr.area?.nome, pr.nome].filter(Boolean).join(' · ')}</option>)}
+              </select>
+            </div>
+          )}
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" />
-          <p className="status-linha"><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</p>
+          <p className="status-linha">
+            <SeloStatus status={pop.status} />
+            <span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}
+          </p>
         </div>
         <div className="actions">
-          <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />Baixar DOCX</button>
+          {pop.status === 'publicado'
+            ? <button className="btn btn-ghost" onClick={() => mudarStatus('rascunho')} title="Volta a ser rascunho, em elaboração">Voltar para rascunho</button>
+            : <button className="btn" onClick={() => mudarStatus('publicado')} title="Marca o POP como vigente"><Icone nome="check" tamanho={16} />Publicar</button>}
+          <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
           <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
         </div>
       </div>
@@ -141,11 +183,13 @@ export default function EditorPop() {
         <label className="field">
           Fluxograma
           <select value={pop.fluxograma_id ?? ''} onChange={(e) => alterar({ fluxograma_id: e.target.value || null })}>
-            <option value="">Nenhum</option>
-            {fluxogramas.map((f) => <option key={f.id} value={f.id}>{f.nome} ({f.codigo})</option>)}
+            <option value="">{fluxosDoProcesso.length ? 'Nenhum' : 'Nenhum fluxograma neste processo'}</option>
+            {fluxosDoProcesso.map((f) => <option key={f.id} value={f.id}>{f.nome} ({f.codigo})</option>)}
           </select>
         </label>
-        {pop.fluxograma_id && <Link href={`/app/fluxogramas/${pop.fluxograma_id}`} className="link-sec">Abrir diagrama</Link>}
+        {pop.fluxograma_id
+          ? <Link href={`/app/fluxogramas/${pop.fluxograma_id}`} className="link-sec">Abrir diagrama</Link>
+          : onde && <Link href={`/app/processos/${onde.id}`} className="link-sec">Criar o fluxograma no processo</Link>}
       </section>
 
       <section className="pop-sec">
