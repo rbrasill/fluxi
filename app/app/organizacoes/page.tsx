@@ -44,7 +44,7 @@ export default function OrganizacoesPage() {
         ))}
       </div>
       {nova && (
-        <DialogoNome titulo="Nova organização" rotulo="Nome da empresa" exemplo="Ex.: INC Empreendimentos" aoFechar={() => setNova(false)}
+        <DialogoNome titulo="Nova organização" rotulo="Nome da empresa" exemplo="Nome da empresa" aoFechar={() => setNova(false)}
           aoCriar={async (nome) => { const o = await criarOrganizacao(nome); router.push(`/app/organizacoes/${o.id}`); }} />
       )}
     </div>

@@ -1,27 +1,38 @@
-// Gera templates/pop/modelo-pop-v3.template.docx a partir do modelo original
-// (templates/pop/Modelo_POP_v3.docx), trocando os textos de exemplo pelos
-// marcadores do docxtemplater e mantendo toda a formatação.
+// Gera, a partir do modelo original (templates/pop/Modelo_POP_v3.docx):
+//  - templates/pop/modelo-pop-v3.template.docx: os textos de exemplo viram marcadores do
+//    docxtemplater, mantendo toda a formatação;
+//  - templates/pop/imagens/*.png: logo, ícones e decoração do modelo, usados na versão em PDF.
 // Rodar: npm run modelo-pop
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import PizZip from 'pizzip';
 import { DOMParser, XMLSerializer } from '@xmldom/xmldom';
+import { PNG } from 'pngjs';
 
 const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+const WP = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const R = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 const origem = new URL('../templates/pop/Modelo_POP_v3.docx', import.meta.url);
 const destino = new URL('../templates/pop/modelo-pop-v3.template.docx', import.meta.url);
+const pastaImagens = new URL('../templates/pop/imagens/', import.meta.url);
 
 const zip = new PizZip(readFileSync(origem));
 const doc = new DOMParser().parseFromString(zip.file('word/document.xml').asText(), 'text/xml');
+const relsPath = 'word/_rels/document.xml.rels';
+const rels = new DOMParser().parseFromString(zip.file(relsPath).asText(), 'text/xml');
+const alvoDe = new Map(Array.from(rels.getElementsByTagName('Relationship')).map((r) => [r.getAttribute('Id'), r.getAttribute('Target')]));
+
 const el = (nome) => Array.from(doc.getElementsByTagNameNS(W, nome));
 const filhos = (n, nome) => Array.from(n.childNodes).filter((c) => c.nodeType === 1 && c.localName === nome);
 const texto = (n) => Array.from(n.getElementsByTagNameNS(W, 't')).map((t) => t.textContent).join('');
+const temDesenho = (n) => n.nodeType === 1 && n.getElementsByTagNameNS(W, 'drawing').length > 0;
 
-/** Troca o texto do parágrafo por partes [texto, 'primeiro'|'ultimo'] mantendo o estilo das runs originais. */
+/** Troca o texto do parágrafo por partes [texto, 'primeiro'|'ultimo'], mantendo o estilo das runs e os desenhos (ícones). */
 function definir(p, partes) {
-  const runs = Array.from(p.getElementsByTagNameNS(W, 'r'));
+  const runs = Array.from(p.getElementsByTagNameNS(W, 'r')).filter((r) => !temDesenho(r));
   const rPr = (r) => (r ? filhos(r, 'rPr')[0] : undefined);
   const estilos = { primeiro: rPr(runs[0]), ultimo: rPr(runs[runs.length - 1]) };
-  for (const c of Array.from(p.childNodes)) if (c.nodeType === 1 && c.localName !== 'pPr') p.removeChild(c);
+  for (const c of Array.from(p.childNodes)) if (c.nodeType === 1 && c.localName !== 'pPr' && !temDesenho(c)) p.removeChild(c);
   for (const [t, estilo = 'primeiro'] of partes) {
     const r = doc.createElementNS(W, 'w:r');
     if (estilos[estilo]) r.appendChild(estilos[estilo].cloneNode(true));
@@ -41,6 +52,14 @@ function celula(tc, partes) {
   return ps[0];
 }
 
+/** Célula com vários parágrafos (rótulo em cima, valor embaixo): `null` mantém o parágrafo como está. */
+function celulaLinhas(tc, linhas) {
+  const ps = filhos(tc, 'p');
+  if (ps.length < linhas.length) throw new Error(`Célula com menos parágrafos que o esperado: "${texto(tc)}"`);
+  ps.slice(linhas.length).forEach((p) => tc.removeChild(p));
+  linhas.forEach((partes, i) => partes && definir(ps[i], partes));
+}
+
 function paragrafoCom(textoExato) {
   const p = el('p').find((p) => texto(p).trim() === textoExato);
   if (!p) throw new Error(`Parágrafo não encontrado: ${textoExato}`);
@@ -49,6 +68,11 @@ function paragrafoCom(textoExato) {
 const tabelaCom = (trecho) => {
   const t = el('tbl').find((t) => texto(t).includes(trecho));
   if (!t) throw new Error(`Tabela não encontrada: ${trecho}`);
+  return t;
+};
+const tabelaExata = (textoExato) => {
+  const t = el('tbl').find((t) => texto(t).trim() === textoExato);
+  if (!t) throw new Error(`Tabela não encontrada: ${textoExato}`);
   return t;
 };
 const celulas = (tr) => filhos(tr, 'tc');
@@ -73,9 +97,70 @@ function novoParagrafo(antesDe, conteudo, pPrDe) {
   antesDe.parentNode.insertBefore(p, antesDe);
   return p;
 }
-const depois = (n) => n.nextSibling;
 
-// Cabeçalho da área
+// ---------------------------------------------------------------------------
+// Imagens do modelo (logo, ícones, decoração) para a versão em PDF.
+
+/** Desenhos de um nó, na ordem do documento: id da imagem, tamanho (EMU) e recorte. */
+function desenhos(n) {
+  const lista = [];
+  for (const tag of ['anchor', 'inline']) {
+    for (const d of Array.from(n.getElementsByTagNameNS(WP, tag))) {
+      const ext = d.getElementsByTagNameNS(WP, 'extent')[0];
+      const blip = d.getElementsByTagNameNS(A, 'blip')[0];
+      if (!ext || !blip) continue;
+      const rId = blip.getAttributeNS(R, 'embed');
+      const src = d.getElementsByTagNameNS(A, 'srcRect')[0];
+      const rec = src ? { t: +(src.getAttribute('t') || 0), b: +(src.getAttribute('b') || 0), l: +(src.getAttribute('l') || 0), r: +(src.getAttribute('r') || 0) } : null;
+      lista.push({ rId, alvo: alvoDe.get(rId), cx: +ext.getAttribute('cx'), cy: +ext.getAttribute('cy'), recorte: rec, ancorado: tag === 'anchor' });
+    }
+  }
+  return lista;
+}
+const pngs = (lista) => lista.filter((d) => d.alvo && d.alvo.endsWith('.png'));
+const menor = (lista) => pngs(lista).reduce((m, d) => (!m || d.cx < m.cx ? d : m), null);
+
+/** Recorta um PNG conforme o srcRect do Word (frações em 1/1000 %). */
+function recortar(bytes, rec) {
+  const img = PNG.sync.read(bytes);
+  const x0 = Math.round((img.width * rec.l) / 100000);
+  const x1 = img.width - Math.round((img.width * rec.r) / 100000);
+  const y0 = Math.round((img.height * rec.t) / 100000);
+  const y1 = img.height - Math.round((img.height * rec.b) / 100000);
+  const saida = new PNG({ width: x1 - x0, height: y1 - y0 });
+  PNG.bitblt(img, saida, x0, y0, saida.width, saida.height, 0, 0);
+  return PNG.sync.write(saida);
+}
+
+mkdirSync(pastaImagens, { recursive: true });
+function exportar(nome, d) {
+  if (!d) throw new Error(`Imagem não encontrada: ${nome}`);
+  let bytes = zip.file(`word/${d.alvo}`).asNodeBuffer();
+  if (d.recorte && (d.recorte.t || d.recorte.b || d.recorte.l || d.recorte.r)) bytes = recortar(bytes, d.recorte);
+  writeFileSync(new URL(`${nome}.png`, pastaImagens), bytes);
+}
+
+{
+  const corpo = doc.getElementsByTagNameNS(W, 'body')[0];
+  const primeiro = filhos(corpo, 'p')[0];
+  const topo = desenhos(primeiro);
+  exportar('faixa', topo.find((d) => d.ancorado));
+  exportar('logo', topo.find((d) => !d.ancorado));
+  exportar('area', menor(desenhos(paragrafoCom('Comercial'))));
+  exportar('procedimento', menor(desenhos(paragrafoCom('Procedimento').previousSibling)));
+  exportar('executor', menor(desenhos(celulas(linhas(tabelaCom('Executor do Processo'))[0])[0])));
+  const objetivo = desenhos(tabelaExata('Objetivo do Processo'));
+  exportar('objetivo', menor(objetivo));
+  exportar('decoracao', pngs(objetivo).find((d) => d !== menor(objetivo)));
+  exportar('envolvidos', menor(desenhos(tabelaExata('Envolvidos'))));
+  exportar('recursos', menor(desenhos(tabelaExata('Recursos do Processo'))));
+  exportar('procedimentos', menor(desenhos(tabelaExata('Procedimentos'))));
+}
+
+// ---------------------------------------------------------------------------
+// Marcadores do docxtemplater.
+
+// Cabeçalho da área (o ícone ao lado fica)
 definir(paragrafoCom('Comercial'), [['{area}']]);
 
 // Procedimento / mês-ano / versão
@@ -86,20 +171,20 @@ definir(paragrafoCom('Comercial'), [['{area}']]);
   celula(c, [['Versão: ', 'primeiro'], ['{versao}', 'ultimo']]);
 }
 
-// Identificação
+// Identificação: rótulo em cima (fica como no modelo), valor embaixo
 {
   const [a, b, c] = celulas(linhas(tabelaCom('Data Criação'))[0]);
-  celula(a, [['Data Criação: ', 'primeiro'], ['{dataCriacao}', 'ultimo']]);
-  celula(b, [['Código do Processo: ', 'primeiro'], ['{codigoProcesso}', 'ultimo']]);
-  celula(c, [['Identificação POP: ', 'primeiro'], ['{identificacaoPop}', 'ultimo']]);
+  celulaLinhas(a, [null, [['{dataCriacao}']]]);
+  celulaLinhas(b, [null, [['{codigoProcesso}']]]);
+  celulaLinhas(c, [null, [['{identificacaoPop}']]]);
 }
 
 // Executor
 celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']]);
 
-// Objetivo (a tabela do texto logo após o título "Objetivo do Processo")
+// Objetivo (a tabela de texto logo após o título "Objetivo do Processo")
 {
-  const t = el('tbl').find((t) => texto(t).startsWith('Lorem ipsum') && !texto(t).includes('Procedimento'));
+  const t = el('tbl').find((t) => texto(t).startsWith('Lorem ipsum'));
   celula(celulas(linhas(t)[0])[0], [['{objetivo}']]);
 }
 
@@ -120,48 +205,28 @@ celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']
   celula(link, [['{@linkFluxograma}']]);
 }
 
-// Procedimentos: uma tabela repetida por procedimento, com os passos em tópicos
-// e, abaixo da tabela, as telas marcadas na gravação (largura total da página).
+// Procedimentos: no modelo há um print de exemplo com a caixa "Passo 1:" abaixo. Sai o exemplo e
+// entra um loop de blocos de XML montados em lib/pop/docx.ts (subtítulo, print e caixa de cada passo).
 {
-  const tabelas = el('tbl').filter((t) => /#0\d/.test(texto(t)));
-  const [modelo, ...extras] = tabelas;
-  for (const t of extras) {
-    const prox = t.nextSibling;
-    if (prox && prox.nodeType === 1 && prox.localName === 'p' && !texto(prox).trim()) prox.parentNode.removeChild(prox);
-    t.parentNode.removeChild(t);
+  const titulo = tabelaExata('Procedimentos');
+  const historico = paragrafoCom('Históricos de Revisões');
+  // A régua laranja (forma de 54000 EMU de altura) que antecede o histórico marca o fim da seção.
+  let regua = historico.previousSibling;
+  while (regua && !(regua.nodeType === 1 && regua.localName === 'p' && regua.toString().includes('cy="54000"'))) regua = regua.previousSibling;
+  if (!regua) throw new Error('Régua antes de "Históricos de Revisões" não encontrada');
+  for (let n = titulo.nextSibling; n && n !== regua; ) {
+    const prox = n.nextSibling;
+    n.parentNode.removeChild(n);
+    n = prox;
   }
-  const [nome, desc] = celulas(linhas(modelo)[0]);
-  celula(nome, [['{nome}']]);
-  const bullet = filhos(desc, 'p')[0];
-  celula(desc, [['{texto}']]);
-  novoParagrafo(bullet, '{#passos}', bullet);
-  const fim = doc.createElementNS(W, 'w:p');
-  desc.appendChild(fim);
-  novoParagrafo(fim, '{/passos}', bullet);
-  desc.removeChild(fim);
-
-  const aposTabela = depois(modelo);
-  novoParagrafo(modelo, '{#procedimentos}');
-  const ancora = aposTabela ?? modelo.parentNode.appendChild(doc.createElementNS(W, 'w:p'));
-  novoParagrafo(ancora, '{#telas}');
-  novoParagrafo(ancora, '{@imagem}');
-  const legenda = novoParagrafo(ancora, '{legenda}');
-  const rPr = doc.createElementNS(W, 'w:rPr');
-  rPr.appendChild(doc.createElementNS(W, 'w:i'));
-  const sz = doc.createElementNS(W, 'w:sz');
-  sz.setAttribute('w:val', '18');
-  rPr.appendChild(sz);
-  const col = doc.createElementNS(W, 'w:color');
-  col.setAttribute('w:val', '5B6B70');
-  rPr.appendChild(col);
-  const r = legenda.getElementsByTagNameNS(W, 'r')[0];
-  r.insertBefore(rPr, r.firstChild);
-  novoParagrafo(ancora, '{/telas}');
-  novoParagrafo(ancora, '');
-  novoParagrafo(ancora, '{/procedimentos}');
+  novoParagrafo(regua, '', historico);
+  novoParagrafo(regua, '{#itens}', historico);
+  novoParagrafo(regua, '{@bloco}', historico);
+  novoParagrafo(regua, '{/itens}', historico);
+  novoParagrafo(regua, '', historico);
 }
 
-// Histórico: uma linha por revisão
+// Histórico de revisões: uma linha por revisão
 {
   const t = tabelaCom('Elaborado por');
   const [, linha] = linhas(t);
@@ -171,6 +236,20 @@ celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']
   celula(c, [['{revisao}{/historico}']]);
 }
 
-zip.file('word/document.xml', new XMLSerializer().serializeToString(doc));
+// Remove do pacote as imagens que só o exemplo usava (ex.: o print de amostra).
+{
+  const xml = new XMLSerializer().serializeToString(doc);
+  const usados = new Set((xml.match(/r:embed="([^"]+)"/g) || []).map((s) => s.slice(9, -1)));
+  for (const rel of Array.from(rels.getElementsByTagName('Relationship'))) {
+    if (rel.getAttribute('Type').endsWith('/image') && !usados.has(rel.getAttribute('Id'))) {
+      zip.remove(`word/${rel.getAttribute('Target')}`);
+      rel.parentNode.removeChild(rel);
+    }
+  }
+  zip.file('word/document.xml', xml);
+  zip.file(relsPath, new XMLSerializer().serializeToString(rels));
+}
+
 writeFileSync(destino, zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
 console.log('Modelo gerado:', destino.pathname);
+console.log('Imagens em:', pastaImagens.pathname);

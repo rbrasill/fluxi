@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { ErroCliente, criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
 
-type Modo = 'manual' | 'exemplo' | 'ia';
+type Modo = 'manual' | 'ia';
 type Fonte = 'descricao' | 'transcricao' | 'audio';
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
@@ -37,12 +37,6 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
         const f = await criar(nome.trim() || 'Novo fluxograma', '', 'manual', processoId);
         return aoCriar(f.id);
       }
-      if (modo === 'exemplo') {
-        setEtapa('Criando…');
-        const xml = await (await fetch('/drawio/exemplo-emcash.drawio')).text();
-        const f = await criar(nome.trim() || 'Exemplo EmCash', xml, 'modelo', processoId);
-        return aoCriar(f.id);
-      }
       let conteudo = texto;
       if (fonte === 'audio') {
         if (!audio) throw new Error('Escolha um arquivo de áudio ou vídeo.');
@@ -68,19 +62,16 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
         <h2 id="novo-titulo">Novo fluxograma</h2>
         <label className="field">
           Nome {modo === 'ia' && <span className="opcional">· opcional, a IA sugere</span>}
-          <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Aprovação de proposta comercial" disabled={ocupado} />
+          <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do fluxograma" disabled={ocupado} />
         </label>
 
-        <div className="options options-3">
+        <div className="options">
           <button type="button" className="option" aria-pressed={modo === 'manual'} onClick={() => setModo('manual')} disabled={ocupado}>
             <strong>Manual</strong><span>Desenhe do zero com a biblioteca BPMN INC.</span>
           </button>
           <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado || semCreditos}>
             <strong><Icone nome="ia" tamanho={14} /> Gerar com IA</strong>
             <span>{semCreditos ? 'Sem créditos. Use o modo manual.' : `A partir de texto, transcrição ou áudio. ${creditos ?? '–'} crédito(s).`}</span>
-          </button>
-          <button type="button" className="option" aria-pressed={modo === 'exemplo'} onClick={() => setModo('exemplo')} disabled={ocupado}>
-            <strong>Exemplo EmCash</strong><span>O fluxograma de referência.</span>
           </button>
         </div>
 
@@ -103,7 +94,7 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
                   disabled={ocupado}
                   placeholder={
                     fonte === 'descricao'
-                      ? 'Ex.: O corretor cadastra a proposta. O Comercial analisa e envia ao Financeiro, que verifica o crédito. Se aprovado, o Jurídico prepara o contrato; se não, o Comercial renegocia…'
+                      ? 'Descreva o processo em ordem: quem inicia, o que cada área faz, as decisões (se aprovado…, se não…) e como termina.'
                       : 'Cole aqui a transcrição da reunião (Teams, Meet, Zoom…).'
                   }
                 />

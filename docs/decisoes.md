@@ -134,6 +134,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Biblioteca:** react-konva (MIT), carregada só quando o editor abre. Descartado o marker.js (linkware/licença paga).
 - **Não é possível** capturar onde a pessoa clicou durante a gravação: o navegador não informa cliques em outros programas. A **sugestão automática da caixa pela IA** (Claude localiza o elemento citado na instrução, ~US$ 0,005 por tela, sempre editável) fica para depois.
 
+## 19. Modelo POP v3 (27/10/2026), PDF e fim dos exemplos
+- **Modelo novo:** título "POP - Procedimento Operacional Padrão", ícones nas seções, faixa decorativa, "Históricos de Revisões" e procedimentos só como **print + caixa "Passo N:"** (sem a tabela de nome × tópicos). O template é regenerado do `.docx` original pelo script; trocar o modelo = trocar o arquivo e rodar `npm run modelo-pop`.
+- **Campo novo "Elaborado por"** (`pops.autor`): quem criou o POP. Hoje a pessoa preenche; com o login, vem do usuário. Preenche as linhas do histórico sem nome.
+- **PDF gerado pelo sistema** com pdfmake (MIT, JavaScript puro), e não por conversão do DOCX: na Vercel não há LibreOffice, e um serviço externo de conversão custaria por arquivo e dependeria de terceiro. O PDF reproduz o modelo (fonte Roboto no lugar da Aptos, que é proprietária). Os dois formatos saem do mesmo conteúdo (`DadosPop`), então mudanças de layout são feitas nos dois geradores.
+- **Exemplos removidos:** o fluxograma de amostra ("Exemplo EmCash") e seus arquivos, e os textos de exemplo com nomes de empresa e área nas telas. O que fica são dicas genéricas ("Nome da área").
+
 ---
 
 ## Em aberto

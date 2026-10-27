@@ -61,7 +61,7 @@ export default function OrganizacaoPage() {
         ))}
       </div>
       {nova && (
-        <DialogoNome titulo="Nova área" rotulo="Nome da área" exemplo="Ex.: Comercial" aoFechar={() => setNova(false)}
+        <DialogoNome titulo="Nova área" rotulo="Nome da área" exemplo="Nome da área" aoFechar={() => setNova(false)}
           aoCriar={async (n) => { const a = await criarArea({ nome: n, organizacao_id: o.id }); router.push(`/app/areas/${a.id}`); }} />
       )}
     </div>

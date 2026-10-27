@@ -82,6 +82,7 @@ export default function PopsPage() {
             <span className="code">{p.codigo}</span>
             <span className="notice">{new Date(p.atualizado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
             <a className="btn" href={`/api/pops/${p.id}/docx`}><Icone nome="baixar" tamanho={16} />DOCX</a>
+            <a className="btn" href={`/api/pops/${p.id}/pdf`}><Icone nome="baixar" tamanho={16} />PDF</a>
             <button className="btn btn-ghost btn-icon" aria-label="Excluir" title="Excluir" onClick={() => onExcluir(p)}><Icone nome="lixo" tamanho={16} /></button>
           </article>
         ))}
@@ -118,7 +119,7 @@ export default function PopsPage() {
             </label>
             <label className="field">
               Nome do procedimento <span className="opcional">· opcional</span>
-              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Aprovação de proposta comercial" />
+              <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do procedimento" />
             </label>
             <div className="dialog-actions">
               <button type="button" className="btn" onClick={() => setNovo(false)} disabled={criando}>Cancelar</button>

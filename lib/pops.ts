@@ -4,7 +4,7 @@ import type { Anotacoes } from './marcacao/anotacoes';
 import type { ConteudoPop, Historico } from './pop/schema';
 
 export type PopResumo = {
-  id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string;
+  id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string;
   fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; criado_em: string; atualizado_em: string;
 };
 export type TelaDoPop = { gravacao_id: string; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
@@ -21,7 +21,8 @@ export const listarPops = () => api<PopResumo[]>('/api/pops');
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
 export const criarPop = (dados: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'conteudo' | 'historico' | 'fluxograma_id' | 'status'>>) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'fluxograma_id' | 'status'>>) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados) });
 export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELETE' });
 export const urlDocx = (id: string) => `/api/pops/${id}/docx`;
+export const urlPdf = (id: string) => `/api/pops/${id}/pdf`;

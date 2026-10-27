@@ -26,7 +26,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const listar = () => api<FluxogramaResumo[]>('/api/fluxogramas');
 export const obter = (id: string) => api<Fluxograma>(`/api/fluxogramas/${id}`);
-export const criar = (nome: string, xml = '', origem: 'manual' | 'modelo' = 'manual', processo_id?: string) =>
+export const criar = (nome: string, xml = '', origem: 'manual' = 'manual', processo_id?: string) =>
   api<FluxogramaResumo>('/api/fluxogramas', { method: 'POST', body: JSON.stringify({ nome, xml, origem, processo_id }) });
 export const salvar = (id: string, dados: { nome?: string; xml?: string; miniatura?: string }, keepalive = false) =>
   api<{ id: string }>(`/api/fluxogramas/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });

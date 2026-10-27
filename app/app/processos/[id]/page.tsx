@@ -140,6 +140,7 @@ export default function ProcessoPage() {
               </Link>
               <span className="code">{o.codigo}</span>
               <a className="btn" href={`/api/pops/${o.id}/docx`}><Icone nome="baixar" tamanho={16} />DOCX</a>
+              <a className="btn" href={`/api/pops/${o.id}/pdf`}><Icone nome="baixar" tamanho={16} />PDF</a>
             </article>
           ))}
         </div>

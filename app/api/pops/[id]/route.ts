@@ -8,6 +8,7 @@ const Patch = z.object({
   nome: z.string().trim().min(1).max(200).optional(),
   identificacao: z.string().trim().max(40).optional(),
   versao: z.string().trim().min(1).max(20).optional(),
+  autor: z.string().trim().max(120).optional(),
   conteudo: ConteudoPopSchema.optional(),
   historico: z.array(HistoricoSchema).optional(),
   fluxograma_id: z.string().uuid().nullable().optional(),

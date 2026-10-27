@@ -7,7 +7,7 @@ import { Icone } from '@/components/Icone';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo } from '@/lib/pop/schema';
 import { salvarMarcacaoDesenhada } from '@/lib/gravacoes';
-import { obterPop, salvarPop, urlDocx, type Pop } from '@/lib/pops';
+import { obterPop, salvarPop, urlDocx, urlPdf, type Pop } from '@/lib/pops';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -83,10 +83,10 @@ export default function EditorPop() {
   };
   const setHist = (h: Historico[]) => alterar({ historico: h });
 
-  async function baixar() {
+  async function baixar(formato: 'docx' | 'pdf') {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    window.location.href = urlDocx(id);
+    window.location.href = formato === 'pdf' ? urlPdf(id) : urlDocx(id);
   }
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
@@ -100,19 +100,21 @@ export default function EditorPop() {
           <p className="status-linha"><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</p>
         </div>
         <div className="actions">
-          <button className="btn btn-primary" onClick={baixar}><Icone nome="baixar" tamanho={16} />Baixar DOCX</button>
+          <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />Baixar DOCX</button>
+          <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
         </div>
       </div>
 
       <section className="cartao pop-sec">
         <h2>Procedimento</h2>
         <div className="grade-3">
-          <label className="field">Área<input value={c.area} onChange={(e) => setConteudo({ area: e.target.value })} placeholder="Ex.: Comercial" /></label>
-          <label className="field">Identificação POP<input value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Ex.: COME-001" /></label>
+          <label className="field">Área<input value={c.area} onChange={(e) => setConteudo({ area: e.target.value })} placeholder="Área responsável" /></label>
+          <label className="field">Identificação POP<input value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Sigla da área + número (XXXX-001)" /></label>
           <label className="field">Versão<input value={pop.versao} onChange={(e) => alterar({ versao: e.target.value })} /></label>
           <label className="field">Código do processo<input value={pop.codigo} readOnly className="somente-leitura" /></label>
           <label className="field">Data de criação<input value={new Date(pop.criado_em).toLocaleDateString('pt-BR')} readOnly className="somente-leitura" /></label>
-          <label className="field">Executor do processo<input value={c.executor} onChange={(e) => setConteudo({ executor: e.target.value })} placeholder="Ex.: Analista Comercial" /></label>
+          <label className="field">Executor do processo<input value={c.executor} onChange={(e) => setConteudo({ executor: e.target.value })} placeholder="Cargo de quem executa" /></label>
+          <label className="field">Elaborado por<input value={pop.autor} onChange={(e) => alterar({ autor: e.target.value })} placeholder="Quem elaborou o POP" /></label>
         </div>
       </section>
 
@@ -161,7 +163,7 @@ export default function EditorPop() {
               <div key={k} className="passo">
                 <span className="passo-num">{k + 1}</span>
                 <div className="passo-corpo">
-                  <textarea rows={2} value={s.texto} onChange={(e) => setPasso(i, k, { texto: e.target.value })} placeholder="Descreva o passo (ex.: Clique em Nova proposta e preencha o CPF)." />
+                  <textarea rows={2} value={s.texto} onChange={(e) => setPasso(i, k, { texto: e.target.value })} placeholder="Descreva o passo: o que fazer e onde clicar." />
                   {s.imagem_caminho && (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}
@@ -196,7 +198,7 @@ export default function EditorPop() {
       </section>
 
       <section className="cartao pop-sec">
-        <h2>Históricos</h2>
+        <h2>Históricos de revisões</h2>
         <div className="hist-cab"><span>Data</span><span>Elaborado por</span><span>Revisão</span><span /></div>
         {pop.historico.map((h, i) => (
           <div key={i} className="hist-linha">
@@ -206,7 +208,7 @@ export default function EditorPop() {
             <button className="btn btn-ghost btn-icon" aria-label="Remover" onClick={() => setHist(pop.historico.filter((_, j) => j !== i))}><Icone nome="lixo" tamanho={16} /></button>
           </div>
         ))}
-        <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: '', revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
+        <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: pop.autor, revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
       </section>
 
       {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
