@@ -220,8 +220,10 @@ input { font-family: inherit; }
 @keyframes pulo { 40% { transform: scale(1.12); } }
 .enviando { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
 
-.pip-body { margin: 0; padding: 14px; background: var(--surface); font-family: var(--font-body), system-ui, sans-serif; color: var(--ink); }
-.painel-grav.flutuante .painel-previa { aspect-ratio: auto; height: 96px; }
+.pip-body { margin: 0; padding: 14px; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; overflow: auto; background: var(--surface); font-family: var(--font-body), system-ui, sans-serif; color: var(--ink); }
+/* Na janela flutuante, a prévia da tela ocupa todo o espaço livre e cresce junto com a janela. */
+.painel-grav.flutuante { flex: 1; min-height: 0; }
+.painel-grav.flutuante .painel-previa { aspect-ratio: auto; flex: 1 1 auto; min-height: 200px; }
 
 .telas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
 .tela-mini { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }

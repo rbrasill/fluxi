@@ -10,7 +10,9 @@ const api = () => (typeof window !== 'undefined' ? (window as unknown as { docum
 
 export const suportaPip = () => !!api();
 
-export async function abrirPip(largura = 380, altura = 330): Promise<Window | null> {
+// Tamanho inicial pensado para a prévia da tela ficar legível (16:9 na largura toda).
+// A pessoa pode redimensionar: a prévia acompanha o tamanho da janela.
+export async function abrirPip(largura = 480, altura = 520): Promise<Window | null> {
   const pip = api();
   if (!pip) return null;
   if (pip.window) return pip.window;
