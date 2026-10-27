@@ -127,8 +127,16 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Uma pessoa pode estar em várias contas:** a própria (com suas organizações) e as em que foi convidada. Ao entrar, escolhe a conta em que vai trabalhar, e tudo (organizações, áreas, processos, créditos) é dessa conta.
 - Isso depende do **login**. Recomendação: Supabase Auth (e-mail com link mágico e Google), pois já é o MVP no Supabase e o RLS passa a filtrar por membro. Enquanto não há login, tudo usa a conta padrão INC.
 
+## 18. Marcações na tela (caixa, seta, número, texto, recorte)
+- Em cada tela marcada dá para desenhar **caixa, seta, número (ordem dos cliques) e texto**, e **recortar**. Cor padrão vermelha (#E5252A), com amarelo, verde, azul e preto como alternativas. Desfoque ficou de fora por decisão do produto.
+- **Onde:** na página da gravação (botão "Marcar" ou clique na imagem) e no passo do POP ("Marcar tela"). A marcação é **da tela da gravação**: editar num lugar muda nos dois e em todo POP que usa a tela.
+- **Sem estragar o original:** o print fica intacto; as formas ficam em `gravacao_marcacoes.anotacoes` (pixels da imagem original), para reabrir e editar. Ao salvar, o navegador gera a imagem final (desenhada e recortada, na resolução original) e envia ao Storage; o POP e o DOCX usam essa versão (`imagem_anotada_caminho`, com largura e altura próprias por causa do recorte). A versão anterior é apagada a cada salvamento (`0009_marcacao_anotacoes.sql`).
+- **Biblioteca:** react-konva (MIT), carregada só quando o editor abre. Descartado o marker.js (linkware/licença paga).
+- **Não é possível** capturar onde a pessoa clicou durante a gravação: o navegador não informa cliques em outros programas. A **sugestão automática da caixa pela IA** (Claude localiza o elemento citado na instrução, ~US$ 0,005 por tela, sempre editável) fica para depois.
+
 ---
 
 ## Em aberto
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth)
 - Integração com o Notion
+- Sugestão automática de marcação pela IA (decisão 18)

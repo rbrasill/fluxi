@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { ErroApi } from './http';
 import { garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
@@ -82,12 +83,41 @@ export async function atualizarMarcacao(id: string, marcacaoId: string, dados: {
   return data;
 }
 
+/**
+ * Salva as marcações desenhadas na tela (ou remove, com `null`). A imagem final já foi enviada
+ * pelo navegador; aqui só registramos o caminho e apagamos a versão anterior.
+ */
+export async function salvarAnotacao(id: string, marcacaoId: string, a: { anotacoes: Anotacoes; imagem_anotada_caminho: string; largura: number; altura: number } | null) {
+  if (a) {
+    validarCaminho(id, a.imagem_anotada_caminho);
+    if (!a.imagem_anotada_caminho.endsWith('.png')) throw new ErroApi(400, 'A imagem marcada deve ser PNG');
+  }
+  const db = supabase();
+  const { data: atual, error: e1 } = await db.from('gravacao_marcacoes').select('imagem_anotada_caminho')
+    .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).eq('id', marcacaoId).maybeSingle();
+  if (e1) throw e1;
+  if (!atual) throw new ErroApi(404, 'Marcação não encontrada');
+  const { error } = await db.from('gravacao_marcacoes').update({
+    anotacoes: a?.anotacoes ?? null,
+    imagem_anotada_caminho: a?.imagem_anotada_caminho ?? null,
+    anotada_largura: a?.largura ?? null,
+    anotada_altura: a?.altura ?? null,
+    atualizado_em: new Date().toISOString(),
+  }).eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).eq('id', marcacaoId);
+  if (error) throw error;
+  if (atual.imagem_anotada_caminho && atual.imagem_anotada_caminho !== a?.imagem_anotada_caminho) {
+    await db.storage.from(BUCKET).remove([atual.imagem_anotada_caminho]);
+  }
+  const url = a ? (await assinar([a.imagem_anotada_caminho])).get(a.imagem_anotada_caminho) ?? null : null;
+  return { ok: true, imagem_anotada_url: url };
+}
+
 export async function excluirMarcacao(id: string, marcacaoId: string) {
   const { data, error } = await supabase()
     .from('gravacao_marcacoes').delete()
-    .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).eq('id', marcacaoId).select('imagem_caminho').maybeSingle();
+    .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).eq('id', marcacaoId).select('imagem_caminho, imagem_anotada_caminho').maybeSingle();
   if (error) throw error;
-  if (data) await supabase().storage.from(BUCKET).remove([data.imagem_caminho]);
+  if (data) await supabase().storage.from(BUCKET).remove([data.imagem_caminho, data.imagem_anotada_caminho].filter(Boolean) as string[]);
   return { ok: true };
 }
 
@@ -103,17 +133,24 @@ export async function obter(id: string) {
   const [g, segs, marcs] = await Promise.all([
     db.from('gravacoes').select('id, nome, status, duracao_ms, largura, altura, processo_id, processamento, criado_em, processo:processos(id, nome, codigo)').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
     db.from('gravacao_segmentos').select('indice, caminho, inicio_ms, duracao_ms, bytes, mime, falas').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('indice'),
-    db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('tempo_ms'),
+    db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop, anotacoes, imagem_anotada_caminho, anotada_largura, anotada_altura').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('tempo_ms'),
   ]);
   for (const r of [g, segs, marcs]) if (r.error) throw r.error;
   if (!g.data) throw new ErroApi(404, 'Gravação não encontrada');
-  const urls = await assinar([...(segs.data ?? []).map((s) => s.caminho), ...(marcs.data ?? []).map((m) => m.imagem_caminho)]);
+  const urls = await assinar([
+    ...(segs.data ?? []).map((s) => s.caminho),
+    ...(marcs.data ?? []).flatMap((m) => [m.imagem_caminho, m.imagem_anotada_caminho].filter(Boolean) as string[]),
+  ]);
   return {
     ...g.data,
     segmentos: (segs.data ?? []).map(({ falas: _f, ...s }) => ({ ...s, url: urls.get(s.caminho) ?? null })),
     // Transcrição da narração (quando já foi feita), com o tempo da gravação inteira.
     falas: (segs.data ?? []).flatMap((s) => (s.falas as { falante: string; inicio_ms: number; texto: string }[] | null) ?? []),
-    marcacoes: (marcs.data ?? []).map((m) => ({ ...m, imagem_url: urls.get(m.imagem_caminho) ?? null })),
+    marcacoes: (marcs.data ?? []).map((m) => ({
+      ...m,
+      imagem_url: urls.get(m.imagem_caminho) ?? null,
+      imagem_anotada_url: m.imagem_anotada_caminho ? urls.get(m.imagem_anotada_caminho) ?? null : null,
+    })),
   };
 }
 

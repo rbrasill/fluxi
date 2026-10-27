@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { gerarCodigo } from '@/lib/codigo';
 import { gerarDocx } from '@/lib/pop/docx';
-import { conteudoVazio, type ConteudoPop, type Historico } from '@/lib/pop/schema';
+import type { Anotacoes } from '@/lib/marcacao/anotacoes';
+import { conteudoVazio, type ConteudoPop, type Historico, type Passo } from '@/lib/pop/schema';
 import { ErroApi } from './http';
 import { garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
@@ -30,16 +31,56 @@ async function buscar(id: string) {
   };
 }
 
-/** POP com links temporários para as imagens dos passos. */
+type MarcacaoDoPop = {
+  id: string; gravacao_id: string; imagem_caminho: string; largura: number | null; altura: number | null;
+  anotacoes: Anotacoes | null; imagem_anotada_caminho: string | null; anotada_largura: number | null; anotada_altura: number | null;
+};
+
+/** Telas marcadas usadas nos passos (as marcações desenhadas ficam na tela, não no POP). */
+async function marcacoesDoPop(conteudo: ConteudoPop) {
+  const ids = [...new Set(conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)).filter(Boolean) as string[])];
+  if (!ids.length) return new Map<string, MarcacaoDoPop>();
+  const { data, error } = await supabase().from('gravacao_marcacoes')
+    .select('id, gravacao_id, imagem_caminho, largura, altura, anotacoes, imagem_anotada_caminho, anotada_largura, anotada_altura')
+    .eq('tenant_id', TENANT_PADRAO).in('id', ids);
+  if (error) throw error;
+  return new Map((data as MarcacaoDoPop[]).map((m) => [m.id, m]));
+}
+
+/** Imagem que vai para o POP: a versão marcada, se houver; senão o print original. */
+function imagemFinal(s: Passo, m: Map<string, MarcacaoDoPop>) {
+  const t = s.marcacao_id ? m.get(s.marcacao_id) : undefined;
+  if (t?.imagem_anotada_caminho && t.imagem_caminho === s.imagem_caminho) {
+    return { caminho: t.imagem_anotada_caminho, largura: t.anotada_largura ?? undefined, altura: t.anotada_altura ?? undefined };
+  }
+  return { caminho: s.imagem_caminho, largura: s.imagem_largura, altura: s.imagem_altura };
+}
+
+async function assinar(caminhos: string[]) {
+  if (!caminhos.length) return {} as Record<string, string>;
+  const { data } = await supabase().storage.from(BUCKET_GRAVACOES).createSignedUrls([...new Set(caminhos)], 60 * 60 * 2);
+  return Object.fromEntries((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl])) as Record<string, string>;
+}
+
+/**
+ * POP com links temporários para as imagens dos passos. `imagens` (por imagem_caminho) já aponta
+ * para a versão marcada; `telas` traz o original e as marcações, para reabrir o editor.
+ */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const caminhos = pop.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[];
-  let urls: Record<string, string> = {};
-  if (caminhos.length) {
-    const { data } = await supabase().storage.from(BUCKET_GRAVACOES).createSignedUrls(caminhos, 60 * 60 * 2);
-    urls = Object.fromEntries((data ?? []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl]));
-  }
-  return { ...pop, imagens: urls };
+  const marcs = await marcacoesDoPop(pop.conteudo);
+  const passos = pop.conteudo.procedimentos.flatMap((p) => p.passos).filter((s) => s.imagem_caminho);
+  const finais = passos.map((s) => [s.imagem_caminho!, imagemFinal(s, marcs).caminho!] as const);
+  const urls = await assinar([...finais.map(([, f]) => f), ...[...marcs.values()].map((m) => m.imagem_caminho)]);
+  const imagens = Object.fromEntries(finais.filter(([, f]) => urls[f]).map(([orig, f]) => [orig, urls[f]]));
+  const telas = Object.fromEntries([...marcs.values()].map((m) => [m.id, {
+    gravacao_id: m.gravacao_id,
+    imagem_url: urls[m.imagem_caminho] ?? null,
+    largura: m.largura,
+    altura: m.altura,
+    anotacoes: m.anotacoes,
+  }]));
+  return { ...pop, imagens, telas };
 }
 
 export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) {
@@ -114,7 +155,23 @@ export async function excluir(id: string) {
 }
 
 export async function docx(id: string, origem: string) {
-  const pop = await buscar(id);
+  const original = await buscar(id);
+  // No documento vai a versão marcada de cada tela (com o tamanho dela, que muda com o recorte).
+  const marcs = await marcacoesDoPop(original.conteudo);
+  const pop = {
+    ...original,
+    conteudo: {
+      ...original.conteudo,
+      procedimentos: original.conteudo.procedimentos.map((p) => ({
+        ...p,
+        passos: p.passos.map((s) => {
+          if (!s.imagem_caminho) return s;
+          const f = imagemFinal(s, marcs);
+          return { ...s, imagem_caminho: f.caminho, imagem_largura: f.largura, imagem_altura: f.altura };
+        }),
+      })),
+    },
+  };
   const caminhos = [...new Set(pop.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[])];
   const imagens = new Map<string, Uint8Array>();
   await Promise.all(caminhos.map(async (c) => {

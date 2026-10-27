@@ -1,11 +1,15 @@
 'use client';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo } from '@/lib/pop/schema';
+import { salvarMarcacaoDesenhada } from '@/lib/gravacoes';
 import { obterPop, salvarPop, urlDocx, type Pop } from '@/lib/pops';
+
+const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
 type Status = 'salvo' | 'alterado' | 'salvando' | 'erro';
 
@@ -22,6 +26,8 @@ export default function EditorPop() {
   const [pop, setPop] = useState<Pop | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>('salvo');
   const [fluxogramas, setFluxogramas] = useState<FluxogramaResumo[]>([]);
+  // Tela sendo marcada: a marcação é da gravação, então aparece igual na gravação e em todo POP que usa a tela.
+  const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
   const pendente = useRef<Partial<Pop>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -159,7 +165,14 @@ export default function EditorPop() {
                   {s.imagem_caminho && (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}
-                      <button className="btn btn-ghost" onClick={() => setPasso(i, k, { imagem_caminho: undefined, imagem_largura: undefined, imagem_altura: undefined })}>Remover imagem</button>
+                      <span className="passo-img-acoes">
+                        {s.marcacao_id && pop.telas?.[s.marcacao_id]?.imagem_url && (
+                          <button className="btn btn-ghost" onClick={() => setMarcando({ marcacaoId: s.marcacao_id!, caminho: s.imagem_caminho!, titulo: `Passo ${k + 1}` })}>
+                            <Icone nome="marcar" tamanho={14} />Marcar tela
+                          </button>
+                        )}
+                        <button className="btn btn-ghost" onClick={() => setPasso(i, k, { imagem_caminho: undefined, imagem_largura: undefined, imagem_altura: undefined, marcacao_id: undefined })}>Remover imagem</button>
+                      </span>
                     </div>
                   )}
                 </div>
@@ -195,6 +208,27 @@ export default function EditorPop() {
         ))}
         <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: '', revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
       </section>
+
+      {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
+        const t = pop.telas[marcando.marcacaoId];
+        return (
+          <EditorMarcacao
+            imagemUrl={t.imagem_url!}
+            anotacoes={t.anotacoes}
+            titulo={marcando.titulo}
+            aoFechar={() => setMarcando(null)}
+            aoSalvar={async (r) => {
+              const url = await salvarMarcacaoDesenhada(t.gravacao_id, marcando.marcacaoId, r);
+              setPop((p) => p && {
+                ...p,
+                imagens: { ...p.imagens, [marcando.caminho]: url ?? t.imagem_url! },
+                telas: { ...p.telas, [marcando.marcacaoId]: { ...t, anotacoes: r?.anotacoes ?? null } },
+              });
+              setMarcando(null);
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }
