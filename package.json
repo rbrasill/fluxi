@@ -17,6 +17,7 @@
     "fix-webm-duration": "^1.0.6",
     "konva": "^10.9.0",
     "next": "^16.3.7",
+    "pdfmake": "^0.3.13",
     "pizzip": "^3.3.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -29,6 +30,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@xmldom/xmldom": "^0.9.12",
+    "pngjs": "^7.0.0",
     "typescript": "^5.9.3"
   },
   "engines": {

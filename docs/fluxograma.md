@@ -1,7 +1,6 @@
 # Fluxi — Fluxograma (draw.io)
 
 - Biblioteca de estilos: [`templates/drawio/biblioteca-estilos.xml`](../templates/drawio/biblioteca-estilos.xml)
-- Exemplo de resultado final: [`templates/drawio/exemplo-fluxograma-emcash.drawio`](../templates/drawio/exemplo-fluxograma-emcash.drawio) (fonte) e [`.pdf`](../templates/drawio/exemplo-fluxograma-emcash.pdf) (visual)
 
 ## Abordagem
 
@@ -12,11 +11,11 @@ Geração do XML do draw.io direto (não Mermaid), em duas camadas:
 
 A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca entram no prompt como glossário de quando usar cada elemento. O layout gerado é um rascunho organizado; o usuário refina no editor embutido.
 
-## Estrutura do diagrama (a partir do exemplo)
+## Estrutura do diagrama
 
 - **Cabeçalho:** logo do tenant, nome do processo, descrição curta, caixa com o código do processo, botão "Acessar Documentação" (link para o POP) e selo de versão ("Atual").
-- **Raias (pools horizontais):** uma por **área** (ex.: Comercial INC, ImobJF, EmCash), cada uma com etiqueta e cor de borda própria.
-- **Tarefas:** retângulo arredondado, borda `#005F73`. Pode levar etiqueta de responsável quando executada por outra área (ex.: "Comercial" dentro da raia EmCash).
+- **Raias (pools horizontais):** uma por **área** ou papel que executa atividades, cada uma com etiqueta e cor de borda própria.
+- **Tarefas:** retângulo arredondado, borda `#005F73`. Pode levar etiqueta de responsável quando executada por outra área dentro da raia.
 - **Anotações:** caixas de apoio ligadas por linha tracejada (ex.: "Análise — Retorno entre 45 minutos e 3 horas"), alertas (ex.: "Obrigatório anexar tela...") e logos de sistemas utilizados (ex.: CV CRM).
 - **Conectores:** ortogonais; sólidos e tracejados.
 
@@ -73,17 +72,12 @@ const FluxoSchema = z.object({
 })
 ```
 
-## Observações do arquivo de exemplo (`.drawio`)
+## Observações de formato
 
-- Arquivo `mxfile` não comprimido, 1 página A3 paisagem (1654×1169), 162 elementos.
-- **Estilos reais diferem da biblioteca em alguns pontos:**
-  - Tarefas e conectores usam `#264653` (a biblioteca define `#005F73` para tarefas e `#415A77` para conectores).
-  - Tarefas: `rounded=1`, `arcSize=16`, fonte Calibri 12.
-  - Alertas: `fillColor=#ffe6cc`, `strokeColor=#d79b00`.
-  - Anotações ligadas às tarefas por conector tracejado rosa `#FF3399`; fluxo principal com conector sólido ortogonal.
-  - Raias com cor de borda por área: `#FB8500` (Comercial INC), `#006600` (ImobJF), `#0000FF` (EmCash).
-- **Imagens (logos) embutidas em base64** no XML (6 imagens), o que aumenta o arquivo (~245 KB). No Fluxi, preferir referenciar as imagens por URL do storage.
-- **Link "Acessar Documentação"** aponta para `https://notion.meuinc.com.br/{codigo-do-processo}`: o código do processo é a chave que liga o fluxograma à documentação no Notion.
+- Arquivo `mxfile` não comprimido, página A3 paisagem (1654×1169).
+- Tarefas: `rounded=1`, `arcSize=16`, fonte Calibri 12. Alertas: `fillColor=#ffe6cc`, `strokeColor=#d79b00`. Anotações ligadas às tarefas por conector tracejado rosa `#FF3399`; fluxo principal com conector sólido ortogonal.
+- **Imagens embutidas em base64** no XML aumentam muito o arquivo. No Fluxi, preferir referenciar as imagens por URL do storage.
+- **Link "Acessar Documentação"** aponta para a documentação do processo: o código do processo é a chave que liga o fluxograma ao POP (e, no futuro, ao Notion).
 
 ## Edição e revisão (obrigatório)
 A transcrição e a extração da IA podem errar, então **todo fluxograma gerado é um rascunho editável** antes de ser publicado.
@@ -97,7 +91,7 @@ A transcrição e a extração da IA podem errar, então **todo fluxograma gerad
 
 ## Definições
 
-- **Código do processo:** mantém o formato `XXXX-XXXX` (ver `docs/modelo-pop.md`). O `VE7QGM098T` do exemplo é legado.
+- **Código do processo:** formato `XXXX-XXXX` (ver `docs/modelo-pop.md`).
 - **Cores das raias:** fixas por área. Cada área recebe uma cor ao ser cadastrada no tenant, e essa cor se mantém em todos os fluxogramas.
 - **Logos de sistemas:** não haverá cadastro de sistemas nem logos de sistemas nos fluxogramas gerados.
-- **Fonte da verdade dos estilos:** a biblioteca (`biblioteca-estilos.xml`). Tarefas com borda `#005F73` e conectores `#415A77`; as cores `#264653` do arquivo de exemplo não são usadas.
+- **Fonte da verdade dos estilos:** a biblioteca (`biblioteca-estilos.xml`). Tarefas com borda `#005F73` e conectores `#415A77`.

@@ -1,0 +1,2 @@
+Roboto (Google), licença Apache 2.0: https://www.apache.org/licenses/LICENSE-2.0
+Usada na versão em PDF do POP (lib/pop/pdf.ts). Arquivos copiados do pacote pdfmake.

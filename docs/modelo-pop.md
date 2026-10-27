@@ -2,22 +2,21 @@
 
 Modelo padrão de Procedimento Operacional Padrão da plataforma.
 
-- Original: [`templates/pop/Modelo_POP_v3.docx`](../templates/pop/Modelo_POP_v3.docx)
-- Referência visual: [`templates/pop/Modelo_POP_v3.pdf`](../templates/pop/Modelo_POP_v3.pdf)
+- Original: [`templates/pop/Modelo_POP_v3.docx`](../templates/pop/Modelo_POP_v3.docx) (versão de 27/10/2026: título "POP - Procedimento Operacional Padrão", ícones nas seções, procedimentos como print + caixa "Passo N:", "Históricos de Revisões" com quem elaborou o POP)
 
 ## Estrutura
 
 | Seção | Campos | Origem |
 |---|---|---|
-| Cabeçalho | Logo, área | Tenant / usuário |
+| Cabeçalho | Logo, faixa decorativa, título "POP - Procedimento Operacional Padrão", área | Tenant / usuário |
 | Procedimento | Nome, mês/ano, versão | Usuário (nome) / sistema |
 | Identificação | Data de criação, código do processo (ex.: `A7K2-9QXM`), identificação do POP (ex.: `COME-001`) | Sistema |
 | Executor do Processo | Cargo do executor | IA sugere, usuário confirma |
 | Objetivo do Processo | Texto | IA |
 | Envolvidos | Pares área ↔ cargo | IA |
 | Recursos do Processo | Fluxograma + link "Abrir diagrama" | Sistema |
-| Procedimentos | Nome + descrição em tópicos (repetível) | IA |
-| Históricos | Data, elaborado por, revisão | Sistema (versionamento) |
+| Procedimentos | Passos numerados do início ao fim: print da tela (se houver) e, logo abaixo, o texto numa caixa de destaque "Passo N:". O nome do grupo de passos vira um subtítulo | IA + usuário |
+| Históricos de Revisões | Data, elaborado por (quem criou o POP), revisão | Sistema + usuário |
 
 ## Schema de extração (IA)
 
@@ -53,22 +52,23 @@ const PopSchema = z.object({
 | Objetivo | `{objetivo}` |
 | Envolvidos | `{#envolvidos}{area} · {cargo}{/envolvidos}` |
 | Recursos | `{linkFluxograma}` |
-| Procedimentos | `{#procedimentos}{nome}` + `{#passos}• {.}{/passos}{/procedimentos}` |
-| Históricos | `{#historico}{data} · {elaboradoPor} · {revisao}{/historico}` |
+| Procedimentos | `{#itens}{@bloco}{/itens}` (cada bloco é XML pronto: subtítulo, print ou caixa do passo) |
+| Históricos de Revisões | `{#historico}{data} · {elaboradoPor} · {revisao}{/historico}` |
 
 ## Implementação (MVP)
-- **Template:** `templates/pop/modelo-pop-v3.template.docx` é gerado a partir do original por `npm run modelo-pop` (`scripts/preparar-modelo-pop.mjs`), que troca os textos de exemplo pelos marcadores e une os trechos fragmentados, mantendo a formatação. Não editar o template à mão: ajustar o script e gerar de novo.
-- **Geração:** `lib/pop/docx.ts` (docxtemplater, sem módulos pagos). Imagens das telas e o hiperlink "Abrir diagrama" são inseridos como XML próprio.
-- **Procedimentos:** uma tabela por procedimento (nome × passos em tópicos). As telas da gravação vêm logo abaixo da tabela, na largura da página; logo abaixo de cada print, o texto do passo numa caixa de destaque ("Passo N" em laranja, fundo creme #FFF4E0, barra laranja #F28C28 à esquerda, mesma largura do print). O print e a caixa ficam juntos na mesma página. Passo sem texto mostra só o print.
-- **Dados:** tabela `pops` (migração `0003_pops.sql`): código do processo (o mesmo do fluxograma, se vinculado), identificação, versão, `conteudo` (área, executor, objetivo, envolvidos, procedimentos com passos) e `historico`.
+- **Template:** `templates/pop/modelo-pop-v3.template.docx` é gerado a partir do original por `npm run modelo-pop` (`scripts/preparar-modelo-pop.mjs`), que troca os textos de exemplo pelos marcadores, tira o print e a caixa de amostra e exporta a logo, os ícones e a decoração para `templates/pop/imagens/` (usados no PDF). Não editar o template à mão: ajustar o script e gerar de novo. Quando chegar um modelo novo, basta trocar o `.docx` original e rodar o script.
+- **DOCX:** `lib/pop/docx.ts` (docxtemplater, sem módulos pagos). Imagens das telas, caixas dos passos e o hiperlink "Abrir diagrama" são inseridos como XML próprio.
+- **PDF:** `lib/pop/pdf.ts` (pdfmake, JavaScript puro, roda na Vercel sem binário externo) reproduz o modelo com os mesmos dados: fonte Roboto (`templates/pop/fontes/`), cores e tamanhos do modelo, print e caixa do passo sempre juntos na mesma página. Não é uma conversão do DOCX: os dois são gerados do mesmo conteúdo (`DadosPop`).
+- **Procedimentos:** os passos são numerados do início ao fim do POP ("Passo 1:", "Passo 2:"…), com o print (se houver) e o texto numa caixa de destaque logo abaixo (fundo creme #FFF4E0, barra laranja #F28C28 à esquerda, mesma largura do print). Passo sem print mostra só a caixa; passo sem texto, só o print. O nome do grupo de passos (quando preenchido) aparece como subtítulo.
+- **Elaborado por:** campo `pops.autor` (migração `0010_pop_autor.sql`), preenchido pela pessoa enquanto não há login; depois virá do usuário logado. As linhas do histórico sem nome usam esse valor.
+- **Dados:** tabela `pops` (migração `0003_pops.sql`): código do processo (o mesmo do fluxograma, se vinculado), identificação, versão, autor, `conteudo` (área, executor, objetivo, envolvidos, procedimentos com passos) e `historico`.
 - **Criar a partir de uma gravação:** as telas marcadas com "Incluir no POP" viram os passos de um procedimento "Passo a passo no sistema", com a instrução digitada (ou a sugerida pela IA, quando houver).
-- PDF fica para depois (precisa de conversão no servidor).
 
 ## Notas técnicas
 
-- Layout construído com tabelas (15 no documento); blocos repetíveis viram linhas com loop.
+- Layout construído com tabelas; blocos repetíveis viram linhas com loop.
 - Texto do DOCX está fragmentado em vários trechos internos (revisão ortográfica/formatação). Ao criar a versão com marcadores, cada marcador precisa ficar em um trecho contínuo.
-- 5 imagens (logo e ícones). A logo será substituível por tenant.
+- 11 imagens no modelo (logo, faixa decorativa, ícones das seções e decoração). A logo será substituível por tenant.
 
 ## Regras de identificação
 

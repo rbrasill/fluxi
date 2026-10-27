@@ -195,7 +195,7 @@ export default function NovaGravacaoPage() {
         <section className="cartao">
           <label className="field">
             Nome da gravação
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Cadastro de proposta no CRM" disabled={fase !== 'config'} />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome da gravação" disabled={fase !== 'config'} />
           </label>
           <div className="opcoes-grav">
             <label className="check"><input type="checkbox" checked={microfone} onChange={(e) => setMicrofone(e.target.checked)} />Gravar minha narração (microfone)</label>

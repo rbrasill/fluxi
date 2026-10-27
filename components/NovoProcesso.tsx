@@ -33,7 +33,7 @@ export function NovoProcesso({ areaId, aoFechar }: { areaId?: string; aoFechar: 
         <h2 id="novo-processo">Novo processo</h2>
         <label className="field">
           Nome do processo
-          <input autoFocus required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Aprovação de proposta comercial" />
+          <input autoFocus required value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do processo" />
         </label>
         {!areaId && (
           <label className="field">
