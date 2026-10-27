@@ -121,7 +121,8 @@ celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']
 }
 
 // Procedimentos: uma tabela repetida por procedimento, com os passos em tópicos
-// e, abaixo da tabela, as telas marcadas na gravação (largura total da página).
+// e, abaixo da tabela, as telas marcadas na gravação (largura total da página),
+// cada uma com o texto do passo logo abaixo, em destaque.
 {
   const tabelas = el('tbl').filter((t) => /#0\d/.test(texto(t)));
   const [modelo, ...extras] = tabelas;
@@ -144,18 +145,8 @@ celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']
   novoParagrafo(modelo, '{#procedimentos}');
   const ancora = aposTabela ?? modelo.parentNode.appendChild(doc.createElementNS(W, 'w:p'));
   novoParagrafo(ancora, '{#telas}');
-  novoParagrafo(ancora, '{@imagem}');
-  const legenda = novoParagrafo(ancora, '{legenda}');
-  const rPr = doc.createElementNS(W, 'w:rPr');
-  rPr.appendChild(doc.createElementNS(W, 'w:i'));
-  const sz = doc.createElementNS(W, 'w:sz');
-  sz.setAttribute('w:val', '18');
-  rPr.appendChild(sz);
-  const col = doc.createElementNS(W, 'w:color');
-  col.setAttribute('w:val', '5B6B70');
-  rPr.appendChild(col);
-  const r = legenda.getElementsByTagNameNS(W, 'r')[0];
-  r.insertBefore(rPr, r.firstChild);
+  // Cada tela: o print e, logo abaixo, o texto do passo numa caixa de destaque (XML montado em lib/pop/docx.ts).
+  novoParagrafo(ancora, '{@tela}');
   novoParagrafo(ancora, '{/telas}');
   novoParagrafo(ancora, '');
   novoParagrafo(ancora, '{/procedimentos}');
