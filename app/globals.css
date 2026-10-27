@@ -154,8 +154,6 @@ input { font-family: inherit; }
 }
 
 /* IA e criação */
-.creditos { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 10px; background: #fef4ea; color: #9a4a0b; font-size: 13px; font-weight: 700; }
-.creditos.zerado { background: #fdecec; color: var(--danger); }
 .aviso { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; background: #fff6ea; border: 1px solid #f2d2a6; color: #6b3406; font-size: 14px; }
 .aviso .btn { margin-left: auto; }
 .aviso.erro { background: #fdecec; border-color: #f5c2c0; color: var(--danger); }

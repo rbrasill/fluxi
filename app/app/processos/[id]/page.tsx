@@ -4,7 +4,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
-import { creditos as buscarCreditos } from '@/lib/fluxogramas';
 import { formatarTempo } from '@/lib/gravacoes';
 import { criarPop } from '@/lib/pops';
 import { listarAreas, type AreaResumo } from '@/lib/areas';
@@ -19,13 +18,11 @@ export default function ProcessoPage() {
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [novoFluxo, setNovoFluxo] = useState(false);
-  const [creditos, setCreditos] = useState<number | null>(null);
   const [criandoPop, setCriandoPop] = useState(false);
 
   useEffect(() => {
     obterProcesso(id).then((d) => { setP(d); setNome(d.nome); }).catch(() => setP(null));
     listarAreas().then(setAreas).catch(() => {});
-    buscarCreditos().then((c) => setCreditos(c.creditos)).catch(() => {});
   }, [id]);
 
   if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
@@ -148,7 +145,6 @@ export default function ProcessoPage() {
 
       {novoFluxo && (
         <NovoFluxograma
-          creditos={creditos}
           processoId={p.id}
           aoFechar={() => setNovoFluxo(false)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}

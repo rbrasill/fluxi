@@ -59,7 +59,6 @@ export type EstadoProcessamento = {
   pop_id: string | null;
   fluxograma_id: string | null;
   segmentos: { total: number; prontos: number };
-  custo: number;
 };
 export const iniciarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
 export const consultarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`);

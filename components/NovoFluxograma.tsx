@@ -1,18 +1,17 @@
 'use client';
 import { useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { ErroCliente, criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
+import { criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
 
 type Modo = 'manual' | 'ia';
 type Fonte = 'descricao' | 'transcricao' | 'audio';
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
 
-export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
-  creditos: number | null;
+export function NovoFluxograma({ processoId, aoFechar, aoCriar }: {
   processoId?: string;
   aoFechar: () => void;
-  aoCriar: (id: string, creditos?: number) => void;
+  aoCriar: (id: string) => void;
 }) {
   const [nome, setNome] = useState('');
   const [modo, setModo] = useState<Modo>('manual');
@@ -21,7 +20,6 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
   const [audio, setAudio] = useState<File | null>(null);
   const [etapa, setEtapa] = useState('');
   const [erro, setErro] = useState('');
-  const semCreditos = creditos === 0;
   const ocupado = etapa !== '';
 
   async function lerArquivoTexto(f: File) {
@@ -44,13 +42,10 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
       }
       setEtapa('A IA está montando o fluxograma… (pode levar até 1 minuto)');
       const f = await gerarComIa(conteudo, fonte === 'descricao' ? 'descricao' : 'transcricao', nome.trim() || undefined, processoId);
-      aoCriar(f.id, f.creditos);
+      aoCriar(f.id);
     } catch (e) {
       setEtapa('');
-      if (e instanceof ErroCliente && e.codigo === 'sem_creditos') {
-        setErro(e.message);
-        setModo('manual');
-      } else setErro(e instanceof Error ? e.message : 'Algo deu errado.');
+      setErro(e instanceof Error ? e.message : 'Algo deu errado.');
     }
   }
 
@@ -69,9 +64,9 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
           <button type="button" className="option" aria-pressed={modo === 'manual'} onClick={() => setModo('manual')} disabled={ocupado}>
             <strong>Manual</strong><span>Desenhe do zero com a biblioteca BPMN INC.</span>
           </button>
-          <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado || semCreditos}>
+          <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado}>
             <strong><Icone nome="ia" tamanho={14} /> Gerar com IA</strong>
-            <span>{semCreditos ? 'Sem créditos. Use o modo manual.' : `A partir de texto, transcrição ou áudio. ${creditos ?? '–'} crédito(s).`}</span>
+            <span>A partir de texto, transcrição ou áudio.</span>
           </button>
         </div>
 
@@ -110,7 +105,7 @@ export function NovoFluxograma({ creditos, processoId, aoFechar, aoCriar }: {
                 <input type="file" accept="audio/*,video/*" onChange={(e) => setAudio(e.target.files?.[0] || null)} disabled={ocupado} />
                 <Icone nome="gravacao" tamanho={28} />
                 <strong>{audio ? audio.name : 'Escolha a gravação da reunião'}</strong>
-                <span>MP3, M4A, WAV, MP4… A transcrição usa 1 crédito e a geração do fluxograma, mais 1.</span>
+                <span>MP3, M4A, WAV, MP4…</span>
               </label>
             )}
           </div>

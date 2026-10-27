@@ -112,7 +112,7 @@ function PainelIA({ gravacaoId }: { gravacaoId: string }) {
   }
   return (
     <div className={`aviso ${e.processamento === 'erro' || erro ? 'erro' : ''}`}>
-      {erro || e.erro || `A IA transcreve a narração e escreve o POP e o fluxograma a partir da gravação e das telas marcadas (${e.custo} créditos).`}
+      {erro || e.erro || 'A IA transcreve a narração e escreve o POP e o fluxograma a partir da gravação e das telas marcadas.'}
       <button className="btn btn-primary" onClick={gerar}><Icone nome="pop" tamanho={16} />{e.processamento === 'erro' ? 'Tentar de novo' : 'Gerar POP e fluxograma com IA'}</button>
     </div>
   );

@@ -96,7 +96,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **API:** no MVP, as rotas ficam em `app/api/*` (Next.js, funções na Vercel), para um único deploy. A regra de negócio fica em `lib/server/*`, sem depender do Next, para ser movida para o Express (decisão 2) quando o worker e a API separada entrarem.
 - **Sem login por enquanto:** tudo usa um tenant padrão (INC). O acesso ao Supabase é só pelo servidor, com a chave `service_role`; RLS ligado e sem políticas, então a chave pública não lê nada. Login e RLS por membro entram depois.
 - **Fluxogramas no Supabase:** tabela `fluxogramas` (XML, FluxoSchema, origem `manual`/`ia`/`modelo`, miniatura). Migração em `supabase/migrations/0001_fluxogramas.sql`.
-- **IA por créditos:** cada empresa tem `creditos_ia`. Gerar fluxograma custa 1 crédito; transcrever áudio, 1. Débito atômico no banco (`debitar_creditos`) e registro em `uso_ia`. Sem créditos, a IA fica bloqueada e o usuário continua **criando manualmente**.
+- **IA por créditos** (suspenso pela decisão 20)**:** cada empresa tem `creditos_ia`. Gerar fluxograma custa 1 crédito; transcrever áudio, 1. Débito atômico no banco (`debitar_creditos`) e registro em `uso_ia`. Sem créditos, a IA fica bloqueada e o usuário continua **criando manualmente**.
 - **Três jeitos de gerar com IA:** descrição do processo, transcrição colada/arquivo (.txt, .vtt, .srt) e áudio/vídeo (vai para o Storage, é transcrito pelo AssemblyAI e segue para a IA).
 - **Geração:** Claude Sonnet 5 devolve o FluxoSchema (saída estruturada) e o código monta o XML com os estilos da biblioteca BPMN INC (`lib/fluxo/`), já editável no draw.io.
 
@@ -139,6 +139,11 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Campo novo "Elaborado por"** (`pops.autor`): quem criou o POP. Hoje a pessoa preenche; com o login, vem do usuário. Preenche as linhas do histórico sem nome.
 - **PDF gerado pelo sistema** com pdfmake (MIT, JavaScript puro), e não por conversão do DOCX: na Vercel não há LibreOffice, e um serviço externo de conversão custaria por arquivo e dependeria de terceiro. O PDF reproduz o modelo (fonte Roboto no lugar da Aptos, que é proprietária). Os dois formatos saem do mesmo conteúdo (`DadosPop`), então mudanças de layout são feitas nos dois geradores.
 - **Exemplos removidos:** o fluxograma de amostra ("Exemplo EmCash") e seus arquivos, e os textos de exemplo com nomes de empresa e área nas telas. O que fica são dicas genéricas ("Nome da área").
+
+## 20. Créditos de IA suspensos
+- **Por enquanto não há contagem nem limite de créditos.** A IA (gerar fluxograma, transcrever, gerar POP e fluxograma a partir da gravação) funciona sem verificar saldo e sem debitar. Saiu da tela o contador de créditos e os textos de custo.
+- O controle de gasto fica nos painéis da Anthropic e do AssemblyAI (limites de uso por conta/workspace).
+- **No banco nada foi apagado:** `tenants.creditos_ia`, a tabela `uso_ia` e a função `debitar_creditos` continuam lá, sem uso pelo app, para voltar com a cobrança por créditos quando entrar o plano comercial (substitui a parte de créditos da decisão 13).
 
 ---
 

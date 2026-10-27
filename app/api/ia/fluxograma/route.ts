@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { gerarXml } from '@/lib/fluxo/gerar-xml';
-import { debitar, garantirSaldo } from '@/lib/server/creditos';
 import { criar } from '@/lib/server/fluxogramas';
 import { responder } from '@/lib/server/http';
 import { extrairFluxo } from '@/lib/server/ia';
@@ -17,9 +16,6 @@ const Pedido = z.object({
 export const POST = (req: Request) =>
   responder(async () => {
     const p = Pedido.parse(await req.json());
-    await garantirSaldo('fluxograma');
     const fluxo = await extrairFluxo(p.texto, p.origem);
-    const f = await criar({ nome: p.nome || fluxo.titulo, xml: gerarXml(fluxo), origem: 'ia', schema: fluxo, processo_id: p.processo_id });
-    const creditos = await debitar('fluxograma', { fluxograma_id: f.id, origem: p.origem });
-    return { ...f, creditos };
+    return criar({ nome: p.nome || fluxo.titulo, xml: gerarXml(fluxo), origem: 'ia', schema: fluxo, processo_id: p.processo_id });
   });

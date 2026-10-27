@@ -59,4 +59,4 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
 - **Tamanho:** no plano Free do Supabase, cada arquivo tem limite de 50 MB (≈ 10–15 min de tela em 720p). Para gravações longas: upload resumível (TUS) e plano Pro, ou gravar em 720p/baixa taxa de quadros (5–10 fps bastam para telas de sistema).
 - **Privacidade (LGPD):** avisar antes de gravar; a pessoa escolhe a janela/aba; prints podem ter dados de clientes → opção de desfocar/recortar na revisão.
 - O navegador sempre pede permissão para compartilhar a tela e usar o microfone.
-- Créditos: gravar e marcar telas não consome crédito; transcrição e geração por IA, sim.
+- Créditos de IA estão suspensos (decisão 20): gravar, marcar telas, transcrever e gerar com IA não consomem crédito.

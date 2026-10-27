@@ -5,7 +5,7 @@ PostgreSQL 17 (Supabase no MVP). O que está aqui é o que existe no banco; as m
 ## Hierarquia
 
 ```
-conta (tenants)            quem usa o Fluxi: créditos de IA, membros, convites
+conta (tenants)            quem usa o Fluxi: membros, convites (créditos de IA suspensos, decisão 20)
 └─ organizacoes            empresas cujos processos são modelados
    └─ areas                Comercial, Financeiro… (nome único na organização)
       └─ processos         a "pasta" do processo (código XXXX-XXXX)
@@ -25,8 +25,8 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 
 | Tabela | O que guarda | Migração |
 |---|---|---|
-| `tenants` | conta: nome, slug, `creditos_ia` | 0001 |
-| `uso_ia` | cada débito de crédito (tipo `fluxograma`, `transcricao`, `pop`) | 0001, 0004 |
+| `tenants` | conta: nome, slug, `creditos_ia` (sem uso no momento) | 0001 |
+| `uso_ia` | cada débito de crédito (tipo `fluxograma`, `transcricao`, `pop`); sem uso no momento | 0001, 0004 |
 | `fluxogramas` | código, nome, `xml`, `schema` (FluxoSchema), origem `manual`/`ia`/`modelo`, miniatura, `processo_id` | 0001, 0005 |
 | `gravacoes` | nome, status, duração, `processamento` (`nenhum`→`transcrevendo`→`analisando`→`pronto`/`erro`), `pop_id`, `fluxograma_id`, `processo_id` | 0002, 0004, 0005 |
 | `gravacao_segmentos` | um arquivo WebM por 3 min: caminho, `inicio_ms`, `transcricao_id`, `transcricao_status`, `falas` (jsonb) | 0002, 0004 |
@@ -39,7 +39,7 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 | `membro_organizacoes` | organizações que um membro comum vê/edita | 0008 |
 | `convites` | e-mail, papel, organizações liberadas, token, validade | 0008 |
 
-Função: `debitar_creditos(tenant, qtd, tipo, detalhes)` debita de forma atômica e registra em `uso_ia`; devolve `null` se não há saldo.
+Função: `debitar_creditos(tenant, qtd, tipo, detalhes)` debita de forma atômica e registra em `uso_ia`; devolve `null` se não há saldo. O app não usa créditos no momento (decisão 20); a função e as tabelas ficam para quando a cobrança voltar.
 
 ## Próximos passos (com o login)
 - `membros` passa a ser preenchido pelo Supabase Auth; a API troca a conta fixa pela conta escolhida pela pessoa logada.

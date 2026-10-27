@@ -34,9 +34,8 @@ export const duplicar = (id: string) => api<FluxogramaResumo>(`/api/fluxogramas/
 export const excluir = (id: string) => api<{ ok: true }>(`/api/fluxogramas/${id}`, { method: 'DELETE' });
 
 // IA
-export const creditos = () => api<{ creditos: number }>('/api/ia/creditos');
 export const gerarComIa = (texto: string, origem: 'descricao' | 'transcricao', nome?: string, processo_id?: string) =>
-  api<FluxogramaResumo & { creditos: number }>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify({ texto, origem, nome, processo_id }) });
+  api<FluxogramaResumo>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify({ texto, origem, nome, processo_id }) });
 
 export async function transcreverAudio(arquivo: File, aoMudar: (etapa: string) => void): Promise<string> {
   aoMudar('Enviando áudio…');
