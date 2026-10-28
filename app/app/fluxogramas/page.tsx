@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
-import { creditos as buscarCreditos, duplicar, excluir, importarLocais, listar, locaisPendentes, type FluxogramaResumo } from '@/lib/fluxogramas';
+import { duplicar, excluir, importarLocais, listar, locaisPendentes, type FluxogramaResumo } from '@/lib/fluxogramas';
 
 export default function FluxogramasPage() {
   const router = useRouter();
@@ -12,7 +12,6 @@ export default function FluxogramasPage() {
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
   const [novo, setNovo] = useState(false);
-  const [creditos, setCreditos] = useState<number | null>(null);
   const [locais, setLocais] = useState(0);
 
   async function atualizar() {
@@ -27,7 +26,6 @@ export default function FluxogramasPage() {
 
   useEffect(() => {
     atualizar();
-    buscarCreditos().then((c) => setCreditos(c.creditos)).catch(() => setCreditos(null));
     setLocais(locaisPendentes().length);
   }, []);
 
@@ -56,11 +54,6 @@ export default function FluxogramasPage() {
           <p>Crie manualmente ou gere com IA a partir de uma descrição, transcrição ou gravação.</p>
         </div>
         <div className="actions">
-          {creditos !== null && (
-            <span className={`creditos ${creditos === 0 ? 'zerado' : ''}`} title="Créditos de IA disponíveis">
-              <Icone nome="ia" tamanho={16} />{creditos} {creditos === 1 ? 'crédito' : 'créditos'} de IA
-            </span>
-          )}
           <button className="btn btn-primary" onClick={() => setNovo(true)}>
             <Icone nome="mais" />Novo fluxograma
           </button>
@@ -116,9 +109,8 @@ export default function FluxogramasPage() {
 
       {novo && (
         <NovoFluxograma
-          creditos={creditos}
           aoFechar={() => setNovo(false)}
-          aoCriar={(id, saldo) => { if (saldo !== undefined) setCreditos(saldo); router.push(`/app/fluxogramas/${id}`); }}
+          aoCriar={(id) => router.push(`/app/fluxogramas/${id}`)}
         />
       )}
     </div>

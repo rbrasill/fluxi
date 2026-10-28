@@ -19,6 +19,10 @@ export const ProcedimentoSchema = z.object({
 
 export const HistoricoSchema = z.object({ data: z.string(), elaborado_por: z.string(), revisao: z.string() });
 
+// Onde a pessoa parou no editor: `chave` identifica o campo (ex.: "passo-1-2"), `rotulo` descreve
+// para quem lê a lista ("Passo 3 do procedimento 2").
+export const PosicaoSchema = z.object({ chave: z.string().max(60), rotulo: z.string().max(120) });
+
 export const ConteudoPopSchema = z.object({
   area: z.string(),
   executor: z.string(),
@@ -30,6 +34,7 @@ export const ConteudoPopSchema = z.object({
 export type Passo = z.infer<typeof PassoSchema>;
 export type Procedimento = z.infer<typeof ProcedimentoSchema>;
 export type Historico = z.infer<typeof HistoricoSchema>;
+export type Posicao = z.infer<typeof PosicaoSchema>;
 export type ConteudoPop = z.infer<typeof ConteudoPopSchema>;
 
 export const conteudoVazio = (): ConteudoPop => ({

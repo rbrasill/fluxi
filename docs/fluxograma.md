@@ -6,15 +6,25 @@
 
 Geração do XML do draw.io direto (não Mermaid), em duas camadas:
 
-1. **IA (Sonnet 5)** devolve apenas a estrutura semântica do fluxo em JSON: raias, nós (tipo + texto + raia) e conexões (com rótulo).
-2. **Código (`packages/drawio`)** converte a estrutura em XML: aplica o estilo exato da biblioteca para cada tipo, calcula posições e adiciona cabeçalho, rótulos e anotações.
+1. **IA (Claude)** devolve apenas a estrutura semântica do fluxo em JSON: raias, nós (tipo + texto + raia), conexões (com rótulo) e anotações.
+2. **Código (`lib/fluxo/gerar-xml.ts`)** converte a estrutura em XML: aplica o estilo exato da biblioteca para cada tipo (`lib/fluxo/estilos.ts`), calcula posições e roteia as setas.
 
-A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca entram no prompt como glossário de quando usar cada elemento. O layout gerado é um rascunho organizado; o usuário refina no editor embutido.
+A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca entram no prompt como glossário de quando usar cada elemento (`lib/server/ia.ts`). O layout gerado é um rascunho organizado; o usuário refina no editor embutido.
+
+## Layout automático (raias horizontais)
+
+1. **Laços:** uma busca em profundidade a partir do início separa as setas de volta (ex.: "Não → corrigir e reenviar"). O resto vira um fluxo da esquerda para a direita.
+2. **Colunas:** cada nó fica na coluna da **maior** distância desde o início. Assim toda seta de ida aponta para a direita, e uma junção fica depois de todos os caminhos que chegam nela. Nó sem entrada (ex.: link de outro processo) fica logo antes de quem ele alimenta.
+3. **Trilhas:** dentro da raia, cada nó ocupa uma trilha (linha). O nó herda a trilha do antecessor na mesma raia; se ela estiver ocupada, desce para a próxima livre. O caminho principal segue reto e os desvios descem. A anotação reserva a célula logo abaixo do nó.
+4. **Setas:** passam pelos corredores entre colunas e entre trilhas, nunca por cima de uma caixa. Seta reta quando a linha está livre; senão, curva no corredor. Saídas do mesmo nó (ou entradas no mesmo nó) dividem o trecho vertical, como um barramento; setas diferentes no mesmo corredor ficam lado a lado. Laço sai por baixo, volta pelo corredor abaixo da trilha e entra pela esquerda. Quando outro nó está colado à esquerda do destino, a seta entra por cima ou por baixo, para não parecer que sai desse vizinho.
+5. **Gateway:** pergunta acima do losango; a saída para um destino abaixo usa a ponta de baixo quando a coluna está livre. Rótulos "Sim"/"Não" usam o Indicador de Caminho da biblioteca, presos à seta. O corredor depois de um gateway alarga quando a condição escrita é longa.
+
+**Refazer no padrão INC** (menu Reorganizar do editor): nos fluxogramas gerados pela IA, monta o diagrama de novo a partir da estrutura original guardada (`fluxogramas.schema`). Pede confirmação, porque descarta as mudanças feitas à mão. As opções "Fluxo horizontal/vertical" são os layouts do próprio draw.io e não respeitam as raias.
 
 ## Estrutura do diagrama
 
 - **Cabeçalho:** logo do tenant, nome do processo, descrição curta, caixa com o código do processo, botão "Acessar Documentação" (link para o POP) e selo de versão ("Atual").
-- **Raias (pools horizontais):** uma por **área** ou papel que executa atividades, cada uma com etiqueta e cor de borda própria.
+- **Raias (pools horizontais):** uma por **área** ou papel que executa atividades, sem cabeçalho e com a etiqueta roxa da área no canto (como na biblioteca).
 - **Tarefas:** retângulo arredondado, borda `#005F73`. Pode levar etiqueta de responsável quando executada por outra área dentro da raia.
 - **Anotações:** caixas de apoio ligadas por linha tracejada (ex.: "Análise — Retorno entre 45 minutos e 3 horas"), alertas (ex.: "Obrigatório anexar tela...") e logos de sistemas utilizados (ex.: CV CRM).
 - **Conectores:** ortogonais; sólidos e tracejados.
@@ -23,10 +33,10 @@ A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca
 
 | Tipo (JSON) | Elemento | Cor principal |
 |---|---|---|
-| `inicio` | Início | `#13AE84` |
+| `inicio` | Início ("Início" no círculo; o gatilho escrito embaixo) | `#13AE84` |
 | `inicio_mensagem` | Início por Mensagem | `#7AE2CF` |
 | `inicio_condicional` | Início Condicional | `#306D29` |
-| `fim` | Fim do Processo | `#F14F21` |
+| `fim` | Fim do Processo ("Fim" no círculo; o resultado embaixo) | `#F14F21` |
 | `link_saida` | Evento de Link (Throwing) — continua em outro processo | `#006633` |
 | `link_entrada` | Evento de Link (Catching) — iniciado em outro processo | — |
 | `tarefa` | Caixa de Texto (retângulo arredondado) | borda `#005F73` |
@@ -37,7 +47,8 @@ A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca
 | rótulo `Sim` / `Não` | Indicador de Caminho | `#13AE84` / `#DB2843` |
 | rótulo de evento | Caixa de Indicação de Evento Ocorrido | `#C13383`, `#0E8088`, `#093FB4` |
 | `raia` | Swimlane / Pool + etiqueta da área | borda `#005F73`, etiqueta `#9FA1FF` |
-| `conexao` | Seta ortogonal (espessura 2) | `#415A77` |
+| `conexao` | Seta ortogonal (espessura 2, losango na saída) | `#415A77` |
+| pergunta do gateway | Caixa de Texto de Condição (acima do losango) | `#003049` |
 | `nota` / `alerta` / `condicao` | Caixas de apoio (não interferem no fluxo) | — |
 | `codigo_processo` | Caixa Informativa de Código do Processo | `#76ABAE` |
 

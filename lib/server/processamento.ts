@@ -1,7 +1,6 @@
 import 'server-only';
 import { gerarXml } from '@/lib/fluxo/gerar-xml';
 import type { ConteudoPop } from '@/lib/pop/schema';
-import { CUSTO, debitar, saldo } from './creditos';
 import * as fluxogramas from './fluxogramas';
 import { ErroApi } from './http';
 import { analisarGravacao } from './ia';
@@ -12,8 +11,6 @@ import { consultarFalas, excluirRemota, formatarFalas, iniciarDoStorage, type Fa
 // Gravação → transcrição (AssemblyAI, um job por segmento) → Claude (POP + fluxograma numa chamada só).
 // O andamento avança a cada consulta do navegador (GET), sem fila nem worker: cada passo é curto,
 // exceto a análise, que roda numa única requisição com trava atômica no banco.
-
-export const CUSTO_TOTAL = CUSTO.transcricao + CUSTO.fluxograma + CUSTO.pop;
 
 const mmss = (ms: number) => {
   const s = Math.floor(ms / 1000);
@@ -51,15 +48,13 @@ export async function iniciar(id: string) {
   const g = await gravacao(id);
   if (g.status !== 'pronta') throw new ErroApi(409, 'Finalize a gravação antes de gerar o POP.');
   if (g.processamento === 'transcrevendo' || g.processamento === 'analisando') return estado(id);
-  if ((await saldo()) < CUSTO_TOTAL) throw new ErroApi(402, `São necessários ${CUSTO_TOTAL} créditos de IA. Você pode continuar criando o POP manualmente.`, 'sem_creditos');
   const segs = await segmentos(id);
   if (!segs.length) throw new ErroApi(409, 'Esta gravação não tem áudio.');
   if (!(await marcar(id, { processamento: 'transcrevendo', processamento_erro: null }, g.processamento))) return estado(id);
 
   try {
-    // Numa nova tentativa, reaproveita as partes já transcritas (não paga de novo).
+    // Numa nova tentativa, reaproveita as partes já transcritas (não transcreve de novo).
     const faltam = segs.filter((s) => s.transcricao_status !== 'pronta');
-    if (faltam.length) await debitar('transcricao', { gravacao_id: id });
     const db = supabase();
     await Promise.all(faltam.map(async (s) => {
       const transcricao_id = await iniciarDoStorage(s.caminho);
@@ -122,7 +117,6 @@ async function analisar(id: string, nome: string, processoId: string | null, fal
   const analise = await analisarGravacao(transcricao, [...porId].map(([k, t]) => ({ id: k, momento: mmss(t.tempo_ms), instrucao: t.instrucao })));
 
   const fluxo = await fluxogramas.criar({ nome, xml: gerarXml(analise.fluxo), origem: 'ia', schema: analise.fluxo, processo_id: processoId });
-  await debitar('fluxograma', { gravacao_id: id, fluxograma_id: fluxo.id });
 
   const usadas = new Set<string>();
   const conteudo: ConteudoPop = {
@@ -152,7 +146,6 @@ async function analisar(id: string, nome: string, processoId: string | null, fal
 
   const pop = await pops.criar({ gravacao_id: id, fluxograma_id: fluxo.id });
   await pops.atualizar(pop.id, { conteudo });
-  await debitar('pop', { gravacao_id: id, pop_id: pop.id });
 
   await Promise.all(analise.telas.map((t) => {
     const m = porId.get(t.id);
@@ -170,6 +163,5 @@ export async function estado(id: string) {
     pop_id: g.pop_id,
     fluxograma_id: g.fluxograma_id,
     segmentos: { total: segs.length, prontos: segs.filter((s) => s.transcricao_status === 'pronta').length },
-    custo: CUSTO_TOTAL,
   };
 }

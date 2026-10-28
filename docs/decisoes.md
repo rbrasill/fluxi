@@ -96,7 +96,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **API:** no MVP, as rotas ficam em `app/api/*` (Next.js, funções na Vercel), para um único deploy. A regra de negócio fica em `lib/server/*`, sem depender do Next, para ser movida para o Express (decisão 2) quando o worker e a API separada entrarem.
 - **Sem login por enquanto:** tudo usa um tenant padrão (INC). O acesso ao Supabase é só pelo servidor, com a chave `service_role`; RLS ligado e sem políticas, então a chave pública não lê nada. Login e RLS por membro entram depois.
 - **Fluxogramas no Supabase:** tabela `fluxogramas` (XML, FluxoSchema, origem `manual`/`ia`/`modelo`, miniatura). Migração em `supabase/migrations/0001_fluxogramas.sql`.
-- **IA por créditos:** cada empresa tem `creditos_ia`. Gerar fluxograma custa 1 crédito; transcrever áudio, 1. Débito atômico no banco (`debitar_creditos`) e registro em `uso_ia`. Sem créditos, a IA fica bloqueada e o usuário continua **criando manualmente**.
+- **IA por créditos** (suspenso pela decisão 20)**:** cada empresa tem `creditos_ia`. Gerar fluxograma custa 1 crédito; transcrever áudio, 1. Débito atômico no banco (`debitar_creditos`) e registro em `uso_ia`. Sem créditos, a IA fica bloqueada e o usuário continua **criando manualmente**.
 - **Três jeitos de gerar com IA:** descrição do processo, transcrição colada/arquivo (.txt, .vtt, .srt) e áudio/vídeo (vai para o Storage, é transcrito pelo AssemblyAI e segue para a IA).
 - **Geração:** Claude Sonnet 5 devolve o FluxoSchema (saída estruturada) e o código monta o XML com os estilos da biblioteca BPMN INC (`lib/fluxo/`), já editável no draw.io.
 
@@ -114,7 +114,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - Os itens que já existiam foram migrados: um processo por fluxograma, com o mesmo código e nome, junto dos POPs e gravações ligados a ele (`0005_processos.sql`).
 
 ## 16. Organização → Área → Processo → itens
-- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial é a lista de organizações.
+- A navegação (e, com o login, o acesso) segue: **Organização → Área → Processos da área → gravações, fluxogramas e POPs do processo**. A tela inicial passou a ser o Início, centrado no POP (decisão 21).
 - **Conta (tenant) ≠ organização:** a conta é quem usa o Fluxi (créditos de IA e, depois, usuários); a organização é a empresa cujos processos são modelados. Uma conta modela várias organizações (`0007_organizacoes.sql`). Nome de área é único dentro da organização; organização só é excluída sem áreas. As áreas que existiam foram para "INC Empreendimentos".
 - Todo processo pertence a uma área (`processos.area_id`, obrigatório). O processo pode ser movido de área; a área só pode ser excluída vazia. Nome de área é único por empresa.
 - O POP criado num processo já vem com a área preenchida.
@@ -140,9 +140,40 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **PDF gerado pelo sistema** com pdfmake (MIT, JavaScript puro), e não por conversão do DOCX: na Vercel não há LibreOffice, e um serviço externo de conversão custaria por arquivo e dependeria de terceiro. O PDF reproduz o modelo (fonte Roboto no lugar da Aptos, que é proprietária). Os dois formatos saem do mesmo conteúdo (`DadosPop`), então mudanças de layout são feitas nos dois geradores.
 - **Exemplos removidos:** o fluxograma de amostra ("Exemplo EmCash") e seus arquivos, e os textos de exemplo com nomes de empresa e área nas telas. O que fica são dicas genéricas ("Nome da área").
 
+## 20. Créditos de IA suspensos
+- **Por enquanto não há contagem nem limite de créditos.** A IA (gerar fluxograma, transcrever, gerar POP e fluxograma a partir da gravação) funciona sem verificar saldo e sem debitar. Saiu da tela o contador de créditos e os textos de custo.
+- O controle de gasto fica nos painéis da Anthropic e do AssemblyAI (limites de uso por conta/workspace).
+- **No banco nada foi apagado:** `tenants.creditos_ia`, a tabela `uso_ia` e a função `debitar_creditos` continuam lá, sem uso pelo app, para voltar com a cobrança por créditos quando entrar o plano comercial (substitui a parte de créditos da decisão 13).
+
+## 21. Navegação centrada no POP
+- **O produto final é o POP e a gestão dos POPs.** Gravações e fluxogramas são materiais de apoio para chegar ao POP, e a navegação passou a refletir isso; antes, era organizada pela estrutura (organizações, gravações, fluxogramas).
+- **Início** (`/app/inicio`, a tela de entrada): números de POPs publicados, em rascunho e processos sem POP; "Continue de onde parou" (rascunhos recentes); processos sem POP, com atalho para documentar; botão "Documentar um processo".
+- **Menu:** Início e POPs no topo; "Estrutura" (Organizações, que inclui áreas e processos); "Materiais de apoio" (Gravações, Fluxogramas); "Conta". No celular o menu vira uma barra no topo (antes sumia e não havia navegação).
+- **POPs (gestão dos documentos):** busca por nome, identificação, código, área ou processo; filtro por status com contagem; cada linha mostra onde o POP está (organização · área · processo), versão, data, status e download em PDF e DOCX. Todo POP novo nasce num processo: o "Novo POP" pede o processo.
+- **Status do POP:** rascunho ou publicado (`pops.status`), com o botão "Publicar" / "Voltar para rascunho" no editor. Ainda não gera versão nova ao publicar.
+- **Página do processo começa pelo POP:** sem POP, mostra três caminhos (gravar a tela, recomendado; escrever o POP; começar pelo fluxograma); com POP, o POP em destaque com status e downloads. Gravações e fluxogramas ficam abaixo, como materiais de apoio.
+- **Editor do POP:** trilha Organização › Área › Processo (POP sem processo pode ser vinculado ali) e o fluxograma só lista os do mesmo processo.
+- **Gravação:** "Nova gravação" a partir do processo já vem com o processo escolhido. Com áudio pronto, a ação principal é gerar o POP com IA; "Criar POP sem IA" fica como secundária.
+
+## 22. Layout do fluxograma gerado pela IA
+- **Problema:** o fluxograma gerado pela IA saía embaralhado. Cada nó ia para a coluna da menor distância desde o início, então havia setas voltando para trás e cruzando caixas, textos cortados dentro dos círculos de início e fim e anotações por cima das raias. A biblioteca de estilos já era a da INC (`templates/drawio/biblioteca-estilos.xml`, a mesma do arquivo "instruções drawio"); o problema era o posicionamento.
+- **Decisão:** layout em camadas próprio, pensado para raias horizontais (detalhes em `docs/fluxograma.md`): laços separados, coluna pela maior distância, trilhas dentro da raia e setas roteadas pelos corredores. Bibliotecas genéricas de layout (ELK, dagre) não tratam raias e ficariam pesadas no navegador; a do próprio draw.io também ignora raias.
+- **Mais fiel à biblioteca:** etiqueta roxa da área, seta com losango na saída, Indicador de Caminho Sim/Não, pergunta do gateway como Caixa de Texto de Condição, "Início"/"Fim" no círculo com o texto embaixo, nota e alerta com os estilos da biblioteca.
+- **IA:** o prompt passou a trazer o glossário da biblioteca (quando usar cada tipo de início, fim, link e gateway).
+- **Fluxogramas já gerados:** "Refazer no padrão INC" no editor recria o diagrama a partir da estrutura original da IA, com confirmação (perde as edições manuais).
+
+## 23. Pausar e retomar (gravação e POP) e prints anexados no POP
+- **Gravação pausável entre sessões.** "Pausar" fecha a parte do vídeo em andamento e a envia na hora (antes, a pausa só segurava o MediaRecorder e a parte ficava na memória até encerrar). Com isso, o que foi gravado até a pausa está salvo mesmo que a aba feche. Na pausa aparece "continuar outro dia": libera a tela e deixa a gravação com status `pausada`.
+- **Continuar de onde parou:** `/app/gravacoes/nova?continuar=<id>` reabre a tela e o gravador recebe o tempo já gravado e o índice da próxima parte; o relógio, as partes (`inicio_ms`) e as telas marcadas (`tempo_ms`) seguem em sequência, e o player toca tudo junto. Vale para gravação pausada, não finalizada (aba fechada no meio: status `gravando` sem aba aberta) e até pronta ("Continuar gravando", para acrescentar). A transcrição reaproveita as partes já transcritas. "Finalizar assim" marca como pronta sem compartilhar a tela de novo.
+- **Telas novas no POP existente:** quando a gravação já tem POP (gerado pela IA ou criado "com estas telas") e ganha telas depois, a página da gravação oferece "Levar as telas para o POP": entram como passos de um procedimento novo no fim, sem gerar outro POP. Cada tela mostra o selo "No POP".
+- **POP retomável no ponto exato.** O editor guarda onde a pessoa está (`pops.posicao`: `{ chave, rotulo }`, ex.: "Passo 3 do procedimento 2"), salvo 2 s depois de mudar de campo e ao sair da página, separado do autosave do conteúdo. "Pausar e sair" salva tudo, guarda a posição e volta ao processo. Os links "Continuar" (processo e Início) abrem com `?retomar=1`: a página rola até o campo, foca e destaca. Sem `?retomar`, um chip "Você parou em…" leva até lá. O Início lista também as gravações pausadas ou não finalizadas.
+- **Prints anexados direto no POP.** Em qualquer passo: "Anexar print" / "Trocar print" / "Adicionar passo com print", com três caminhos: capturar uma janela agora (`getDisplayMedia` de um quadro só, encerrado em seguida), colar (botão com `clipboard.read()` ou Ctrl+V com o passo focado) ou escolher arquivo (PNG/JPG/WebP, convertido para PNG). O print pode ser marcado (caixa, seta, número, texto, recorte) como as telas da gravação.
+- **Modelo de dados:** a tela do POP fica na mesma tabela das telas marcadas (`gravacao_marcacoes`), agora com dono `gravacao_id` **ou** `pop_id` (`tempo_ms` só nas da gravação) e arquivo em `tenants/<tenant>/pops/<pop>/`. As rotas de anotação e exclusão existem nas duas famílias (`/api/gravacoes/:id/marcacoes/:mid` e `/api/pops/:id/telas/:tid`) sobre o mesmo código (`lib/server/telas.ts`). Remover a imagem de um passo apaga o print do POP (o da gravação fica na gravação); excluir o POP apaga a pasta.
+
 ---
 
 ## Em aberto
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth)
 - Integração com o Notion
 - Sugestão automática de marcação pela IA (decisão 18)
+- Versão nova do POP ao publicar (decisão 21)
