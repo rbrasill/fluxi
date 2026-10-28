@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { DRAWIO_ORIGIN, DRAWIO_URL, configuracao, type MensagemDrawio } from '@/lib/drawio';
+import { gerarXml } from '@/lib/fluxo/gerar-xml';
 import { obter, salvar, type Fluxograma } from '@/lib/fluxogramas';
 
 type Status = 'carregando' | 'salvo' | 'salvando' | 'erro';
@@ -33,6 +34,7 @@ export function EditorDrawio({ id }: { id: string }) {
   const pendente = useRef<ReturnType<typeof setTimeout> | null>(null);
   const exportando = useRef<Exportacao | null>(null);
   const biblioteca = useRef<Promise<unknown[]>>(null);
+  const miniaturaAoCarregar = useRef(false);
 
   const salvo = useRef('');
 
@@ -93,6 +95,10 @@ export function EditorDrawio({ id }: { id: string }) {
         case 'load':
           setStatus('salvo');
           enviar({ action: 'fit', border: 24, maxScale: 1 });
+          if (miniaturaAoCarregar.current) {
+            miniaturaAoCarregar.current = false;
+            gerarMiniatura();
+          }
           break;
         case 'autosave':
           xmlAtual.current = msg.xml;
@@ -164,6 +170,19 @@ export function EditorDrawio({ id }: { id: string }) {
     enviar({ action: 'layout', layouts: [{ layout }] });
   }
 
+  // Fluxograma gerado pela IA: monta de novo a partir da estrutura original, com o layout em raias do Fluxi.
+  function refazerPadrao() {
+    setMenu(null);
+    if (!fluxo?.schema) return;
+    if (!confirm('Refazer o fluxograma no padrão INC a partir do que a IA gerou? As mudanças feitas à mão neste fluxograma serão perdidas.')) return;
+    const xml = gerarXml(fluxo.schema);
+    xmlAtual.current = xml;
+    miniaturaAoCarregar.current = true;
+    setStatus('salvando');
+    enviar({ action: 'load', xml, autosave: 1, title: fluxo.nome });
+    gravar(xml);
+  }
+
   function telaCheia() {
     if (document.fullscreenElement) document.exitFullscreen();
     else container.current?.requestFullscreen();
@@ -216,6 +235,7 @@ export function EditorDrawio({ id }: { id: string }) {
             </button>
             {menu === 'layout' && (
               <div className="menu-list" role="menu">
+                {fluxo?.schema && <button role="menuitem" onClick={refazerPadrao}>Refazer no padrão INC</button>}
                 <button role="menuitem" onClick={() => reorganizar('horizontalFlow')}>Fluxo horizontal</button>
                 <button role="menuitem" onClick={() => reorganizar('verticalFlow')}>Fluxo vertical</button>
               </div>

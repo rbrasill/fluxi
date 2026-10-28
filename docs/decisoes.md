@@ -155,6 +155,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Editor do POP:** trilha Organização › Área › Processo (POP sem processo pode ser vinculado ali) e o fluxograma só lista os do mesmo processo.
 - **Gravação:** "Nova gravação" a partir do processo já vem com o processo escolhido. Com áudio pronto, a ação principal é gerar o POP com IA; "Criar POP sem IA" fica como secundária.
 
+## 22. Layout do fluxograma gerado pela IA
+- **Problema:** o fluxograma gerado pela IA saía embaralhado. Cada nó ia para a coluna da menor distância desde o início, então havia setas voltando para trás e cruzando caixas, textos cortados dentro dos círculos de início e fim e anotações por cima das raias. A biblioteca de estilos já era a da INC (`templates/drawio/biblioteca-estilos.xml`, a mesma do arquivo "instruções drawio"); o problema era o posicionamento.
+- **Decisão:** layout em camadas próprio, pensado para raias horizontais (detalhes em `docs/fluxograma.md`): laços separados, coluna pela maior distância, trilhas dentro da raia e setas roteadas pelos corredores. Bibliotecas genéricas de layout (ELK, dagre) não tratam raias e ficariam pesadas no navegador; a do próprio draw.io também ignora raias.
+- **Mais fiel à biblioteca:** etiqueta roxa da área, seta com losango na saída, Indicador de Caminho Sim/Não, pergunta do gateway como Caixa de Texto de Condição, "Início"/"Fim" no círculo com o texto embaixo, nota e alerta com os estilos da biblioteca.
+- **IA:** o prompt passou a trazer o glossário da biblioteca (quando usar cada tipo de início, fim, link e gateway).
+- **Fluxogramas já gerados:** "Refazer no padrão INC" no editor recria o diagrama a partir da estrutura original da IA, com confirmação (perde as edições manuais).
+
 ---
 
 ## Em aberto

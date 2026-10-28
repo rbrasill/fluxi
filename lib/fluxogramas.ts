@@ -1,4 +1,6 @@
 // Cliente da API de fluxogramas (usado pelas páginas).
+import type { Fluxo } from './fluxo/schema';
+
 export type FluxogramaResumo = {
   id: string;
   codigo: string;
@@ -9,7 +11,8 @@ export type FluxogramaResumo = {
   criado_em: string;
   atualizado_em: string;
 };
-export type Fluxograma = FluxogramaResumo & { xml: string };
+/** `schema`: a estrutura que a IA devolveu (só nos fluxogramas gerados por IA). */
+export type Fluxograma = FluxogramaResumo & { xml: string; schema?: Fluxo | null };
 
 export class ErroCliente extends Error {
   constructor(message: string, public status: number, public codigo?: string) {

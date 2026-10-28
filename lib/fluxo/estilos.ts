@@ -3,9 +3,11 @@ import type { TipoNo } from './schema';
 
 const EVENTO =
   'points=[[0.145,0.145,0],[0.5,0,0],[0.855,0.145,0],[1,0.5,0],[0.855,0.855,0],[0.5,1,0],[0.145,0.855,0],[0,0.5,0]];shape=mxgraph.bpmn.event;html=1;perimeter=ellipsePerimeter;outlineConnect=0;aspect=fixed;';
+// Pergunta do gateway acima do losango ("Caixa de Texto de Condição"), para não disputar espaço com as saídas.
 const GATEWAY =
-  'points=[[0.25,0.25,0],[0.5,0,0],[0.75,0.25,0],[1,0.5,0],[0.75,0.75,0],[0.5,1,0],[0.25,0.75,0],[0,0.5,0]];shape=mxgraph.bpmn.gateway2;html=1;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;align=center;perimeter=rhombusPerimeter;outlineConnect=0;aspect=fixed;fillColor=#fad7ac;strokeColor=#b46504;fontFamily=Helvetica;fontSize=12;whiteSpace=wrap;';
-const EVENTO_ROTULO_ABAIXO = 'verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;verticalAlign=top;align=center;fontSize=12;whiteSpace=wrap;';
+  'points=[[0.25,0.25,0],[0.5,0,0],[0.75,0.25,0],[1,0.5,0],[0.75,0.75,0],[0.5,1,0],[0.25,0.75,0],[0,0.5,0]];shape=mxgraph.bpmn.gateway2;html=1;perimeter=rhombusPerimeter;outlineConnect=0;aspect=fixed;fillColor=#fad7ac;strokeColor=#b46504;verticalLabelPosition=top;verticalAlign=bottom;align=center;labelWidth=170;whiteSpace=wrap;fontFamily=Calibri;fontStyle=1;fontColor=#003049;fontSize=13;';
+// Texto abaixo do evento, mais largo que o círculo.
+const EVENTO_ROTULO_ABAIXO = 'verticalLabelPosition=bottom;verticalAlign=top;align=center;labelWidth=150;whiteSpace=wrap;fontSize=11;';
 
 export const ESTILO_NO: Record<TipoNo, { estilo: string; w: number; h: number }> = {
   inicio: {
@@ -27,14 +29,25 @@ export const ESTILO_NO: Record<TipoNo, { estilo: string; w: number; h: number }>
   gateway_evento: { estilo: GATEWAY + 'outline=throwing;symbol=multiple;', w: 60, h: 60 },
 };
 
+// Texto do gatilho (início) ou do resultado (fim), embaixo do círculo que mostra "Início"/"Fim" ("Label de Texto").
+export const ESTILO_TEXTO_EVENTO = 'text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=11;';
+
+// Raia sem cabeçalho e com a etiqueta da área no canto, como na biblioteca.
 export const ESTILO_RAIA =
-  'swimlane;html=1;startSize=40;fontStyle=1;collapsible=0;horizontal=0;swimlaneLine=1;swimlaneFillColor=none;strokeWidth=3;whiteSpace=wrap;strokeColor=#005F73;fontSize=13;fontColor=#005F73;';
+  'swimlane;html=1;startSize=0;fontStyle=0;collapsible=0;horizontal=0;swimlaneLine=1;swimlaneFillColor=none;strokeWidth=3;whiteSpace=wrap;strokeColor=#005F73;fontSize=13;';
+export const ESTILO_RAIA_NOME =
+  'shape=mxgraph.bpmn.task2;part=1;taskMarker=abstract;rectStyle=rounded;isLoopSub=0;topLeftStyle=square;topRightStyle=square;fillColor=#9FA1FF;whiteSpace=wrap;html=1;strokeColor=#005F73;fontStyle=1;fontColor=#FFFFFF;fontSize=13;fillStyle=solid;';
 
 export const ESTILO_SETA =
-  'edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;endFill=1;strokeWidth=2;strokeColor=#415A77;fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;';
+  'endArrow=classic;html=1;rounded=1;endFill=1;strokeWidth=2;strokeColor=#415A77;startArrow=diamond;startFill=1;edgeStyle=orthogonalEdgeStyle;curved=0;';
 
-export const ESTILO_NOTA = 'text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=6;dashed=1;strokeColor=#FF3399;fillColor=#FFFFFF;fontSize=11;';
-export const ESTILO_ALERTA = 'rounded=1;html=1;whiteSpace=wrap;align=left;spacing=6;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;';
+// "Indicador de Caminho" Sim/Não; outras condições vão como texto.
+export const ESTILO_INDICADOR =
+  'html=1;shape=mxgraph.bootstrap.rrect;rSize=5;strokeColor=#FFFFFF;strokeWidth=2;fontColor=#FFFFFF;whiteSpace=wrap;align=center;verticalAlign=middle;fontStyle=1;fontSize=12;spacing=0;fontFamily=Calibri;';
+export const ESTILO_ROTULO =
+  'text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontFamily=Calibri;fontStyle=1;fontColor=#003049;fontSize=12;labelBackgroundColor=#ffffff;spacing=0;';
+export const COR_INDICADOR: Record<string, string> = { sim: '#13AE84', não: '#DB2843', nao: '#DB2843' };
+
+export const ESTILO_NOTA = 'rounded=1;whiteSpace=wrap;html=1;strokeColor=#005F73;align=left;spacingLeft=8;spacingRight=6;fontSize=11;';
+export const ESTILO_ALERTA = 'rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;spacingLeft=8;spacingRight=6;fontFamily=Calibri;fontColor=#4D4D4D;fontSize=12;';
 export const ESTILO_LIGACAO_NOTA = 'endArrow=none;dashed=1;html=1;strokeColor=#FF3399;';
-
-export const COR_ROTULO: Record<string, string> = { sim: '#13AE84', não: '#DB2843', nao: '#DB2843' };
