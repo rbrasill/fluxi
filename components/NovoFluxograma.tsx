@@ -105,7 +105,7 @@ export function NovoFluxograma({ processoId, aoFechar, aoCriar }: {
                 <input type="file" accept="audio/*,video/*" onChange={(e) => setAudio(e.target.files?.[0] || null)} disabled={ocupado} />
                 <Icone nome="gravacao" tamanho={28} />
                 <strong>{audio ? audio.name : 'Escolha a gravação da reunião'}</strong>
-                <span>MP3, M4A, WAV, MP4…</span>
+                <span>{audio ? `${(audio.size / 1024 / 1024).toFixed(1)} MB · ` : ''}MP3, M4A, WAV, MP4… até 50 MB</span>
               </label>
             )}
           </div>

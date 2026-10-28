@@ -54,6 +54,8 @@ export async function consultarFalas(id: string, deslocamentoMs = 0) {
   const j = await chamar<Resposta>(`/transcript/${id}`);
   if (j.status === 'error') return { status: 'erro' as const, erro: j.error ?? 'erro desconhecido' };
   if (j.status !== 'completed') return { status: 'processando' as const };
+  // Transcrição já apagada no AssemblyAI (consultada de novo depois de pronta): o texto não existe mais.
+  if (/^deleted by user\.?$/i.test(j.text?.trim() ?? '')) return { status: 'erro' as const, erro: 'a transcrição já foi usada e apagada; envie o áudio de novo' };
   const falas: Fala[] = (j.utterances ?? []).map((u) => ({
     falante: u.speaker,
     inicio_ms: u.start + deslocamentoMs,
@@ -84,6 +86,7 @@ export async function iniciar(caminho: string) {
   return { id: await iniciarDoStorage(caminho) };
 }
 
+/** Fluxo do áudio avulso: devolve `processando`, `erro` ou `pronta` com o texto (o mesmo status do processamento da gravação). */
 export async function consultar(id: string) {
   const r = await consultarFalas(id);
   if (r.status !== 'pronta') return r;
