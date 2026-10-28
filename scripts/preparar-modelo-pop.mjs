@@ -112,13 +112,67 @@ function desenhos(n) {
       const rId = blip.getAttributeNS(R, 'embed');
       const src = d.getElementsByTagNameNS(A, 'srcRect')[0];
       const rec = src ? { t: +(src.getAttribute('t') || 0), b: +(src.getAttribute('b') || 0), l: +(src.getAttribute('l') || 0), r: +(src.getAttribute('r') || 0) } : null;
-      lista.push({ rId, alvo: alvoDe.get(rId), cx: +ext.getAttribute('cx'), cy: +ext.getAttribute('cy'), recorte: rec, ancorado: tag === 'anchor' });
+      lista.push({ rId, alvo: alvoDe.get(rId), cx: +ext.getAttribute('cx'), cy: +ext.getAttribute('cy'), recorte: rec, efeitos: efeitosDe(blip), ancorado: tag === 'anchor' });
     }
   }
   return lista;
 }
 const pngs = (lista) => lista.filter((d) => d.alvo && d.alvo.endsWith('.png'));
 const menor = (lista) => pngs(lista).reduce((m, d) => (!m || d.cx < m.cx ? d : m), null);
+
+// --- Efeitos de cor do Word na imagem (o PDF não tem como aplicar: são "assados" no PNG) ---
+
+const tema = new DOMParser().parseFromString(zip.file('word/theme/theme1.xml').asText(), 'text/xml');
+const MAPA_TEMA = { bg1: 'lt1', tx1: 'dk1', bg2: 'lt2', tx2: 'dk2' };
+const PRESETS = { white: [255, 255, 255], black: [0, 0, 0] };
+const paraLinear = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+const paraSrgb = (c) => Math.round(255 * Math.min(1, Math.max(0, c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055)));
+
+/** Cor DrawingML (srgbClr, schemeClr ou prstClr) com shade/tint (em RGB linear, como o Office) e satMod. */
+function corDrawingML(n) {
+  let rgb;
+  if (n.localName === 'srgbClr') rgb = [0, 2, 4].map((i) => parseInt(n.getAttribute('val').slice(i, i + 2), 16));
+  else if (n.localName === 'prstClr') rgb = PRESETS[n.getAttribute('val')] ?? [0, 0, 0];
+  else if (n.localName === 'schemeClr') {
+    const nome = MAPA_TEMA[n.getAttribute('val')] ?? n.getAttribute('val');
+    const def = tema.getElementsByTagNameNS(A, nome)[0];
+    const filho = def && Array.from(def.childNodes).find((c) => c.nodeType === 1);
+    rgb = filho?.localName === 'srgbClr' ? corDrawingML(filho) : filho?.localName === 'sysClr' ? [0, 2, 4].map((i) => parseInt(filho.getAttribute('lastClr').slice(i, i + 2), 16)) : [0, 0, 0];
+  } else return [0, 0, 0];
+  for (const m of Array.from(n.childNodes).filter((c) => c.nodeType === 1)) {
+    const v = +m.getAttribute('val') / 100000;
+    if (m.localName === 'shade') rgb = rgb.map((c) => paraSrgb(paraLinear(c) * v));
+    else if (m.localName === 'tint') rgb = rgb.map((c) => paraSrgb(1 - (1 - paraLinear(c)) * v));
+    else if (m.localName === 'satMod') {
+      const media = (rgb[0] + rgb[1] + rgb[2]) / 3;
+      rgb = rgb.map((c) => Math.round(Math.min(255, Math.max(0, media + (c - media) * v))));
+    }
+  }
+  return rgb;
+}
+
+/** Duotone e transparência (alphaModFix) do blip, se houver. */
+function efeitosDe(blip) {
+  const duo = blip.getElementsByTagNameNS(A, 'duotone')[0];
+  const cores = duo ? Array.from(duo.childNodes).filter((c) => c.nodeType === 1).map(corDrawingML) : null;
+  const alfa = blip.getElementsByTagNameNS(A, 'alphaModFix')[0];
+  return { duotone: cores?.length === 2 ? cores : null, opacidade: alfa ? +(alfa.getAttribute('amt') ?? 100000) / 100000 : 1 };
+}
+
+/** Aplica no PNG o que o Word aplica na hora de mostrar: duotone (luminância entre duas cores) e opacidade. */
+function aplicarEfeitos(bytes, ef) {
+  if (!ef || (!ef.duotone && ef.opacidade === 1)) return bytes;
+  const img = PNG.sync.read(bytes);
+  for (let i = 0; i < img.data.length; i += 4) {
+    if (ef.duotone) {
+      const [c1, c2] = ef.duotone;
+      const lum = (0.299 * img.data[i] + 0.587 * img.data[i + 1] + 0.114 * img.data[i + 2]) / 255;
+      for (let k = 0; k < 3; k++) img.data[i + k] = Math.round(c1[k] + (c2[k] - c1[k]) * lum);
+    }
+    img.data[i + 3] = Math.round(img.data[i + 3] * ef.opacidade);
+  }
+  return PNG.sync.write(img);
+}
 
 /** Recorta um PNG conforme o srcRect do Word (frações em 1/1000 %). */
 function recortar(bytes, rec) {
@@ -137,6 +191,7 @@ function exportar(nome, d) {
   if (!d) throw new Error(`Imagem não encontrada: ${nome}`);
   let bytes = zip.file(`word/${d.alvo}`).asNodeBuffer();
   if (d.recorte && (d.recorte.t || d.recorte.b || d.recorte.l || d.recorte.r)) bytes = recortar(bytes, d.recorte);
+  bytes = aplicarEfeitos(bytes, d.efeitos);
   writeFileSync(new URL(`${nome}.png`, pastaImagens), bytes);
 }
 
