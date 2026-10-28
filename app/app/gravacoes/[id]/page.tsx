@@ -5,12 +5,12 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
-import { criarPop } from '@/lib/pops';
-import { atualizarGravacao, atualizarMarcacao, consultarProcessamento, salvarMarcacaoDesenhada, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { adicionarTelasDaGravacao, criarPop } from '@/lib/pops';
+import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, consultarProcessamento, salvarMarcacaoDesenhada, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
-function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; aoIr: () => void; aoExcluir: () => void }) {
+function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; noPop?: boolean; aoIr: () => void; aoExcluir: () => void }) {
   const [instrucao, setInstrucao] = useState(m.instrucao ?? '');
   const [incluir, setIncluir] = useState(m.incluir_no_pop);
   const [salvo, setSalvo] = useState<'' | 'salvando' | 'ok' | 'erro'>('');
@@ -34,6 +34,7 @@ function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: num
         {imagem ? <img src={imagem} alt={`Tela ${n}`} /> : <span>Imagem indisponível</span>}
         <span className="tela-num">{n}</span>
         {desenho.url && <span className="tela-marcada">Marcada</span>}
+        {noPop && <span className="tela-no-pop">No POP</span>}
       </button>
       <div className="tela-corpo">
         <div className="tela-meta">
@@ -64,7 +65,7 @@ function CartaoTela({ m, n, gravacaoId, aoIr, aoExcluir }: { m: Marcacao; n: num
           titulo={`Tela ${n} · ${formatarTempo(m.tempo_ms)}`}
           aoFechar={() => setMarcando(false)}
           aoSalvar={async (r) => {
-            const url = await salvarMarcacaoDesenhada(gravacaoId, m.id, r);
+            const url = await salvarMarcacaoDesenhada({ gravacao_id: gravacaoId }, m.id, r);
             setDesenho({ url, anotacoes: r?.anotacoes ?? null });
             setMarcando(false);
           }}
@@ -125,6 +126,7 @@ function Detalhe() {
   const [nome, setNome] = useState('');
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
   const [criandoPop, setCriandoPop] = useState(false);
+  const [levando, setLevando] = useState<'' | 'enviando' | 'ok'>('');
   const router = useRouter();
 
   useEffect(() => {
@@ -140,6 +142,28 @@ function Detalhe() {
 
   const incluidas = g.marcacoes.filter((m) => m.incluir_no_pop).length;
   const comIa = g.status === 'pronta' && g.segmentos.length > 0;
+  // Gravação que ainda pode receber mais conteúdo: pausada pela pessoa ou não finalizada (aba fechada no meio).
+  const emAberto = g.status === 'pausada' || g.status === 'gravando' || g.status === 'interrompida';
+  const gravado = tempoGravado(g);
+  // Telas marcadas depois de o POP existir (ex.: gravação continuada) ainda não estão nele.
+  const telasNovas = g.pop ? g.marcacoes.filter((m) => m.incluir_no_pop && !g.pop!.telas.includes(m.id)) : [];
+
+  async function finalizarAssim() {
+    await atualizarGravacao(g!.id, { status: 'pronta', duracao_ms: gravado });
+    setG({ ...g!, status: 'pronta', duracao_ms: gravado });
+  }
+
+  async function levarTelasAoPop() {
+    setLevando('enviando');
+    try {
+      await adicionarTelasDaGravacao(g!.pop!.id, g!.id);
+      setG({ ...g!, pop: { ...g!.pop!, telas: [...g!.pop!.telas, ...telasNovas.map((m) => m.id)] } });
+      setLevando('ok');
+    } catch {
+      setLevando('');
+      alert('Não foi possível levar as telas para o POP.');
+    }
+  }
 
   async function criarPopDaGravacao() {
     setCriandoPop(true);
@@ -172,9 +196,12 @@ function Detalhe() {
             onBlur={() => nome.trim() && nome !== g.nome && void atualizarGravacao(g.id, { nome: nome.trim() })}
             aria-label="Nome da gravação"
           />
-          <p>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} no POP</p>
+          <p>{gravado ? formatarTempo(gravado) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} no POP{emAberto && <> · <b>{ROTULO_STATUS[g.status]}</b></>}</p>
         </div>
         <div className="actions">
+          {g.status === 'pronta' && (
+            <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
+          )}
           {/* Com áudio, o caminho principal é a IA (painel abaixo); este fica como alternativa sem IA. */}
           <button className={`btn ${comIa ? '' : 'btn-primary'}`} onClick={criarPopDaGravacao} disabled={criandoPop || incluidas === 0}
             title={incluidas === 0 ? 'Marque ao menos uma tela como “Incluir no POP”' : 'Cria o POP só com as telas marcadas e suas instruções, sem IA'}>
@@ -182,7 +209,30 @@ function Detalhe() {
           </button>
         </div>
       </div>
+      {emAberto && (
+        <div className="aviso retomar">
+          <span>
+            {g.status === 'pausada' ? <b>Gravação pausada em {formatarTempo(gravado)}.</b> : <b>Esta gravação não foi finalizada.</b>}
+            {' '}Tudo o que foi gravado está salvo. Continue de onde parou: a nova parte entra em sequência. Se já tem tudo o que precisa, finalize assim.
+          </span>
+          <span className="aviso-acoes">
+            <button className="btn" onClick={finalizarAssim}><Icone nome="check" tamanho={16} />Finalizar assim</button>
+            <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-primary"><span className="rec-dot" />Continuar gravação</Link>
+          </span>
+        </div>
+      )}
       {comIa && <PainelIA gravacaoId={g.id} />}
+      {g.pop && (telasNovas.length > 0 || levando === 'ok') && (
+        <div className="aviso">
+          {levando === 'ok'
+            ? <span>As telas novas entraram no POP <b>{g.pop.nome}</b>, num procedimento novo no fim. Revise e organize lá.</span>
+            : <span><b>{telasNovas.length} {telasNovas.length === 1 ? 'tela nova' : 'telas novas'}</b> ainda não {telasNovas.length === 1 ? 'está' : 'estão'} no POP <b>{g.pop.nome}</b>.</span>}
+          <span className="aviso-acoes">
+            <Link href={`/app/pops/${g.pop.id}`} className="btn">Abrir POP</Link>
+            {levando !== 'ok' && <button className="btn btn-primary" onClick={levarTelasAoPop} disabled={levando === 'enviando'}><Icone nome="pop" tamanho={16} />{levando === 'enviando' ? 'Levando…' : 'Levar as telas para o POP'}</button>}
+          </span>
+        </div>
+      )}
       {(falhas || g.status === 'erro') && <div className="aviso erro">Parte dos arquivos não foi enviada (conexão instável). O que foi salvo está abaixo.</div>}
 
       <div className="grav-layout">
@@ -191,7 +241,7 @@ function Detalhe() {
           <h2>Telas para o POP</h2>
           {g.marcacoes.length === 0 && <p className="notice">Nenhuma tela foi marcada nesta gravação.</p>}
           {g.marcacoes.map((m, i) => (
-            <CartaoTela key={m.id} m={m} n={i + 1} gravacaoId={g.id} aoIr={() => setIrPara({ ms: m.tempo_ms, n: Date.now() })} aoExcluir={() => remover(m)} />
+            <CartaoTela key={m.id} m={m} n={i + 1} gravacaoId={g.id} noPop={g.pop?.telas.includes(m.id)} aoIr={() => setIrPara({ ms: m.tempo_ms, n: Date.now() })} aoExcluir={() => remover(m)} />
           ))}
         </section>
       </div>

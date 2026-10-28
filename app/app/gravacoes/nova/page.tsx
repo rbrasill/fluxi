@@ -10,10 +10,12 @@ import { FilaDeEnvio } from '@/lib/gravacao/envio';
 import { Gravador, type Segmento } from '@/lib/gravacao/gravador';
 import { QUALIDADE, extensaoDe } from '@/lib/gravacao/config';
 import { obterProcesso } from '@/lib/processos';
-import { atualizarGravacao, criarGravacao, enviarArquivo, formatarTempo, registrarMarcacao, registrarSegmento } from '@/lib/gravacoes';
+import { atualizarGravacao, criarGravacao, enviarArquivo, formatarTempo, obterGravacao, registrarMarcacao, registrarSegmento, tempoGravado } from '@/lib/gravacoes';
 
 type Fase = 'config' | 'preparando' | 'gravando' | 'encerrando';
 type TelaLocal = { chave: number; url: string; tempoMs: number; instrucao: string; status: 'enviando' | 'ok' | 'erro' };
+// Gravação pausada que está sendo continuada (?continuar=): o tempo e as partes seguem de onde pararam.
+type Continuacao = { id: string; tempoMs: number; proximoIndice: number; totalTelas: number };
 
 function mensagemDeErro(e: unknown) {
   if (e instanceof DOMException && e.name === 'NotAllowedError') return 'O compartilhamento da tela foi cancelado ou não foi permitido.';
@@ -39,15 +41,28 @@ export default function NovaGravacaoPage() {
   const [temPip, setTemPip] = useState(true);
   // Processo de onde a gravação foi aberta (?processo=): título e "voltar" apontam para ele.
   const [processo, setProcesso] = useState<{ id: string; nome: string } | null>(null);
+  const [continuacao, setContinuacao] = useState<Continuacao | null>(null);
 
   useEffect(() => {
-    const pid = new URLSearchParams(location.search).get('processo');
+    const q = new URLSearchParams(location.search);
+    const pid = q.get('processo');
     if (pid) obterProcesso(pid).then((p) => { setProcesso({ id: p.id, nome: p.nome }); setNome((n) => n || p.nome); }).catch(() => {});
+    const cid = q.get('continuar');
+    if (cid) {
+      obterGravacao(cid).then((g) => {
+        setContinuacao({ id: g.id, tempoMs: tempoGravado(g), proximoIndice: Math.max(-1, ...g.segmentos.map((s) => s.indice)) + 1, totalTelas: g.marcacoes.length });
+        setNome(g.nome);
+        if (g.processo) setProcesso({ id: g.processo.id, nome: g.processo.nome });
+        // As telas já marcadas entram na lista, para o contador seguir de onde parou.
+        setTelas(g.marcacoes.map((m) => ({ chave: m.tempo_ms, url: m.imagem_anotada_url ?? m.imagem_url ?? '', tempoMs: m.tempo_ms, instrucao: m.instrucao ?? '', status: 'ok' })));
+      }).catch(() => setErro('Não foi possível abrir a gravação para continuar.'));
+    }
   }, []);
 
   const gravador = useRef<Gravador | null>(null);
   const fila = useRef(new FilaDeEnvio(setEnviando));
   const idGravacao = useRef('');
+  const continuarDepois = useRef(false);
 
   useEffect(() => {
     setSuportado(Gravador.suportado());
@@ -84,7 +99,8 @@ export default function NovaGravacaoPage() {
     await fila.current.esperar();
     const id = idGravacao.current;
     const falhas = fila.current.erros;
-    await atualizarGravacao(id, { status: falhas.length ? 'erro' : 'pronta', duracao_ms: g.tempoMs() }).catch(() => {});
+    const status = falhas.length ? 'erro' : continuarDepois.current ? 'pausada' : 'pronta';
+    await atualizarGravacao(id, { status, duracao_ms: g.tempoMs() }).catch(() => {});
     (window as unknown as { documentPictureInPicture?: { window: Window | null } }).documentPictureInPicture?.window?.close();
     router.push(`/app/gravacoes/${id}${falhas.length ? '?falhas=1' : ''}`);
   }, [router]);
@@ -117,10 +133,15 @@ export default function NovaGravacaoPage() {
       return;
     }
     try {
-      const processo = new URLSearchParams(location.search).get('processo') || undefined;
-      const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, processo);
-      idGravacao.current = id;
-      if (g.largura && g.altura) void atualizarGravacao(id, { largura: g.largura, altura: g.altura });
+      if (continuacao) {
+        idGravacao.current = continuacao.id;
+        await atualizarGravacao(continuacao.id, { status: 'gravando', ...(g.largura && g.altura ? { largura: g.largura, altura: g.altura } : {}) });
+      } else {
+        const processo = new URLSearchParams(location.search).get('processo') || undefined;
+        const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, processo);
+        idGravacao.current = id;
+        if (g.largura && g.altura) void atualizarGravacao(id, { largura: g.largura, altura: g.altura });
+      }
     } catch (e) {
       await g.encerrar().catch(() => {});
       janela?.close();
@@ -130,7 +151,8 @@ export default function NovaGravacaoPage() {
     }
     gravador.current = g;
     if (janela) g.usarRelogioDe(janela);
-    g.iniciar();
+    g.iniciar(continuacao ? { tempoMs: continuacao.tempoMs, proximoIndice: continuacao.proximoIndice } : undefined);
+    setTempo(g.tempoMs());
     setFase('gravando');
   }
 
@@ -166,6 +188,8 @@ export default function NovaGravacaoPage() {
   const pausar = () => { gravador.current?.pausar(); setPausado(true); setTempo(gravador.current?.tempoMs() ?? 0); };
   const retomar = () => { gravador.current?.retomar(); setPausado(false); };
   const encerrar = () => void gravador.current?.encerrar();
+  // Libera a tela e deixa a gravação pausada: a pessoa retoma pela página da gravação.
+  const continuarOutroDia = () => { continuarDepois.current = true; void gravador.current?.encerrar(); };
 
   const painel = (flutuante: boolean) => (
     <PainelGravacao
@@ -178,12 +202,28 @@ export default function NovaGravacaoPage() {
       aoMarcar={marcar}
       aoPausar={pausar}
       aoRetomar={retomar}
+      aoContinuarDepois={continuarOutroDia}
       aoEncerrar={encerrar}
       flash={flash}
       previa={flutuante ? gravador.current?.previa : undefined}
       flutuante={flutuante}
       telaInteira={gravador.current?.superficie === 'monitor'}
     />
+  );
+
+  const grade = telas.length > 0 && (
+    <section className="telas-grid">
+      {telas.map((t, i) => (
+        <figure key={t.chave} className="tela-mini">
+          <img src={t.url} alt={`Tela ${i + 1}`} />
+          <figcaption>
+            <span className="code">{formatarTempo(t.tempoMs)}</span>
+            <span className={`status-${t.status}`}>{t.status === 'ok' ? 'salva' : t.status === 'erro' ? 'erro no envio' : 'enviando…'}</span>
+          </figcaption>
+          {t.instrucao && <p>{t.instrucao}</p>}
+        </figure>
+      ))}
+    </section>
   );
 
   if (fase === 'config' || fase === 'preparando') {
@@ -194,7 +234,7 @@ export default function NovaGravacaoPage() {
             {processo
               ? <Link href={`/app/processos/${processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{processo.nome}</Link>
               : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
-            <h1>{processo ? 'Gravar o processo na tela' : 'Nova gravação de tela'}</h1>
+            <h1>{continuacao ? 'Continuar a gravação' : processo ? 'Gravar o processo na tela' : 'Nova gravação de tela'}</h1>
             <p>Grave o passo a passo no sistema narrando o que faz. Nos momentos importantes, clique em <b>Incluir esta tela no POP</b>.</p>
           </div>
         </div>
@@ -203,9 +243,14 @@ export default function NovaGravacaoPage() {
         {erro && <div className="aviso erro" role="alert">{erro}</div>}
 
         <section className="cartao">
+          {continuacao && (
+            <div className="aviso">
+              <b>{formatarTempo(continuacao.tempoMs)}</b> já gravados e <b>{continuacao.totalTelas} {continuacao.totalTelas === 1 ? 'tela marcada' : 'telas marcadas'}</b>. Tudo isso fica; a tela que você escolher agora entra em sequência, a partir de {formatarTempo(continuacao.tempoMs)}.
+            </div>
+          )}
           <label className="field">
             Nome da gravação
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome da gravação" disabled={fase !== 'config'} />
+            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome da gravação" disabled={fase !== 'config' || !!continuacao} />
           </label>
           <div className="opcoes-grav">
             <label className="check"><input type="checkbox" checked={microfone} onChange={(e) => setMicrofone(e.target.checked)} />Gravar minha narração (microfone)</label>
@@ -219,10 +264,11 @@ export default function NovaGravacaoPage() {
           <p className="notice">Qualidade: até {QUALIDADE.altura}p, {QUALIDADE.quadrosPorSegundo} quadros/s. O vídeo é salvo em partes de 3 minutos, sem limite de duração.</p>
           <div className="dialog-actions">
             <button className="btn btn-gravar" onClick={iniciar} disabled={!suportado || fase !== 'config'}>
-              <span className="rec-dot" />{fase === 'preparando' ? 'Escolha a tela…' : 'Iniciar gravação'}
+              <span className="rec-dot" />{fase === 'preparando' ? 'Escolha a tela…' : continuacao ? 'Continuar gravação' : 'Iniciar gravação'}
             </button>
           </div>
         </section>
+        {continuacao && grade}
       </div>
     );
   }
@@ -231,7 +277,7 @@ export default function NovaGravacaoPage() {
     <div className="page page-estreita">
       <div className="page-head">
         <div>
-          <h1>{fase === 'encerrando' ? 'Finalizando a gravação…' : 'Gravando'}</h1>
+          <h1>{fase === 'encerrando' ? (continuarDepois.current ? 'Pausando a gravação…' : 'Finalizando a gravação…') : pausado ? 'Gravação pausada' : 'Gravando'}</h1>
           <p>
             {fase === 'encerrando'
               ? `Enviando os últimos arquivos${enviando ? ` (${enviando})` : ''}. Não feche esta aba.`
@@ -253,20 +299,7 @@ export default function NovaGravacaoPage() {
       )}
       {fase === 'encerrando' && <p className="form-etapa"><span className="spinner" />Salvando {formatarTempo(tempo)} de gravação e {telas.length} tela(s)…</p>}
 
-      {telas.length > 0 && (
-        <section className="telas-grid">
-          {telas.map((t, i) => (
-            <figure key={t.chave} className="tela-mini">
-              <img src={t.url} alt={`Tela ${i + 1}`} />
-              <figcaption>
-                <span className="code">{formatarTempo(t.tempoMs)}</span>
-                <span className={`status-${t.status}`}>{t.status === 'ok' ? 'salva' : t.status === 'erro' ? 'erro no envio' : 'enviando…'}</span>
-              </figcaption>
-              {t.instrucao && <p>{t.instrucao}</p>}
-            </figure>
-          ))}
-        </section>
-      )}
+      {grade}
 
       {pip && fase === 'gravando' && createPortal(painel(true), pip.document.body)}
     </div>

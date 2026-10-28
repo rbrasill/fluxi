@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConteudoPopSchema, HistoricoSchema } from '@/lib/pop/schema';
+import { ConteudoPopSchema, HistoricoSchema, PosicaoSchema } from '@/lib/pop/schema';
 import { responder } from '@/lib/server/http';
 import { atualizar, excluir, obter } from '@/lib/server/pops';
 
@@ -11,6 +11,7 @@ const Patch = z.object({
   autor: z.string().trim().max(120).optional(),
   conteudo: ConteudoPopSchema.optional(),
   historico: z.array(HistoricoSchema).optional(),
+  posicao: PosicaoSchema.nullable().optional(),
   fluxograma_id: z.string().uuid().nullable().optional(),
   processo_id: z.string().uuid().nullable().optional(),
   status: z.enum(['rascunho', 'publicado']).optional(),

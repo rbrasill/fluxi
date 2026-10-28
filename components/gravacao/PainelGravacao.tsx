@@ -13,6 +13,7 @@ export type PropsPainel = {
   aoMarcar: () => void;
   aoPausar: () => void;
   aoRetomar: () => void;
+  aoContinuarDepois: () => void; // libera a tela e deixa a gravação pausada para outro dia
   aoEncerrar: () => void;
   flash: number; // muda a cada tela incluída (animação de confirmação)
   previa?: MediaStream;
@@ -39,13 +40,18 @@ export function PainelGravacao(p: PropsPainel) {
         <span className="rec-tempo">{formatarTempo(p.tempoMs)}</span>
         <span className="painel-acoes">
           {p.pausado ? (
-            <button type="button" className="btn btn-icon" onClick={p.aoRetomar} aria-label="Retomar" title="Retomar"><Icone nome="play" /></button>
+            <button type="button" className="btn btn-primary" onClick={p.aoRetomar} title="Continua gravando numa parte nova"><Icone nome="play" tamanho={14} />Retomar</button>
           ) : (
-            <button type="button" className="btn btn-icon" onClick={p.aoPausar} aria-label="Pausar" title="Pausar"><Icone nome="pausa" /></button>
+            <button type="button" className="btn btn-icon" onClick={p.aoPausar} aria-label="Pausar" title="Pausar: o que já foi gravado fica salvo"><Icone nome="pausa" /></button>
           )}
           <button type="button" className="btn btn-parar" onClick={p.aoEncerrar}><Icone nome="parar" tamanho={14} />Encerrar</button>
         </span>
       </div>
+      {p.pausado && (
+        <p className="painel-pausa">
+          O que foi gravado até aqui está salvo. Pode <button type="button" className="link-sec" onClick={p.aoContinuarDepois}>continuar outro dia</button>: a gravação fica pausada e você retoma de onde parou.
+        </p>
+      )}
 
       {p.previa && (
         <div className="painel-previa">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { SeloStatus } from '@/components/SeloStatus';
+import { ROTULO_STATUS, formatarTempo, listarGravacoes, type GravacaoResumo } from '@/lib/gravacoes';
 import { listarOrganizacoes } from '@/lib/organizacoes';
 import { dataCurta, listarPops, ondeEsta, type PopResumo } from '@/lib/pops';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
@@ -13,13 +14,14 @@ import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 export default function InicioPage() {
   const [pops, setPops] = useState<PopResumo[] | null>(null);
   const [processos, setProcessos] = useState<ProcessoResumo[]>([]);
+  const [gravacoes, setGravacoes] = useState<GravacaoResumo[]>([]);
   const [semOrganizacao, setSemOrganizacao] = useState(false);
   const [erro, setErro] = useState('');
   const [novo, setNovo] = useState(false);
 
   useEffect(() => {
-    Promise.all([listarPops(), listarProcessos(), listarOrganizacoes()])
-      .then(([p, pr, o]) => { setPops(p); setProcessos(pr); setSemOrganizacao(o.length === 0); })
+    Promise.all([listarPops(), listarProcessos(), listarOrganizacoes(), listarGravacoes().catch(() => [] as GravacaoResumo[])])
+      .then(([p, pr, o, g]) => { setPops(p); setProcessos(pr); setSemOrganizacao(o.length === 0); setGravacoes(g); })
       .catch((e) => { setErro(e.message); setPops([]); });
   }, []);
 
@@ -28,6 +30,8 @@ export default function InicioPage() {
   const publicados = pops.filter((p) => p.status === 'publicado');
   const rascunhos = pops.filter((p) => p.status !== 'publicado');
   const semPop = processos.filter((p) => p.total.pops === 0);
+  // Gravações pausadas ou não finalizadas também são POPs em elaboração.
+  const gravacoesAbertas = gravacoes.filter((g) => g.status === 'pausada' || g.status === 'gravando' || g.status === 'interrompida');
   const continuar = (rascunhos.length ? rascunhos : pops).slice(0, 5);
 
   return (
@@ -65,17 +69,33 @@ export default function InicioPage() {
 
           <section className="secao-processo">
             <div className="secao-head">
-              <h2><Icone nome="pop" tamanho={18} />{rascunhos.length ? 'Continue de onde parou' : 'POPs recentes'}</h2>
+              <h2><Icone nome="pop" tamanho={18} />{rascunhos.length || gravacoesAbertas.length ? 'Continue de onde parou' : 'POPs recentes'}</h2>
               <Link href="/app/pops" className="btn btn-ghost">Ver todos os POPs</Link>
             </div>
-            {continuar.length === 0 && <p className="notice">Nenhum POP ainda. Use “Documentar um processo” para começar.</p>}
+            {continuar.length === 0 && gravacoesAbertas.length === 0 && <p className="notice">Nenhum POP ainda. Use “Documentar um processo” para começar.</p>}
             <div className="lista-pops">
+              {gravacoesAbertas.map((g) => (
+                <Link key={g.id} href={`/app/gravacoes/${g.id}`} className="linha-pop">
+                  <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
+                  <span className="pop-nome">
+                    <strong>{g.nome}</strong>
+                    <span>{ondeEsta({ processo: g.processo ?? null })}</span>
+                    <span className="parou">Gravação {ROTULO_STATUS[g.status].toLowerCase()} · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}</span>
+                  </span>
+                  <span className="btn">Continuar</span>
+                </Link>
+              ))}
               {continuar.map((p) => (
-                <Link key={p.id} href={`/app/pops/${p.id}`} className="linha-pop">
+                <Link key={p.id} href={p.status === 'rascunho' ? `/app/pops/${p.id}?retomar=1` : `/app/pops/${p.id}`} className="linha-pop">
                   <span className="pop-icone"><Icone nome="pop" tamanho={20} /></span>
-                  <span className="pop-nome"><strong>{p.nome}</strong><span>{ondeEsta(p)}</span></span>
+                  <span className="pop-nome">
+                    <strong>{p.nome}</strong>
+                    <span>{ondeEsta(p)}</span>
+                    {p.status === 'rascunho' && p.posicao && <span className="parou">Parou em: {p.posicao.rotulo}</span>}
+                  </span>
                   <SeloStatus status={p.status} />
                   <span className="notice">{dataCurta(p.atualizado_em)}</span>
+                  {p.status === 'rascunho' && <span className="btn">Continuar</span>}
                 </Link>
               ))}
             </div>

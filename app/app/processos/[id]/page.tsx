@@ -4,13 +4,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
-import { formatarTempo } from '@/lib/gravacoes';
+import { ROTULO_STATUS, formatarTempo, type StatusGravacao } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
 import { criarPop, type StatusPop } from '@/lib/pops';
 import { listarAreas, type AreaResumo } from '@/lib/areas';
 import { atualizarProcesso, excluirProcesso, obterProcesso, type Processo } from '@/lib/processos';
 
 const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
+const EM_ABERTO: StatusGravacao[] = ['pausada', 'gravando', 'interrompida'];
 
 export default function ProcessoPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +55,8 @@ export default function ProcessoPage() {
     setP({ ...p!, area_id: areaId, area: areas.find((a) => a.id === areaId) ?? p!.area });
   }
 
+  const gravacoesAbertas = p.gravacoes.filter((g) => EM_ABERTO.includes(g.status as StatusGravacao));
+
   return (
     <div className="page">
       <div className="page-head">
@@ -82,6 +85,15 @@ export default function ProcessoPage() {
           <h2><Icone nome="pop" tamanho={18} />{p.pops.length > 1 ? 'POPs do processo' : 'POP do processo'}</h2>
           {p.pops.length > 0 && <button className="btn btn-ghost" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Outro POP'}</button>}
         </div>
+        {gravacoesAbertas.map((g) => (
+          <div key={g.id} className="aviso retomar">
+            <span><b>Gravação {ROTULO_STATUS[g.status as StatusGravacao].toLowerCase()}: {g.nome}</b> · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}. Tudo o que foi gravado está salvo.</span>
+            <span className="aviso-acoes">
+              <Link href={`/app/gravacoes/${g.id}`} className="btn">Abrir gravação</Link>
+              <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-primary"><span className="rec-dot" />Continuar gravação</Link>
+            </span>
+          </div>
+        ))}
         {p.pops.length === 0 ? (
           <div className="comecar-pop">
             <p><strong>Este processo ainda não tem POP.</strong> Como você quer começar?</p>
@@ -112,7 +124,9 @@ export default function ProcessoPage() {
                 <SeloStatus status={o.status as StatusPop} />
                 <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
                 <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
-                <Link className="btn btn-primary" href={`/app/pops/${o.id}`}>Abrir POP</Link>
+                {o.status === 'rascunho'
+                  ? <Link className="btn btn-primary" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou">Continuar</Link>
+                  : <Link className="btn btn-primary" href={`/app/pops/${o.id}`}>Abrir POP</Link>}
               </article>
             ))}
           </div>
@@ -135,7 +149,9 @@ export default function ProcessoPage() {
                 <strong>{g.nome}</strong>
                 <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}{g.transcrita ? ' · transcrita' : ''}</span>
               </span>
-              {ETAPA[g.processamento] && <span className={`tag-status st-${g.processamento}`}>{ETAPA[g.processamento]}</span>}
+              {EM_ABERTO.includes(g.status as StatusGravacao)
+                ? <span className={`tag-status st-${g.status}`}>{ROTULO_STATUS[g.status as StatusGravacao]}</span>
+                : ETAPA[g.processamento] && <span className={`tag-status st-${g.processamento}`}>{ETAPA[g.processamento]}</span>}
               <span className="notice">{new Date(g.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
             </Link>
           ))}

@@ -1,8 +1,17 @@
 // Cliente da API de gravações.
 import { ErroCliente } from './fluxogramas';
 import type { Anotacoes } from './marcacao/anotacoes';
+import type { OndePop } from './pops';
 
-export type GravacaoResumo = { id: string; nome: string; status: string; duracao_ms: number | null; processo_id?: string | null; criado_em: string; total_marcacoes: number };
+// 'gravando' sem a aba aberta = gravação não finalizada; 'pausada' = a pessoa escolheu continuar depois.
+export type StatusGravacao = 'gravando' | 'pausada' | 'pronta' | 'interrompida' | 'erro';
+export type GravacaoResumo = {
+  id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processo_id?: string | null; processo?: OndePop;
+  criado_em: string; atualizado_em?: string; total_marcacoes: number;
+};
+/** Dona de uma tela: a gravação em que foi marcada ou o POP em que foi anexada. */
+export type DonoTela = { gravacao_id: string } | { pop_id: string };
+const rotaTelas = (d: DonoTela) => ('gravacao_id' in d ? `/api/gravacoes/${d.gravacao_id}/marcacoes` : `/api/pops/${d.pop_id}/telas`);
 export type SegmentoGravado = { indice: number; caminho: string; inicio_ms: number; duracao_ms: number; bytes: number; mime: string; url: string | null };
 export type Marcacao = {
   id: string; tempo_ms: number; imagem_caminho: string; imagem_url: string | null; largura: number | null; altura: number | null;
@@ -10,10 +19,18 @@ export type Marcacao = {
   anotacoes: Anotacoes | null; imagem_anotada_url: string | null;
 };
 export type Fala = { falante: string; inicio_ms: number; texto: string };
-export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes'> & {
+export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes' | 'processo'> & {
   largura: number | null; altura: number | null; segmentos: SegmentoGravado[]; marcacoes: Marcacao[];
   processamento: string; falas: Fala[]; processo: { id: string; nome: string; codigo: string } | null;
+  /** POP ligado à gravação (gerado pela IA ou criado com as telas) e as telas que ele já usa. */
+  pop: { id: string; nome: string; status: string; telas: string[] } | null;
 };
+
+/** Até onde a gravação foi: fim da última parte salva ou da última tela marcada (o que vier depois). */
+export const tempoGravado = (g: Pick<Gravacao, 'segmentos' | 'marcacoes' | 'duracao_ms'>) =>
+  Math.max(g.duracao_ms ?? 0, ...g.segmentos.map((s) => s.inicio_ms + s.duracao_ms), ...g.marcacoes.map((m) => m.tempo_ms));
+/** Nome do status para a pessoa (gravação que ainda pode receber mais conteúdo). */
+export const ROTULO_STATUS: Record<StatusGravacao, string> = { gravando: 'Não finalizada', pausada: 'Pausada', pronta: 'Pronta', interrompida: 'Interrompida', erro: 'Com erro no envio' };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -26,7 +43,7 @@ const json = (method: string, body: unknown): RequestInit => ({ method, body: JS
 export const listarGravacoes = () => api<GravacaoResumo[]>('/api/gravacoes');
 export const obterGravacao = (id: string) => api<Gravacao>(`/api/gravacoes/${id}`);
 export const criarGravacao = (nome: string, processo_id?: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, processo_id }));
-export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: string; duracao_ms: number; largura: number; altura: number }>) =>
+export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: StatusGravacao; duracao_ms: number; largura: number; altura: number }>) =>
   api(`/api/gravacoes/${id}`, json('PATCH', dados));
 export const excluirGravacao = (id: string) => api(`/api/gravacoes/${id}`, { method: 'DELETE' });
 export const atualizarMarcacao = (id: string, mid: string, dados: { instrucao?: string | null; incluir_no_pop?: boolean }) =>
@@ -34,8 +51,11 @@ export const atualizarMarcacao = (id: string, mid: string, dados: { instrucao?: 
 export const excluirMarcacao = (id: string, mid: string) => api(`/api/gravacoes/${id}/marcacoes/${mid}`, { method: 'DELETE' });
 
 /** Envia um arquivo direto para o Storage (URL assinada) e devolve o caminho salvo. */
-export async function enviarArquivo(id: string, tipo: 'segmento' | 'imagem', blob: Blob, extensao: string) {
-  const up = await api<{ caminho: string; url: string }>(`/api/gravacoes/${id}/upload`, json('POST', { tipo, extensao }));
+export async function enviarArquivo(dono: string | DonoTela, tipo: 'segmento' | 'imagem', blob: Blob, extensao: string) {
+  const d: DonoTela = typeof dono === 'string' ? { gravacao_id: dono } : dono;
+  const up = 'gravacao_id' in d
+    ? await api<{ caminho: string; url: string }>(`/api/gravacoes/${d.gravacao_id}/upload`, json('POST', { tipo, extensao }))
+    : await api<{ caminho: string; url: string }>(`/api/pops/${d.pop_id}/telas/upload`, json('POST', { extensao }));
   const r = await fetch(up.url, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'application/octet-stream' } });
   if (!r.ok) throw new ErroCliente(`Falha no envio (${r.status})`, r.status);
   return up.caminho;
@@ -68,15 +88,15 @@ export const consultarProcessamento = (id: string) => api<EstadoProcessamento>(`
  * Com `null`, remove as marcações e volta ao print original. Devolve o link da imagem marcada.
  */
 export async function salvarMarcacaoDesenhada(
-  gravacaoId: string, marcacaoId: string,
+  dono: DonoTela, telaId: string,
   r: { anotacoes: Anotacoes; png: Blob; largura: number; altura: number } | null,
 ): Promise<string | null> {
-  const url = `/api/gravacoes/${gravacaoId}/marcacoes/${marcacaoId}/anotacao`;
+  const url = `${rotaTelas(dono)}/${telaId}/anotacao`;
   if (!r) {
     await api(url, { method: 'DELETE' });
     return null;
   }
-  const caminho = await enviarArquivo(gravacaoId, 'imagem', r.png, 'png');
+  const caminho = await enviarArquivo(dono, 'imagem', r.png, 'png');
   const j = await api<{ imagem_anotada_url: string | null }>(url, json('PUT', {
     anotacoes: r.anotacoes, imagem_anotada_caminho: caminho, largura: r.largura, altura: r.altura,
   }));

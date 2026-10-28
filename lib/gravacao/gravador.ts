@@ -1,6 +1,7 @@
 // Gravação de tela no navegador: tela (getDisplayMedia) + narração (microfone),
 // dividida em segmentos independentes, com captura de quadros para o POP.
 import fixWebmDuration from 'fix-webm-duration';
+import { quadroDaTrilha } from './captura';
 import { LIMITE_ARQUIVO_BYTES, QUALIDADE, SEGMENTO_MS, formatoSuportado } from './config';
 
 export type Estado = 'parado' | 'gravando' | 'pausado' | 'encerrado';
@@ -103,10 +104,15 @@ export class Gravador {
     return this.tela ? new MediaStream(this.tela.getVideoTracks()) : undefined;
   }
 
-  iniciar() {
+  /**
+   * Começa a gravar. Ao continuar uma gravação pausada, `continuarDe` traz o tempo já gravado
+   * e o índice da próxima parte: o relógio e as partes seguem de onde pararam.
+   */
+  iniciar(continuarDe?: { tempoMs: number; proximoIndice: number }) {
     if (!this.stream) throw new Error('Chame preparar() antes.');
     this.estado = 'gravando';
-    this.acumulado = 0;
+    this.acumulado = continuarDe?.tempoMs ?? 0;
+    this.indice = continuarDe?.proximoIndice ?? 0;
     this.retomadoEm = performance.now();
     this.novoSegmento();
     this.relogio = this.janelaRelogio.setInterval(() => this.verificarSegmento(), 500);
@@ -129,47 +135,34 @@ export class Gravador {
     return Math.round(this.acumulado + (this.estado === 'gravando' ? performance.now() - this.retomadoEm : 0));
   }
 
+  /**
+   * Pausa fechando a parte atual, que é entregue para envio: o que foi gravado até aqui fica
+   * salvo mesmo que a pessoa feche a aba ou escolha continuar outro dia.
+   */
   pausar() {
     if (this.estado !== 'gravando') return;
     this.acumulado += performance.now() - this.retomadoEm;
-    this.recorder?.pause();
     this.estado = 'pausado';
+    const fim = this.fecharSegmento();
+    this.recorder = undefined;
+    this.pendentes.add(fim);
+    fim.finally(() => this.pendentes.delete(fim));
   }
 
+  /** Retoma numa parte nova (o tempo continua de onde parou). */
   retomar() {
     if (this.estado !== 'pausado') return;
     this.retomadoEm = performance.now();
-    this.recorder?.resume();
     this.estado = 'gravando';
+    this.novoSegmento();
   }
 
-  /** Captura a tela atual em PNG (texto nítido para o POP). */
+  /** Captura a tela atual em PNG (texto nítido para o POP). Funciona também durante a pausa. */
   async capturarQuadro(): Promise<Quadro> {
     const tempoMs = this.tempoMs();
     const trilha = this.tela?.getVideoTracks()[0];
     if (!trilha || trilha.readyState !== 'live') throw new Error('A tela não está sendo compartilhada.');
-    let imagem: CanvasImageSource & { width?: number; height?: number };
-    let w: number;
-    let h: number;
-    const IC = (window as unknown as { ImageCapture?: new (t: MediaStreamTrack) => { grabFrame(): Promise<ImageBitmap> } }).ImageCapture;
-    if (IC) {
-      const bmp = await new IC(trilha).grabFrame();
-      imagem = bmp;
-      w = bmp.width;
-      h = bmp.height;
-    } else {
-      const v = this.video!;
-      imagem = v;
-      w = v.videoWidth;
-      h = v.videoHeight;
-    }
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    canvas.getContext('2d')!.drawImage(imagem, 0, 0, w, h);
-    if ('close' in imagem && typeof imagem.close === 'function') imagem.close();
-    const blob = await new Promise<Blob>((ok, erro) => canvas.toBlob((b) => (b ? ok(b) : erro(new Error('Falha ao capturar a tela'))), 'image/png'));
-    return { blob, largura: w, altura: h, tempoMs };
+    return { ...(await quadroDaTrilha(trilha, this.video)), tempoMs };
   }
 
   encerrar(): Promise<void> {
@@ -204,7 +197,6 @@ export class Gravador {
       this.bytesSegmento += e.data.size;
     };
     r.start(1000);
-    if (this.estado === 'pausado') r.pause();
     this.recorder = r;
   }
 

@@ -19,7 +19,7 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 ## Convenções
 - Toda tabela de dados de cliente tem `tenant_id` e RLS ligado, sem políticas: só o servidor (chave `service_role`) lê e escreve.
 - Chaves `uuid`, datas `timestamptz` (`criado_em`, `atualizado_em`).
-- Arquivos (vídeo, telas, áudio) ficam no bucket privado `gravacoes`, em `tenants/<tenant>/gravacoes/<gravacao>/`; o banco guarda só o caminho.
+- Arquivos (vídeo, telas, áudio) ficam no bucket privado `gravacoes`, em `tenants/<tenant>/gravacoes/<gravacao>/` (prints anexados no POP: `tenants/<tenant>/pops/<pop>/`); o banco guarda só o caminho.
 
 ## Tabelas
 
@@ -28,10 +28,10 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 | `tenants` | conta: nome, slug, `creditos_ia` (sem uso no momento) | 0001 |
 | `uso_ia` | cada débito de crédito (tipo `fluxograma`, `transcricao`, `pop`); sem uso no momento | 0001, 0004 |
 | `fluxogramas` | código, nome, `xml`, `schema` (FluxoSchema), origem `manual`/`ia`/`modelo`, miniatura, `processo_id` | 0001, 0005 |
-| `gravacoes` | nome, status, duração, `processamento` (`nenhum`→`transcrevendo`→`analisando`→`pronto`/`erro`), `pop_id`, `fluxograma_id`, `processo_id` | 0002, 0004, 0005 |
+| `gravacoes` | nome, status (`gravando`, `pausada`, `pronta`, `interrompida`, `erro`), duração, `processamento` (`nenhum`→`transcrevendo`→`analisando`→`pronto`/`erro`), `pop_id`, `fluxograma_id`, `processo_id` | 0002, 0004, 0005, 0011 |
 | `gravacao_segmentos` | um arquivo WebM por 3 min: caminho, `inicio_ms`, `transcricao_id`, `transcricao_status`, `falas` (jsonb) | 0002, 0004 |
-| `gravacao_marcacoes` | telas marcadas: `tempo_ms`, imagem, `instrucao` (digitada), `instrucao_ia`, `incluir_no_pop`; marcações desenhadas em `anotacoes` e a imagem final em `imagem_anotada_caminho` (+ largura/altura) | 0002, 0009 |
-| `pops` | nome, código (o mesmo do fluxograma), identificação, versão, status, `autor` (elaborado por), `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `fluxograma_id`, `gravacao_id`, `processo_id` | 0003, 0005, 0010 |
+| `gravacao_marcacoes` | telas: dona é a gravação (`gravacao_id` + `tempo_ms`) ou o POP (`pop_id`, print anexado no editor); imagem, `instrucao` (digitada), `instrucao_ia`, `incluir_no_pop`; marcações desenhadas em `anotacoes` e a imagem final em `imagem_anotada_caminho` (+ largura/altura) | 0002, 0009, 0011 |
+| `pops` | nome, código (o mesmo do fluxograma), identificação, versão, status, `autor` (elaborado por), `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `posicao` (onde a pessoa parou no editor), `fluxograma_id`, `gravacao_id`, `processo_id` | 0003, 0005, 0010, 0011 |
 | `processos` | código, nome, descrição, `area_id` | 0005, 0006 |
 | `areas` | nome, descrição, `organizacao_id` | 0006, 0007 |
 | `organizacoes` | nome (único na conta) | 0007 |

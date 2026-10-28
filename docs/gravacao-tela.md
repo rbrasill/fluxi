@@ -34,6 +34,15 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
 - Atalho de teclado dentro da janela flutuante (Enter = incluir tela).
 - Abaixo do cronômetro, a **prévia da tela** sendo gravada. A janela abre com 480×520 px e a prévia ocupa todo o espaço livre: aumentando a janela, a prévia cresce junto.
 
+## Pausar e continuar depois
+- **Pausar** fecha a parte do vídeo em andamento e a envia: o que foi gravado até ali está salvo. Retomar abre outra parte, em sequência. Marcar telas continua funcionando na pausa.
+- Na pausa, **"continuar outro dia"** libera a tela e deixa a gravação `pausada`. Na página da gravação, no processo e no Início aparece **Continuar gravação**: a pessoa escolhe a tela de novo e o gravador segue do tempo e da parte em que parou (as telas já marcadas aparecem na lista, com o contador). Também dá para **Finalizar assim**, sem gravar mais.
+- Aba fechada no meio: a gravação fica `gravando` sem aba aberta ("não finalizada"). As partes já enviadas e as telas marcadas ficam; perde-se só o trecho da parte em andamento (até 3 min). Ela pode ser continuada ou finalizada do mesmo jeito.
+- Gravação **pronta** também pode ser continuada ("Continuar gravando"), para acrescentar o que faltou. Se já existe POP, as telas novas entram nele por "Levar as telas para o POP" (procedimento novo no fim), sem gerar outro POP.
+
+## Prints fora da gravação
+No editor do POP, qualquer passo aceita um print sem gravar de novo (**Anexar print**, **Trocar print**, **Adicionar passo com print**): capturar uma janela agora (um quadro só, pelo mesmo `getDisplayMedia`), colar o print copiado (Print Screen / Win+Shift+S; Ctrl+V com o passo focado também funciona) ou escolher um arquivo. Tudo vira PNG e pode ser marcado como as telas da gravação. O arquivo fica em `tenants/<tenant>/pops/<pop>/` (`lib/gravacao/captura.ts`, `components/pop/AnexarPrint.tsx`).
+
 ## Depois de encerrar
 1. Vídeo e prints vão direto do navegador para o Supabase Storage (`tenants/{id}/gravacoes/…`), com link assinado.
 2. O áudio é transcrito (AssemblyAI) com marcação de tempo.
@@ -51,9 +60,9 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
 - Num storage sem esse limite (sistema definitivo), basta aumentar `SEGMENTO_MS` e a taxa de bits.
 
 ## Dados (novas tabelas)
-- `gravacoes`: tenant, fluxograma (opcional), nome, duração, resolução, status (`gravando`, `pronta`, `interrompida`, `erro`).
+- `gravacoes`: tenant, fluxograma (opcional), nome, duração, resolução, status (`gravando`, `pausada`, `pronta`, `interrompida`, `erro`).
 - `gravacao_segmentos`: partes do vídeo (índice, caminho, início, duração, tamanho, formato).
-- `gravacao_marcacoes`: gravação, tempo (ms), caminho da imagem, resolução, instrução digitada, instrução da IA, incluída no POP (sim/não).
+- `gravacao_marcacoes`: gravação **ou** POP (print anexado no editor), tempo (ms, só na gravação), caminho da imagem, resolução, instrução digitada, instrução da IA, incluída no POP (sim/não).
 - Migração: `supabase/migrations/0002_gravacoes.sql`.
 
 ## Limites e cuidados
