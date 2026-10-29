@@ -331,6 +331,20 @@ input { font-family: inherit; }
 .tr-amostra { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); cursor: pointer; }
 .tr-amostra[aria-pressed='true'] { outline: 2px solid var(--primary); outline-offset: 1px; }
 .tr-cor-auto { height: 24px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: #fff; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.tr-conteudo table { width: 100%; margin: 6px 0; border-collapse: collapse; table-layout: fixed; }
+.tr-conteudo th, .tr-conteudo td { border: 1px solid #bfbfbf; padding: 4px 8px; vertical-align: top; text-align: left; min-width: 40px; }
+.tr-conteudo th { background: #f2f2f2; font-weight: 700; }
+.tr-conteudo .selectedCell { background: var(--primary-soft); }
+.tr-menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 26; display: flex; flex-direction: column; min-width: 230px; padding: 6px; background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(11,31,36,.14); }
+.tr-item { padding: 7px 10px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: 13px; text-align: left; cursor: pointer; color: var(--ink); }
+.tr-item:hover { background: var(--bg); }
+.tr-item-sep { margin-top: 5px; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; padding-top: 10px; }
+.tr-item-perigo { color: var(--danger); }
+.tr-menu-grade { min-width: 0; gap: 6px; }
+.tr-grade-rotulo { font-size: 12px; font-weight: 600; }
+.tr-grade { display: grid; gap: 3px; }
+.tr-grade-celula { width: 18px; height: 18px; padding: 0; border: 1px solid var(--line-strong); border-radius: 3px; background: #fff; cursor: pointer; }
+.tr-grade-celula.marcada { background: var(--primary-soft); border-color: var(--primary); }
 .passo-img { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .passo-img img { max-width: 100%; max-height: 260px; border: 1px solid var(--line); border-radius: 8px; }
 .passo-acoes { display: flex; align-items: center; gap: 2px; }

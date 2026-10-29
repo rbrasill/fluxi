@@ -1,27 +1,48 @@
 'use client';
 import Highlight from '@tiptap/extension-highlight';
+import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
 import { Color, TextStyle } from '@tiptap/extension-text-style';
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { CORES_MARCA_TEXTO, CORES_TEXTO, normalizarDoEditor, paraEditor } from '@/lib/pop/texto-rico';
 
 // Campo de texto com formatação do POP (objetivo e passos). Só o que sai igual no DOCX e no PDF:
-// negrito, itálico, sublinhado, tachado, cor, marca-texto e listas. Sem fonte, tamanho, títulos,
-// links, imagens ou tabelas (o modelo do POP define esses). O valor é o HTML de lib/pop/texto-rico.ts.
+// negrito, itálico, sublinhado, tachado, cor, marca-texto, listas e tabelas simples (sem mesclar
+// células). Sem fonte, tamanho, títulos, links ou imagens (o modelo do POP define esses).
+// O valor é o HTML de lib/pop/texto-rico.ts.
 
 const extensoes = [
   StarterKit.configure({
     heading: false, blockquote: false, code: false, codeBlock: false, horizontalRule: false,
-    link: false, dropcursor: false, trailingNode: false,
+    link: false, dropcursor: false,
   }),
   TextStyle,
   Color,
   Highlight.configure({ multicolor: true }),
+  Table.configure({ resizable: false }),
+  TableRow,
+  TableHeader,
+  TableCell,
 ];
 
-type Menu = 'cor' | 'fundo' | null;
+// Células mescladas não saem iguais no DOCX/PDF: tabela colada de outro lugar entra sem mesclas.
+const semMesclas = (html: string) => html.replace(/\s(colspan|rowspan)\s*=\s*("[^"]*"|'[^']*'|\d+)/gi, '');
+
+const GRADE = { linhas: 6, colunas: 6 }; // tamanho máximo oferecido ao inserir uma tabela
+
+/** A tabela onde está o cursor tem a primeira linha como cabeçalho? */
+function tabelaComCabecalho(e: Editor) {
+  const { $from } = e.state.selection;
+  for (let d = $from.depth; d > 0; d--) {
+    const no = $from.node(d);
+    if (no.type.name === 'table') return no.firstChild?.firstChild?.type.name === 'tableHeader';
+  }
+  return false;
+}
+
+type Menu = 'cor' | 'fundo' | 'tabela' | null;
 
 export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
   valor: string;
@@ -35,13 +56,17 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
   mudar.current = aoMudar; // o editor guarda os callbacks da criação: usa sempre o da última renderização
   const [ativo, setAtivo] = useState(false); // foco dentro do campo ou da barra
   const [menu, setMenu] = useState<Menu>(null);
+  const [grade, setGrade] = useState({ l: 3, c: 3 }); // tamanho escolhido na grade de "Inserir tabela"
   const caixa = useRef<HTMLDivElement>(null);
 
   const editor = useEditor({
     extensions: extensoes,
     content: paraEditor(valor),
     immediatelyRender: false,
-    editorProps: { attributes: { class: 'tr-conteudo', role: 'textbox', 'aria-multiline': 'true', 'aria-label': rotulo } },
+    editorProps: {
+      attributes: { class: 'tr-conteudo', role: 'textbox', 'aria-multiline': 'true', 'aria-label': rotulo },
+      transformPastedHTML: semMesclas,
+    },
     onUpdate: ({ editor: e }) => {
       const v = normalizarDoEditor(e.getHTML());
       if (v === ultimo.current) return;
@@ -68,6 +93,8 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
       numerada: e.isActive('orderedList'),
       cor: (e.getAttributes('textStyle').color as string | undefined) ?? null,
       fundo: e.isActive('highlight') ? ((e.getAttributes('highlight').color as string | undefined) ?? CORES_MARCA_TEXTO[0].cor) : null,
+      tabela: e.isActive('table'),
+      cabecalho: tabelaComCabecalho(e),
       desfazer: e.can().undo(),
       refazer: e.can().redo(),
       vazio: e.isEmpty,
@@ -134,6 +161,45 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
           <span className="tr-sep" />
           {botao('Lista com marcadores', estado.marcadores, () => cadeia().toggleBulletList().run(), <Icone nome="lista" tamanho={16} />)}
           {botao('Lista numerada', estado.numerada, () => cadeia().toggleOrderedList().run(), <Icone nome="lista-numerada" tamanho={16} />)}
+          <div className="tr-grupo-menu">
+            <button type="button" className="tr-botao" title="Tabela" aria-label="Tabela" aria-haspopup="true" aria-expanded={menu === 'tabela'} aria-pressed={estado.tabela}
+              onMouseDown={semPerderFoco} onClick={() => { setGrade({ l: 3, c: 3 }); setMenu(menu === 'tabela' ? null : 'tabela'); }}>
+              <Icone nome="tabela" tamanho={16} /><Icone nome="seta-baixo" tamanho={10} />
+            </button>
+            {menu === 'tabela' && (estado.tabela ? (
+              <div className="tr-menu" role="menu" aria-label="Tabela">
+                {([
+                  ['Inserir linha acima', () => cadeia().addRowBefore().run()],
+                  ['Inserir linha abaixo', () => cadeia().addRowAfter().run()],
+                  ['Inserir coluna à esquerda', () => cadeia().addColumnBefore().run()],
+                  ['Inserir coluna à direita', () => cadeia().addColumnAfter().run()],
+                  [estado.cabecalho ? 'Tirar linha de cabeçalho' : 'Primeira linha como cabeçalho', () => cadeia().toggleHeaderRow().run()],
+                  ['Excluir linha', () => cadeia().deleteRow().run()],
+                  ['Excluir coluna', () => cadeia().deleteColumn().run()],
+                  ['Excluir tabela', () => cadeia().deleteTable().run()],
+                ] as const).map(([nome, acao], i) => (
+                  <button key={nome} type="button" role="menuitem" className={`tr-item ${i === 4 || i === 7 ? 'tr-item-sep' : ''} ${i === 7 ? 'tr-item-perigo' : ''}`}
+                    onMouseDown={semPerderFoco} onClick={() => { setMenu(null); acao(); }}>{nome}</button>
+                ))}
+              </div>
+            ) : (
+              <div className="tr-menu tr-menu-grade" role="menu" aria-label="Inserir tabela">
+                <span className="tr-grade-rotulo">Inserir tabela {grade.l} × {grade.c}</span>
+                <div className="tr-grade" style={{ gridTemplateColumns: `repeat(${GRADE.colunas}, 18px)` }}>
+                  {Array.from({ length: GRADE.linhas * GRADE.colunas }, (_, i) => {
+                    const l = Math.floor(i / GRADE.colunas) + 1, c = (i % GRADE.colunas) + 1;
+                    return (
+                      <button key={i} type="button" role="menuitem" aria-label={`Tabela de ${l} linhas por ${c} colunas`}
+                        className={`tr-grade-celula ${l <= grade.l && c <= grade.c ? 'marcada' : ''}`}
+                        onMouseEnter={() => setGrade({ l, c })} onFocus={() => setGrade({ l, c })} onMouseDown={semPerderFoco}
+                        onClick={() => { setMenu(null); cadeia().insertTable({ rows: l, cols: c, withHeaderRow: true }).run(); }} />
+                    );
+                  })}
+                </div>
+                <span className="notice">A primeira linha é o cabeçalho.</span>
+              </div>
+            ))}
+          </div>
           <span className="tr-sep" />
           {botao('Limpar formatação', false, () => cadeia().unsetAllMarks().run(), <Icone nome="limpar-formato" tamanho={16} />)}
           {botao('Desfazer (Ctrl+Z)', false, () => cadeia().undo().run(), <Icone nome="desfazer" tamanho={16} />, !estado.desfazer)}

@@ -1,7 +1,8 @@
 // Texto com formatação do POP (objetivo e passos). Fica no mesmo campo de texto, como um HTML
 // restrito gerado pelo editor (docs/decisoes.md, decisão 29):
-//   <p>, <ul>/<ol> com <li>, <br>, <strong>, <em>, <u>, <s>,
+//   <p>, <ul>/<ol> com <li>, <table> com <tr> e <th>/<td>, <br>, <strong>, <em>, <u>, <s>,
 //   <span style="color: #rrggbb"> (cor do texto) e <mark data-color="#rrggbb"> (marca-texto).
+// Células mescladas não existem: colspan/rowspan são ignorados (cada célula conta uma).
 // Texto sem HTML (o que a IA escreve e os POPs antigos) continua valendo: cada linha é um parágrafo.
 // Este arquivo não depende do navegador: o DOCX e o PDF leem o mesmo formato no servidor.
 
@@ -14,9 +15,20 @@ export type Trecho = {
   cor?: string; // #rrggbb
   fundo?: string; // #rrggbb (marca-texto)
 };
+export type Celula = { cabecalho: boolean; blocos: Bloco[] };
 export type Bloco =
   | { tipo: 'paragrafo'; trechos: Trecho[] }
-  | { tipo: 'lista'; ordenada: boolean; itens: Bloco[][] };
+  | { tipo: 'lista'; ordenada: boolean; itens: Bloco[][] }
+  | { tipo: 'tabela'; linhas: Celula[][] };
+
+/** Número de colunas da tabela (a linha mais longa; as outras completam com células vazias). */
+export const colunas = (t: Extract<Bloco, { tipo: 'tabela' }>) => Math.max(1, ...t.linhas.map((l) => l.length));
+/** Linhas de cabeçalho no topo (todas as células são <th>): repetem no topo de cada página. */
+export const linhasDeCabecalho = (t: Extract<Bloco, { tipo: 'tabela' }>) => {
+  let n = 0;
+  while (n < t.linhas.length && t.linhas[n].length && t.linhas[n].every((c) => c.cabecalho)) n++;
+  return n;
+};
 
 /** Cores oferecidas no editor (as mesmas saem no DOCX e no PDF). */
 export const CORES_TEXTO = [
@@ -36,7 +48,7 @@ export const CORES_MARCA_TEXTO = [
 ] as const;
 
 /** O valor está no formato do editor (HTML) e não em texto simples? */
-export const ehRico = (valor: string) => /^\s*<(p|ul|ol)[\s>]/i.test(valor);
+export const ehRico = (valor: string) => /^\s*<(p|ul|ol|table)[\s>]/i.test(valor);
 
 const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 function decodificar(s: string) {
@@ -66,6 +78,8 @@ const estilo = (attrs: string, prop: string) => decodificar(atributo(attrs, 'sty
 
 type Marcas = Omit<Trecho, 'texto'>;
 type Lista = Extract<Bloco, { tipo: 'lista' }>;
+type Tabela = Extract<Bloco, { tipo: 'tabela' }>;
+type Quadro = { lista: Lista } | { tabela: Tabela };
 
 /**
  * Lê o valor do campo em blocos (parágrafos e listas). HTML fora do formato vira texto: tags
@@ -78,16 +92,29 @@ export function lerTexto(valor: string | null | undefined): Bloco[] {
   }
 
   const raiz: Bloco[] = [];
-  const listas: Lista[] = []; // listas abertas (aninhadas)
+  const quadros: Quadro[] = []; // listas e tabelas abertas (uma dentro da outra)
   const marcas: { tag: string; m: Marcas }[] = [];
   let paragrafo: Trecho[] | null = null;
 
-  // Onde entram os blocos agora: no item atual da lista mais interna, ou na raiz.
+  // Onde entram os blocos agora: no item da lista ou na célula da tabela mais interna, ou na raiz.
   const destino = (): Bloco[] => {
-    const lista = listas.at(-1);
-    if (!lista) return raiz;
-    if (!lista.itens.length) lista.itens.push([]);
-    return lista.itens.at(-1)!;
+    const q = quadros.at(-1);
+    if (!q) return raiz;
+    if ('lista' in q) {
+      if (!q.lista.itens.length) q.lista.itens.push([]);
+      return q.lista.itens.at(-1)!;
+    }
+    if (!q.tabela.linhas.length) q.tabela.linhas.push([]);
+    const linha = q.tabela.linhas.at(-1)!;
+    if (!linha.length) linha.push({ cabecalho: false, blocos: [] });
+    return linha.at(-1)!.blocos;
+  };
+  /** Fecha o que estiver aberto até a tabela mais interna (HTML colado pode não fechar as listas). */
+  const ateTabela = () => {
+    const i = quadros.map((q) => 'tabela' in q).lastIndexOf(true);
+    if (i < 0) return null;
+    quadros.length = i + 1;
+    return (quadros[i] as { tabela: Tabela }).tabela;
   };
   const fecharParagrafo = () => {
     if (paragrafo) destino().push({ tipo: 'paragrafo', trechos: paragrafo });
@@ -131,16 +158,45 @@ export function lerTexto(valor: string | null | undefined): Bloco[] {
         if (!fecha) {
           const lista: Lista = { tipo: 'lista', ordenada: nome === 'ol', itens: [] };
           destino().push(lista);
-          listas.push(lista);
+          quadros.push({ lista });
         } else {
-          listas.pop();
+          const i = quadros.map((q) => 'lista' in q).lastIndexOf(true);
+          if (i >= 0) quadros.length = i;
         }
         break;
       }
-      case 'li':
+      case 'li': {
         fecharParagrafo();
-        if (!fecha) listas.at(-1)?.itens.push([]);
+        const q = quadros.at(-1);
+        if (!fecha && q && 'lista' in q) q.lista.itens.push([]);
         break;
+      }
+      case 'table':
+        fecharParagrafo();
+        if (!fecha) {
+          const tabela: Tabela = { tipo: 'tabela', linhas: [] };
+          destino().push(tabela);
+          quadros.push({ tabela });
+        } else if (ateTabela()) {
+          quadros.pop();
+        }
+        break;
+      case 'tr':
+        fecharParagrafo();
+        if (!fecha) ateTabela()?.linhas.push([]);
+        break;
+      case 'td':
+      case 'th': {
+        fecharParagrafo();
+        const tabela = fecha ? null : ateTabela();
+        if (tabela) {
+          if (!tabela.linhas.length) tabela.linhas.push([]);
+          tabela.linhas.at(-1)!.push({ cabecalho: nome === 'th', blocos: [] });
+        }
+        break;
+      }
+      case 'thead': case 'tbody': case 'tfoot': case 'colgroup': case 'col':
+        break; // estrutura da tabela sem efeito no conteúdo
       default: {
         const m: Marcas | null =
           nome === 'strong' || nome === 'b' ? { negrito: true }
@@ -171,7 +227,8 @@ export function textoPuro(valor: string | null | undefined): string {
   const percorrer = (blocos: Bloco[]) => {
     for (const b of blocos) {
       if (b.tipo === 'paragrafo') linhas.push(b.trechos.map((t) => t.texto).join(''));
-      else b.itens.forEach(percorrer);
+      else if (b.tipo === 'lista') b.itens.forEach(percorrer);
+      else b.linhas.forEach((l) => l.forEach((c) => percorrer(c.blocos)));
     }
   };
   percorrer(lerTexto(valor));

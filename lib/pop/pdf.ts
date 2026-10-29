@@ -14,7 +14,7 @@ import {
   COR_AZUL, COR_BORDA_IMAGEM, COR_CAIXA_BARRA, COR_CAIXA_BORDA, COR_CAIXA_FUNDO, COR_CAIXA_ROTULO, COR_TEXTO,
   DESCRICAO_FLUXOGRAMA, cabecalho, sequenciaPassos, tamanhoImagemPt, type DadosPop,
 } from './docx';
-import { lerTexto, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
+import { colunas, lerTexto, linhasDeCabecalho, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
 
 const PASTA = () => path.join(process.cwd(), 'templates/pop');
 const AZUL = `#${COR_AZUL}`;
@@ -140,7 +140,23 @@ function textoRicoPdf(valor: string, inicio: Bloco[] = []): Bloco[] {
   };
   const blocos = (lista: BlocoTexto[], nivel: number): Bloco[] => lista.flatMap((b): Bloco[] => {
     if (b.tipo === 'paragrafo') return [paragrafo(b.trechos)];
-    const rotulo = prefixo.length ? [paragrafo([])] : []; // o rótulo fica numa linha própria antes da lista
+    const rotulo = prefixo.length ? [paragrafo([])] : []; // o rótulo fica numa linha própria antes da lista ou tabela
+    if (b.tipo === 'tabela') {
+      // Como no DOCX: colunas iguais, borda cinza fina, cabeçalho com fundo e negrito, repetido em cada página.
+      const n = colunas(b);
+      const body = b.linhas.map((linha) => Array.from({ length: n }, (_, k) => linha[k] ?? { cabecalho: false, blocos: [] }).map((c) => {
+        const conteudo = blocos(aparar(c.blocos), 0);
+        return { stack: conteudo.length ? conteudo : [{ text: ' ' }], ...(c.cabecalho ? { bold: true, fillColor: FAIXA_TABELA } : {}) };
+      }));
+      return [...rotulo, {
+        table: { headerRows: linhasDeCabecalho(b), dontBreakRows: true, widths: Array(n).fill('*'), body },
+        layout: {
+          hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => BORDA_TABELA, vLineColor: () => BORDA_TABELA,
+          paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 2, paddingBottom: () => 2,
+        },
+        margin: [0, 2, 0, 2],
+      }];
+    }
     const itens = b.itens.map((item) => ({ stack: blocos(item, nivel + 1) }));
     const tipo = (b.ordenada ? NUMERACOES : MARCADORES)[Math.min(nivel, 2)];
     return [...rotulo, { [b.ordenada ? 'ol' : 'ul']: itens, type: tipo, markerColor: TEXTO, margin: [nivel ? 0 : RECUO_LISTA - 12, 0, 0, 0] }];
