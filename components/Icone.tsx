@@ -17,6 +17,7 @@ const caminhos: Record<string, string> = {
   numero: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM11 9l2-1v8',
   texto: 'M5 7V5h14v2M12 5v14M9 19h6',
   recortar: 'M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14',
+  borrar: 'M4 4h16v16H4zM4 9.33h16M4 14.67h16M9.33 4v16M14.67 4v16',
   desfazer: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
   refazer: 'M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3',
   marcar: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',

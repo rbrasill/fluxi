@@ -194,6 +194,11 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Gravações já feitas:** antes de mandar para a transcrição ("Gerar POP" ou "Tentar de novo"), o Fluxi confere o começo de cada parte (1 MB). Se há uma sobra antes do cabeçalho, ela volta para o fim da parte anterior (de onde veio), e a parte ganha a duração no cabeçalho (`lib/gravacao/reparo.ts`). Os arquivos são substituídos no Storage, então o player também volta a tocar essas partes. Se o conserto parar no meio, rodar de novo não duplica nada.
 - **Mensagem de erro:** diz qual parte falhou e a partir de que minuto, em português.
 
+## 28. Borrar dados sensíveis nos prints
+- **Decisão:** ferramenta **Borrar** (tecla B) no editor de marcação: a pessoa arrasta sobre nomes, CPF, e-mails etc. e a área vira um quadriculado. É manual, feito por quem elabora o POP; a IA não identifica nem borra nada.
+- **Como:** o borrão é uma marcação como as outras (`tipo: 'borrar'`, em pixels da imagem original), então dá para mover, redimensionar, desfazer e reabrir depois. O quadriculado reduz a área a um pixel por quadrado (média das cores) e amplia sem suavizar; o quadrado tem 1/96 da largura do print (20 px num print de 1920 px), maior que uma letra. Os borrões ficam logo acima do print, e setas, caixas e números continuam visíveis por cima.
+- **Onde vale:** na imagem marcada, que é a usada no editor do POP, no DOCX e no PDF. O print original continua guardado (para reabrir e editar as marcações) e não aparece no POP; o vídeo da gravação também não é alterado.
+
 ---
 
 ## Em aberto
