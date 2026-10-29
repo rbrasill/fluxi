@@ -29,6 +29,9 @@ export const criarPop = (dados: { nome?: string; gravacao_id?: string; fluxogram
 export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'fluxograma_id' | 'status' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
 export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELETE' });
+/** Move o POP para outra área, com o processo inteiro dele (POP sem processo: entra num processo da área). */
+export const moverPop = (id: string, dados: { area_id: string; processo_id?: string; novo_processo?: string }) =>
+  api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify(dados) });
 export const urlDocx = (id: string) => `/api/pops/${id}/docx`;
 export const urlPdf = (id: string) => `/api/pops/${id}/pdf`;
 

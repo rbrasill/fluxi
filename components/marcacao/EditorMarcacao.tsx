@@ -3,6 +3,7 @@ import type Konva from 'konva';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Arrow, Circle, Group, Image as KImage, Label, Layer, Rect, Stage, Tag, Text, Transformer } from 'react-konva';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { CORES, COR_PADRAO, anotacoesVazias, espessura, temAnotacao, type Anotacoes, type Forma, type Recorte } from '@/lib/marcacao/anotacoes';
 
 // Editor de marcações sobre o print de uma tela: caixa, seta, número, texto e recorte.
@@ -234,8 +235,8 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
     }
   }
 
-  function fechar() {
-    if (passado.current.length && !confirm('Descartar as marcações feitas agora?')) return;
+  async function fechar() {
+    if (passado.current.length && !(await confirmar({ titulo: 'Descartar as marcações feitas agora?', mensagem: 'O que foi desenhado desde que você abriu esta tela não será salvo.', acao: 'Descartar', perigo: true }))) return;
     aoFechar();
   }
 

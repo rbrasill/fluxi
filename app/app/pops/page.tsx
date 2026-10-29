@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
+import { MoverPop } from '@/components/pop/MoverPop';
 import { SeloStatus } from '@/components/SeloStatus';
 import { criarPop, dataCurta, excluirPop, listarPops, ondeEsta, type PopResumo } from '@/lib/pops';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
@@ -28,6 +30,7 @@ function ListaPops() {
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
   const [processoId, setProcessoId] = useState('');
   const [criando, setCriando] = useState(false);
+  const [movendo, setMovendo] = useState<PopResumo | null>(null);
 
   const atualizar = () => listarPops().then(setItens).catch((e) => { setErro(e.message); setItens([]); });
   useEffect(() => { atualizar(); }, []);
@@ -61,7 +64,7 @@ function ListaPops() {
   }
 
   async function onExcluir(p: PopResumo) {
-    if (!confirm(`Excluir o POP "${p.nome}"? Essa ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ titulo: `Excluir o POP "${p.nome}"?`, mensagem: 'Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
     await excluirPop(p.id);
     atualizar();
   }
@@ -115,6 +118,7 @@ function ListaPops() {
             <SeloStatus status={p.status} />
             <a className="btn btn-ghost" href={`/api/pops/${p.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
             <a className="btn btn-ghost" href={`/api/pops/${p.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
+            <button className="btn btn-ghost btn-icon" aria-label="Mover para outra área" title="Mover para outra área" onClick={() => setMovendo(p)}><Icone nome="mover" tamanho={16} /></button>
             <button className="btn btn-ghost btn-icon" aria-label="Excluir" title="Excluir" onClick={() => onExcluir(p)}><Icone nome="lixo" tamanho={16} /></button>
           </article>
         ))}
@@ -146,6 +150,7 @@ function ListaPops() {
         </div>
       )}
       {novoProcesso && <NovoProcesso aoFechar={() => setNovoProcesso(false)} />}
+      {movendo && <MoverPop pop={movendo} aoMover={() => { setMovendo(null); atualizar(); }} aoFechar={() => setMovendo(null)} />}
     </div>
   );
 }

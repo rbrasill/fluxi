@@ -177,6 +177,17 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Fonte:** Roboto (OFL), a fonte livre de largura mais próxima da Aptos (3% mais larga; a Inter, que o LibreOffice usa, é 9%). Negrito agora com a Roboto Bold.
 - **Se um dia precisar ser idêntico ao Word:** converter o DOCX pelo Microsoft Graph (o Word da própria conta Microsoft 365 da INC gera o PDF) ou por um serviço de conversão; exige configuração no Azure ou custo por arquivo.
 
+## 25. Mover o POP para outra área
+- **Decisão:** a área do POP é a do processo dele, então mover o POP leva o **processo inteiro**, com tudo o que tem (os outros POPs, as gravações e os fluxogramas). A janela mostra o que vai junto antes de confirmar. Não há "só este POP": separar um POP do processo deixaria a gravação e o fluxograma dele para trás.
+- **Onde:** botão "Mover" no editor do POP e na lista de POPs (`POST /api/pops/:id/mover`). A área pode ser de qualquer organização; o seletor de área da página do processo, que faz a mesma coisa, passou a listar também as áreas das outras organizações.
+- **POP sem processo:** entra num processo da área escolhida, existente ou criado na hora.
+- **Campo "Área" do documento:** acompanha a área nova quando estava em branco ou com o nome da área antiga; se a pessoa escreveu outra coisa, fica como está. Vale para todos os POPs do processo, também quando a área muda pela página do processo.
+
+## 26. Confirmações e avisos no próprio site
+- **Decisão:** nada de `confirm()`/`alert()` do navegador (mostram "fluxi-khaki.vercel.app diz", fogem do visual e travam a página). `confirmar({ titulo, mensagem, acao, perigo })` e `avisar(titulo, mensagem)` (`components/Dialogos.tsx`) abrem um diálogo do site e devolvem uma Promise; `<Dialogos />` fica no layout raiz e mostra um pedido de cada vez.
+- **Comportamento de diálogo nativo:** o foco vai para o botão de ação e volta para quem pediu ao fechar; Esc cancela; Tab circula entre os botões; os atalhos da tela por baixo não recebem teclas (ex.: Delete no editor de marcação). Ações destrutivas têm o botão vermelho. Em tela cheia (editor de fluxograma), o diálogo é desenhado dentro do elemento em tela cheia.
+- **Única exceção:** o aviso de "sair da página com alterações não salvas" continua sendo o do navegador; por segurança, nenhum site pode trocar esse.
+
 ---
 
 ## Em aberto

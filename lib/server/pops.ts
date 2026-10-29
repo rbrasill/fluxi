@@ -7,7 +7,8 @@ import { gerarPdf } from '@/lib/pop/pdf';
 import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
 import { ErroApi } from './http';
-import { garantir as garantirProcesso, tocar } from './processos';
+import { garantir as garantirArea } from './areas';
+import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
@@ -154,6 +155,35 @@ export async function excluir(id: string) {
   const { error } = await supabase().from('pops').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
   return { ok: true };
+}
+
+/**
+ * Move o POP para outra área. A área do POP é a do processo dele, então o processo vai junto, com
+ * tudo o que tem (POPs, gravações, fluxogramas). POP solto (sem processo) entra num processo da área
+ * de destino, existente ou criado aqui. O campo "Área" do documento acompanha (se estava vazio ou com
+ * o nome da área antiga).
+ */
+export async function moverParaArea(id: string, p: { area_id: string; processo_id?: string; novo_processo?: string }) {
+  const pop = await buscar(id);
+  const area = await garantirArea(p.area_id);
+
+  if (pop.processo_id) {
+    await atualizarProcesso(pop.processo_id, { area_id: area.id });
+    return { processo_id: pop.processo_id };
+  }
+
+  let destino = p.processo_id;
+  if (destino) {
+    const { data, error } = await supabase().from('processos').select('area_id').eq('tenant_id', TENANT_PADRAO).eq('id', destino).maybeSingle();
+    if (error) throw error;
+    if (!data) throw new ErroApi(404, 'Processo não encontrado');
+    if (data.area_id !== area.id) throw new ErroApi(400, 'O processo escolhido não é dessa área.');
+  } else {
+    destino = (await criarProcesso({ nome: p.novo_processo?.trim() || pop.nome, area_id: area.id })).id as string;
+  }
+  await atualizar(id, { processo_id: destino, conteudo: { ...pop.conteudo, area: areaDoDocumento(pop.conteudo.area ?? '', null, area.nome) } });
+  await tocar(destino);
+  return { processo_id: destino };
 }
 
 // --- Prints anexados direto no POP (telas que não vieram de uma gravação) ---

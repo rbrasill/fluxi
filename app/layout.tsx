@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Sora, Manrope } from 'next/font/google';
+import { Dialogos } from '@/components/Dialogos';
 import './globals.css';
 
 const sora = Sora({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600', '700'] });
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${sora.variable} ${manrope.variable}`}>
-      <body>{children}</body>
+      <body>{children}<Dialogos /></body>
     </html>
   );
 }

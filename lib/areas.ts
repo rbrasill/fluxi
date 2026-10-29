@@ -21,3 +21,13 @@ export const obterArea = (id: string) => api<Area>(`/api/areas/${id}`);
 export const criarArea = (dados: { nome: string; organizacao_id: string; descricao?: string }) => api<AreaResumo>('/api/areas', { method: 'POST', body: JSON.stringify(dados) });
 export const atualizarArea = (id: string, dados: { nome?: string; descricao?: string }) => api(`/api/areas/${id}`, { method: 'PATCH', body: JSON.stringify(dados) });
 export const excluirArea = (id: string) => api(`/api/areas/${id}`, { method: 'DELETE' });
+
+/** Áreas agrupadas por organização (na ordem em que aparecem), para seletores com <optgroup>. */
+export function porOrganizacao(areas: AreaResumo[]): [string, AreaResumo[]][] {
+  const m = new Map<string, AreaResumo[]>();
+  for (const a of areas) {
+    const org = a.organizacao?.nome ?? 'Sem organização';
+    m.set(org, [...(m.get(org) ?? []), a]);
+  }
+  return [...m];
+}

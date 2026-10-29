@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { avisar, confirmar } from '@/components/Dialogos';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
 import { criarPop, type StatusPop } from '@/lib/pops';
-import { listarAreas, type AreaResumo } from '@/lib/areas';
+import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
 import { atualizarProcesso, excluirProcesso, obterProcesso, type Processo } from '@/lib/processos';
 
 const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
@@ -37,12 +38,12 @@ export default function ProcessoPage() {
       router.push(`/app/pops/${popId}`);
     } catch {
       setCriandoPop(false);
-      alert('Não foi possível criar o POP.');
+      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
     }
   }
 
   async function excluir() {
-    if (!confirm(`Excluir o processo "${p!.nome}"? Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.`)) return;
+    if (!(await confirmar({ titulo: `Excluir o processo "${p!.nome}"?`, mensagem: 'Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.', acao: 'Excluir', perigo: true }))) return;
     await excluirProcesso(p!.id);
     router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/organizacoes');
   }
@@ -70,7 +71,11 @@ export default function ProcessoPage() {
           <p className="processo-meta">
             <span className="code">{p.codigo}</span>
             <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área">
-              {(areas.length ? areas.filter((a) => a.organizacao_id === p.area?.organizacao?.id) : p.area ? [p.area] : []).map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
+              {areas.length
+                ? porOrganizacao(areas).map(([org, lista]) => (
+                    <optgroup key={org} label={org}>{lista.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</optgroup>
+                  ))
+                : p.area && <option value={p.area.id}>{p.area.nome}</option>}
             </select>
           </p>
         </div>

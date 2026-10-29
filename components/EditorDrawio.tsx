@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { DRAWIO_ORIGIN, DRAWIO_URL, configuracao, type MensagemDrawio } from '@/lib/drawio';
 import { gerarXml } from '@/lib/fluxo/gerar-xml';
 import { obter, salvar, type Fluxograma } from '@/lib/fluxogramas';
@@ -171,10 +172,10 @@ export function EditorDrawio({ id }: { id: string }) {
   }
 
   // Fluxograma gerado pela IA: monta de novo a partir da estrutura original, com o layout em raias do Fluxi.
-  function refazerPadrao() {
+  async function refazerPadrao() {
     setMenu(null);
     if (!fluxo?.schema) return;
-    if (!confirm('Refazer o fluxograma no padrão INC a partir do que a IA gerou? As mudanças feitas à mão neste fluxograma serão perdidas.')) return;
+    if (!(await confirmar({ titulo: 'Refazer no padrão INC?', mensagem: 'O fluxograma é montado de novo a partir do que a IA gerou. As mudanças feitas à mão neste fluxograma serão perdidas.', acao: 'Refazer', perigo: true }))) return;
     const xml = gerarXml(fluxo.schema);
     xmlAtual.current = xml;
     miniaturaAoCarregar.current = true;
