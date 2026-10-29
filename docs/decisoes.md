@@ -199,6 +199,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Como:** o borrão é uma marcação como as outras (`tipo: 'borrar'`, em pixels da imagem original), então dá para mover, redimensionar, desfazer e reabrir depois. O quadriculado reduz a área a um pixel por quadrado (média das cores) e amplia sem suavizar; o quadrado tem 1/96 da largura do print (20 px num print de 1920 px), maior que uma letra. Os borrões ficam logo acima do print, e setas, caixas e números continuam visíveis por cima.
 - **Onde vale:** na imagem marcada, que é a usada no editor do POP, no DOCX e no PDF. O print original continua guardado (para reabrir e editar as marcações) e não aparece no POP; o vídeo da gravação também não é alterado.
 
+## 29. Formatação de texto no POP (objetivo e passos)
+- **Decisão:** o objetivo e o texto de cada passo ganham uma barra de formatação no editor do POP (aparece por cima do campo enquanto se edita): negrito, itálico, sublinhado, tachado, cor do texto (6 cores), marca-texto (5 cores), lista com marcadores, lista numerada, limpar formatação, desfazer e refazer. Atalhos: Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+S, Ctrl+Z.
+- **Fora, de propósito:** fonte, tamanho, títulos, emoji, links, imagens, vídeo, tabelas e alinhamento. O modelo do POP define fonte e tamanho; prints entram pelo "Anexar print"; o resto não tem como sair igual no DOCX e no PDF.
+- **Editor:** Tiptap 3 (ProseMirror), só com as extensões acima. O que se cola de outro lugar passa pelo mesmo filtro: o que não está na lista vira texto simples.
+- **Formato salvo:** HTML restrito no mesmo campo de texto (`objetivo`, `passos[].texto`), sem mudar o banco: `<p>`, `<ul>`/`<ol>`/`<li>`, `<br>`, `<strong>`, `<em>`, `<u>`, `<s>`, `<span style="color">` e `<mark data-color>`. Texto sem HTML (o que a IA escreve e os POPs antigos) continua valendo, uma linha por parágrafo. `lib/pop/texto-rico.ts` lê esse formato sem depender do navegador; tags e atributos fora da lista são descartados (só o texto fica) e cor só vale em `#rrggbb`/`rgb()`.
+- **DOCX:** parágrafos e listas de verdade do Word (numeração própria no `numbering.xml`; cada lista numerada recomeça em 1), marca-texto como sombreamento do trecho. O objetivo passou a ser `{@objetivo}` no modelo (`npm run modelo-pop`). **PDF:** os mesmos trechos e listas no pdfmake (Roboto com itálico e negrito-itálico). Conferido lado a lado com o DOCX renderizado.
+
 ---
 
 ## Em aberto

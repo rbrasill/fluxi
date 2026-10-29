@@ -240,7 +240,7 @@ celula(celulas(linhas(tabelaCom('Executor do Processo'))[0])[2], [['{executor}']
 // Objetivo (a tabela de texto logo após o título "Objetivo do Processo")
 {
   const t = el('tbl').find((t) => texto(t).startsWith('Lorem ipsum'));
-  celula(celulas(linhas(t)[0])[0], [['{objetivo}']]);
+  celula(celulas(linhas(t)[0])[0], [['{@objetivo}']]); // parágrafos com formatação, montados em lib/pop/docx.ts
 }
 
 // Envolvidos: uma linha repetida por par área/cargo

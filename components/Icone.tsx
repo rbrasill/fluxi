@@ -35,6 +35,11 @@ const caminhos: Record<string, string> = {
   parar: 'M6 6h12v12H6z',
   tela: 'M3 4h18v12H3zM8 20h8M12 16v4',
   salvar: 'M5 3h11l3 3v15H5zM8 3v5h8V3M8 21v-7h8v7',
+  'seta-baixo': 'M6 9l6 6 6-6',
+  lista: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  'lista-numerada': 'M10 6h10M10 12h10M10 18h10M4 4.5h1.5V9M4 9h3M4 14.6c.6-.9 3-.9 3 .7 0 1.2-3 2-3 3.7h3',
+  'marca-texto': 'M9 11l-5 5v3h3l5-5M9 11l6-6 4 4-6 6zM14 20h6',
+  'limpar-formato': 'M6 5h12M12 5l-3 14M4 4l16 16',
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {

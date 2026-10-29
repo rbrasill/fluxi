@@ -7,6 +7,7 @@ import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MoverPop } from '@/components/pop/MoverPop';
+import { TextoRico } from '@/components/pop/TextoRico';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
@@ -91,7 +92,7 @@ function EditorPop() {
     const el = document.getElementById(`pos-${p.chave}`);
     if (!el) return;
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    (el.querySelector('textarea, input:not([readonly])') as HTMLElement | null)?.focus({ preventScroll: true });
+    (el.querySelector('[contenteditable="true"], textarea, input:not([readonly])') as HTMLElement | null)?.focus({ preventScroll: true });
     setDestaque(p.chave);
     setChipOculto(true);
     setTimeout(() => setDestaque(null), 3000);
@@ -294,7 +295,7 @@ function EditorPop() {
 
       <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do processo">
         <h2>Objetivo do processo</h2>
-        <textarea rows={3} value={c.objetivo} onChange={(e) => setConteudo({ objetivo: e.target.value })} placeholder="Para que serve este procedimento e qual resultado ele garante." />
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">
@@ -339,7 +340,7 @@ function EditorPop() {
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
                 <span className="passo-num">{k + 1}</span>
                 <div className="passo-corpo">
-                  <textarea rows={2} value={s.texto} onChange={(e) => setPasso(i, k, { texto: e.target.value })} placeholder="Descreva o passo: o que fazer e onde clicar." />
+                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." />
                   {s.imagem_caminho ? (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}

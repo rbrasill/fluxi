@@ -308,6 +308,29 @@ input { font-family: inherit; }
 .passo-num { font-size: 12px; font-weight: 700; color: var(--muted); padding-top: 10px; text-align: center; }
 .passo-corpo { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .passo-corpo textarea { background: #fff; }
+
+/* Texto com formatação (components/pop/TextoRico.tsx): mesma caixa dos campos de texto */
+.texto-rico { position: relative; }
+.tr-conteudo { min-height: calc(var(--linhas, 2) * 1.5em + 26px); padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; font-size: 14px; line-height: 1.5; outline: none; overflow-wrap: anywhere; }
+.texto-rico.ativo .tr-conteudo { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.tr-conteudo p { margin: 0; }
+.tr-conteudo ul, .tr-conteudo ol { margin: 2px 0; padding-left: 22px; }
+.tr-conteudo li p { margin: 0; }
+.tr-conteudo mark { padding: 0 1px; border-radius: 2px; }
+.tr-placeholder { position: absolute; left: 15px; top: 13px; font-size: 14px; color: #9aa7aa; pointer-events: none; }
+.tr-barra { position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 25; display: flex; align-items: center; flex-wrap: wrap; gap: 2px; padding: 4px; background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(11,31,36,.14); }
+.tr-botao { min-width: 30px; height: 30px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); font: inherit; font-size: 15px; cursor: pointer; }
+.tr-botao:hover:not(:disabled) { background: var(--bg); }
+.tr-botao[aria-pressed='true'] { background: var(--primary-soft); color: var(--primary-dark); }
+.tr-botao:disabled { opacity: .35; cursor: default; }
+.tr-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+.tr-letra-cor { font-weight: 700; line-height: 1; padding: 0 2px 1px; border-bottom: 3px solid; }
+.tr-marca { display: inline-flex; padding: 1px 2px; border-radius: 4px; }
+.tr-grupo-menu { position: relative; }
+.tr-paleta { position: absolute; top: calc(100% + 4px); left: 0; z-index: 26; display: flex; align-items: center; gap: 6px; padding: 8px; background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(11,31,36,.14); }
+.tr-amostra { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); cursor: pointer; }
+.tr-amostra[aria-pressed='true'] { outline: 2px solid var(--primary); outline-offset: 1px; }
+.tr-cor-auto { height: 24px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: #fff; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
 .passo-img { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .passo-img img { max-width: 100%; max-height: 260px; border: 1px solid var(--line); border-radius: 8px; }
 .passo-acoes { display: flex; align-items: center; gap: 2px; }

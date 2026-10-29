@@ -13,6 +13,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
     "@supabase/supabase-js": "^2.117.2",
+    "@tiptap/core": "3.31.4",
+    "@tiptap/extension-highlight": "3.31.4",
+    "@tiptap/extension-text-style": "3.31.4",
+    "@tiptap/pm": "3.31.4",
+    "@tiptap/react": "3.31.4",
+    "@tiptap/starter-kit": "3.31.4",
     "docxtemplater": "^3.71.0",
     "fix-webm-duration": "^1.0.6",
     "konva": "^10.9.0",
