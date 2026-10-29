@@ -5,6 +5,7 @@ import * as fluxogramas from './fluxogramas';
 import { ErroApi } from './http';
 import { analisarGravacao } from './ia';
 import * as pops from './pops';
+import { repararPartes } from './reparo';
 import { TENANT_PADRAO, supabase } from './supabase';
 import { consultarFalas, excluirRemota, formatarFalas, iniciarDoStorage, type Fala } from './transcricao';
 
@@ -16,6 +17,13 @@ const mmss = (ms: number) => {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 };
+
+/** Erros do AssemblyAI mais comuns, em português; os outros seguem como vieram. */
+function traduzirErro(erro: string) {
+  if (/transcoding failed|file type .* unsupported/i.test(erro)) return 'o arquivo de áudio desta parte não pôde ser lido. Clique em "Tentar de novo": o Fluxi tenta consertar o arquivo antes de enviar.';
+  if (/no spoken audio|does not appear to contain audio/i.test(erro)) return 'esta parte não tem áudio.';
+  return erro;
+}
 
 async function gravacao(id: string) {
   const { data, error } = await supabase().from('gravacoes')
@@ -52,10 +60,19 @@ export async function iniciar(id: string) {
   if (!segs.length) throw new ErroApi(409, 'Esta gravação não tem áudio.');
   if (!(await marcar(id, { processamento: 'transcrevendo', processamento_erro: null }, g.processamento))) return estado(id);
 
+  // Numa nova tentativa, reaproveita as partes já transcritas (não transcreve de novo).
+  const faltam = segs.filter((s) => s.transcricao_status !== 'pronta');
+  const db = supabase();
+  let etapa = 'preparar';
   try {
-    // Numa nova tentativa, reaproveita as partes já transcritas (não transcreve de novo).
-    const faltam = segs.filter((s) => s.transcricao_status !== 'pronta');
-    const db = supabase();
+    // Esquece as tentativas anteriores: uma consulta durante o conserto não deve ver o erro antigo.
+    const { error } = await db.from('gravacao_segmentos').update({ transcricao_status: 'pendente', transcricao_id: null, falas: null })
+      .eq('gravacao_id', id).neq('transcricao_status', 'pronta');
+    if (error) throw error;
+    // Partes gravadas antes da correção do gravador começam fora do cabeçalho: conserta antes de enviar.
+    const consertadas = await repararPartes(id);
+    if (consertadas) console.info(`gravação ${id}: ${consertadas} parte(s) consertada(s)`);
+    etapa = 'enviar';
     await Promise.all(faltam.map(async (s) => {
       const transcricao_id = await iniciarDoStorage(s.caminho);
       const { error } = await db.from('gravacao_segmentos').update({ transcricao_id, transcricao_status: 'processando', falas: null })
@@ -63,7 +80,8 @@ export async function iniciar(id: string) {
       if (error) throw error;
     }));
   } catch (e) {
-    await marcar(id, { processamento: 'erro', processamento_erro: 'Não foi possível enviar o áudio para transcrição.' });
+    console.error('processamento', e);
+    await marcar(id, { processamento: 'erro', processamento_erro: etapa === 'preparar' ? 'Não foi possível preparar o áudio das partes para a transcrição. Tente de novo.' : 'Não foi possível enviar o áudio para transcrição.' });
     throw e;
   }
   return estado(id);
@@ -81,7 +99,7 @@ export async function avancar(id: string) {
     const r = await consultarFalas(s.transcricao_id, s.inicio_ms);
     if (r.status === 'processando') continue;
     if (r.status === 'erro') {
-      await marcar(id, { processamento: 'erro', processamento_erro: `Falha na transcrição: ${r.erro}` });
+      await marcar(id, { processamento: 'erro', processamento_erro: `Falha na transcrição da parte ${s.indice + 1} (a partir de ${mmss(s.inicio_ms)}): ${traduzirErro(r.erro)}` });
       return estado(id);
     }
     await db.from('gravacao_segmentos').update({ transcricao_status: 'pronta', falas: r.falas }).eq('gravacao_id', id).eq('indice', s.indice);

@@ -183,7 +183,11 @@ export class Gravador {
   }
 
   private novoSegmento() {
-    this.pedacos = [];
+    // Cada recorder guarda os pedaços na sua própria lista. O último pedaço chega depois do stop(),
+    // quando a parte seguinte já começou: com uma lista compartilhada, ele ia parar no começo da
+    // parte nova, antes do cabeçalho, e o arquivo ficava ilegível (ver lib/gravacao/reparo.ts).
+    const pedacos: Blob[] = [];
+    this.pedacos = pedacos;
     this.bytesSegmento = 0;
     this.inicioSegmento = this.tempoMs();
     const r = new MediaRecorder(this.stream!, {
@@ -193,8 +197,8 @@ export class Gravador {
     });
     r.ondataavailable = (e) => {
       if (!e.data.size) return;
-      this.pedacos.push(e.data);
-      this.bytesSegmento += e.data.size;
+      pedacos.push(e.data);
+      if (this.recorder === r) this.bytesSegmento += e.data.size;
     };
     r.start(1000);
     this.recorder = r;
