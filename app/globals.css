@@ -112,6 +112,12 @@ input { font-family: inherit; }
 .option span { font-size: 12px; color: var(--muted); }
 .option[aria-pressed='true'] { border: 2px solid var(--primary); background: #f2f8f9; padding: 13px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* Mover para outra área: o que vai junto com o processo */
+.mover-resumo { padding: 12px 14px; border-radius: 12px; background: var(--primary-soft); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.mover-resumo p { margin: 0; }
+.mover-resumo svg { vertical-align: -2px; margin-right: 2px; }
+.mover-resumo ul { margin: 0; padding-left: 26px; color: var(--muted); }
+.mover-resumo .mover-aviso { color: #6b3406; font-size: 12px; }
 
 /* Editor */
 .editor { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }

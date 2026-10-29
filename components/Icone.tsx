@@ -8,6 +8,7 @@ const caminhos: Record<string, string> = {
   check: 'M5 12.5l4.5 4.5L19 7',
   inicio: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
   pasta: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
+  mover: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 13h6M13 10.5l2.5 2.5-2.5 2.5',
   gravacao: 'M9 3h6v11H9zM5 11a7 7 0 0 0 14 0M12 18v3',
   pop: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4',
   cursor: 'M5 3l14 7-6 2-2 6z',

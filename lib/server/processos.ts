@@ -1,5 +1,6 @@
 import 'server-only';
 import { gerarCodigo } from '@/lib/codigo';
+import type { ConteudoPop } from '@/lib/pop/schema';
 import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
 import { TENANT_PADRAO, supabase } from './supabase';
@@ -62,12 +63,41 @@ export async function obter(id: string) {
   };
 }
 
+/**
+ * Campo "Área" do documento do POP ao mudar de área: acompanha a área nova se estava vazio ou com o
+ * nome da área antiga; se a pessoa escreveu outra coisa, fica como está.
+ */
+export function areaDoDocumento(atual: string, antiga: string | null | undefined, nova: string) {
+  const t = atual.trim().toLowerCase();
+  return !t || (!!antiga && t === antiga.trim().toLowerCase()) ? nova : atual;
+}
+
+/** Atualiza o campo "Área" do documento dos POPs do processo (depois de o processo mudar de área). */
+async function sincronizarAreaDosPops(processoId: string, antiga: string | null, nova: string) {
+  const db = supabase();
+  const { data, error } = await db.from('pops').select('id, conteudo').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId);
+  if (error) throw error;
+  await Promise.all((data ?? []).map(async (p) => {
+    const c = p.conteudo as ConteudoPop;
+    const area = areaDoDocumento(c.area ?? '', antiga, nova);
+    if (area === c.area) return;
+    const { error: e } = await db.from('pops').update({ conteudo: { ...c, area }, atualizado_em: new Date().toISOString() }).eq('tenant_id', TENANT_PADRAO).eq('id', p.id);
+    if (e) throw e;
+  }));
+}
+
 export async function atualizar(id: string, dados: { nome?: string; area_id?: string; descricao?: string }) {
-  if (dados.area_id) await garantirArea(dados.area_id);
-  const { data, error } = await supabase().from('processos').update({ ...dados, atualizado_em: new Date().toISOString() })
+  const novaArea = dados.area_id ? await garantirArea(dados.area_id) : null;
+  const db = supabase();
+  const { data: antes, error: e1 } = await db.from('processos').select('area_id, area:areas(nome)').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (e1) throw e1;
+  if (!antes) throw new ErroApi(404, 'Processo não encontrado');
+  const { data, error } = await db.from('processos').update({ ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'Processo não encontrado');
+  // Mudou de área: o campo "Área" dos POPs do processo acompanha.
+  if (novaArea && antes.area_id !== novaArea.id) await sincronizarAreaDosPops(id, (antes.area as { nome?: string } | null)?.nome ?? null, novaArea.nome);
   return data;
 }
 
