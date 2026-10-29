@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { avisar, confirmar } from '@/components/Dialogos';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
@@ -37,12 +38,12 @@ export default function ProcessoPage() {
       router.push(`/app/pops/${popId}`);
     } catch {
       setCriandoPop(false);
-      alert('Não foi possível criar o POP.');
+      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
     }
   }
 
   async function excluir() {
-    if (!confirm(`Excluir o processo "${p!.nome}"? Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.`)) return;
+    if (!(await confirmar({ titulo: `Excluir o processo "${p!.nome}"?`, mensagem: 'Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.', acao: 'Excluir', perigo: true }))) return;
     await excluirProcesso(p!.id);
     router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/organizacoes');
   }

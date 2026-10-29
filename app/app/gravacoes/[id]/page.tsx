@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { avisar, confirmar } from '@/components/Dialogos';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
 import { adicionarTelasDaGravacao, criarPop } from '@/lib/pops';
 import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, consultarProcessamento, salvarMarcacaoDesenhada, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
@@ -161,7 +162,7 @@ function Detalhe() {
       setLevando('ok');
     } catch {
       setLevando('');
-      alert('Não foi possível levar as telas para o POP.');
+      void avisar('Não foi possível levar as telas para o POP.', 'Tente de novo em instantes.');
     }
   }
 
@@ -172,12 +173,12 @@ function Detalhe() {
       router.push(`/app/pops/${popId}`);
     } catch {
       setCriandoPop(false);
-      alert('Não foi possível criar o POP.');
+      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
     }
   }
 
   async function remover(m: Marcacao) {
-    if (!confirm('Excluir esta tela marcada?')) return;
+    if (!(await confirmar({ titulo: 'Excluir esta tela marcada?', mensagem: 'A imagem e as marcações desenhadas nela são apagadas.', acao: 'Excluir', perigo: true }))) return;
     await excluirMarcacao(g!.id, m.id);
     setG({ ...g!, marcacoes: g!.marcacoes.filter((x) => x.id !== m.id) });
   }

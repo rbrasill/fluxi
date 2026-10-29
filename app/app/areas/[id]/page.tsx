@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
 
@@ -25,7 +26,7 @@ export default function AreaPage() {
   }
 
   async function excluir() {
-    if (!confirm(`Excluir a área "${a!.nome}"?`)) return;
+    if (!(await confirmar({ titulo: `Excluir a área "${a!.nome}"?`, mensagem: 'Só é possível excluir uma área sem processos.', acao: 'Excluir', perigo: true }))) return;
     try { await excluirArea(a!.id); router.push(a!.organizacao ? `/app/organizacoes/${a!.organizacao.id}` : '/app/organizacoes'); } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao excluir'); }
   }
 

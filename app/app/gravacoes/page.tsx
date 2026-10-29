@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { excluirGravacao, formatarTempo, listarGravacoes, type GravacaoResumo } from '@/lib/gravacoes';
 
 const ROTULO: Record<string, string> = { gravando: 'Gravando', pronta: 'Pronta', interrompida: 'Interrompida', erro: 'Envio incompleto' };
@@ -20,7 +21,7 @@ export default function GravacoesPage() {
   useEffect(() => { atualizar(); }, []);
 
   async function onExcluir(g: GravacaoResumo) {
-    if (!confirm(`Excluir "${g.nome}", com o vídeo e as telas marcadas? Essa ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ titulo: `Excluir a gravação "${g.nome}"?`, mensagem: 'O vídeo e as telas marcadas também são apagados. Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
     await excluirGravacao(g.id);
     atualizar();
   }

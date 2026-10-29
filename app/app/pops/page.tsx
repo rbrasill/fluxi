@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { SeloStatus } from '@/components/SeloStatus';
@@ -63,7 +64,7 @@ function ListaPops() {
   }
 
   async function onExcluir(p: PopResumo) {
-    if (!confirm(`Excluir o POP "${p.nome}"? Essa ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ titulo: `Excluir o POP "${p.nome}"?`, mensagem: 'Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
     await excluirPop(p.id);
     atualizar();
   }

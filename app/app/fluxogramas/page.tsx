@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { confirmar } from '@/components/Dialogos';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { duplicar, excluir, importarLocais, listar, locaisPendentes, type FluxogramaResumo } from '@/lib/fluxogramas';
 
@@ -35,7 +36,7 @@ export default function FluxogramasPage() {
   }, [itens, busca]);
 
   async function onExcluir(f: FluxogramaResumo) {
-    if (!confirm(`Excluir "${f.nome}"? Essa ação não pode ser desfeita.`)) return;
+    if (!(await confirmar({ titulo: `Excluir o fluxograma "${f.nome}"?`, mensagem: 'Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
     await excluir(f.id);
     atualizar();
   }

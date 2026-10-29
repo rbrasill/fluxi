@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DialogoNome } from '@/components/DialogoNome';
+import { confirmar } from '@/components/Dialogos';
 import { Icone } from '@/components/Icone';
 import { criarArea } from '@/lib/areas';
 import { atualizarOrganizacao, excluirOrganizacao, obterOrganizacao, type Organizacao } from '@/lib/organizacoes';
@@ -26,7 +27,7 @@ export default function OrganizacaoPage() {
   }
 
   async function excluir() {
-    if (!confirm(`Excluir a organização "${o!.nome}"?`)) return;
+    if (!(await confirmar({ titulo: `Excluir a organização "${o!.nome}"?`, mensagem: 'Só é possível excluir uma organização sem áreas.', acao: 'Excluir', perigo: true }))) return;
     try { await excluirOrganizacao(o!.id); router.push('/app/organizacoes'); } catch (e) { setErro(e instanceof Error ? e.message : 'Erro ao excluir'); }
   }
 

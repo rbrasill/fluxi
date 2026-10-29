@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { avisar, confirmar } from '@/components/Dialogos';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
@@ -168,7 +169,7 @@ function EditorPop() {
   async function abrirMover() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    if (Object.keys(pendente.current).length) return alert('Não foi possível salvar as alterações. Tente de novo antes de mover.');
+    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de mover o POP.');
     setMovendo(true);
   }
 
@@ -204,7 +205,7 @@ function EditorPop() {
   }
 
   // Ctrl+V com uma imagem copiada, estando num passo: o print entra nele.
-  function aoColar(e: React.ClipboardEvent) {
+  async function aoColar(e: React.ClipboardEvent) {
     const f = imagemColada(e.nativeEvent);
     const m = posicao.current?.chave.match(/^passo-(\d+)-(\d+)$/);
     if (!f || !m) return;
@@ -212,8 +213,8 @@ function EditorPop() {
     const s = c.procedimentos[i]?.passos[k];
     if (!s) return;
     e.preventDefault();
-    if (s.imagem_caminho && !confirm('Este passo já tem um print. Substituir pelo que foi colado?')) return;
-    imagemParaPng(f).then((p) => anexarAoPasso(i, k, p)).catch(() => alert('Não foi possível colar a imagem.'));
+    if (s.imagem_caminho && !(await confirmar({ titulo: 'Substituir o print deste passo?', mensagem: 'O passo já tem um print. Ele será trocado pelo que foi colado.', acao: 'Substituir' }))) return;
+    imagemParaPng(f).then((p) => anexarAoPasso(i, k, p)).catch(() => avisar('Não foi possível colar a imagem.', 'Copie o print de novo ou use “Anexar print”.'));
   }
 
   function mudarStatus(novo: StatusPop) {
@@ -332,7 +333,7 @@ function EditorPop() {
               <input className="proc-nome" value={p.nome} onChange={(e) => setProc(i, { nome: e.target.value })} placeholder="Nome do procedimento" aria-label="Nome do procedimento" />
               <button className="btn btn-ghost btn-icon" aria-label="Subir procedimento" disabled={i === 0} onClick={() => setConteudo({ procedimentos: mover(c.procedimentos, i, i - 1) })}>↑</button>
               <button className="btn btn-ghost btn-icon" aria-label="Descer procedimento" disabled={i === c.procedimentos.length - 1} onClick={() => setConteudo({ procedimentos: mover(c.procedimentos, i, i + 1) })}>↓</button>
-              <button className="btn btn-ghost btn-icon" aria-label="Excluir procedimento" onClick={() => confirm('Excluir este procedimento e seus passos?') && setConteudo({ procedimentos: c.procedimentos.filter((_, j) => j !== i) })}><Icone nome="lixo" tamanho={16} /></button>
+              <button className="btn btn-ghost btn-icon" aria-label="Excluir procedimento" onClick={async () => (await confirmar({ titulo: 'Excluir este procedimento?', mensagem: 'Os passos dele também saem do POP.', acao: 'Excluir', perigo: true })) && setConteudo({ procedimentos: c.procedimentos.filter((_, j) => j !== i) })}><Icone nome="lixo" tamanho={16} /></button>
             </div>
             {p.passos.map((s, k) => (
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
