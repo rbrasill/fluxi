@@ -84,6 +84,7 @@ const ETAPA: Record<string, string> = {
 function PainelIA({ gravacaoId }: { gravacaoId: string }) {
   const [e, setE] = useState<EstadoProcessamento | null>(null);
   const [erro, setErro] = useState('');
+  const [iniciando, setIniciando] = useState(false);
   const emAndamento = e?.processamento === 'transcrevendo' || e?.processamento === 'analisando';
 
   useEffect(() => { consultarProcessamento(gravacaoId).then(setE).catch(() => {}); }, [gravacaoId]);
@@ -95,10 +96,13 @@ function PainelIA({ gravacaoId }: { gravacaoId: string }) {
 
   async function gerar() {
     setErro('');
+    setIniciando(true);
     try { setE(await iniciarProcessamento(gravacaoId)); } catch (x) { setErro(x instanceof Error ? x.message : 'Erro ao iniciar.'); }
+    setIniciando(false);
   }
 
   if (!e) return null;
+  if (iniciando) return <div className="aviso"><span className="spinner" />Preparando o áudio para a transcrição… Em gravações longas, pode levar 1 ou 2 minutos.</div>;
   if (e.processamento === 'pronto') {
     return (
       <div className="aviso">

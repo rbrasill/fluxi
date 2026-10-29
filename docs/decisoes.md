@@ -188,6 +188,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Comportamento de diálogo nativo:** o foco vai para o botão de ação e volta para quem pediu ao fechar; Esc cancela; Tab circula entre os botões; os atalhos da tela por baixo não recebem teclas (ex.: Delete no editor de marcação). Ações destrutivas têm o botão vermelho. Em tela cheia (editor de fluxograma), o diálogo é desenhado dentro do elemento em tela cheia.
 - **Única exceção:** o aviso de "sair da página com alterações não salvas" continua sendo o do navegador; por segurança, nenhum site pode trocar esse.
 
+## 27. Partes da gravação ilegíveis ("Transcoding failed")
+- **Defeito:** na troca de parte (a cada 3 min), o gravador fechava o recorder antigo e abria o novo na hora, mas o último pedaço do antigo (até 1 s) só chega depois do `stop()`. Como os dois usavam a mesma lista de pedaços, esse pedaço entrava no começo da parte nova, antes do cabeçalho. Toda parte depois da primeira começava no meio do vídeo: nenhum programa abria (o AssemblyAI respondia "Transcoding failed... application/octet-stream (data)"), e a parte anterior perdia o último segundo. As partes depois de uma pausa não tinham o defeito (entre fechar e abrir há tempo para o pedaço chegar).
+- **Correção do gravador:** cada recorder guarda os pedaços na própria lista. Conferido com o gravador de verdade no Chromium: todas as partes começam com o cabeçalho WebM e o ffmpeg lê todas.
+- **Gravações já feitas:** antes de mandar para a transcrição ("Gerar POP" ou "Tentar de novo"), o Fluxi confere o começo de cada parte (1 MB). Se há uma sobra antes do cabeçalho, ela volta para o fim da parte anterior (de onde veio), e a parte ganha a duração no cabeçalho (`lib/gravacao/reparo.ts`). Os arquivos são substituídos no Storage, então o player também volta a tocar essas partes. Se o conserto parar no meio, rodar de novo não duplica nada.
+- **Mensagem de erro:** diz qual parte falhou e a partir de que minuto, em português.
+
 ---
 
 ## Em aberto
