@@ -359,6 +359,8 @@ input { font-family: inherit; }
 .ia-cabecalho { display: flex; align-items: flex-start; gap: 12px; }
 .ia-cabecalho h2 { font-size: 18px; }
 .ia-cabecalho .notice { margin: 4px 0 0; }
+.dialog-fechar { flex: none; margin: -8px -8px 0 auto; color: var(--muted); }
+.dialog-fechar:hover { color: var(--ink); }
 .ia-selo { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #7c3aed, #d946ef 60%, #f59e0b); }
 .ia-comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ia-rotulo { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }

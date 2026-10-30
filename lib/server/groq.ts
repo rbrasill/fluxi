@@ -57,11 +57,13 @@ async function chamar(modelo: ModeloGroq, p: PedidoJson, chave: string): Promise
 
 /**
  * Pede uma resposta em JSON, tentando os modelos em ordem. `validar` confere o formato (ex.: zod) e,
- * se lançar erro, conta como falha daquele modelo. Devolve o resultado e o modelo que respondeu.
+ * se lançar erro, conta como falha daquele modelo; se todos falharem e algum `validar` lançou ErroApi,
+ * é esse o erro devolvido (o motivo serve para a pessoa). Devolve o resultado e o modelo que respondeu.
  */
 export async function completarJson<T>(p: PedidoJson, validar: (bruto: unknown) => T): Promise<{ resultado: T; modelo: ModeloGroq }> {
   const chave = process.env.GROQ_API_KEY;
   if (!chave) throw new ErroApi(503, 'A IA de texto ainda não está configurada (falta GROQ_API_KEY).');
+  let recusa: ErroApi | undefined; // `validar` recusou a resposta com um motivo para a pessoa
   for (const [i, modelo] of MODELOS_GROQ.entries()) {
     try {
       return { resultado: validar(await chamar(modelo, p, chave)), modelo };
@@ -70,9 +72,10 @@ export async function completarJson<T>(p: PedidoJson, validar: (bruto: unknown) 
       if (e instanceof FalhaModelo && (e.status === 401 || e.status === 403)) {
         throw new ErroApi(502, 'A Groq recusou a chave (GROQ_API_KEY). Confira a chave nas variáveis de ambiente.');
       }
+      if (e instanceof ErroApi) recusa = e;
       const proximo = MODELOS_GROQ[i + 1];
       console.warn(`groq: ${modelo} falhou (${e instanceof Error ? e.message : e})${proximo ? `; tentando ${proximo}` : ''}`);
     }
   }
-  throw new ErroApi(502, 'A IA não respondeu agora. Tente de novo em instantes.');
+  throw recusa ?? new ErroApi(502, 'A IA não respondeu agora. Tente de novo em instantes.');
 }

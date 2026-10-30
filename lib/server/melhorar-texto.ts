@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { termosAlterados } from '@/lib/pop/termos-protegidos';
 import { normalizarHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { completarJson } from './groq';
 import { ErroApi } from './http';
@@ -99,6 +100,11 @@ export async function melhorarTexto(p: PedidoMelhoria) {
       // O que a IA devolve passa pelo mesmo filtro do editor: só as tags e cores permitidas.
       const texto = normalizarHtml(r.texto);
       if (!textoPuro(texto)) throw new Error('texto revisado vazio');
+      // Mesmo instruído, o modelo às vezes deforma um nome ("Fluig" → "FluFlig"): descarta e tenta o próximo.
+      const alterados = termosAlterados(textoPuro(html), textoPuro(texto));
+      if (alterados.length) {
+        throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Tente de novo.`);
+      }
       return { texto, mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
     },
   );
