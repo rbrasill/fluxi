@@ -8,6 +8,7 @@ import { avisar, confirmar } from '@/components/Dialogos';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
+import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
 import { TextoRico } from '@/components/pop/TextoRico';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
@@ -45,7 +46,7 @@ function EditorPop() {
   const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
   // Passo recebendo um print (capturado, colado ou de arquivo).
   const [anexando, setAnexando] = useState<{ i: number; k: number } | null>(null);
-  const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar
+  const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar, ou passo recém-movido
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const pendente = useRef<Partial<Pop>>({});
@@ -151,6 +152,15 @@ function EditorPop() {
       procedimentos: c.procedimentos.map((p, j) =>
         j === i ? { ...p, passos: p.passos.filter((_, x) => x !== k) } : j === destino ? { ...p, passos: [...p.passos, passo] } : p),
     });
+  };
+  // Digitar a posição no número do passo: vai direto para lá, e a tela acompanha e destaca o passo.
+  const moverPassoParaPosicao = (i: number, k: number, destino: number) => {
+    setProc(i, { passos: mover(c.procedimentos[i].passos, k, destino) });
+    setTimeout(() => {
+      document.getElementById(`pos-passo-${i}-${destino}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setDestaque(`passo-${i}-${destino}`);
+      setTimeout(() => setDestaque((d) => (d === `passo-${i}-${destino}` ? null : d)), 3000);
+    }, 50);
   };
   const setHist = (h: Historico[]) => alterar({ historico: h });
 
@@ -344,7 +354,7 @@ function EditorPop() {
             </div>
             {p.passos.map((s, k) => (
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
-                <span className="passo-num">{k + 1}</span>
+                <PosicaoPasso numero={k + 1} total={p.passos.length} aoMover={(n) => moverPassoParaPosicao(i, k, n - 1)} />
                 <div className="passo-corpo">
                   <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." />
                   {s.imagem_caminho ? (
