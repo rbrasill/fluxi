@@ -50,8 +50,8 @@ input { font-family: inherit; }
   display: flex; flex-direction: column; gap: 20px; padding: 20px 14px;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; color: #fff; text-decoration: none; }
-.brand-logo { width: 44px; height: 44px; flex: none; }
-.brand-name { font-family: var(--font-display); font-size: 20px; font-weight: 700; }
+.brand-logo { width: 158px; height: 40px; flex: none; }
+.brand-marca { display: none; width: 36px; height: 36px; flex: none; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #6f8a8f; padding: 10px 12px 6px; }
 .nav a {
@@ -164,8 +164,8 @@ input { font-family: inherit; }
   /* Celular/tablet: o menu lateral vira uma barra no topo, rolável na horizontal. */
   .shell { flex-direction: column; }
   .side { width: auto; flex-direction: row; align-items: center; gap: 8px; padding: 8px 10px; overflow-x: auto; position: sticky; top: 0; z-index: 30; }
-  .side .brand-name { display: none; }
-  .side .brand-logo { width: 36px; height: 36px; }
+  .side .brand-logo { display: none; }
+  .side .brand-marca { display: block; }
   .nav { flex-direction: row; gap: 2px; }
   .nav-label, .nav a[aria-disabled='true'] { display: none; }
   .nav a { white-space: nowrap; padding: 8px 10px; }
