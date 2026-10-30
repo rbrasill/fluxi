@@ -6,10 +6,12 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
+import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { TextoRico } from '@/components/pop/TextoRico';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
@@ -294,7 +296,11 @@ function EditorPop() {
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do processo">
-        <h2>Objetivo do processo</h2>
+        <div className="sec-titulo">
+          <h2>Objetivo do processo</h2>
+          <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
+            pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
+        </div>
         <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." />
       </section>
 
@@ -361,6 +367,8 @@ function EditorPop() {
                   )}
                 </div>
                 <div className="passo-acoes">
+                  <MelhorarComIa rotulo={`Passo ${k + 1}`} vazio={!textoPuro(s.texto)} aoAplicar={(v) => setPasso(i, k, { texto: v })}
+                    pedido={() => ({ campo: 'passo', texto: s.texto, pop: pop.nome, procedimento: p.nome, numero: k + 1, anterior: p.passos[k - 1]?.texto, seguinte: p.passos[k + 1]?.texto })} />
                   <button className="btn btn-ghost btn-icon" aria-label="Subir passo" disabled={k === 0} onClick={() => setProc(i, { passos: mover(p.passos, k, k - 1) })}>↑</button>
                   <button className="btn btn-ghost btn-icon" aria-label="Descer passo" disabled={k === p.passos.length - 1} onClick={() => setProc(i, { passos: mover(p.passos, k, k + 1) })}>↓</button>
                   {c.procedimentos.length > 1 && (

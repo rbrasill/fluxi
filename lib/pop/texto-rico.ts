@@ -244,5 +244,34 @@ export function paraEditor(valor: string | null | undefined): string {
   return v.split(/\r?\n/).map((l) => `<p>${escapar(l)}</p>`).join('');
 }
 
+/** HTML no formato do editor a partir dos blocos (só as tags e atributos permitidos, texto escapado). */
+export function paraHtml(blocos: Bloco[]): string {
+  const trecho = (t: Trecho) => {
+    let h = escapar(t.texto).replace(/\n/g, '<br>');
+    if (t.negrito) h = `<strong>${h}</strong>`;
+    if (t.italico) h = `<em>${h}</em>`;
+    if (t.sublinhado) h = `<u>${h}</u>`;
+    if (t.tachado) h = `<s>${h}</s>`;
+    if (t.fundo) h = `<mark data-color="${t.fundo}" style="background-color: ${t.fundo}; color: inherit">${h}</mark>`;
+    if (t.cor) h = `<span style="color: ${t.cor}">${h}</span>`;
+    return h;
+  };
+  const blocos_ = (lista: Bloco[]): string => lista.map((b) => {
+    if (b.tipo === 'paragrafo') return `<p>${b.trechos.map(trecho).join('')}</p>`;
+    if (b.tipo === 'lista') {
+      const tag = b.ordenada ? 'ol' : 'ul';
+      return `<${tag}>${b.itens.map((item) => `<li>${blocos_(item) || '<p></p>'}</li>`).join('')}</${tag}>`;
+    }
+    const n = colunas(b);
+    const linhas = b.linhas.map((l) => `<tr>${Array.from({ length: n }, (_, k) => l[k] ?? { cabecalho: false, blocos: [] })
+      .map((c) => { const tag = c.cabecalho ? 'th' : 'td'; return `<${tag}>${blocos_(c.blocos) || '<p></p>'}</${tag}>`; }).join('')}</tr>`);
+    return `<table><tbody>${linhas.join('')}</tbody></table>`;
+  }).join('');
+  return blocos_(blocos);
+}
+
+/** Passa qualquer texto (simples ou HTML de fora, como o da IA) pelo formato do editor: o que não é permitido sai. */
+export const normalizarHtml = (valor: string | null | undefined) => paraHtml(lerTexto(paraEditor(valor)));
+
 /** O editor vazio (só parágrafos sem texto) volta como texto vazio, para os filtros de "passo vazio". */
 export const normalizarDoEditor = (html: string) => (textoPuro(html) ? html : '');

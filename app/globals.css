@@ -349,6 +349,31 @@ input { font-family: inherit; }
 .passo-img { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .passo-img img { max-width: 100%; max-height: 260px; border: 1px solid var(--line); border-radius: 8px; }
 .passo-acoes { display: flex; align-items: center; gap: 2px; }
+
+/* Melhorar com IA (components/pop/MelhorarComIa.tsx): roxo do logo, para destacar das outras ações */
+.sec-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.btn-ia { color: #7c3aed; }
+.btn-ia:hover:not(:disabled) { background: #f3ecff; }
+.btn-ia:disabled { color: var(--muted); opacity: .45; }
+.dialogo-ia { gap: 14px; }
+.ia-cabecalho { display: flex; align-items: flex-start; gap: 12px; }
+.ia-cabecalho h2 { font-size: 18px; }
+.ia-cabecalho .notice { margin: 4px 0 0; }
+.ia-selo { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #7c3aed, #d946ef 60%, #f59e0b); }
+.ia-comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ia-rotulo { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.ia-rotulo-novo { color: #7c3aed; }
+.ia-texto { max-height: 46vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font-size: 14px; line-height: 1.5; }
+.ia-texto-novo { background: #faf7ff; border-color: #d9c7fb; }
+.ia-texto p { margin: 0; }
+.ia-texto ul, .ia-texto ol { margin: 2px 0; padding-left: 22px; }
+.ia-texto table { width: 100%; border-collapse: collapse; margin: 6px 0; }
+.ia-texto th, .ia-texto td { border: 1px solid #bfbfbf; padding: 3px 6px; text-align: left; vertical-align: top; }
+.ia-texto th { background: #f2f2f2; }
+.ia-mudancas ul { margin: 0; padding-left: 20px; font-size: 13px; color: var(--ink); }
+.ia-acoes { align-items: center; flex-wrap: wrap; }
+.ia-acoes .notice { margin-right: auto; }
+@media (max-width: 700px) { .ia-comparacao { grid-template-columns: 1fr; } }
 .passo-acoes select { height: 34px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; background: #fff; }
 .hist-cab, .hist-linha { display: grid; grid-template-columns: 140px 1fr 140px 40px; gap: 8px; align-items: center; }
 .hist-cab span { font-size: 12px; font-weight: 700; color: var(--muted); }
