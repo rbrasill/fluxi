@@ -32,6 +32,11 @@ export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELE
 /** Move o POP para outra área, com o processo inteiro dele (POP sem processo: entra num processo da área). */
 export const moverPop = (id: string, dados: { area_id: string; processo_id?: string; novo_processo?: string }) =>
   api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify(dados) });
+/** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
+export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
+export type PedidoMelhoria = { campo: 'passo' | 'objetivo'; texto: string; pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string };
+export const melhorarTextoComIa = (dados: PedidoMelhoria) =>
+  api<SugestaoIa>('/api/ia/melhorar-texto', { method: 'POST', body: JSON.stringify(dados) });
 export const urlDocx = (id: string) => `/api/pops/${id}/docx`;
 export const urlPdf = (id: string) => `/api/pops/${id}/pdf`;
 

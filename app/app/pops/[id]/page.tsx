@@ -6,9 +6,13 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
+import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
+import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
+import { TextoRico } from '@/components/pop/TextoRico';
 import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
@@ -42,7 +46,7 @@ function EditorPop() {
   const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
   // Passo recebendo um print (capturado, colado ou de arquivo).
   const [anexando, setAnexando] = useState<{ i: number; k: number } | null>(null);
-  const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar
+  const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar, ou passo recém-movido
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const pendente = useRef<Partial<Pop>>({});
@@ -91,7 +95,7 @@ function EditorPop() {
     const el = document.getElementById(`pos-${p.chave}`);
     if (!el) return;
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    (el.querySelector('textarea, input:not([readonly])') as HTMLElement | null)?.focus({ preventScroll: true });
+    (el.querySelector('[contenteditable="true"], textarea, input:not([readonly])') as HTMLElement | null)?.focus({ preventScroll: true });
     setDestaque(p.chave);
     setChipOculto(true);
     setTimeout(() => setDestaque(null), 3000);
@@ -148,6 +152,15 @@ function EditorPop() {
       procedimentos: c.procedimentos.map((p, j) =>
         j === i ? { ...p, passos: p.passos.filter((_, x) => x !== k) } : j === destino ? { ...p, passos: [...p.passos, passo] } : p),
     });
+  };
+  // Digitar a posição no número do passo: vai direto para lá, e a tela acompanha e destaca o passo.
+  const moverPassoParaPosicao = (i: number, k: number, destino: number) => {
+    setProc(i, { passos: mover(c.procedimentos[i].passos, k, destino) });
+    setTimeout(() => {
+      document.getElementById(`pos-passo-${i}-${destino}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setDestaque(`passo-${i}-${destino}`);
+      setTimeout(() => setDestaque((d) => (d === `passo-${i}-${destino}` ? null : d)), 3000);
+    }, 50);
   };
   const setHist = (h: Historico[]) => alterar({ historico: h });
 
@@ -293,8 +306,12 @@ function EditorPop() {
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do processo">
-        <h2>Objetivo do processo</h2>
-        <textarea rows={3} value={c.objetivo} onChange={(e) => setConteudo({ objetivo: e.target.value })} placeholder="Para que serve este procedimento e qual resultado ele garante." />
+        <div className="sec-titulo">
+          <h2>Objetivo do processo</h2>
+          <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
+            pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
+        </div>
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">
@@ -337,9 +354,9 @@ function EditorPop() {
             </div>
             {p.passos.map((s, k) => (
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
-                <span className="passo-num">{k + 1}</span>
+                <PosicaoPasso numero={k + 1} total={p.passos.length} aoMover={(n) => moverPassoParaPosicao(i, k, n - 1)} />
                 <div className="passo-corpo">
-                  <textarea rows={2} value={s.texto} onChange={(e) => setPasso(i, k, { texto: e.target.value })} placeholder="Descreva o passo: o que fazer e onde clicar." />
+                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." />
                   {s.imagem_caminho ? (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}
@@ -360,6 +377,8 @@ function EditorPop() {
                   )}
                 </div>
                 <div className="passo-acoes">
+                  <MelhorarComIa rotulo={`Passo ${k + 1}`} vazio={!textoPuro(s.texto)} aoAplicar={(v) => setPasso(i, k, { texto: v })}
+                    pedido={() => ({ campo: 'passo', texto: s.texto, pop: pop.nome, procedimento: p.nome, numero: k + 1, anterior: p.passos[k - 1]?.texto, seguinte: p.passos[k + 1]?.texto })} />
                   <button className="btn btn-ghost btn-icon" aria-label="Subir passo" disabled={k === 0} onClick={() => setProc(i, { passos: mover(p.passos, k, k - 1) })}>↑</button>
                   <button className="btn btn-ghost btn-icon" aria-label="Descer passo" disabled={k === p.passos.length - 1} onClick={() => setProc(i, { passos: mover(p.passos, k, k + 1) })}>↓</button>
                   {c.procedimentos.length > 1 && (

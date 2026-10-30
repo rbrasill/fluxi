@@ -4,15 +4,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Arrow, Circle, Group, Image as KImage, Label, Layer, Rect, Stage, Tag, Text, Transformer } from 'react-konva';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
-import { CORES, COR_PADRAO, anotacoesVazias, espessura, temAnotacao, type Anotacoes, type Forma, type Recorte } from '@/lib/marcacao/anotacoes';
+import { CORES, COR_PADRAO, anotacoesVazias, espessura, tamanhoBloco, temAnotacao, type Anotacoes, type Forma, type Recorte } from '@/lib/marcacao/anotacoes';
 
-// Editor de marcações sobre o print de uma tela: caixa, seta, número, texto e recorte.
+// Editor de marcações sobre o print de uma tela: caixa, seta, número, texto, borrão e recorte.
 // As formas ficam em pixels da imagem original; o Stage só é escalado para caber na tela.
 // Carregar com next/dynamic (ssr: false): o Konva usa canvas do navegador.
 
 export type ResultadoMarcacao = { anotacoes: Anotacoes; png: Blob; largura: number; altura: number };
 
-type Ferramenta = 'selecionar' | 'caixa' | 'seta' | 'numero' | 'texto' | 'recortar';
+type Ferramenta = 'selecionar' | 'caixa' | 'seta' | 'numero' | 'texto' | 'borrar' | 'recortar';
 
 const FERRAMENTAS: { id: Ferramenta; rotulo: string; icone: string; tecla: string; dica: string }[] = [
   { id: 'selecionar', rotulo: 'Selecionar', icone: 'cursor', tecla: 'v', dica: 'Clique numa marcação para mover, ajustar ou excluir.' },
@@ -20,11 +20,33 @@ const FERRAMENTAS: { id: Ferramenta; rotulo: string; icone: string; tecla: strin
   { id: 'seta', rotulo: 'Seta', icone: 'seta', tecla: 's', dica: 'Arraste da base até a ponta: a seta aponta para onde você soltar.' },
   { id: 'numero', rotulo: 'Número', icone: 'numero', tecla: 'n', dica: 'Clique para numerar a ordem dos cliques (1, 2, 3…).' },
   { id: 'texto', rotulo: 'Texto', icone: 'texto', tecla: 't', dica: 'Clique onde quer o texto e digite na barra acima.' },
+  { id: 'borrar', rotulo: 'Borrar', icone: 'borrar', tecla: 'b', dica: 'Arraste sobre nomes, CPF, e-mails e outros dados pessoais: a área fica quadriculada no POP.' },
   { id: 'recortar', rotulo: 'Recortar', icone: 'recortar', tecla: 'r', dica: 'Arraste para escolher a parte da tela que vai para o POP.' },
 ];
 
 const novoId = () => Math.random().toString(36).slice(2, 10);
 const normalizar = (x: number, y: number, w: number, h: number) => ({ x: w < 0 ? x + w : x, y: h < 0 ? y + h : y, w: Math.abs(w), h: Math.abs(h) });
+
+/**
+ * Quadriculado da área (x, y, w, h) da imagem: reduz a área a poucos pixels (um por quadrado, com a
+ * média das cores) e amplia sem suavizar. Do tamanho da área, para sair nítido na imagem final.
+ */
+function mosaico(img: HTMLImageElement, r: { x: number; y: number; w: number; h: number }, bloco: number) {
+  const w = Math.max(1, Math.round(r.w));
+  const h = Math.max(1, Math.round(r.h));
+  const tela = (cw: number, ch: number) => { const c = document.createElement('canvas'); c.width = cw; c.height = ch; return c; };
+  const trecho = tela(w, h);
+  trecho.getContext('2d')!.drawImage(img, -r.x, -r.y); // o que cair fora da imagem fica transparente
+  const peq = tela(Math.max(1, Math.round(w / bloco)), Math.max(1, Math.round(h / bloco)));
+  const p = peq.getContext('2d')!;
+  p.imageSmoothingQuality = 'high';
+  p.drawImage(trecho, 0, 0, peq.width, peq.height);
+  const out = tela(w, h);
+  const o = out.getContext('2d')!;
+  o.imageSmoothingEnabled = false;
+  o.drawImage(peq, 0, 0, w, h);
+  return out;
+}
 
 export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar, aoFechar }: {
   imagemUrl: string;
@@ -55,6 +77,7 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
   const recorteRef = useRef<Konva.Rect>(null);
   const textoRef = useRef<HTMLInputElement>(null);
   const [, render] = useState(0);
+  const mosaicos = useRef(new Map<string, HTMLCanvasElement>());
 
   // Imagem com CORS liberado (o Storage responde com Access-Control-Allow-Origin), senão o canvas não exporta.
   useEffect(() => {
@@ -77,6 +100,20 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
   const H = img?.naturalHeight ?? 1;
   const esc = Math.min(area.w / W, area.h / H, 1);
   const esp = espessura(W);
+  const bloco = tamanhoBloco(W);
+
+  // O quadriculado depende só da posição e do tamanho: guarda o último de cada borrão.
+  const mosaicoDe = (f: { id: string; x: number; y: number; w: number; h: number }) => {
+    const n = normalizar(f.x, f.y, f.w, f.h);
+    const chave = `${f.id}:${n.x}:${n.y}:${n.w}:${n.h}`;
+    let c = mosaicos.current.get(chave);
+    if (!c) {
+      for (const k of mosaicos.current.keys()) if (k.startsWith(`${f.id}:`)) mosaicos.current.delete(k);
+      c = mosaico(img!, n, bloco);
+      mosaicos.current.set(chave, c);
+    }
+    return { n, c };
+  };
 
   // --- histórico ---
   const aplicar = useCallback((novo: Anotacoes, historico = true) => {
@@ -116,7 +153,8 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
   useEffect(() => {
     const tr = trRef.current;
     if (!tr) return;
-    const no = selecionada?.tipo === 'caixa' && ferramenta !== 'recortar' ? stageRef.current?.findOne(`#${selecionada.id}`) : null;
+    const redimensiona = selecionada?.tipo === 'caixa' || selecionada?.tipo === 'borrar';
+    const no = redimensiona && ferramenta !== 'recortar' ? stageRef.current?.findOne(`#${selecionada.id}`) : null;
     tr.nodes(no ? [no] : []);
     tr.getLayer()?.batchDraw();
   }, [selecionada, ferramenta, doc]);
@@ -171,6 +209,7 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
       return;
     }
     if (ferramenta === 'caixa') setTemp({ id: novoId(), tipo: 'caixa', x: p.x, y: p.y, w: 0, h: 0, cor });
+    if (ferramenta === 'borrar') setTemp({ id: novoId(), tipo: 'borrar', x: p.x, y: p.y, w: 0, h: 0 });
     if (ferramenta === 'seta') setTemp({ id: novoId(), tipo: 'seta', x1: p.x, y1: p.y, x2: p.x, y2: p.y, cor });
     if (ferramenta === 'recortar') setTemp({ x: p.x, y: p.y, w: 0, h: 0 });
     inicio.current = p;
@@ -242,7 +281,7 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
 
   function trocarCor(c: string) {
     setCor(c);
-    if (selecionada) atualizar(selecionada.id, { cor: c });
+    if (selecionada && selecionada.tipo !== 'borrar') atualizar(selecionada.id, { cor: c });
   }
 
   // --- formas ---
@@ -290,6 +329,21 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
           </Group>
         );
       }
+      case 'borrar': {
+        const { n, c: canvas } = mosaicoDe(f);
+        return (
+          <KImage key={f.id} {...c} image={canvas} x={n.x} y={n.y} width={n.w} height={n.h}
+            onDragEnd={(e) => atualizar(f.id, { x: e.target.x(), y: e.target.y() }, false)}
+            onTransformStart={marcarHistorico}
+            onTransformEnd={(e) => {
+              const no = e.target;
+              const w = Math.max(5, no.width() * no.scaleX());
+              const h = Math.max(5, no.height() * no.scaleY());
+              no.scaleX(1); no.scaleY(1);
+              atualizar(f.id, { x: no.x(), y: no.y(), w, h }, false);
+            }} />
+        );
+      }
       case 'texto':
         return (
           <Label key={f.id} {...c} x={f.x} y={f.y} onDragEnd={(e) => atualizar(f.id, { x: e.target.x(), y: e.target.y() }, false)}>
@@ -316,7 +370,7 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
         </div>
         <div className="em-grupo" aria-label="Cor">
           {CORES.map((c) => (
-            <button key={c} className="em-cor" style={{ background: c }} aria-pressed={(selecionada?.cor ?? cor) === c} aria-label={`Cor ${c}`} onClick={() => trocarCor(c)} />
+            <button key={c} className="em-cor" style={{ background: c }} aria-pressed={(selecionada && 'cor' in selecionada ? selecionada.cor : cor) === c} aria-label={`Cor ${c}`} onClick={() => trocarCor(c)} />
           ))}
         </div>
         <div className="em-grupo">
@@ -362,7 +416,9 @@ export default function EditorMarcacao({ imagemUrl, anotacoes, titulo, aoSalvar,
             onPointerDown={aoPressionar} onPointerMove={aoMover} onPointerUp={aoSoltar} onPointerLeave={() => temp && aoSoltar()}>
             <Layer ref={conteudoRef} listening={ferramenta !== 'recortar'}>
               <KImage image={img} width={W} height={H} name="fundo" />
-              {doc.formas.map((f) => desenhar(f))}
+              {/* Borrões logo acima do print: setas e caixas continuam visíveis por cima deles. */}
+              {doc.formas.filter((f) => f.tipo === 'borrar').map((f) => desenhar(f))}
+              {doc.formas.filter((f) => f.tipo !== 'borrar').map((f) => desenhar(f))}
               {temp && 'tipo' in temp && desenhar(temp, true)}
             </Layer>
             <Layer>

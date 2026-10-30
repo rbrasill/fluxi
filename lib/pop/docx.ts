@@ -3,6 +3,7 @@
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import type { ConteudoPop, Historico, Passo } from './schema';
+import { colunas, lerTexto, linhasDeCabecalho, textoPuro, type Bloco, type Trecho } from './texto-rico';
 
 export type DadosPop = ConteudoPop & {
   nome: string;
@@ -52,10 +53,11 @@ export function sequenciaPassos(dados: DadosPop) {
   const itens: ({ tipo: 'subtitulo'; texto: string } | { tipo: 'passo'; numero: number; texto: string; passo: Passo })[] = [];
   let n = 0;
   for (const p of dados.procedimentos) {
-    const passos = p.passos.filter((s) => s.texto.trim() || s.imagem_caminho);
+    // `texto` do passo pode ter formatação (texto-rico.ts); "vazio" é sem nenhum texto.
+    const passos = p.passos.filter((s) => textoPuro(s.texto) || s.imagem_caminho);
     if (!passos.length) continue;
     if (p.nome.trim()) itens.push({ tipo: 'subtitulo', texto: p.nome.trim() });
-    for (const s of passos) itens.push({ tipo: 'passo', numero: ++n, texto: s.texto.trim(), passo: s });
+    for (const s of passos) itens.push({ tipo: 'passo', numero: ++n, texto: textoPuro(s.texto) ? s.texto : '', passo: s });
   }
   return itens;
 }
@@ -81,19 +83,168 @@ function paragrafoImagem(rId: string, idNum: number, cx: number, cy: number, nom
   return `<w:p><w:pPr>${comCaixa ? '<w:keepNext/>' : ''}<w:spacing w:before="120" w:after="${comCaixa ? 0 : 200}"/><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${idNum}" name="${esc(nome)}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="${idNum}" name="${esc(nome)}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln w="6350"><a:solidFill><a:srgbClr val="${COR_BORDA_IMAGEM}"/></a:solidFill></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
 }
 
+// --- Texto com formatação (negrito, cor, marca-texto, listas…) em parágrafos do Word ---
+
+const ABS_MARCADORES = 9001; // listas do texto com formatação: definições próprias no numbering.xml
+const ABS_NUMEROS = 9002;
+const RECUO_LISTA = 360; // twips por nível (0,25")
+
+function nivelXml(nivel: number, formato: string, texto: string) {
+  const esquerda = RECUO_LISTA * (nivel + 1);
+  return `<w:lvl w:ilvl="${nivel}"><w:start w:val="1"/><w:numFmt w:val="${formato}"/><w:lvlText w:val="${texto}"/><w:lvlJc w:val="left"/>`
+    + `<w:pPr><w:ind w:left="${esquerda}" w:hanging="${RECUO_LISTA}"/></w:pPr></w:lvl>`;
+}
+const DEFINICOES_LISTAS = `<w:abstractNum w:abstractNumId="${ABS_MARCADORES}"><w:multiLevelType w:val="hybridMultilevel"/>`
+  + ['•', '◦', '▪'].map((m, i) => nivelXml(i, 'bullet', m)).join('') + '</w:abstractNum>'
+  + `<w:abstractNum w:abstractNumId="${ABS_NUMEROS}"><w:multiLevelType w:val="hybridMultilevel"/>`
+  + [['decimal', '%1.'], ['lowerLetter', '%2.'], ['lowerRoman', '%3.']].map(([f, t], i) => nivelXml(i, f, t)).join('') + '</w:abstractNum>';
+
+/** Listas do documento: cada lista numerada recomeça em 1 (uma numeração própria); marcadores compartilham uma. */
+class Numeracao {
+  private nums: string[] = [];
+  private proximo = 9001;
+  private marcadores?: number;
+  lista(ordenada: boolean) {
+    if (!ordenada) return (this.marcadores ??= this.nova(ABS_MARCADORES, false));
+    return this.nova(ABS_NUMEROS, true);
+  }
+  private nova(abs: number, reiniciar: boolean) {
+    const id = this.proximo++;
+    const inicio = reiniciar ? [0, 1, 2].map((n) => `<w:lvlOverride w:ilvl="${n}"><w:startOverride w:val="1"/></w:lvlOverride>`).join('') : '';
+    this.nums.push(`<w:num w:numId="${id}"><w:abstractNumId w:val="${abs}"/>${inicio}</w:num>`);
+    return id;
+  }
+  /** Acrescenta as definições ao numbering.xml do modelo (abstractNum antes de todos os num). */
+  aplicar(xml: string) {
+    if (!this.nums.length) return xml;
+    const i = xml.indexOf('<w:num ');
+    const comDefinicoes = i >= 0 ? xml.slice(0, i) + DEFINICOES_LISTAS + xml.slice(i) : xml.replace('</w:numbering>', `${DEFINICOES_LISTAS}</w:numbering>`);
+    return comDefinicoes.replace('</w:numbering>', `${this.nums.join('')}</w:numbering>`);
+  }
+}
+
+type Base = { cor: string; tamanho?: number; semNegrito?: boolean; negrito?: boolean };
+
+/** Runs de um parágrafo; a ordem dos elementos de w:rPr segue o esquema do Word. */
+function runsXml(trechos: Trecho[], base: Base) {
+  return trechos.map((t) => {
+    const sz = base.tamanho ? `<w:sz w:val="${base.tamanho}"/><w:szCs w:val="${base.tamanho}"/>` : '';
+    const rPr = (t.negrito || base.negrito ? '<w:b/><w:bCs/>' : base.semNegrito ? '<w:b w:val="0"/><w:bCs w:val="0"/>' : '')
+      + (t.italico ? '<w:i/><w:iCs/>' : '')
+      + (t.tachado ? '<w:strike/>' : '')
+      + `<w:color w:val="${(t.cor ?? `#${base.cor}`).slice(1)}"/>`
+      + sz
+      + (t.sublinhado ? '<w:u w:val="single"/>' : '')
+      + (t.fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${t.fundo.slice(1)}"/>` : '');
+    const conteudo = t.texto.split('\n').map((l) => `<w:t xml:space="preserve">${esc(l)}</w:t>`).join('<w:br/>');
+    return `<w:r><w:rPr>${rPr}</w:rPr>${conteudo}</w:r>`;
+  }).join('');
+}
+
+/** Tira parágrafos vazios do começo e do fim (o editor deixa um parágrafo vazio ao apagar). */
+function aparar(blocos: Bloco[]) {
+  const vazio = (b: Bloco) => b.tipo === 'paragrafo' && !b.trechos.some((t) => t.texto.trim());
+  let i = 0, f = blocos.length;
+  while (i < f && vazio(blocos[i])) i++;
+  while (f > i && vazio(blocos[f - 1])) f--;
+  return blocos.slice(i, f);
+}
+
+const COR_BORDA_TABELA = 'BFBFBF'; // Table Grid Light, a mesma dos envolvidos
+const FUNDO_CABECALHO = 'F2F2F2';
+const MARGEM_CELULA_TABELA = 80; // twips de cada lado
+
+/**
+ * Parágrafos (e tabelas) do Word para o texto com formatação.
+ * @param estilo/espacamento  propriedades comuns dos parágrafos, na ordem do esquema
+ * @param inicio              runs no começo do primeiro parágrafo (ex.: o rótulo "Passo 3:")
+ * @param largura             largura disponível em twips (para as colunas das tabelas)
+ */
+function paragrafosXml(valor: string, o: { base: Base; numeracao: Numeracao; largura: number; estilo?: string; espacamento?: string; inicio?: string }) {
+  const estilo = o.estilo ? `<w:pStyle w:val="${o.estilo}"/>` : '';
+  const espacamento = o.espacamento ?? '';
+  let inicio = o.inicio ?? '';
+  // Marca de parágrafo com a cor e o tamanho do texto: o número ou marcador da lista usa esse formato.
+  const marca = (base: Base) => `<w:rPr><w:color w:val="${base.cor}"/>${base.tamanho ? `<w:sz w:val="${base.tamanho}"/><w:szCs w:val="${base.tamanho}"/>` : ''}</w:rPr>`;
+  const paragrafo = (trechos: Trecho[], base: Base, extra: { numPr?: string; ind?: string } = {}) => {
+    const xml = `<w:p><w:pPr>${estilo}${extra.numPr ?? ''}${espacamento}${extra.ind ?? ''}${marca(base)}</w:pPr>${inicio}${runsXml(trechos, base)}</w:p>`;
+    inicio = '';
+    return xml;
+  };
+  // Parágrafo mínimo: o Word exige um depois de cada tabela no fim de uma célula e entre duas tabelas.
+  const respiro = (base: Base) => `<w:p><w:pPr>${estilo}<w:spacing w:before="0" w:after="0" w:line="80" w:lineRule="exact"/>${marca(base)}</w:pPr></w:p>`;
+
+  const tabela = (t: Extract<Bloco, { tipo: 'tabela' }>, nivel: number, largura: number, base: Base) => {
+    const n = colunas(t);
+    const recuo = RECUO_LISTA * nivel;
+    const col = Math.max(400, Math.floor((largura - recuo) / n));
+    const cabecalhos = linhasDeCabecalho(t);
+    const borda = (lado: string) => `<w:${lado} w:val="single" w:sz="4" w:space="0" w:color="${COR_BORDA_TABELA}"/>`;
+    const m = MARGEM_CELULA_TABELA;
+    const linhas = t.linhas.map((linha, i) => {
+      const celulas = Array.from({ length: n }, (_, k) => linha[k] ?? { cabecalho: false, blocos: [] }).map((c) => {
+        const b = c.cabecalho ? { ...base, negrito: true } : base;
+        let conteudo = blocos(aparar(c.blocos), 0, col - 2 * m, b);
+        if (!conteudo.endsWith('</w:p>')) conteudo += conteudo ? respiro(b) : paragrafo([], b);
+        const fundo = c.cabecalho ? `<w:shd w:val="clear" w:color="auto" w:fill="${FUNDO_CABECALHO}"/>` : '';
+        return `<w:tc><w:tcPr><w:tcW w:w="${col}" w:type="dxa"/>${fundo}</w:tcPr>${conteudo}</w:tc>`;
+      }).join('');
+      // Linhas de cabeçalho repetem no topo de cada página; nenhuma linha se divide entre páginas.
+      return `<w:tr><w:trPr><w:cantSplit/>${i < cabecalhos ? '<w:tblHeader/>' : ''}</w:trPr>${celulas}</w:tr>`;
+    }).join('');
+    return `<w:tbl><w:tblPr><w:tblW w:w="${col * n}" w:type="dxa"/>${recuo ? `<w:tblInd w:w="${recuo}" w:type="dxa"/>` : ''}`
+      + `<w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(borda).join('')}</w:tblBorders>`
+      + `<w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="40" w:type="dxa"/><w:left w:w="${m}" w:type="dxa"/><w:bottom w:w="40" w:type="dxa"/><w:right w:w="${m}" w:type="dxa"/></w:tblCellMar>`
+      + `<w:tblLook w:val="0000"/></w:tblPr><w:tblGrid>${`<w:gridCol w:w="${col}"/>`.repeat(n)}</w:tblGrid>${linhas}</w:tbl>`;
+  };
+
+  const blocos = (lista: Bloco[], nivel: number, largura: number, base: Base): string => {
+    let xml = '';
+    for (const b of lista) {
+      if (b.tipo === 'paragrafo') {
+        xml += paragrafo(b.trechos, base, nivel ? { ind: `<w:ind w:left="${RECUO_LISTA * nivel}"/>` } : {});
+        continue;
+      }
+      if (inicio) xml += paragrafo([], base); // o rótulo fica numa linha própria antes da lista ou tabela
+      if (b.tipo === 'tabela') {
+        if (xml.endsWith('</w:tbl>')) xml += respiro(base);
+        xml += tabela(b, nivel, largura, base);
+        continue;
+      }
+      const id = o.numeracao.lista(b.ordenada);
+      for (const item of b.itens) {
+        const [primeiro, ...resto] = item;
+        if (primeiro?.tipo === 'paragrafo') {
+          xml += paragrafo(primeiro.trechos, base, { numPr: `<w:numPr><w:ilvl w:val="${Math.min(nivel, 2)}"/><w:numId w:val="${id}"/></w:numPr>` });
+          xml += blocos(resto, nivel + 1, largura, base);
+        } else {
+          xml += blocos(item, nivel + 1, largura, base);
+        }
+      }
+    }
+    return xml;
+  };
+
+  let xml = blocos(aparar(lerTexto(valor)), 0, o.largura, o.base);
+  // Célula de tabela termina num parágrafo (o objetivo e a caixa do passo são células).
+  if (!xml.endsWith('</w:p>')) xml += xml ? respiro(o.base) : paragrafo([], o.base);
+  return xml;
+}
+
 /** Texto do passo numa tabela de uma célula (fundo creme, barra laranja), centralizada. */
-function caixaTexto(rotulo: string, texto: string, larguraTwips: number) {
+function caixaTexto(rotulo: string, texto: string, larguraTwips: number, numeracao: Numeracao) {
   const borda = (lado: string, cor: string, sz: number) => `<w:${lado} w:val="single" w:sz="${sz}" w:space="0" w:color="${cor}"/>`;
-  const linhas = texto.split(/\r?\n/).map((l) => `<w:t xml:space="preserve">${esc(l)}</w:t>`).join('<w:br/>');
-  const rTexto = `<w:rPr><w:color w:val="${COR_TEXTO}"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr>`;
+  const rotuloXml = `<w:r><w:rPr><w:b/><w:color w:val="${COR_CAIXA_ROTULO}"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr><w:t xml:space="preserve">${esc(rotulo)}  </w:t></w:r>`;
+  const paragrafos = paragrafosXml(texto, {
+    base: { cor: COR_TEXTO, tamanho: 21 }, numeracao, inicio: rotuloXml, largura: larguraTwips - 2 * 170,
+    espacamento: '<w:spacing w:before="0" w:after="0" w:line="264" w:lineRule="auto"/>',
+  });
   return `<w:tbl><w:tblPr><w:tblW w:w="${larguraTwips}" w:type="dxa"/><w:jc w:val="center"/>`
     + `<w:tblBorders>${borda('top', COR_CAIXA_BORDA, 4)}${borda('left', COR_CAIXA_BARRA, 24)}${borda('bottom', COR_CAIXA_BORDA, 4)}${borda('right', COR_CAIXA_BORDA, 4)}</w:tblBorders>`
     + `<w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:left w:w="170" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="170" w:type="dxa"/></w:tblCellMar>`
     + `<w:tblLook w:val="0000"/></w:tblPr><w:tblGrid><w:gridCol w:w="${larguraTwips}"/></w:tblGrid>`
     + `<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:tcPr><w:tcW w:w="${larguraTwips}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${COR_CAIXA_FUNDO}"/></w:tcPr>`
-    + `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="264" w:lineRule="auto"/></w:pPr>`
-    + `<w:r><w:rPr><w:b/><w:color w:val="${COR_CAIXA_ROTULO}"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr><w:t xml:space="preserve">${esc(rotulo)}  </w:t></w:r>`
-    + `<w:r>${rTexto}${linhas}</w:r></w:p></w:tc></w:tr></w:tbl>`
+    + `${paragrafos}</w:tc></w:tr></w:tbl>`
     // espaço depois da caixa (e evita que duas tabelas seguidas se juntem)
     + '<w:p><w:pPr><w:spacing w:before="0" w:after="200"/></w:pPr></w:p>';
 }
@@ -134,17 +285,20 @@ export function gerarDocx(modelo: Buffer | Uint8Array, dados: DadosPop, imagens:
   zip.file(relsPath, rels);
 
   const comum = cabecalho(dados);
+  const numeracao = new Numeracao();
   let figura = 0;
   const itens = sequenciaPassos(dados).map((item) => {
     if (item.tipo === 'subtitulo') return { bloco: paragrafoSubtitulo(item.texto) };
     const { passo, texto, numero } = item;
     const rId = passo.imagem_caminho ? rIdDe.get(passo.imagem_caminho) : undefined;
-    if (!rId) return { bloco: texto ? caixaTexto(`Passo ${numero}:`, texto, LARGURA_CAIXA_TWIPS) : '' };
+    if (!rId) return { bloco: texto ? caixaTexto(`Passo ${numero}:`, texto, LARGURA_CAIXA_TWIPS, numeracao) : '' };
     figura++;
     const { cx, cy } = tamanhoImagem(passo.imagem_largura ?? 1600, passo.imagem_altura ?? 900);
     const imagem = paragrafoImagem(rId, 1000 + figura, cx, cy, `Tela ${figura}`, !!texto);
-    return { bloco: texto ? imagem + caixaTexto(`Passo ${numero}:`, texto, Math.round(cx / EMU_POR_TWIP)) : imagem };
+    return { bloco: texto ? imagem + caixaTexto(`Passo ${numero}:`, texto, Math.round(cx / EMU_POR_TWIP), numeracao) : imagem };
   });
+  // Objetivo: o modelo tem um parágrafo NoSpacing, cor do texto e sem negrito (a tabela aplicaria negrito).
+  const objetivo = paragrafosXml(dados.objetivo, { base: { cor: COR_TEXTO, semNegrito: true }, numeracao, estilo: 'NoSpacing', largura: 9468 - 2 * 108 });
 
   const contexto = {
     area: dados.area,
@@ -155,7 +309,7 @@ export function gerarDocx(modelo: Buffer | Uint8Array, dados: DadosPop, imagens:
     codigoProcesso: dados.codigo,
     identificacaoPop: dados.identificacao,
     executor: dados.executor,
-    objetivo: dados.objetivo,
+    objetivo,
     envolvidos: comum.envolvidos,
     descricaoFluxograma: DESCRICAO_FLUXOGRAMA,
     linkFluxograma: paragrafoLink(rIdLink),
@@ -165,5 +319,8 @@ export function gerarDocx(modelo: Buffer | Uint8Array, dados: DadosPop, imagens:
 
   const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true, nullGetter: () => '' });
   doc.render(contexto);
-  return doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+  const saida = doc.getZip();
+  const numbering = saida.file('word/numbering.xml');
+  if (numbering) saida.file('word/numbering.xml', numeracao.aplicar(numbering.asText()));
+  return saida.generate({ type: 'nodebuffer', compression: 'DEFLATE' });
 }

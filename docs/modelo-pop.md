@@ -49,7 +49,7 @@ const PopSchema = z.object({
 | Procedimento | `{nomeProcedimento}`, `{mesAno}` (derivado de `dataCriacao`), `Versão: {versao}` |
 | Identificação | `{dataCriacao}`, `{codigoProcesso}`, `{identificacaoPop}` |
 | Executor | `{executor}` |
-| Objetivo | `{objetivo}` |
+| Objetivo | `{@objetivo}` (parágrafos e listas com formatação, ver decisão 29) |
 | Envolvidos | `{#envolvidos}{area} · {cargo}{/envolvidos}` |
 | Recursos | `{linkFluxograma}` |
 | Procedimentos | `{#itens}{@bloco}{/itens}` (cada bloco é XML pronto: subtítulo, print ou caixa do passo) |

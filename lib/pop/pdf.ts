@@ -14,6 +14,7 @@ import {
   COR_AZUL, COR_BORDA_IMAGEM, COR_CAIXA_BARRA, COR_CAIXA_BORDA, COR_CAIXA_FUNDO, COR_CAIXA_ROTULO, COR_TEXTO,
   DESCRICAO_FLUXOGRAMA, cabecalho, sequenciaPassos, tamanhoImagemPt, type DadosPop,
 } from './docx';
+import { colunas, lerTexto, linhasDeCabecalho, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
 
 const PASTA = () => path.join(process.cwd(), 'templates/pop');
 const AZUL = `#${COR_AZUL}`;
@@ -103,13 +104,75 @@ const itemLista = (numero: string, texto: string, recuoNumero: number): Bloco =>
   columns: [{ width: recuoNumero, text: '' }, { width: 18, text: numero }, { width: '*', text: texto || ' ' }],
 });
 
+// --- Texto com formatação (texto-rico.ts), igual ao DOCX: mesmas marcas, listas e recuos ---
+
+const RECUO_LISTA = 18; // pt por nível (360 twips no DOCX)
+const MARCADORES = ['disc', 'circle', 'square'];
+const NUMERACOES = ['decimal', 'lower-alpha', 'lower-roman'];
+
+const trechosPdf = (trechos: Trecho[]) => trechos.map((t) => {
+  const decoracao = [t.sublinhado && 'underline', t.tachado && 'lineThrough'].filter(Boolean) as string[];
+  return {
+    text: t.texto,
+    ...(t.negrito ? { bold: true } : {}),
+    ...(t.italico ? { italics: true } : {}),
+    ...(decoracao.length ? { decoration: decoracao } : {}),
+    ...(t.cor ? { color: t.cor } : {}),
+    ...(t.fundo ? { background: t.fundo } : {}),
+  };
+});
+
+function aparar(blocos: BlocoTexto[]) {
+  const vazio = (b: BlocoTexto) => b.tipo === 'paragrafo' && !b.trechos.some((t) => t.texto.trim());
+  let i = 0, f = blocos.length;
+  while (i < f && vazio(blocos[i])) i++;
+  while (f > i && vazio(blocos[f - 1])) f--;
+  return blocos.slice(i, f);
+}
+
+/** Blocos do pdfmake; `inicio` entra no começo do primeiro parágrafo (o rótulo "Passo N:"). */
+function textoRicoPdf(valor: string, inicio: Bloco[] = []): Bloco[] {
+  let prefixo = inicio;
+  const paragrafo = (trechos: Trecho[]): Bloco => {
+    const runs = [...prefixo, ...trechosPdf(trechos)];
+    prefixo = [];
+    return { text: runs.length ? runs : ' ' };
+  };
+  const blocos = (lista: BlocoTexto[], nivel: number): Bloco[] => lista.flatMap((b): Bloco[] => {
+    if (b.tipo === 'paragrafo') return [paragrafo(b.trechos)];
+    const rotulo = prefixo.length ? [paragrafo([])] : []; // o rótulo fica numa linha própria antes da lista ou tabela
+    if (b.tipo === 'tabela') {
+      // Como no DOCX: colunas iguais, borda cinza fina, cabeçalho com fundo e negrito, repetido em cada página.
+      const n = colunas(b);
+      const body = b.linhas.map((linha) => Array.from({ length: n }, (_, k) => linha[k] ?? { cabecalho: false, blocos: [] }).map((c) => {
+        const conteudo = blocos(aparar(c.blocos), 0);
+        return { stack: conteudo.length ? conteudo : [{ text: ' ' }], ...(c.cabecalho ? { bold: true, fillColor: FAIXA_TABELA } : {}) };
+      }));
+      return [...rotulo, {
+        table: { headerRows: linhasDeCabecalho(b), dontBreakRows: true, widths: Array(n).fill('*'), body },
+        layout: {
+          hLineWidth: () => 0.5, vLineWidth: () => 0.5, hLineColor: () => BORDA_TABELA, vLineColor: () => BORDA_TABELA,
+          paddingLeft: () => 4, paddingRight: () => 4, paddingTop: () => 2, paddingBottom: () => 2,
+        },
+        margin: [0, 2, 0, 2],
+      }];
+    }
+    const itens = b.itens.map((item) => ({ stack: blocos(item, nivel + 1) }));
+    const tipo = (b.ordenada ? NUMERACOES : MARCADORES)[Math.min(nivel, 2)];
+    return [...rotulo, { [b.ordenada ? 'ol' : 'ul']: itens, type: tipo, markerColor: TEXTO, margin: [nivel ? 0 : RECUO_LISTA - 12, 0, 0, 0] }];
+  });
+  const saida = blocos(aparar(lerTexto(valor)), 0);
+  return saida.length ? saida : [paragrafo([])];
+}
+
 /** Caixa do passo: fundo creme, barra laranja à esquerda, "Passo N:" em destaque. */
 function caixaPasso(numero: number, texto: string, largura: number): Bloco {
+  const rotulo = { text: `Passo ${numero}:  `, bold: true, color: `#${COR_CAIXA_ROTULO}` };
   return centralizado({
     table: {
       dontBreakRows: true,
       widths: [largura - 17 - 3.5],
-      body: [[{ text: [{ text: `Passo ${numero}:  `, bold: true, color: `#${COR_CAIXA_ROTULO}` }, { text: texto, color: TEXTO }], fontSize: 10.5, lineHeight: lh(1.1), fillColor: `#${COR_CAIXA_FUNDO}` }]],
+      body: [[{ stack: textoRicoPdf(texto, [rotulo]), color: TEXTO, fontSize: 10.5, lineHeight: lh(1.1), fillColor: `#${COR_CAIXA_FUNDO}` }]],
     },
     layout: {
       hLineWidth: () => 0.5, vLineWidth: (i: number) => (i === 0 ? 3 : 0.5),
@@ -243,7 +306,7 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
       secao('Objetivo do Processo', { nome: 'objetivo', tamanho: 17, y: 0 }, { x: 427.1, y: -1.2 }),
       vazio(9),
       {
-        table: { widths: [larguraCol(9468)], heights: [70.85], body: [[{ text: dados.objetivo || ' ', verticalAlignment: 'middle' }]] },
+        table: { widths: [larguraCol(9468)], heights: [70.85], body: [[{ stack: textoRicoPdf(dados.objetivo), verticalAlignment: 'middle' }]] },
         layout: semBordas(),
       },
       vazio(12),

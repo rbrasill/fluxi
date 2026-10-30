@@ -6,6 +6,7 @@ const caminhos: Record<string, string> = {
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
   empresa: 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
   check: 'M5 12.5l4.5 4.5L19 7',
+  fechar: 'M6 6l12 12M18 6L6 18',
   inicio: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
   pasta: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
   mover: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 13h6M13 10.5l2.5 2.5-2.5 2.5',
@@ -17,6 +18,7 @@ const caminhos: Record<string, string> = {
   numero: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM11 9l2-1v8',
   texto: 'M5 7V5h14v2M12 5v14M9 19h6',
   recortar: 'M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14',
+  borrar: 'M4 4h16v16H4zM4 9.33h16M4 14.67h16M9.33 4v16M14.67 4v16',
   desfazer: 'M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3',
   refazer: 'M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3',
   marcar: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
@@ -34,6 +36,13 @@ const caminhos: Record<string, string> = {
   parar: 'M6 6h12v12H6z',
   tela: 'M3 4h18v12H3zM8 20h8M12 16v4',
   salvar: 'M5 3h11l3 3v15H5zM8 3v5h8V3M8 21v-7h8v7',
+  'seta-baixo': 'M6 9l6 6 6-6',
+  topo: 'M6 4h12M12 20V9M7 13l5-5 5 5',
+  tabela: 'M4 5h16v14H4zM4 10h16M4 15h16M10 10v9M15 10v9',
+  lista: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  'lista-numerada': 'M10 6h10M10 12h10M10 18h10M4 4.5h1.5V9M4 9h3M4 14.6c.6-.9 3-.9 3 .7 0 1.2-3 2-3 3.7h3',
+  'marca-texto': 'M9 11l-5 5v3h3l5-5M9 11l6-6 4 4-6 6zM14 20h6',
+  'limpar-formato': 'M6 5h12M12 5l-3 14M4 4l16 16',
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {
