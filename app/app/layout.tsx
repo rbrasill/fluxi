@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
@@ -7,7 +8,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <aside className="side">
         <Link href="/app/inicio" className="brand">
-          <span className="brand-mark"><Icone nome="fluxo" tamanho={20} /></span>
+          <Image src="/logo-fluxi.png" alt="" width={44} height={44} className="brand-logo" priority />
           <span className="brand-name">Fluxi</span>
         </Link>
         <nav className="nav" aria-label="Principal">
