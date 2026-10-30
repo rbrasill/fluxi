@@ -362,10 +362,11 @@ input { font-family: inherit; }
 .dialog-fechar { flex: none; margin: -8px -8px 0 auto; color: var(--muted); }
 .dialog-fechar:hover { color: var(--ink); }
 .ia-selo { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #7c3aed, #d946ef 60%, #f59e0b); }
-.ia-comparacao { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* minmax(0, …): link ou palavra longa quebra dentro da caixa em vez de alargar a coluna para fora do modal */
+.ia-comparacao { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .ia-rotulo { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .ia-rotulo-novo { color: #7c3aed; }
-.ia-texto { max-height: 46vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font-size: 14px; line-height: 1.5; }
+.ia-texto { max-height: 46vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .ia-texto-novo { background: #faf7ff; border-color: #d9c7fb; }
 .ia-texto p { margin: 0; }
 .ia-texto ul, .ia-texto ol { margin: 2px 0; padding-left: 22px; }
@@ -375,7 +376,7 @@ input { font-family: inherit; }
 .ia-mudancas ul { margin: 0; padding-left: 20px; font-size: 13px; color: var(--ink); }
 .ia-acoes { align-items: center; flex-wrap: wrap; }
 .ia-acoes .notice { margin-right: auto; }
-@media (max-width: 700px) { .ia-comparacao { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .ia-comparacao { grid-template-columns: minmax(0, 1fr); } }
 .passo-acoes select { height: 34px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; background: #fff; }
 .hist-cab, .hist-linha { display: grid; grid-template-columns: 140px 1fr 140px 40px; gap: 8px; align-items: center; }
 .hist-cab span { font-size: 12px; font-weight: 700; color: var(--muted); }
