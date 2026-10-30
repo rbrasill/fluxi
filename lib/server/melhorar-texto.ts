@@ -102,5 +102,7 @@ export async function melhorarTexto(p: PedidoMelhoria) {
       return { texto, mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
     },
   );
-  return { ...resultado, igual: textoPuro(resultado.texto) === textoPuro(html), modelo };
+  // Quando volta igual, a IA às vezes ainda descreve uma "mudança" (ex.: um ponto final que já existia).
+  const igual = textoPuro(resultado.texto) === textoPuro(html);
+  return { texto: resultado.texto, mudancas: igual ? [] : resultado.mudancas, igual, modelo };
 }
