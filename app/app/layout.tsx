@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
+import { VoltarAoTopo } from '@/components/VoltarAoTopo';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="main">{children}</div>
+      <VoltarAoTopo />
     </div>
   );
 }

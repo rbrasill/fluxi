@@ -509,6 +509,11 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 .tag-status.st-pausada { background: #fff1dc; color: #8a4306; }
 .chip-retomar { border: 1px solid #c3d9f5; background: #eef5ff; color: #0f3b66; border-radius: 999px; padding: 3px 10px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
 .chip-retomar:hover { background: #dcebfd; }
+/* Voltar ao topo: discreto no canto; aparece depois de rolar uma tela. Abaixo dos modais (z-index 50). */
+.voltar-topo { position: fixed; right: 20px; bottom: 20px; z-index: 40; width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); color: var(--muted); box-shadow: 0 4px 14px rgba(11,31,36,.12); cursor: pointer; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .2s, transform .2s, visibility 0s .2s, color .15s, border-color .15s; }
+.voltar-topo.visivel { opacity: .85; visibility: visible; transform: none; transition: opacity .2s, transform .2s, color .15s, border-color .15s; }
+.voltar-topo:hover, .voltar-topo:focus-visible { opacity: 1; color: var(--primary); border-color: var(--primary); }
+@media (max-width: 800px) { .voltar-topo { right: 12px; bottom: 12px; } }
 .retomado { animation: retomado 3s ease-out; }
 @keyframes retomado { 0%, 60% { box-shadow: 0 0 0 3px var(--primary); } 100% { box-shadow: 0 0 0 0 transparent; } }
 .passo-adicionar { display: flex; gap: 8px; flex-wrap: wrap; }
