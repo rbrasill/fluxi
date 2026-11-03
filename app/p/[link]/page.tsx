@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { VoltarAoTopo } from '@/components/VoltarAoTopo';
 import { CabecalhoPublico, Indisponivel } from '@/components/publico/CabecalhoPublico';
+import { VisualizadorImagens, type ImagemAmpliavel } from '@/components/publico/VisualizadorImagens';
 import { normalizarHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { dataBr, obterPopPublico, urlDocumentoPublico, urlSvg, type PopPublico } from '@/lib/publico';
 
@@ -16,6 +17,7 @@ export default function PopPublicoPage() {
   const { link } = useParams<{ link: string }>();
   const [pop, setPop] = useState<PopPublico | null | undefined>(undefined);
   const [erro, setErro] = useState('');
+  const [ampliada, setAmpliada] = useState<number | null>(null); // índice em `prints`
 
   useEffect(() => {
     obterPopPublico(link)
@@ -31,6 +33,15 @@ export default function PopPublicoPage() {
   const c = pop.conteudo;
   const fluxo = pop.fluxograma;
   const envolvidos = c.envolvidos.filter((e) => e.area || e.cargo);
+  // Todos os prints, na ordem do POP: o visualizador passa de um para o outro.
+  const prints: ImagemAmpliavel[] = [];
+  const indicePrint = new Map<string, number>();
+  c.procedimentos.forEach((p, i) => p.passos.forEach((s, k) => {
+    const src = s.imagem_caminho ? pop.imagens[s.imagem_caminho] : undefined;
+    if (!src) return;
+    indicePrint.set(`${i}-${k}`, prints.length);
+    prints.push({ src, alt: `Tela do passo ${k + 1} de ${p.nome || `Procedimento ${i + 1}`}`, legenda: `${p.nome || `Procedimento ${i + 1}`} · Passo ${k + 1}` });
+  }));
   const dados: [string, string][] = ([
     ['Identificação', pop.identificacao],
     ['Versão', pop.versao],
@@ -104,8 +115,12 @@ export default function PopPublicoPage() {
                   <div className="pub-passo-corpo">
                     {textoPuro(s.texto) && <Rico valor={s.texto} />}
                     {s.imagem_caminho && pop.imagens[s.imagem_caminho] && (
-                      <img className="pub-print" src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} loading="lazy"
-                        width={s.imagem_largura} height={s.imagem_altura} />
+                      <button type="button" className="pub-print-botao" onClick={() => setAmpliada(indicePrint.get(`${i}-${k}`) ?? null)}
+                        aria-label={`Ampliar a tela do passo ${k + 1}`} title="Clique para ampliar">
+                        <img className="pub-print" src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} loading="lazy"
+                          width={s.imagem_largura} height={s.imagem_altura} />
+                        <span className="pub-print-zoom" aria-hidden="true"><Icone nome="zoom-mais" tamanho={16} />Ampliar</span>
+                      </button>
                     )}
                   </div>
                 </li>
@@ -127,6 +142,7 @@ export default function PopPublicoPage() {
         <footer className="pub-rodape">Versão publicada em {dataBr(pop.publicado_em)} · Publicado com Fluxi</footer>
       </main>
       <VoltarAoTopo />
+      {ampliada !== null && prints[ampliada] && <VisualizadorImagens imagens={prints} inicial={ampliada} aoFechar={() => setAmpliada(null)} />}
     </div>
   );
 }
