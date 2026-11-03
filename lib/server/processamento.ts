@@ -162,7 +162,7 @@ async function analisar(id: string, nome: string, processoId: string | null, fal
     });
   }
 
-  const pop = await pops.criar({ gravacao_id: id, fluxograma_id: fluxo.id });
+  const pop = await pops.criar({ gravacao_id: id });
   await pops.atualizar(pop.id, { conteudo });
 
   await Promise.all(analise.telas.map((t) => {

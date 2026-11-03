@@ -11,7 +11,6 @@ import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
 import { TextoRico } from '@/components/pop/TextoRico';
-import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
@@ -41,7 +40,6 @@ function EditorPop() {
   const retomar = !!useSearchParams().get('retomar');
   const [pop, setPop] = useState<Pop | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>('salvo');
-  const [fluxogramas, setFluxogramas] = useState<FluxogramaResumo[]>([]);
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
   // Tela sendo marcada: a marcação é da tela, então aparece igual na gravação e em todo POP que usa a tela.
   const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
@@ -67,7 +65,6 @@ function EditorPop() {
       // POP sem processo: carrega a lista para poder vinculá-lo.
       if (!d.processo_id) listarProcessos().then(setProcessos).catch(() => setProcessos([]));
     }).catch(() => setPop(null));
-    listarFluxogramas().then(setFluxogramas).catch(() => {});
   }, [id]);
 
   const salvarPosicao = useCallback((keepalive = false) => {
@@ -273,8 +270,6 @@ function EditorPop() {
     setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area } });
   }
 
-  // Fluxogramas do mesmo processo (e o que já estiver vinculado).
-  const fluxosDoProcesso = fluxogramas.filter((f) => !pop.processo_id || f.processo_id === pop.processo_id || f.id === pop.fluxograma_id);
   const onde = pop.processo;
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
@@ -369,20 +364,6 @@ function EditorPop() {
           </div>
         ))}
         <button className="btn btn-tracejado" onClick={() => setConteudo({ envolvidos: [...c.envolvidos, { area: '', cargo: '' }] })}><Icone nome="mais" tamanho={16} />Adicionar área · cargo</button>
-      </section>
-
-      <section className="cartao pop-sec" id="pos-recursos" data-pos="recursos" data-rotulo="Recursos do processo">
-        <h2>Recursos do processo</h2>
-        <label className="field">
-          Fluxograma
-          <select value={pop.fluxograma_id ?? ''} onChange={(e) => alterar({ fluxograma_id: e.target.value || null })}>
-            <option value="">{fluxosDoProcesso.length ? 'Nenhum' : 'Nenhum fluxograma neste processo'}</option>
-            {fluxosDoProcesso.map((f) => <option key={f.id} value={f.id}>{f.nome} ({f.codigo})</option>)}
-          </select>
-        </label>
-        {pop.fluxograma_id
-          ? <Link href={`/app/fluxogramas/${pop.fluxograma_id}`} className="link-sec">Abrir diagrama</Link>
-          : onde && <Link href={`/app/processos/${onde.id}`} className="link-sec">Criar o fluxograma no processo</Link>}
       </section>
 
       <section className="pop-sec">

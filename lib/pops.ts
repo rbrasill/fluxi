@@ -10,7 +10,7 @@ export type PopResumo = {
   id: string; nome: string; codigo: string; identificacao: string; versao: string; status: StatusPop; autor: string;
   posicao: Posicao | null; // onde a pessoa parou no editor
   processo: OndePop;
-  fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+  gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
 };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & { conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop> };
@@ -25,9 +25,9 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 /** POPs ativos; com `arquivados`, só os arquivados (por si ou pelo processo). */
 export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${arquivados ? '?arquivados=1' : ''}`);
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
-export const criarPop = (dados: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) =>
+export const criarPop = (dados: { nome?: string; gravacao_id?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'fluxograma_id' | 'status' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'status' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
 /** Arquiva (some das listas, sem apagar) e restaura. */
 export const arquivarPop = (id: string) => api(`/api/pops/${id}/arquivar`, { method: 'POST' });

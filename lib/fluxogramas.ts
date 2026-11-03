@@ -33,12 +33,12 @@ export const criar = (nome: string, xml = '', origem: 'manual' = 'manual', proce
   api<FluxogramaResumo>('/api/fluxogramas', { method: 'POST', body: JSON.stringify({ nome, xml, origem, processo_id }) });
 export const salvar = (id: string, dados: { nome?: string; xml?: string; miniatura?: string }, keepalive = false) =>
   api<{ id: string }>(`/api/fluxogramas/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
-export const duplicar = (id: string) => api<FluxogramaResumo>(`/api/fluxogramas/${id}/duplicar`, { method: 'POST' });
 export const excluir = (id: string) => api<{ ok: true }>(`/api/fluxogramas/${id}`, { method: 'DELETE' });
 
 // IA
-export const gerarComIa = (texto: string, origem: 'descricao' | 'transcricao', nome?: string, processo_id?: string) =>
-  api<FluxogramaResumo>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify({ texto, origem, nome, processo_id }) });
+/** `substituir`: o processo já tem fluxograma e o desenho atual é trocado pelo gerado. */
+export const gerarComIa = (p: { texto: string; origem: 'descricao' | 'transcricao'; nome?: string; processo_id?: string; substituir?: boolean }) =>
+  api<FluxogramaResumo>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify(p) });
 
 const LIMITE_AUDIO_BYTES = 50 * 1024 * 1024; // limite por arquivo do Storage (Supabase Free)
 const ESPERA_MAXIMA_MS = 30 * 60 * 1000;
@@ -90,22 +90,4 @@ export async function transcreverAudio(arquivo: File, aoMudar: (etapa: string) =
     if (t.status === 'erro') throw new ErroCliente(`Erro na transcrição: ${t.erro}`, 502);
     aoMudar(`Transcrevendo… ${mmss(decorrido)}${decorrido > 90_000 ? ' · áudios longos levam alguns minutos' : ''}`);
   }
-}
-
-// Fluxogramas salvos no navegador pela versão de teste anterior.
-const INDICE_LOCAL = 'fluxi:fluxogramas';
-export function locaisPendentes(): { nome: string; xml: string; chave: string }[] {
-  try {
-    const itens: { id: string; nome: string }[] = JSON.parse(localStorage.getItem(INDICE_LOCAL) || '[]');
-    return itens.map((f) => ({ nome: f.nome, xml: localStorage.getItem(`fluxi:fluxograma:${f.id}`) || '', chave: f.id }));
-  } catch {
-    return [];
-  }
-}
-export async function importarLocais() {
-  for (const f of locaisPendentes()) {
-    await criar(f.nome, f.xml);
-    localStorage.removeItem(`fluxi:fluxograma:${f.chave}`);
-  }
-  localStorage.removeItem(INDICE_LOCAL);
 }

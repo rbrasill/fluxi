@@ -11,11 +11,12 @@ const Pedido = z.object({
   texto: z.string().trim().min(30, 'Descreva o processo com mais detalhes.').max(400_000),
   origem: z.enum(['descricao', 'transcricao']),
   processo_id: z.string().uuid().optional(),
+  substituir: z.boolean().optional(), // o processo já tem fluxograma: troca o desenho
 });
 
 export const POST = (req: Request) =>
   responder(async () => {
     const p = Pedido.parse(await req.json());
     const fluxo = await extrairFluxo(p.texto, p.origem);
-    return criar({ nome: p.nome || fluxo.titulo, xml: gerarXml(fluxo), origem: 'ia', schema: fluxo, processo_id: p.processo_id });
+    return criar({ nome: p.nome || fluxo.titulo, xml: gerarXml(fluxo), origem: 'ia', schema: fluxo, processo_id: p.processo_id, substituir: p.substituir });
   });

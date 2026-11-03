@@ -233,7 +233,7 @@ export default function NovaGravacaoPage() {
           <div>
             {processo
               ? <Link href={`/app/processos/${processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{processo.nome}</Link>
-              : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
+              : <Link href="/app/inicio" className="voltar"><Icone nome="voltar" tamanho={16} />Início</Link>}
             <h1>{continuacao ? 'Continuar a gravação' : processo ? 'Gravar o processo na tela' : 'Nova gravação de tela'}</h1>
             <p>Grave o passo a passo no sistema narrando o que faz. Nos momentos importantes, clique em <b>Incluir esta tela no POP</b>.</p>
           </div>

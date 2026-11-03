@@ -511,6 +511,15 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 .linha-pop.arquivada .pop-icone { color: var(--muted); }
 .abas-arquivo { width: fit-content; }
 .abas-arquivo button { flex: none; padding: 0 14px; }
+/* Recursos do processo: o cartão do fluxograma (um por processo) */
+.fluxo-cartao { flex-direction: row; align-items: center; gap: 18px; padding: 18px 20px; }
+.fluxo-miniatura { width: 120px; height: 76px; object-fit: contain; border: 1px solid var(--line); border-radius: 10px; background: #fff; flex: none; }
+.fluxo-icone { background: #eef5ff; color: #1d4ed8; width: 44px; height: 44px; }
+.fluxo-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.fluxo-info strong { font-size: 15px; }
+.fluxo-info span { font-size: 13px; color: var(--muted); }
+.fluxo-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 800px) { .fluxo-cartao { flex-direction: column; align-items: stretch; } .fluxo-acoes { justify-content: flex-start; } }
 .aviso .aviso-acoes { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .aviso .aviso-acoes .btn { margin-left: 0; }
 .tela-no-pop { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #e7f7f1; color: #0b6b50; }

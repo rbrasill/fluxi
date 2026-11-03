@@ -12,8 +12,12 @@ import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
 import { arquivarProcesso, atualizarProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
 
+// Página do processo em duas frentes (decisão 31): os recursos do processo (o fluxograma, um por
+// processo) e a gestão dos POPs dele. Gravações ficam dentro de cada POP.
+
 const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
 const EM_ABERTO: StatusGravacao[] = ['pausada', 'gravando', 'interrompida'];
+const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
 export default function ProcessoPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +25,7 @@ export default function ProcessoPage() {
   const [p, setP] = useState<Processo | null | undefined>(undefined);
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
-  const [novoFluxo, setNovoFluxo] = useState(false);
+  const [fluxoDialogo, setFluxoDialogo] = useState<'desenhar' | 'ia' | 'substituir' | null>(null);
   const [criandoPop, setCriandoPop] = useState(false);
   const [ocupado, setOcupado] = useState(false);
 
@@ -37,7 +41,7 @@ export default function ProcessoPage() {
   async function novoPop() {
     setCriandoPop(true);
     try {
-      const { id: popId } = await criarPop({ processo_id: p!.id, nome: p!.nome, fluxograma_id: p!.fluxogramas.length === 1 ? p!.fluxogramas[0].id : undefined });
+      const { id: popId } = await criarPop({ processo_id: p!.id, nome: p!.nome });
       router.push(`/app/pops/${popId}`);
     } catch {
       setCriandoPop(false);
@@ -61,7 +65,7 @@ export default function ProcessoPage() {
     const itens = [
       p!.pops.length && `${p!.pops.length} ${p!.pops.length === 1 ? 'POP' : 'POPs'}`,
       p!.gravacoes.length && `${p!.gravacoes.length} ${p!.gravacoes.length === 1 ? 'gravação' : 'gravações'}`,
-      p!.fluxogramas.length && 'o fluxograma',
+      p!.fluxograma && 'o fluxograma',
     ].filter(Boolean).join(', ');
     if (!(await confirmar({ titulo: `Excluir definitivamente o processo "${p!.nome}"?`, mensagem: `${itens ? `Apaga o processo com ${itens}. ` : ''}Essa ação não pode ser desfeita.`, acao: 'Excluir', perigo: true }))) return;
     setOcupado(true);
@@ -90,6 +94,7 @@ export default function ProcessoPage() {
   const arquivado = !!p.arquivado_em;
   const pops = p.pops.filter((o) => !o.arquivado_em);
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
+  const fluxo = p.fluxograma;
 
   return (
     <div className="page">
@@ -119,85 +124,100 @@ export default function ProcessoPage() {
 
       {arquivado && <FaixaArquivado tipo="processo" desde={p.arquivado_em!} aoRestaurar={restaurar} aoExcluir={excluir} ocupado={ocupado} />}
 
-      {/* O produto final é o POP: ele vem primeiro. */}
+      {gravacoesAbertas.map((g) => (
+        <div key={g.id} className="aviso retomar">
+          <span><b>Gravação {ROTULO_STATUS[g.status as StatusGravacao].toLowerCase()}: {g.nome}</b> · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}. Tudo o que foi gravado está salvo.</span>
+          <span className="aviso-acoes">
+            <Link href={`/app/gravacoes/${g.id}`} className="btn">Abrir gravação</Link>
+            {!arquivado && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-primary"><span className="rec-dot" />Continuar gravação</Link>}
+          </span>
+        </div>
+      ))}
+
+      {/* Frente 1: a visão macro do processo. */}
       <section className="secao-processo">
         <div className="secao-head">
-          <h2><Icone nome="pop" tamanho={18} />{pops.length > 1 ? 'POPs do processo' : 'POP do processo'}</h2>
-          {pops.length > 0 && !arquivado && <button className="btn btn-ghost" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Outro POP'}</button>}
+          <h2><Icone nome="fluxo" tamanho={18} />Recursos do processo</h2>
         </div>
-        {gravacoesAbertas.map((g) => (
-          <div key={g.id} className="aviso retomar">
-            <span><b>Gravação {ROTULO_STATUS[g.status as StatusGravacao].toLowerCase()}: {g.nome}</b> · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}. Tudo o que foi gravado está salvo.</span>
-            <span className="aviso-acoes">
-              <Link href={`/app/gravacoes/${g.id}`} className="btn">Abrir gravação</Link>
-              <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-primary"><span className="rec-dot" />Continuar gravação</Link>
-            </span>
-          </div>
-        ))}
-        {pops.length === 0 && arquivado ? (
-          <p className="notice">Nenhum POP ativo neste processo.</p>
-        ) : pops.length === 0 ? (
-          <div className="comecar-pop">
-            <p><strong>Este processo ainda não tem POP.</strong> Como você quer começar?</p>
-            <div className="options options-3">
-              <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="option">
-                <strong><span className="rec-dot" /> Gravar a tela <span className="recomendado">Recomendado</span></strong>
-                <span>Faça o processo no sistema narrando cada passo. A IA escreve o POP e o fluxograma a partir da gravação.</span>
-              </Link>
-              <button type="button" className="option" onClick={novoPop} disabled={criandoPop}>
-                <strong><Icone nome="pop" tamanho={14} /> {criandoPop ? 'Criando…' : 'Escrever o POP'}</strong>
-                <span>Preencha o modelo do POP do zero, passo a passo.</span>
-              </button>
-              <button type="button" className="option" onClick={() => setNovoFluxo(true)}>
-                <strong><Icone nome="fluxo" tamanho={14} /> Começar pelo fluxograma</strong>
-                <span>Desenhe o fluxo (ou gere com IA a partir de uma descrição) e escreva o POP depois.</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="lista-pops">
-            {pops.map((o) => (
-              <article key={o.id} className="linha-pop pop-destaque">
-                <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
-                <Link href={`/app/pops/${o.id}`} className="pop-nome">
-                  <strong>{o.nome}</strong>
-                  <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {new Date(o.atualizado_em).toLocaleDateString('pt-BR')}</span>
-                </Link>
-                <SeloStatus status={o.status as StatusPop} />
-                <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
-                <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
-                {o.status === 'rascunho'
-                  ? <Link className="btn btn-primary" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou">Continuar</Link>
-                  : <Link className="btn btn-primary" href={`/app/pops/${o.id}`}>Abrir POP</Link>}
-              </article>
-            ))}
-          </div>
-        )}
-        {popsArquivados.length > 0 && (
-          <div className="lista-pops">
-            {popsArquivados.map((o) => (
-              <article key={o.id} className="linha-pop arquivada">
-                <span className="pop-icone"><Icone nome="arquivar" tamanho={20} /></span>
-                <Link href={`/app/pops/${o.id}`} className="pop-nome">
-                  <strong>{o.nome}</strong>
-                  <span>Arquivado em {new Date(o.arquivado_em!).toLocaleDateString('pt-BR')} · Versão {o.versao}</span>
-                </Link>
-                <SeloStatus status={o.status as StatusPop} />
-                {!arquivado && <button type="button" className="btn btn-ghost" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
-              </article>
-            ))}
-          </div>
-        )}
+        <div className="cartao fluxo-cartao">
+          {fluxo ? (
+            <>
+              {fluxo.miniatura
+                ? <img className="fluxo-miniatura" src={fluxo.miniatura} alt="" />
+                : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              <div className="fluxo-info">
+                <strong>{fluxo.nome}</strong>
+                <span>Fluxograma do processo · {fluxo.origem === 'ia' ? 'gerado com IA' : 'desenhado à mão'} · atualizado em {data(fluxo.atualizado_em)}</span>
+              </div>
+              <span className="fluxo-acoes">
+                {!arquivado && <button className="btn btn-ghost" onClick={() => setFluxoDialogo('substituir')} title="A IA gera outro desenho no lugar do atual"><Icone nome="ia" tamanho={16} />Gerar de novo com IA</button>}
+                <Link href={`/app/fluxogramas/${fluxo.id}`} className="btn btn-primary"><Icone nome="fluxo" tamanho={16} />{arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'}</Link>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>
+              <div className="fluxo-info">
+                <strong>Este processo ainda não tem fluxograma.</strong>
+                <span>O fluxograma mostra o processo como um todo: o que acontece, em que ordem e como as etapas se encadeiam.</span>
+              </div>
+              {!arquivado && (
+                <span className="fluxo-acoes">
+                  <button className="btn" onClick={() => setFluxoDialogo('desenhar')}><Icone nome="marcar" tamanho={16} />Desenhar</button>
+                  <button className="btn btn-primary" onClick={() => setFluxoDialogo('ia')}><Icone nome="ia" tamanho={16} />Gerar com IA</button>
+                </span>
+              )}
+            </>
+          )}
+        </div>
       </section>
 
-      <h2 className="titulo-apoio">Materiais de apoio</h2>
+      {/* Frente 2: a visão micro, um POP por atividade. */}
+      <section className="secao-processo">
+        <div className="secao-head">
+          <h2><Icone nome="pop" tamanho={18} />POPs do processo</h2>
+          {!arquivado && <button className="btn btn-primary" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Novo POP'}</button>}
+        </div>
+        {pops.length === 0 && (
+          <p className="notice">{arquivado ? 'Nenhum POP ativo neste processo.' : 'Nenhum POP ainda. Cada POP ensina a executar uma atividade do processo: crie um e escreva o passo a passo, gravando a tela se quiser.'}</p>
+        )}
+        <div className="lista-pops">
+          {pops.map((o) => (
+            <article key={o.id} className="linha-pop pop-destaque">
+              <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
+              <Link href={`/app/pops/${o.id}`} className="pop-nome">
+                <strong>{o.nome}</strong>
+                <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {data(o.atualizado_em)}</span>
+              </Link>
+              <SeloStatus status={o.status as StatusPop} />
+              <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
+              <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
+              {o.status === 'rascunho' && !arquivado
+                ? <Link className="btn btn-primary" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou">Continuar</Link>
+                : <Link className="btn btn-primary" href={`/app/pops/${o.id}`}>Abrir POP</Link>}
+            </article>
+          ))}
+          {popsArquivados.map((o) => (
+            <article key={o.id} className="linha-pop arquivada">
+              <span className="pop-icone"><Icone nome="arquivar" tamanho={20} /></span>
+              <Link href={`/app/pops/${o.id}`} className="pop-nome">
+                <strong>{o.nome}</strong>
+                <span>Arquivado em {data(o.arquivado_em!)} · Versão {o.versao}</span>
+              </Link>
+              <SeloStatus status={o.status as StatusPop} />
+              {!arquivado && <button type="button" className="btn btn-ghost" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
+            </article>
+          ))}
+        </div>
+      </section>
 
+      {/* Até a etapa 3 (gravação dentro do POP), as gravações do processo continuam aqui. */}
       <section className="secao-processo secao-apoio">
         <div className="secao-head">
-          <h3><Icone nome="tela" tamanho={16} />Gravações e transcrições</h3>
+          <h3><Icone nome="tela" tamanho={16} />Gravações de tela</h3>
           {!arquivado && <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn"><span className="rec-dot" />Nova gravação</Link>}
         </div>
-        {p.gravacoes.length === 0 && <p className="notice">Nenhuma gravação. Grave a tela narrando o processo: a IA transcreve e escreve o POP e o fluxograma.</p>}
+        {p.gravacoes.length === 0 && <p className="notice">Nenhuma gravação.</p>}
         <div className="lista-pops">
           {p.gravacoes.map((g) => (
             <Link key={g.id} href={`/app/gravacoes/${g.id}`} className="linha-pop">
@@ -215,27 +235,13 @@ export default function ProcessoPage() {
         </div>
       </section>
 
-      <section className="secao-processo secao-apoio">
-        <div className="secao-head">
-          <h3><Icone nome="fluxo" tamanho={16} />Fluxogramas</h3>
-          {!arquivado && <button className="btn" onClick={() => setNovoFluxo(true)}><Icone nome="mais" />Novo fluxograma</button>}
-        </div>
-        {p.fluxogramas.length === 0 && <p className="notice">Nenhum fluxograma. O POP pode ter um link "Abrir diagrama" para o fluxograma do processo.</p>}
-        <div className="lista-pops">
-          {p.fluxogramas.map((f) => (
-            <Link key={f.id} href={`/app/fluxogramas/${f.id}`} className="linha-pop">
-              <span className="pop-icone"><Icone nome="fluxo" tamanho={20} /></span>
-              <span className="pop-nome"><strong>{f.nome}</strong><span>{f.origem === 'ia' ? 'Gerado com IA · ' : ''}atualizado em {new Date(f.atualizado_em).toLocaleDateString('pt-BR')}</span></span>
-              <span className="code">{f.codigo}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {novoFluxo && (
+      {fluxoDialogo && (
         <NovoFluxograma
           processoId={p.id}
-          aoFechar={() => setNovoFluxo(false)}
+          substituir={fluxoDialogo === 'substituir'}
+          modoInicial={fluxoDialogo === 'desenhar' ? 'manual' : 'ia'}
+          nomeSugerido={p.nome}
+          aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />
       )}

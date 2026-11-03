@@ -13,7 +13,6 @@ const Patch = z.object({
   conteudo: ConteudoPopSchema.optional(),
   historico: z.array(HistoricoSchema).optional(),
   posicao: PosicaoSchema.nullable().optional(),
-  fluxograma_id: z.string().uuid().nullable().optional(),
   processo_id: z.string().uuid().nullable().optional(),
   status: z.enum(['rascunho', 'publicado']).optional(),
 });

@@ -141,7 +141,7 @@ function Detalhe() {
   if (g === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (g === null) {
     return (
-      <div className="page"><div className="empty"><h2>Gravação não encontrada</h2><Link href="/app/gravacoes" className="btn btn-primary">Voltar</Link></div></div>
+      <div className="page"><div className="empty"><h2>Gravação não encontrada</h2><Link href="/app/inicio" className="btn btn-primary">Voltar</Link></div></div>
     );
   }
 
@@ -193,7 +193,7 @@ function Detalhe() {
         <div>
           {g.processo
             ? <Link href={`/app/processos/${g.processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{g.processo.nome}</Link>
-            : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
+            : <Link href="/app/inicio" className="voltar"><Icone nome="voltar" tamanho={16} />Início</Link>}
           <input
             className="titulo-editavel"
             value={nome}

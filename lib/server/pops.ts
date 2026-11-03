@@ -8,13 +8,14 @@ import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
 import { ErroApi } from './http';
 import { garantir as garantirArea } from './areas';
+import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { excluir as excluirGravacao } from './gravacoes';
 import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, fluxograma_id, gravacao_id, processo_id, arquivado_em, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, gravacao_id, processo_id, arquivado_em, criado_em, atualizado_em';
 // Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
 const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
 
@@ -37,7 +38,7 @@ async function buscar(id: string) {
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
-    fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+    gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
     processo: { id: string; nome: string; arquivado_em: string | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
   };
@@ -92,20 +93,10 @@ export async function obter(id: string) {
   return { ...pop, imagens, telas: telasDoPop };
 }
 
-export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) {
+export async function criar(p: { nome?: string; gravacao_id?: string; processo_id?: string }) {
   let processoId = p.processo_id ?? null;
-  if (processoId) await garantirProcesso(processoId);
   let conteudo = conteudoVazio();
   let nome = p.nome?.trim() || 'Novo POP';
-  let codigo = gerarCodigo();
-
-  if (p.fluxograma_id) {
-    const { data } = await supabase().from('fluxogramas').select('codigo, nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.fluxograma_id).maybeSingle();
-    if (!data) throw new ErroApi(404, 'Fluxograma não encontrado');
-    codigo = data.codigo; // o código do processo é o mesmo do fluxograma
-    if (!p.nome) nome = data.nome;
-    processoId ??= data.processo_id;
-  }
 
   if (p.gravacao_id) {
     const db = supabase();
@@ -115,7 +106,7 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
         .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', p.gravacao_id).eq('incluir_no_pop', true).order('tempo_ms'),
     ]);
     if (!g.data) throw new ErroApi(404, 'Gravação não encontrada');
-    if (!p.nome && !p.fluxograma_id) nome = g.data.nome;
+    if (!p.nome) nome = g.data.nome;
     processoId ??= g.data.processo_id;
     const passos = (m.data ?? []).map((t) => ({
       texto: t.instrucao || t.instrucao_ia || '',
@@ -127,6 +118,8 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
     conteudo = { ...conteudo, procedimentos: [{ nome: 'Passo a passo no sistema', passos: passos.length ? passos : [{ texto: '' }] }] };
   }
 
+  // O "código do processo" no documento é o código do processo em que o POP está.
+  const codigo = processoId ? (await garantirProcesso(processoId)).codigo : gerarCodigo();
   if (processoId && !conteudo.area) {
     const { data: pr } = await supabase().from('processos').select('area:areas(nome)').eq('id', processoId).maybeSingle();
     const area = (pr?.area as { nome?: string } | null)?.nome;
@@ -140,7 +133,6 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
     conteudo,
     historico: [{ data: hoje(), elaborado_por: '', revisao: 'Rev. 01' }],
     gravacao_id: p.gravacao_id ?? null,
-    fluxograma_id: p.fluxograma_id ?? null,
     processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
@@ -148,9 +140,10 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
   return data;
 }
 
-export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; autor: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; fluxograma_id: string | null; status: string; processo_id: string | null }>) {
-  if (dados.processo_id) await garantirProcesso(dados.processo_id);
-  const { data, error } = await supabase().from('pops').update({ ...dados, atualizado_em: new Date().toISOString() })
+export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; autor: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; status: string; processo_id: string | null }>) {
+  // Mudou de processo: o código do processo no documento acompanha.
+  const codigo = dados.processo_id ? { codigo: (await garantirProcesso(dados.processo_id)).codigo } : {};
+  const { data, error } = await supabase().from('pops').update({ ...dados, ...codigo, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, atualizado_em').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
@@ -241,6 +234,8 @@ export async function adicionarTelasDaGravacao(id: string, gravacaoId: string) {
 /** Conteúdo e imagens do POP prontos para virar DOCX ou PDF. */
 async function documento(id: string, origem: string) {
   const original = await buscar(id);
+  // "Abrir diagrama" aponta para o fluxograma do processo (um por processo, decisão 31).
+  const fluxo = original.processo_id ? await fluxogramaDoProcesso(original.processo_id) : null;
   // No documento vai a versão marcada de cada tela (com o tamanho dela, que muda com o recorte).
   const marcs = await marcacoesDoPop(original.conteudo);
   const conteudo: ConteudoPop = {
@@ -269,7 +264,7 @@ async function documento(id: string, origem: string) {
     autor: original.autor,
     criado_em: original.criado_em,
     historico: original.historico,
-    link_fluxograma: original.fluxograma_id ? `${origem}/app/fluxogramas/${original.fluxograma_id}` : null,
+    link_fluxograma: fluxo ? `${origem}/app/fluxogramas/${fluxo.id}` : null,
   };
   const nomeBase = `POP ${original.identificacao ? `${original.identificacao} ` : ''}${original.nome}`.replace(/[\\/:*?"<>|]+/g, ' ').trim();
   return { dados, imagens, nomeBase };
