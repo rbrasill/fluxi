@@ -12,9 +12,10 @@ export type PopResumo = {
   processo: OndePop;
   processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
   link_publico: string; publicado_em: string | null; // página pública: /p/<link_publico>
+  link_publico_ativo: boolean; // chave online/offline da página pública (decisão 34)
 };
 /** Gravação de tela do POP (resumo para o editor). */
-export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
+export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; telas_no_pop: number };
 /** O fluxograma do processo do POP (um por processo). */
 export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
@@ -43,7 +44,9 @@ export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identif
 /** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
 export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
 /** Volta para rascunho: a página pública deixa de mostrar o POP. */
-export const despublicarPop = (id: string) => api(`/api/pops/${id}/despublicar`, { method: 'POST' });
+/** Liga (online) ou desliga (offline) a página pública do POP. */
+export const definirLinkPublico = (id: string, ativo: boolean) =>
+  api<{ link_publico_ativo: boolean }>(`/api/pops/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });
 /** Endereço da página pública do POP. */
 export const urlPublica = (link: string) => `${location.origin}/p/${link}`;
 /** Arquiva (some das listas, sem apagar) e restaura. */

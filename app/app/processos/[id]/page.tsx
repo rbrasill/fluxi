@@ -178,7 +178,7 @@ function ProcessoPage() {
                 <strong>{o.nome}</strong>
                 <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {data(o.atualizado_em)}</span>
               </Link>
-              <SeloStatus status={o.status as StatusPop} />
+              <SeloStatus status={o.status as StatusPop} offline={!o.link_publico_ativo} />
               <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
               <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
               {o.status === 'rascunho' && !arquivado
@@ -193,7 +193,7 @@ function ProcessoPage() {
                 <strong>{o.nome}</strong>
                 <span>Arquivado em {data(o.arquivado_em!)} · Versão {o.versao}</span>
               </Link>
-              <SeloStatus status={o.status as StatusPop} />
+              <SeloStatus status={o.status as StatusPop} offline={!o.link_publico_ativo} />
               {!arquivado && <button type="button" className="btn btn-ghost" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
             </article>
           ))}

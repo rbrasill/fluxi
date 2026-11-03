@@ -16,7 +16,7 @@ import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, processo_id, arquivado_em, link_publico, publicado_em, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, processo_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em';
 // Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
 const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
 
@@ -99,6 +99,7 @@ async function gravacoesDoPop(id: string, conteudo: ConteudoPop) {
       ...g,
       total_marcacoes: telas.length,
       telas_novas: telas.filter((t) => t.incluir_no_pop && !usadas.has(t.id)).length,
+      telas_no_pop: telas.filter((t) => usadas.has(t.id)).length,
     };
   });
 }
@@ -202,7 +203,13 @@ export async function arquivar(id: string, arquivado: boolean) {
 export async function excluirDefinitivo(id: string) {
   const { data: gravs, error: e1 } = await supabase().from('gravacoes').select('id').eq('tenant_id', TENANT_PADRAO).eq('pop_id', id);
   if (e1) throw e1;
-  for (const g of gravs ?? []) await excluirGravacao(g.id);
+  for (const g of gravs ?? []) await excluirGravacao(g.id, { preservarTelas: false });
+  // Telas do POP: as anexadas ficam na pasta dele; as que vieram de uma gravação já excluída
+  // ficaram na pasta da gravação (decisão 34), então são apagadas pelo caminho.
+  const { data: doPop, error: e2 } = await supabase().from('gravacao_marcacoes').select('imagem_caminho, imagem_anotada_caminho').eq('tenant_id', TENANT_PADRAO).eq('pop_id', id);
+  if (e2) throw e2;
+  const caminhos = (doPop ?? []).flatMap((m) => [m.imagem_caminho, m.imagem_anotada_caminho]).filter(Boolean) as string[];
+  if (caminhos.length) await supabase().storage.from(telas.BUCKET).remove(caminhos);
   await telas.removerPasta(dono(id)); // prints anexados no POP
   const pasta = pastaPublicacao(id); // cópias da versão publicada
   const { data: copias } = await supabase().storage.from(telas.BUCKET).list(pasta, { limit: 1000 });

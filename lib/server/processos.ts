@@ -54,7 +54,7 @@ export async function obter(id: string) {
     db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, link_publico, tem_svg, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
     db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, pop:pops!pop_id(nome), marcacoes:gravacao_marcacoes(count)')
       .eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('criado_em', { ascending: false }),
-    db.from('pops').select('id, nome, codigo, identificacao, versao, status, arquivado_em, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
+    db.from('pops').select('id, nome, codigo, identificacao, versao, status, link_publico_ativo, arquivado_em, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
   ]);
   for (const r of [p, f, g, o]) if (r.error) throw r.error;
   if (!p.data) throw new ErroApi(404, 'Processo não encontrado');

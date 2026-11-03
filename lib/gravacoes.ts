@@ -51,7 +51,19 @@ export const obterGravacao = (id: string) => api<Gravacao>(`/api/gravacoes/${id}
 export const criarGravacao = (nome: string, pop_id: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, pop_id }));
 export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: StatusGravacao; duracao_ms: number; largura: number; altura: number }>) =>
   api(`/api/gravacoes/${id}`, json('PATCH', dados));
-export const excluirGravacao = (id: string) => api(`/api/gravacoes/${id}`, { method: 'DELETE' });
+/** Exclui a gravação para sempre. As telas que já estão nos passos do POP continuam no POP (`telas_mantidas`). */
+export const excluirGravacao = (id: string) => api<{ ok: true; telas_mantidas: number }>(`/api/gravacoes/${id}`, { method: 'DELETE' });
+
+/** Texto da confirmação de exclusão, igual na tela da gravação e no editor do POP. */
+export function confirmacaoExcluirGravacao(nome: string, telasNoPop: number) {
+  return {
+    titulo: `Excluir a gravação "${nome}"?`,
+    mensagem: 'O vídeo e as telas marcadas serão apagados para sempre. Não é possível desfazer.'
+      + (telasNoPop === 1 ? ' A tela que já está num passo do POP continua no POP.' : telasNoPop > 1 ? ` As ${telasNoPop} telas que já estão nos passos do POP continuam no POP.` : ''),
+    acao: 'Excluir gravação',
+    perigo: true,
+  };
+}
 export const atualizarMarcacao = (id: string, mid: string, dados: { instrucao?: string | null; incluir_no_pop?: boolean }) =>
   api(`/api/gravacoes/${id}/marcacoes/${mid}`, json('PATCH', dados));
 export const excluirMarcacao = (id: string, mid: string) => api(`/api/gravacoes/${id}/marcacoes/${mid}`, { method: 'DELETE' });

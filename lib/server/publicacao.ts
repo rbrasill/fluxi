@@ -10,7 +10,8 @@ import * as telas from './telas';
 // com cópias dos prints numa pasta própria: a página pública mostra só ela, e editar o POP depois
 // não muda o que está publicado até alguém publicar de novo. O fluxograma é do processo e aparece
 // sempre na última versão salva (o SVG que o editor exporta). Os links são públicos para quem os
-// tiver; quando a plataforma fechar, as mesmas páginas passam a pedir login.
+// tiver; quando a plataforma fechar, as mesmas páginas passam a pedir login. A chave
+// `link_publico_ativo` (decisão 34) deixa a página online ou offline sem mexer na versão publicada.
 
 export type Publicacao = pops.BaseDocumento & {
   versao_hash: string; // impressão digital do que foi publicado (ver pops.hashDaVersao)
@@ -68,25 +69,29 @@ export async function publicar(id: string) {
   return { publicado_em: agora, link_publico: pop.link_publico, publicacao };
 }
 
-/** Tira o POP do ar: a página pública deixa de mostrar a versão publicada. */
-export async function despublicar(id: string) {
-  const { data, error } = await supabase().from('pops').update({ status: 'rascunho', atualizado_em: new Date().toISOString() })
-    .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
+/**
+ * Chave da página pública (decisão 34): online mostra a versão publicada; offline mostra "Este POP
+ * não está disponível". A versão publicada e o link continuam os mesmos.
+ */
+export async function definirLinkPublico(id: string, ativo: boolean) {
+  const pop = await pops.buscar(id);
+  if (ativo && pops.arquivado(pop)) throw new ErroApi(409, 'O POP está arquivado: restaure-o antes de colocar a página no ar.');
+  if (ativo && pop.status !== 'publicado') throw new ErroApi(409, 'Publique o POP antes de colocar a página no ar.');
+  const { error } = await supabase().from('pops').update({ link_publico_ativo: ativo }).eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
-  if (!data) throw new ErroApi(404, 'POP não encontrado');
-  return { ok: true };
+  return { link_publico_ativo: ativo };
 }
 
 type Onde = { id: string; nome: string; arquivado_em: string | null; area: { nome: string; organizacao: { nome: string } | null } | null } | null;
 
-/** A versão publicada do POP pelo link público (só POP publicado e não arquivado). */
+/** A versão publicada do POP pelo link público (só POP publicado, com a página online e não arquivado). */
 async function versaoPublicada(link: string) {
   const { data, error } = await supabase().from('pops')
-    .select('id, status, arquivado_em, publicacao, processo:processos(id, nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
+    .select('id, status, link_publico_ativo, arquivado_em, publicacao, processo:processos(id, nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
     .eq('link_publico', link).maybeSingle();
   if (error) throw error;
   const processo = data?.processo as unknown as Onde;
-  if (!data || data.status !== 'publicado' || data.arquivado_em || processo?.arquivado_em) throw new ErroApi(404, NAO_DISPONIVEL);
+  if (!data || data.status !== 'publicado' || !data.link_publico_ativo || data.arquivado_em || processo?.arquivado_em) throw new ErroApi(404, NAO_DISPONIVEL);
   // Publicado antes de existir a versão guardada: guarda agora o conteúdo atual.
   const publicacao = (data.publicacao as Publicacao | null) ?? (await publicar(data.id)).publicacao;
   const fluxo = processo ? await fluxogramaDoProcesso(processo.id) : null;

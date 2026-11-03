@@ -134,7 +134,7 @@ function ListaPops() {
                 {filtro === 'arquivados' && (p.arquivado_em ? ` · arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : ' · o processo está arquivado')}
               </span>
             </Link>
-            <SeloStatus status={p.status} />
+            <SeloStatus status={p.status} offline={!p.link_publico_ativo} />
             <a className="btn btn-ghost" href={`/api/pops/${p.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
             <a className="btn btn-ghost" href={`/api/pops/${p.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
             {filtro === 'arquivados' ? (

@@ -1,13 +1,13 @@
 'use client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
 import { adicionarTelasDaGravacao } from '@/lib/pops';
-import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, salvarMarcacaoDesenhada, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, confirmacaoExcluirGravacao, excluirGravacao, salvarMarcacaoDesenhada, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -83,6 +83,8 @@ function Detalhe() {
   const [nome, setNome] = useState('');
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
   const [levando, setLevando] = useState<'' | 'enviando' | 'ok'>('');
+  const [excluindo, setExcluindo] = useState(false);
+  const router = useRouter();
 
   const recarregar = useCallback(() => obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null)), [id]);
   useEffect(() => { void recarregar(); }, [recarregar]);
@@ -118,6 +120,20 @@ function Detalhe() {
     }
   }
 
+  // Exclusão definitiva, com confirmação. As telas que já estão no POP continuam lá.
+  async function excluirTudo() {
+    const noPop = g!.pop ? g!.marcacoes.filter((m) => g!.pop!.telas.includes(m.id)).length : 0;
+    if (!(await confirmar(confirmacaoExcluirGravacao(g!.nome, noPop)))) return;
+    setExcluindo(true);
+    try {
+      await excluirGravacao(g!.id);
+      router.replace(g!.pop ? `/app/pops/${g!.pop.id}` : g!.processo ? `/app/processos/${g!.processo.id}` : '/app/inicio');
+    } catch {
+      setExcluindo(false);
+      void avisar('Não foi possível excluir a gravação.', 'Tente de novo em instantes.');
+    }
+  }
+
   async function remover(m: Marcacao) {
     if (!(await confirmar({ titulo: 'Excluir esta tela marcada?', mensagem: 'A imagem e as marcações desenhadas nela são apagadas.', acao: 'Excluir', perigo: true }))) return;
     await excluirMarcacao(g!.id, m.id);
@@ -147,6 +163,9 @@ function Detalhe() {
             <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
           )}
           {g.pop && <Link href={`/app/pops/${g.pop.id}`} className="btn"><Icone nome="pop" tamanho={16} />Abrir POP</Link>}
+          <button type="button" className="btn btn-ghost btn-excluir" onClick={excluirTudo} disabled={excluindo} title="Apaga o vídeo e as telas marcadas para sempre (as telas que já estão no POP continuam lá)">
+            <Icone nome="lixo" tamanho={16} />{excluindo ? 'Excluindo…' : 'Excluir gravação'}
+          </button>
         </div>
       </div>
       {emAberto && (
