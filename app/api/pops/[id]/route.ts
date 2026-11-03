@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { ConteudoPopSchema, HistoricoSchema, PosicaoSchema } from '@/lib/pop/schema';
 import { responder } from '@/lib/server/http';
-import { atualizar, excluir, obter } from '@/lib/server/pops';
+import { excluirPop } from '@/lib/server/exclusao';
+import { atualizar, obter } from '@/lib/server/pops';
 
 type Ctx = { params: Promise<{ id: string }> };
 const Patch = z.object({
@@ -20,4 +21,5 @@ const Patch = z.object({
 export const dynamic = 'force-dynamic';
 export const GET = (_: Request, { params }: Ctx) => responder(async () => obter((await params).id));
 export const PATCH = (req: Request, { params }: Ctx) => responder(async () => atualizar((await params).id, Patch.parse(await req.json())));
-export const DELETE = (_: Request, { params }: Ctx) => responder(async () => excluir((await params).id));
+/** Só POP arquivado; as gravações dele vão junto. */
+export const DELETE = (_: Request, { params }: Ctx) => responder(async () => excluirPop((await params).id));

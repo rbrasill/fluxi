@@ -503,6 +503,14 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 .painel-pausa { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
 .painel-pausa .link-sec { font-size: 12px; color: var(--primary); }
 .aviso.retomar { background: #eef5ff; border-color: #c3d9f5; color: #0f3b66; }
+/* Arquivado (decisão 31): faixa cinza no topo e itens apagados nas listas */
+.aviso.arquivado { background: #f1f3f2; border-color: var(--line-strong); color: var(--ink); }
+.aviso.arquivado > svg { flex: none; color: var(--muted); }
+.bloqueado { opacity: .72; }
+.linha-pop.arquivada { background: #f7f8f8; }
+.linha-pop.arquivada .pop-icone { color: var(--muted); }
+.abas-arquivo { width: fit-content; }
+.abas-arquivo button { flex: none; padding: 0 14px; }
 .aviso .aviso-acoes { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .aviso .aviso-acoes .btn { margin-left: 0; }
 .tela-no-pop { position: absolute; top: 8px; right: 10px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #e7f7f1; color: #0b6b50; }

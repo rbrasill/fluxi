@@ -8,21 +8,27 @@ import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
 import { ErroApi } from './http';
 import { garantir as garantirArea } from './areas';
+import { excluir as excluirGravacao } from './gravacoes';
 import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, fluxograma_id, gravacao_id, processo_id, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, fluxograma_id, gravacao_id, processo_id, arquivado_em, criado_em, atualizado_em';
 // Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
-const ONDE = 'processo:processos(id, nome, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+
+type Arquivavel = { arquivado_em: string | null; processo: { arquivado_em: string | null } | null };
+/** Arquivado por si ou pelo processo: some das listas e não pode ser editado. */
+export const arquivado = (p: Arquivavel) => !!p.arquivado_em || !!p.processo?.arquivado_em;
 
 const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-export async function listar() {
+/** POPs ativos (ou só os arquivados, por si ou pelo processo). */
+export async function listar(arquivados = false) {
   const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}`).eq('tenant_id', TENANT_PADRAO).order('atualizado_em', { ascending: false });
   if (error) throw error;
-  return data;
+  return (data as unknown as Arquivavel[]).filter((p) => arquivado(p) === arquivados);
 }
 
 async function buscar(id: string) {
@@ -31,7 +37,8 @@ async function buscar(id: string) {
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
-    fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; criado_em: string; atualizado_em: string;
+    fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+    processo: { id: string; nome: string; arquivado_em: string | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
   };
 }
@@ -150,7 +157,19 @@ export async function atualizar(id: string, dados: Partial<{ nome: string; ident
   return data;
 }
 
-export async function excluir(id: string) {
+export async function arquivar(id: string, arquivado: boolean) {
+  const { data, error } = await supabase().from('pops').update({ arquivado_em: arquivado ? new Date().toISOString() : null, atualizado_em: new Date().toISOString() })
+    .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, arquivado_em').maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'POP não encontrado');
+  return data;
+}
+
+/** Apaga o POP com as gravações dele e os prints anexados. Quem confere se está arquivado é `exclusao.ts`. */
+export async function excluirDefinitivo(id: string) {
+  const { data: gravs, error: e1 } = await supabase().from('gravacoes').select('id').eq('tenant_id', TENANT_PADRAO).eq('pop_id', id);
+  if (e1) throw e1;
+  for (const g of gravs ?? []) await excluirGravacao(g.id);
   await telas.removerPasta(dono(id)); // prints anexados no POP
   const { error } = await supabase().from('pops').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;

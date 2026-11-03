@@ -4,12 +4,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { criarPop, type StatusPop } from '@/lib/pops';
+import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
-import { atualizarProcesso, excluirProcesso, obterProcesso, type Processo } from '@/lib/processos';
+import { arquivarProcesso, atualizarProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
 
 const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
 const EM_ABERTO: StatusGravacao[] = ['pausada', 'gravando', 'interrompida'];
@@ -22,11 +23,13 @@ export default function ProcessoPage() {
   const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [novoFluxo, setNovoFluxo] = useState(false);
   const [criandoPop, setCriandoPop] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
 
+  const carregar = () => obterProcesso(id).then((d) => { setP(d); setNome(d.nome); }).catch(() => setP(null));
   useEffect(() => {
-    obterProcesso(id).then((d) => { setP(d); setNome(d.nome); }).catch(() => setP(null));
+    void carregar();
     listarAreas().then(setAreas).catch(() => {});
-  }, [id]);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
@@ -42,10 +45,37 @@ export default function ProcessoPage() {
     }
   }
 
+  // Arquivar em vez de excluir (decisão 31): só o que está arquivado pode ser excluído, e vai tudo junto.
+  async function arquivar() {
+    if (!(await confirmar({ titulo: `Arquivar o processo "${p!.nome}"?`, mensagem: 'O processo some das listas com os POPs, gravações e fluxograma dele. Nada é apagado: dá para restaurar depois.', acao: 'Arquivar' }))) return;
+    setOcupado(true);
+    try { await arquivarProcesso(p!.id); await carregar(); } catch { void avisar('Não foi possível arquivar o processo.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
+  }
+
+  async function restaurar() {
+    setOcupado(true);
+    try { await restaurarProcesso(p!.id); await carregar(); } catch { void avisar('Não foi possível restaurar o processo.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
+  }
+
   async function excluir() {
-    if (!(await confirmar({ titulo: `Excluir o processo "${p!.nome}"?`, mensagem: 'Os fluxogramas, gravações e POPs não são apagados: ficam em suas listas, sem processo.', acao: 'Excluir', perigo: true }))) return;
-    await excluirProcesso(p!.id);
-    router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/organizacoes');
+    const itens = [
+      p!.pops.length && `${p!.pops.length} ${p!.pops.length === 1 ? 'POP' : 'POPs'}`,
+      p!.gravacoes.length && `${p!.gravacoes.length} ${p!.gravacoes.length === 1 ? 'gravação' : 'gravações'}`,
+      p!.fluxogramas.length && 'o fluxograma',
+    ].filter(Boolean).join(', ');
+    if (!(await confirmar({ titulo: `Excluir definitivamente o processo "${p!.nome}"?`, mensagem: `${itens ? `Apaga o processo com ${itens}. ` : ''}Essa ação não pode ser desfeita.`, acao: 'Excluir', perigo: true }))) return;
+    setOcupado(true);
+    try {
+      await excluirProcesso(p!.id);
+      router.push(p!.area ? `/app/areas/${p!.area.id}` : '/app/organizacoes');
+    } catch (e) {
+      setOcupado(false);
+      void avisar('Não foi possível excluir o processo.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    }
+  }
+
+  async function restaurarPopArquivado(popId: string) {
+    try { await restaurarPop(popId); await carregar(); } catch { void avisar('Não foi possível restaurar o POP.', 'Tente de novo em instantes.'); }
   }
 
   const salvar = (dados: { nome?: string }) => void atualizarProcesso(p.id, dados);
@@ -57,6 +87,9 @@ export default function ProcessoPage() {
   }
 
   const gravacoesAbertas = p.gravacoes.filter((g) => EM_ABERTO.includes(g.status as StatusGravacao));
+  const arquivado = !!p.arquivado_em;
+  const pops = p.pops.filter((o) => !o.arquivado_em);
+  const popsArquivados = p.pops.filter((o) => o.arquivado_em);
 
   return (
     <div className="page">
@@ -66,11 +99,11 @@ export default function ProcessoPage() {
             {p.area?.organizacao && <><Link href={`/app/organizacoes/${p.area.organizacao.id}`}>{p.area.organizacao.nome}</Link><span>›</span></>}
             {p.area && <Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link>}
           </nav>
-          <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo"
+          <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <p className="processo-meta">
             <span className="code">{p.codigo}</span>
-            <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área">
+            <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área" disabled={arquivado}>
               {areas.length
                 ? porOrganizacao(areas).map(([org, lista]) => (
                     <optgroup key={org} label={org}>{lista.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</optgroup>
@@ -80,15 +113,17 @@ export default function ProcessoPage() {
           </p>
         </div>
         <div className="actions">
-          <button className="btn btn-ghost btn-icon" aria-label="Excluir processo" title="Excluir processo" onClick={excluir}><Icone nome="lixo" tamanho={16} /></button>
+          {!arquivado && <button className="btn btn-ghost" title="Tira o processo das listas, com tudo o que tem; dá para restaurar depois" onClick={arquivar} disabled={ocupado}><Icone nome="arquivar" tamanho={16} />Arquivar</button>}
         </div>
       </div>
+
+      {arquivado && <FaixaArquivado tipo="processo" desde={p.arquivado_em!} aoRestaurar={restaurar} aoExcluir={excluir} ocupado={ocupado} />}
 
       {/* O produto final é o POP: ele vem primeiro. */}
       <section className="secao-processo">
         <div className="secao-head">
-          <h2><Icone nome="pop" tamanho={18} />{p.pops.length > 1 ? 'POPs do processo' : 'POP do processo'}</h2>
-          {p.pops.length > 0 && <button className="btn btn-ghost" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Outro POP'}</button>}
+          <h2><Icone nome="pop" tamanho={18} />{pops.length > 1 ? 'POPs do processo' : 'POP do processo'}</h2>
+          {pops.length > 0 && !arquivado && <button className="btn btn-ghost" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Outro POP'}</button>}
         </div>
         {gravacoesAbertas.map((g) => (
           <div key={g.id} className="aviso retomar">
@@ -99,7 +134,9 @@ export default function ProcessoPage() {
             </span>
           </div>
         ))}
-        {p.pops.length === 0 ? (
+        {pops.length === 0 && arquivado ? (
+          <p className="notice">Nenhum POP ativo neste processo.</p>
+        ) : pops.length === 0 ? (
           <div className="comecar-pop">
             <p><strong>Este processo ainda não tem POP.</strong> Como você quer começar?</p>
             <div className="options options-3">
@@ -119,7 +156,7 @@ export default function ProcessoPage() {
           </div>
         ) : (
           <div className="lista-pops">
-            {p.pops.map((o) => (
+            {pops.map((o) => (
               <article key={o.id} className="linha-pop pop-destaque">
                 <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
                 <Link href={`/app/pops/${o.id}`} className="pop-nome">
@@ -136,6 +173,21 @@ export default function ProcessoPage() {
             ))}
           </div>
         )}
+        {popsArquivados.length > 0 && (
+          <div className="lista-pops">
+            {popsArquivados.map((o) => (
+              <article key={o.id} className="linha-pop arquivada">
+                <span className="pop-icone"><Icone nome="arquivar" tamanho={20} /></span>
+                <Link href={`/app/pops/${o.id}`} className="pop-nome">
+                  <strong>{o.nome}</strong>
+                  <span>Arquivado em {new Date(o.arquivado_em!).toLocaleDateString('pt-BR')} · Versão {o.versao}</span>
+                </Link>
+                <SeloStatus status={o.status as StatusPop} />
+                {!arquivado && <button type="button" className="btn btn-ghost" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
 
       <h2 className="titulo-apoio">Materiais de apoio</h2>
@@ -143,7 +195,7 @@ export default function ProcessoPage() {
       <section className="secao-processo secao-apoio">
         <div className="secao-head">
           <h3><Icone nome="tela" tamanho={16} />Gravações e transcrições</h3>
-          <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn"><span className="rec-dot" />Nova gravação</Link>
+          {!arquivado && <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn"><span className="rec-dot" />Nova gravação</Link>}
         </div>
         {p.gravacoes.length === 0 && <p className="notice">Nenhuma gravação. Grave a tela narrando o processo: a IA transcreve e escreve o POP e o fluxograma.</p>}
         <div className="lista-pops">
@@ -166,7 +218,7 @@ export default function ProcessoPage() {
       <section className="secao-processo secao-apoio">
         <div className="secao-head">
           <h3><Icone nome="fluxo" tamanho={16} />Fluxogramas</h3>
-          <button className="btn" onClick={() => setNovoFluxo(true)}><Icone nome="mais" />Novo fluxograma</button>
+          {!arquivado && <button className="btn" onClick={() => setNovoFluxo(true)}><Icone nome="mais" />Novo fluxograma</button>}
         </div>
         {p.fluxogramas.length === 0 && <p className="notice">Nenhum fluxograma. O POP pode ter um link "Abrir diagrama" para o fluxograma do processo.</p>}
         <div className="lista-pops">

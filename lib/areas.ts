@@ -6,7 +6,7 @@ export type AreaResumo = {
   criado_em: string; atualizado_em: string; total_processos: number;
 };
 export type Area = Omit<AreaResumo, 'total_processos'> & {
-  processos: { id: string; codigo: string; nome: string; descricao: string; atualizado_em: string; total: { fluxogramas: number; gravacoes: number; pops: number } }[];
+  processos: { id: string; codigo: string; nome: string; descricao: string; arquivado_em: string | null; atualizado_em: string; total: { fluxogramas: number; gravacoes: number; pops: number } }[];
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {

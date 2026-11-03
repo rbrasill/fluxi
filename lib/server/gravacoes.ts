@@ -9,7 +9,7 @@ import * as telas from './telas';
 const dono = (id: string): telas.Dono => ({ gravacao_id: id });
 
 // Onde a gravação está (processo › área › organização), para o Início e as listas.
-const ONDE = 'processo:processos(id, nome, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))), pop:pops!pop_id(id, arquivado_em)';
 
 export type StatusGravacao = 'gravando' | 'pausada' | 'pronta' | 'interrompida' | 'erro';
 
@@ -20,7 +20,10 @@ export async function listar() {
     .eq('tenant_id', TENANT_PADRAO)
     .order('criado_em', { ascending: false });
   if (error) throw error;
-  return data.map(({ marcacoes, ...g }) => ({ ...g, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }));
+  type Dona = { arquivado_em: string | null } | null;
+  return data
+    .filter((g) => !(g.processo as unknown as Dona)?.arquivado_em && !(g.pop as unknown as Dona)?.arquivado_em) // arquivados somem das listas
+    .map(({ marcacoes, pop: _pop, ...g }) => ({ ...g, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }));
 }
 
 export async function criar(nome: string, processoId?: string) {
