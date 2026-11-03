@@ -233,6 +233,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Fluxograma em SVG:** não há conversor de draw.io para servidor que rode na Vercel (o oficial é o app de computador). O editor embutido (`embed.diagrams.net`) exporta SVG pela ação `export` com `format: 'svg'` e `embedImages: true`: vetor, nítido em qualquer zoom, e **mantém a animação das setas** (Flow Animation), como confirma a documentação do draw.io. O editor gera e salva o SVG (`fluxogramas.svg`) ao abrir e a cada salvamento; "Gerar de novo com IA" apaga o SVG antigo e o editor, que abre em seguida, gera o novo. O fluxograma é do processo e aparece sempre na última versão salva.
 - **Página pública só do fluxograma** em `/f/<link>` (`fluxogramas.link_publico`), com "Ajustar à tela", "Tamanho real" e o download do SVG: é para onde o **"Abrir diagrama" do PDF e do DOCX** leva (antes levava ao editor interno). O SVG é servido como imagem (`<img>`) e com política de segurança que só deixa passar estilos: a animação roda e nenhum código embutido no arquivo é executado.
 
+
+## 33. Fluxograma não vem de gravação de tela (03/11/2026)
+- **Regra do Rafael:** "um fluxograma não pode surgir através de gravação de tela". A gravação de tela serve só ao POP: o vídeo com a narração e as telas marcadas, que viram os prints dos passos.
+- **Sai a transcrição da gravação** (a parte da decisão 31 que a fazia sob demanda para gerar o fluxograma): a tela da gravação não tem mais "Transcrever a narração" nem o texto transcrito, a página do processo não abre mais o "Gerar com IA" a partir de uma gravação (`?gerar=`) e o diálogo do fluxograma não lista gravações. Saem a rota `POST/GET /api/gravacoes/:id/processar` e `lib/server/processamento.ts`.
+- **O "Gerar com IA" do fluxograma continua** com as três fontes que não são gravação de tela: descrição do processo, transcrição de reunião (colada ou em arquivo) e áudio/vídeo de reunião.
+- **Banco:** nada foi apagado. As colunas de transcrição (`gravacoes.processamento`, `gravacao_segmentos.transcricao_id`, `transcricao_status`, `falas`) e as transcrições já feitas ficam guardadas, sem uso.
+
 ---
 
 ## Em aberto

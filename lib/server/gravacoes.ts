@@ -80,7 +80,7 @@ export async function obter(id: string) {
   const db = supabase();
   const [g, segs, marcs] = await Promise.all([
     db.from('gravacoes').select('id, nome, status, duracao_ms, largura, altura, processo_id, processamento, pop_id, criado_em, processo:processos(id, nome, codigo)').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('gravacao_segmentos').select('indice, caminho, inicio_ms, duracao_ms, bytes, mime, falas').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('indice'),
+    db.from('gravacao_segmentos').select('indice, caminho, inicio_ms, duracao_ms, bytes, mime').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('indice'),
     db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop, anotacoes, imagem_anotada_caminho, anotada_largura, anotada_altura').eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', id).order('tempo_ms'),
   ]);
   for (const r of [g, segs, marcs]) if (r.error) throw r.error;
@@ -96,9 +96,7 @@ export async function obter(id: string) {
   return {
     ...dados,
     pop,
-    segmentos: (segs.data ?? []).map(({ falas: _f, ...s }) => ({ ...s, url: urls.get(s.caminho) ?? null })),
-    // Transcrição da narração (quando já foi feita), com o tempo da gravação inteira.
-    falas: (segs.data ?? []).flatMap((s) => (s.falas as { falante: string; inicio_ms: number; texto: string }[] | null) ?? []),
+    segmentos: (segs.data ?? []).map((s) => ({ ...s, url: urls.get(s.caminho) ?? null })),
     marcacoes: (marcs.data ?? []).map((m) => ({
       ...m,
       imagem_url: urls.get(m.imagem_caminho) ?? null,

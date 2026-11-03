@@ -23,7 +23,7 @@ export default function ProcessosPage() {
       <div className="page-head">
         <div>
           <h1>Todos os processos</h1>
-          <p>Os processos de todas as organizações e áreas. Cada processo reúne suas gravações e transcrições, fluxogramas e POPs.</p>
+          <p>Os processos de todas as organizações e áreas. Cada processo reúne o fluxograma e os POPs (com as gravações de tela de cada POP).</p>
         </div>
         <div className="actions">
           <button className="btn btn-primary" onClick={() => setNovo(true)}><Icone nome="mais" />Novo processo</button>

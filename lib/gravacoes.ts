@@ -24,10 +24,9 @@ export type Marcacao = {
   instrucao: string | null; instrucao_ia: string | null; incluir_no_pop: boolean;
   anotacoes: Anotacoes | null; imagem_anotada_url: string | null;
 };
-export type Fala = { falante: string; inicio_ms: number; texto: string };
 export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes' | 'processo'> & {
   largura: number | null; altura: number | null; segmentos: SegmentoGravado[]; marcacoes: Marcacao[];
-  processamento: string; falas: Fala[]; processo: { id: string; nome: string; codigo: string } | null;
+  processamento: string; processo: { id: string; nome: string; codigo: string } | null;
   /** POP ligado à gravação (gerado pela IA ou criado com as telas) e as telas que ele já usa. */
   pop: { id: string; nome: string; status: string; telas: string[] } | null;
 };
@@ -80,17 +79,6 @@ export function formatarTempo(ms: number) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-/** Transcrição da narração (sob demanda): serve para gerar o fluxograma do processo com IA. */
-export type EstadoTranscricao = {
-  processamento: 'nenhum' | 'transcrevendo' | 'pronto' | 'erro';
-  erro: string | null;
-  segmentos: { total: number; prontos: number };
-  transcrita: boolean;
-};
-export const iniciarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
-export const consultarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`);
-/** A transcrição como texto (com os tempos), para colar na IA do fluxograma. */
-export const transcricaoComoTexto = (falas: Fala[]) => falas.map((f) => `[${formatarTempo(f.inicio_ms)}] Falante ${f.falante}: ${f.texto}`).join('\n');
 
 /**
  * Salva as marcações desenhadas numa tela: envia a imagem final ao Storage e registra.

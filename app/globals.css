@@ -425,14 +425,6 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .migalha { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .migalha a { color: var(--muted); }
 
-/* Transcrição da gravação */
-.transcricao { margin-top: 24px; }
-.transcricao summary { cursor: pointer; font-weight: 600; font-size: 16px; }
-.falas { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; max-height: 480px; overflow: auto; padding-right: 6px; }
-.fala { display: grid; grid-template-columns: 56px 1fr; gap: 10px; font-size: 14px; line-height: 1.5; }
-.fala button { font-family: var(--font-mono, monospace); font-size: 12px; color: var(--muted); background: none; border: 0; padding: 2px 0; cursor: pointer; text-align: left; }
-.fala b { font-weight: 600; margin-right: 6px; }
-
 /* Áreas */
 .grid-areas { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .card-area { display: flex; flex-direction: column; gap: 8px; padding: 20px; text-decoration: none; color: var(--ink); }

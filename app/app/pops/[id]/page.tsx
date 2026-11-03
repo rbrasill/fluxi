@@ -480,7 +480,7 @@ function EditorPop() {
           <Link href={`/app/gravacoes/nova?pop=${id}`} className="btn"><span className="rec-dot" />Gravar tela</Link>
         </div>
         {pop.gravacoes.length === 0
-          ? <p className="notice">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos. A narração transcrita serve para gerar o fluxograma do processo.</p>
+          ? <p className="notice">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos.</p>
           : (
             <div className="lista-pops">
               {pop.gravacoes.map((g) => (
@@ -488,7 +488,7 @@ function EditorPop() {
                   <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
                   <Link href={`/app/gravacoes/${g.id}`} className="pop-nome">
                     <strong>{g.nome}</strong>
-                    <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{g.transcrita ? ' · transcrita' : ''}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</span>
+                    <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</span>
                   </Link>
                   {EM_ABERTO.includes(g.status) && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost"><span className="rec-dot" />Continuar</Link>}
                   {g.telas_novas > 0 && (

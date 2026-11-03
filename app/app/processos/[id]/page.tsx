@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
@@ -19,8 +19,6 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 function ProcessoPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  // ?gerar=<gravação>: veio da gravação transcrita, para gerar o fluxograma com ela.
-  const gerarDe = useSearchParams().get('gerar');
   const [p, setP] = useState<Processo | null | undefined>(undefined);
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
@@ -33,9 +31,6 @@ function ProcessoPage() {
     void carregar();
     listarAreas().then(setAreas).catch(() => {});
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (gerarDe && p && !p.arquivado_em) setFluxoDialogo(p.fluxograma ? 'substituir' : 'ia');
-  }, [gerarDe, p?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
@@ -211,8 +206,6 @@ function ProcessoPage() {
           substituir={fluxoDialogo === 'substituir'}
           modoInicial={fluxoDialogo === 'desenhar' ? 'manual' : 'ia'}
           nomeSugerido={p.nome}
-          gravacoes={p.gravacoes.filter((g) => g.transcrita).map((g) => ({ id: g.id, nome: g.nome, pop_nome: g.pop_nome }))}
-          gravacaoInicial={gerarDe ?? undefined}
           aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />

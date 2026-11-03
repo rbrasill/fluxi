@@ -89,18 +89,16 @@ const telasUsadas = (c: ConteudoPop) => new Set(c.procedimentos.flatMap((p) => p
 /** As gravações de tela do POP, com quantas telas marcadas ainda não entraram nos passos. */
 async function gravacoesDoPop(id: string, conteudo: ConteudoPop) {
   const { data, error } = await supabase().from('gravacoes')
-    .select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(id, incluir_no_pop), segmentos:gravacao_segmentos(transcricao_status)')
+    .select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(id, incluir_no_pop)')
     .eq('tenant_id', TENANT_PADRAO).eq('pop_id', id).order('criado_em');
   if (error) throw error;
   const usadas = telasUsadas(conteudo);
-  return (data ?? []).map(({ marcacoes, segmentos, ...g }) => {
+  return (data ?? []).map(({ marcacoes, ...g }) => {
     const telas = marcacoes as { id: string; incluir_no_pop: boolean }[];
-    const segs = segmentos as { transcricao_status: string }[];
     return {
       ...g,
       total_marcacoes: telas.length,
       telas_novas: telas.filter((t) => t.incluir_no_pop && !usadas.has(t.id)).length,
-      transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta'),
     };
   });
 }
