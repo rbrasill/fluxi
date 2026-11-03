@@ -65,7 +65,8 @@ input { font-family: inherit; }
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 /* Lista */
-.page { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; }
+/* Centralizada: em telas largas (ou com o menu recolhido) a sobra fica dividida entre os dois lados. */
+.page { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
 .page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { margin: 0; font-size: 28px; font-weight: 600; }
 .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
@@ -297,7 +298,7 @@ input { font-family: inherit; }
 .painel-aviso { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fff6ea; color: #6b3406; font-size: 12px; line-height: 1.4; }
 
 /* POP */
-.page-pop { max-width: 1000px; }
+.page-pop { max-width: 1120px; }
 .status-linha { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .pop-sec { display: flex; flex-direction: column; gap: 12px; }
 /* Seções do POP (dentro do bloco que trava o POP arquivado): o mesmo respiro da página */
