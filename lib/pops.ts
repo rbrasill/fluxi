@@ -11,11 +11,20 @@ export type PopResumo = {
   posicao: Posicao | null; // onde a pessoa parou no editor
   processo: OndePop;
   processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+  link_publico: string; publicado_em: string | null; // página pública: /p/<link_publico>
 };
 /** Gravação de tela do POP (resumo para o editor). */
 export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; transcrita: boolean };
+/** O fluxograma do processo do POP (um por processo). */
+export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
-export type Pop = PopResumo & { conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[] };
+export type Pop = PopResumo & {
+  conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
+  alteracoes_nao_publicadas: boolean;
+  /** O fluxograma do processo (só informativo no editor do POP). */
+  fluxograma: FluxogramaDoPop | null;
+};
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -29,8 +38,14 @@ export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${a
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
 export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'status' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
+/** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
+export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
+/** Volta para rascunho: a página pública deixa de mostrar o POP. */
+export const despublicarPop = (id: string) => api(`/api/pops/${id}/despublicar`, { method: 'POST' });
+/** Endereço da página pública do POP. */
+export const urlPublica = (link: string) => `${location.origin}/p/${link}`;
 /** Arquiva (some das listas, sem apagar) e restaura. */
 export const arquivarPop = (id: string) => api(`/api/pops/${id}/arquivar`, { method: 'POST' });
 export const restaurarPop = (id: string) => api(`/api/pops/${id}/restaurar`, { method: 'POST' });

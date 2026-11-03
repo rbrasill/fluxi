@@ -4,7 +4,7 @@ import { ErroApi } from './http';
 import { garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const RESUMO = 'id, codigo, nome, origem, miniatura, processo_id, criado_em, atualizado_em';
+const RESUMO = 'id, codigo, nome, origem, miniatura, processo_id, link_publico, tem_svg, criado_em, atualizado_em';
 
 export type Origem = 'manual' | 'ia' | 'modelo';
 
@@ -40,8 +40,9 @@ export async function criar(dados: { nome: string; xml?: string; origem?: Origem
     const atual = await doProcesso(dados.processo_id);
     if (atual && !dados.substituir) throw new ErroApi(409, 'Este processo já tem fluxograma. Abra o fluxograma para editar ou gere de novo com IA para substituir.');
     if (atual) {
-      await atualizar(atual.id, { nome: dados.nome, xml: dados.xml ?? '', origem: dados.origem ?? 'manual', schema: dados.schema ?? null, miniatura: null });
-      return { ...atual, nome: dados.nome, origem: dados.origem ?? 'manual' };
+      // O SVG publicado era do desenho antigo: o editor gera o novo ao abrir (e a IA já abre o editor).
+      await atualizar(atual.id, { nome: dados.nome, xml: dados.xml ?? '', origem: dados.origem ?? 'manual', schema: dados.schema ?? null, miniatura: null, svg: null });
+      return { ...atual, nome: dados.nome, origem: dados.origem ?? 'manual', tem_svg: false };
     }
     // O código do fluxograma é o do processo: é "o fluxograma do processo X".
     return inserir({ ...dados, codigo: processo.codigo });
@@ -63,10 +64,12 @@ async function inserir(dados: { nome: string; xml?: string; origem?: Origem; sch
   return data;
 }
 
-export async function atualizar(id: string, dados: { nome?: string; xml?: string; miniatura?: string | null; origem?: Origem; schema?: unknown; processo_id?: string | null }) {
+export async function atualizar(id: string, dados: { nome?: string; xml?: string; miniatura?: string | null; svg?: string | null; origem?: Origem; schema?: unknown; processo_id?: string | null }) {
   if (dados.processo_id) await garantirProcesso(dados.processo_id);
+  // Miniatura e SVG são gerados pelo editor a partir do desenho: não contam como alteração.
+  const soImagens = Object.keys(dados).every((k) => k === 'miniatura' || k === 'svg');
   const { data, error } = await supabase()
-    .from('fluxogramas').update({ ...dados, atualizado_em: new Date().toISOString() })
+    .from('fluxogramas').update(soImagens ? dados : { ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, atualizado_em').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'Fluxograma não encontrado');

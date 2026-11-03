@@ -141,6 +141,7 @@ function ProcessoPage() {
                 <span>Fluxograma do processo · {fluxo.origem === 'ia' ? 'gerado com IA' : 'desenhado à mão'} · atualizado em {data(fluxo.atualizado_em)}</span>
               </div>
               <span className="fluxo-acoes">
+                {fluxo.tem_svg && !arquivado && <a className="btn btn-ghost" href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" title="Página pública só do fluxograma (o link do PDF e do DOCX)"><Icone nome="externo" tamanho={16} />Página pública</a>}
                 {!arquivado && <button className="btn btn-ghost" onClick={() => setFluxoDialogo('substituir')} title="A IA gera outro desenho no lugar do atual"><Icone nome="ia" tamanho={16} />Gerar de novo com IA</button>}
                 <Link href={`/app/fluxogramas/${fluxo.id}`} className="btn btn-primary"><Icone nome="fluxo" tamanho={16} />{arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'}</Link>
               </span>
