@@ -337,6 +337,8 @@ function EditorPop() {
   }
 
   const onde = pop.processo;
+  // Ao sair do editor do fluxograma, volta para este POP.
+  const editarFluxo = pop.fluxograma ? `/app/fluxogramas/${pop.fluxograma.id}?voltar=${encodeURIComponent(`/app/pops/${id}`)}` : '';
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
 
@@ -447,9 +449,11 @@ function EditorPop() {
           <h2 id="titulo-fluxograma">Fluxograma do processo</h2>
           {pop.fluxograma ? (
             <div className="fluxo-do-pop">
-              {pop.fluxograma.miniatura
-                ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
-                : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              <Link href={editarFluxo} className="fluxo-previa" aria-label="Editar fluxograma" title="Editar fluxograma">
+                {pop.fluxograma.miniatura
+                  ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
+                  : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              </Link>
               <div className="fluxo-info">
                 <strong>{pop.fluxograma.nome}</strong>
                 <span>{pop.fluxograma.origem === 'ia' ? 'Gerado com IA' : 'Desenhado à mão'} · atualizado em {new Date(pop.fluxograma.atualizado_em).toLocaleDateString('pt-BR')}</span>
@@ -457,9 +461,10 @@ function EditorPop() {
                   {pop.fluxograma.tem_svg
                     ? 'Aparece na página pública deste POP e vai no PDF e no DOCX como o link "Abrir diagrama".'
                     : 'Vai no PDF e no DOCX como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
+                  {' '}É do processo: o que você mudar nele vale para todos os POPs do processo.
                 </span>
               </div>
-              <Link href={`/app/fluxogramas/${pop.fluxograma.id}`} className="btn btn-ghost"><Icone nome="fluxo" tamanho={16} />Abrir fluxograma</Link>
+              <Link href={editarFluxo} className="btn" title="Abre o editor: mude o desenho, os textos e as setas; salva sozinho"><Icone nome="marcar" tamanho={16} />Editar fluxograma</Link>
             </div>
           ) : (
             <p className="notice">

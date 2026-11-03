@@ -537,6 +537,8 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 .fluxo-info span { font-size: 13px; color: var(--muted); }
 .fluxo-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .fluxo-do-pop { display: flex; align-items: center; gap: 16px; }
+.fluxo-previa { display: flex; flex: none; border-radius: 10px; }
+.fluxo-previa:hover .fluxo-miniatura, .fluxo-previa:hover .fluxo-icone { outline: 2px solid var(--primary); outline-offset: 2px; }
 @media (max-width: 800px) { .fluxo-cartao, .fluxo-do-pop { flex-direction: column; align-items: stretch; } .fluxo-acoes { justify-content: flex-start; } }
 .aviso .aviso-acoes { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 .aviso .aviso-acoes .btn { margin-left: 0; }

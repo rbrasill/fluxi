@@ -34,7 +34,7 @@ function baixar(nome: string, href: string) {
   a.click();
 }
 
-export function EditorDrawio({ id }: { id: string }) {
+export function EditorDrawio({ id, voltar = null }: { id: string; voltar?: string | null }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const [fluxo, setFluxo] = useState<Fluxograma | null | undefined>(undefined);
@@ -230,7 +230,7 @@ export function EditorDrawio({ id }: { id: string }) {
   return (
     <div className="editor" ref={container}>
       <header className="editor-bar">
-        <Link href={fluxo?.processo_id ? `/app/processos/${fluxo.processo_id}` : '/app/inicio'} className="btn btn-icon" aria-label="Voltar" title={fluxo?.processo_id ? 'Voltar ao processo' : 'Voltar'}><Icone nome="voltar" /></Link>
+        <Link href={voltar ?? (fluxo?.processo_id ? `/app/processos/${fluxo.processo_id}` : '/app/inicio')} className="btn btn-icon" aria-label="Voltar" title={voltar?.startsWith('/app/pops/') ? 'Voltar ao POP' : fluxo?.processo_id ? 'Voltar ao processo' : 'Voltar'}><Icone nome="voltar" /></Link>
         <input
           className="title-input"
           value={nome}
