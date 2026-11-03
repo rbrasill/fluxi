@@ -52,7 +52,7 @@ export async function obter(id: string) {
   const [p, f, g, o] = await Promise.all([
     db.from('processos').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
     db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
-    db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(count), segmentos:gravacao_segmentos(transcricao_status)')
+    db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, pop:pops!pop_id(nome), marcacoes:gravacao_marcacoes(count), segmentos:gravacao_segmentos(transcricao_status)')
       .eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('criado_em', { ascending: false }),
     db.from('pops').select('id, nome, codigo, identificacao, versao, status, arquivado_em, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
   ]);
@@ -61,9 +61,9 @@ export async function obter(id: string) {
   return {
     ...p.data,
     fluxograma: f.data ?? null, // um por processo (decisão 31)
-    gravacoes: (g.data ?? []).map(({ marcacoes, segmentos, ...x }) => {
+    gravacoes: (g.data ?? []).map(({ marcacoes, segmentos, pop, ...x }) => {
       const segs = segmentos as { transcricao_status: string }[];
-      return { ...x, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0, transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta') };
+      return { ...x, pop_nome: (pop as unknown as { nome: string } | null)?.nome ?? null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0, transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta') };
     }),
     pops: o.data ?? [],
   };

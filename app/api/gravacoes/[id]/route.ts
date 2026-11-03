@@ -9,7 +9,6 @@ const Patch = z.object({
   duracao_ms: z.number().int().min(0).optional(),
   largura: z.number().int().positive().optional(),
   altura: z.number().int().positive().optional(),
-  processo_id: z.string().uuid().nullable().optional(),
 });
 
 export const dynamic = 'force-dynamic';

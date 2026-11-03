@@ -182,6 +182,15 @@ input { font-family: inherit; }
 .tag-ia { position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #fef4ea; color: #9a4a0b; }
 .dialog-lg { max-width: 680px; }
 .options-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.options-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 800px) { .options-3, .options-4 { grid-template-columns: 1fr 1fr; } }
+/* Escolher uma tela marcada numa gravação do POP (AnexarPrint) */
+.telas-escolha { max-height: 55vh; overflow: auto; padding: 2px; }
+.telas-escolha .tela-mini { padding: 0; cursor: pointer; text-align: left; font: inherit; color: inherit; }
+.telas-escolha .tela-mini:hover, .telas-escolha .tela-mini:focus-visible { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px var(--primary-soft); }
+.telas-escolha .tela-legenda { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.telas-escolha .tela-legenda span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.telas-escolha .tela-sem-imagem { display: grid; place-items: center; aspect-ratio: 16 / 9; font-size: 12px; color: var(--muted); background: #f1f3f2; }
 .option strong { display: inline-flex; align-items: center; gap: 6px; }
 .option:disabled { opacity: .55; cursor: not-allowed; }
 .opcional { font-weight: 500; color: var(--muted); }

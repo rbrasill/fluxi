@@ -8,7 +8,7 @@ export type ProcessoResumo = {
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
   fluxograma: { id: string; codigo: string; nome: string; origem: string; miniatura: string | null; atualizado_em: string } | null; // um por processo
-  gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; transcrita: boolean }[];
+  gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; pop_nome: string | null; total_marcacoes: number; transcrita: boolean }[];
   pops: { id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; arquivado_em: string | null; atualizado_em: string }[];
 };
 

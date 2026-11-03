@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
+import { obterGravacao, transcricaoComoTexto } from '@/lib/gravacoes';
 
 // Cria o fluxograma do processo (um por processo, decisão 31): desenhado à mão ou gerado com IA a
 // partir de descrição, transcrição ou áudio. Com `substituir`, o processo já tem fluxograma e a IA
@@ -12,18 +13,32 @@ type Fonte = 'descricao' | 'transcricao' | 'audio';
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
 
-export function NovoFluxograma({ processoId, substituir = false, modoInicial = 'manual', nomeSugerido = '', aoFechar, aoCriar }: {
+export function NovoFluxograma({ processoId, substituir = false, modoInicial = 'manual', nomeSugerido = '', gravacoes = [], gravacaoInicial, aoFechar, aoCriar }: {
   processoId: string;
   substituir?: boolean;
   modoInicial?: Modo;
   nomeSugerido?: string;
+  /** Gravações transcritas dos POPs do processo: a narração pode virar o fluxograma. */
+  gravacoes?: { id: string; nome: string; pop_nome: string | null }[];
+  gravacaoInicial?: string;
   aoFechar: () => void;
   aoCriar: (id: string) => void;
 }) {
   const [nome, setNome] = useState(nomeSugerido);
   const [modo, setModo] = useState<Modo>(substituir ? 'ia' : modoInicial);
-  const [fonte, setFonte] = useState<Fonte>('descricao');
+  const [fonte, setFonte] = useState<Fonte>(gravacaoInicial ? 'transcricao' : 'descricao');
   const [texto, setTexto] = useState('');
+  const [gravacaoId, setGravacaoId] = useState(gravacaoInicial ?? '');
+  const [carregandoTranscricao, setCarregandoTranscricao] = useState(false);
+
+  // A transcrição da gravação escolhida entra no campo (e pode ser editada antes de gerar).
+  useEffect(() => {
+    if (!gravacaoId) return;
+    let viva = true;
+    setCarregandoTranscricao(true);
+    obterGravacao(gravacaoId).then((g) => { if (viva) setTexto(transcricaoComoTexto(g.falas)); }).catch(() => { if (viva) setErro('Não foi possível carregar a transcrição.'); }).finally(() => { if (viva) setCarregandoTranscricao(false); });
+    return () => { viva = false; };
+  }, [gravacaoId]);
   const [audio, setAudio] = useState<File | null>(null);
   const [etapa, setEtapa] = useState('');
   const [erro, setErro] = useState('');
@@ -91,6 +106,16 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
             </div>
             {fonte !== 'audio' ? (
               <>
+                {fonte === 'transcricao' && gravacoes.length > 0 && (
+                  <label className="field">
+                    Usar a transcrição de uma gravação deste processo
+                    <select value={gravacaoId} onChange={(e) => setGravacaoId(e.target.value)} disabled={ocupado || carregandoTranscricao}>
+                      <option value="">Escolher a gravação…</option>
+                      {gravacoes.map((g) => <option key={g.id} value={g.id}>{g.nome}{g.pop_nome ? ` · POP ${g.pop_nome}` : ''}</option>)}
+                    </select>
+                  </label>
+                )}
+                {carregandoTranscricao && <p className="form-etapa"><span className="spinner" />Carregando a transcrição…</p>}
                 <textarea
                   className="texto-ia"
                   rows={8}

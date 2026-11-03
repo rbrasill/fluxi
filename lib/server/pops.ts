@@ -15,7 +15,7 @@ import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, gravacao_id, processo_id, arquivado_em, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, processo_id, arquivado_em, criado_em, atualizado_em';
 // Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
 const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
 
@@ -38,7 +38,7 @@ async function buscar(id: string) {
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
-    gravacao_id: string | null; processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+    processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
     processo: { id: string; nome: string; arquivado_em: string | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
   };
@@ -71,13 +71,51 @@ function imagemFinal(s: Passo, m: Map<string, MarcacaoDoPop>) {
 
 const assinar = async (caminhos: string[]) => Object.fromEntries(await telas.assinar(caminhos)) as Record<string, string>;
 
+const telasUsadas = (c: ConteudoPop) => new Set(c.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)).filter(Boolean) as string[]);
+
+/** As gravações de tela do POP, com quantas telas marcadas ainda não entraram nos passos. */
+async function gravacoesDoPop(id: string, conteudo: ConteudoPop) {
+  const { data, error } = await supabase().from('gravacoes')
+    .select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(id, incluir_no_pop), segmentos:gravacao_segmentos(transcricao_status)')
+    .eq('tenant_id', TENANT_PADRAO).eq('pop_id', id).order('criado_em');
+  if (error) throw error;
+  const usadas = telasUsadas(conteudo);
+  return (data ?? []).map(({ marcacoes, segmentos, ...g }) => {
+    const telas = marcacoes as { id: string; incluir_no_pop: boolean }[];
+    const segs = segmentos as { transcricao_status: string }[];
+    return {
+      ...g,
+      total_marcacoes: telas.length,
+      telas_novas: telas.filter((t) => t.incluir_no_pop && !usadas.has(t.id)).length,
+      transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta'),
+    };
+  });
+}
+
+/** Telas marcadas em todas as gravações do POP, para escolher o print de um passo. */
+export async function telasDasGravacoes(id: string) {
+  const { data, error } = await supabase().from('gravacao_marcacoes')
+    .select('id, gravacao_id, tempo_ms, imagem_caminho, largura, altura, instrucao, anotacoes, imagem_anotada_caminho, gravacao:gravacoes!inner(nome, criado_em)')
+    .eq('tenant_id', TENANT_PADRAO).eq('gravacao.pop_id', id).order('tempo_ms');
+  if (error) throw error;
+  type Linha = { id: string; gravacao_id: string; tempo_ms: number; imagem_caminho: string; largura: number | null; altura: number | null; instrucao: string | null; anotacoes: Anotacoes | null; imagem_anotada_caminho: string | null; gravacao: { nome: string; criado_em: string } };
+  const linhas = ((data ?? []) as unknown as Linha[]).sort((a, b) => a.gravacao.criado_em.localeCompare(b.gravacao.criado_em) || a.tempo_ms - b.tempo_ms);
+  const urls = await assinar(linhas.flatMap((m) => [m.imagem_caminho, m.imagem_anotada_caminho].filter(Boolean) as string[]));
+  return linhas.map(({ gravacao, imagem_anotada_caminho, ...m }) => ({
+    ...m,
+    gravacao_nome: gravacao.nome,
+    imagem_url: urls[m.imagem_caminho] ?? null,
+    imagem_anotada_url: imagem_anotada_caminho ? urls[imagem_anotada_caminho] ?? null : null,
+  }));
+}
+
 /**
  * POP com links temporários para as imagens dos passos. `imagens` (por imagem_caminho) já aponta
  * para a versão marcada; `telas` traz o original e as marcações, para reabrir o editor.
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const marcs = await marcacoesDoPop(pop.conteudo);
+  const [marcs, gravacoes] = await Promise.all([marcacoesDoPop(pop.conteudo), gravacoesDoPop(id, pop.conteudo)]);
   const passos = pop.conteudo.procedimentos.flatMap((p) => p.passos).filter((s) => s.imagem_caminho);
   const finais = passos.map((s) => [s.imagem_caminho!, imagemFinal(s, marcs).caminho!] as const);
   const urls = await assinar([...finais.map(([, f]) => f), ...[...marcs.values()].map((m) => m.imagem_caminho)]);
@@ -90,33 +128,14 @@ export async function obter(id: string) {
     altura: m.altura,
     anotacoes: m.anotacoes,
   }]));
-  return { ...pop, imagens, telas: telasDoPop };
+  return { ...pop, imagens, telas: telasDoPop, gravacoes };
 }
 
-export async function criar(p: { nome?: string; gravacao_id?: string; processo_id?: string }) {
-  let processoId = p.processo_id ?? null;
+/** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
+export async function criar(p: { nome?: string; processo_id?: string }) {
+  const processoId = p.processo_id ?? null;
   let conteudo = conteudoVazio();
-  let nome = p.nome?.trim() || 'Novo POP';
-
-  if (p.gravacao_id) {
-    const db = supabase();
-    const [g, m] = await Promise.all([
-      db.from('gravacoes').select('nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.gravacao_id).maybeSingle(),
-      db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop')
-        .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', p.gravacao_id).eq('incluir_no_pop', true).order('tempo_ms'),
-    ]);
-    if (!g.data) throw new ErroApi(404, 'Gravação não encontrada');
-    if (!p.nome) nome = g.data.nome;
-    processoId ??= g.data.processo_id;
-    const passos = (m.data ?? []).map((t) => ({
-      texto: t.instrucao || t.instrucao_ia || '',
-      imagem_caminho: t.imagem_caminho,
-      imagem_largura: t.largura ?? undefined,
-      imagem_altura: t.altura ?? undefined,
-      marcacao_id: t.id,
-    }));
-    conteudo = { ...conteudo, procedimentos: [{ nome: 'Passo a passo no sistema', passos: passos.length ? passos : [{ texto: '' }] }] };
-  }
+  const nome = p.nome?.trim() || 'Novo POP';
 
   // O "código do processo" no documento é o código do processo em que o POP está.
   const codigo = processoId ? (await garantirProcesso(processoId)).codigo : gerarCodigo();
@@ -132,7 +151,6 @@ export async function criar(p: { nome?: string; gravacao_id?: string; processo_i
     codigo,
     conteudo,
     historico: [{ data: hoje(), elaborado_por: '', revisao: 'Rev. 01' }],
-    gravacao_id: p.gravacao_id ?? null,
     processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
@@ -216,7 +234,7 @@ export async function adicionarTelasDaGravacao(id: string, gravacaoId: string) {
     .select('id, imagem_caminho, largura, altura, instrucao, instrucao_ia')
     .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', gravacaoId).eq('incluir_no_pop', true).order('tempo_ms');
   if (error) throw error;
-  const usadas = new Set(pop.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)));
+  const usadas = telasUsadas(pop.conteudo);
   const novas = (data ?? []).filter((t) => !usadas.has(t.id));
   if (!novas.length) return { adicionadas: 0 };
   const passos: Passo[] = novas.map((t) => ({

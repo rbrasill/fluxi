@@ -9,7 +9,7 @@ import { abrirPip, suportaPip } from '@/components/gravacao/pip';
 import { FilaDeEnvio } from '@/lib/gravacao/envio';
 import { Gravador, type Segmento } from '@/lib/gravacao/gravador';
 import { QUALIDADE, extensaoDe } from '@/lib/gravacao/config';
-import { obterProcesso } from '@/lib/processos';
+import { obterPop } from '@/lib/pops';
 import { atualizarGravacao, criarGravacao, enviarArquivo, formatarTempo, obterGravacao, registrarMarcacao, registrarSegmento, tempoGravado } from '@/lib/gravacoes';
 
 type Fase = 'config' | 'preparando' | 'gravando' | 'encerrando';
@@ -39,20 +39,22 @@ export default function NovaGravacaoPage() {
   const [flash, setFlash] = useState(0);
   const [suportado, setSuportado] = useState(true);
   const [temPip, setTemPip] = useState(true);
-  // Processo de onde a gravação foi aberta (?processo=): título e "voltar" apontam para ele.
-  const [processo, setProcesso] = useState<{ id: string; nome: string } | null>(null);
+  // POP de onde a gravação foi aberta (?pop=): a gravação nasce nele (decisão 31); título e "voltar" apontam para ele.
+  const [pop, setPop] = useState<{ id: string; nome: string } | null>(null);
+  const [semPop, setSemPop] = useState(false);
   const [continuacao, setContinuacao] = useState<Continuacao | null>(null);
 
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    const pid = q.get('processo');
-    if (pid) obterProcesso(pid).then((p) => { setProcesso({ id: p.id, nome: p.nome }); setNome((n) => n || p.nome); }).catch(() => {});
+    const pid = q.get('pop');
+    if (pid) obterPop(pid).then((p) => { setPop({ id: p.id, nome: p.nome }); setNome((n) => n || p.nome); }).catch(() => setSemPop(true));
     const cid = q.get('continuar');
+    if (!pid && !cid) setSemPop(true);
     if (cid) {
       obterGravacao(cid).then((g) => {
         setContinuacao({ id: g.id, tempoMs: tempoGravado(g), proximoIndice: Math.max(-1, ...g.segmentos.map((s) => s.indice)) + 1, totalTelas: g.marcacoes.length });
         setNome(g.nome);
-        if (g.processo) setProcesso({ id: g.processo.id, nome: g.processo.nome });
+        if (g.pop) setPop({ id: g.pop.id, nome: g.pop.nome });
         // As telas já marcadas entram na lista, para o contador seguir de onde parou.
         setTelas(g.marcacoes.map((m) => ({ chave: m.tempo_ms, url: m.imagem_anotada_url ?? m.imagem_url ?? '', tempoMs: m.tempo_ms, instrucao: m.instrucao ?? '', status: 'ok' })));
       }).catch(() => setErro('Não foi possível abrir a gravação para continuar.'));
@@ -137,8 +139,9 @@ export default function NovaGravacaoPage() {
         idGravacao.current = continuacao.id;
         await atualizarGravacao(continuacao.id, { status: 'gravando', ...(g.largura && g.altura ? { largura: g.largura, altura: g.altura } : {}) });
       } else {
-        const processo = new URLSearchParams(location.search).get('processo') || undefined;
-        const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, processo);
+        const popId = new URLSearchParams(location.search).get('pop');
+        if (!popId) throw new Error('Abra um POP e use “Gravar tela”.');
+        const { id } = await criarGravacao(nome.trim() || `Gravação de ${new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`, popId);
         idGravacao.current = id;
         if (g.largura && g.altura) void atualizarGravacao(id, { largura: g.largura, altura: g.altura });
       }
@@ -226,16 +229,28 @@ export default function NovaGravacaoPage() {
     </section>
   );
 
+  if (semPop && !continuacao) {
+    return (
+      <div className="page page-estreita">
+        <div className="empty">
+          <h2>A gravação é feita a partir do POP</h2>
+          <p>Abra o POP que você está escrevendo e, na seção <b>Gravações de tela</b>, clique em <b>Gravar tela</b>.</p>
+          <Link href="/app/pops" className="btn btn-primary">Ir para os POPs</Link>
+        </div>
+      </div>
+    );
+  }
+
   if (fase === 'config' || fase === 'preparando') {
     return (
       <div className="page page-estreita">
         <div className="page-head">
           <div>
-            {processo
-              ? <Link href={`/app/processos/${processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{processo.nome}</Link>
+            {pop
+              ? <Link href={`/app/pops/${pop.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{pop.nome}</Link>
               : <Link href="/app/inicio" className="voltar"><Icone nome="voltar" tamanho={16} />Início</Link>}
-            <h1>{continuacao ? 'Continuar a gravação' : processo ? 'Gravar o processo na tela' : 'Nova gravação de tela'}</h1>
-            <p>Grave o passo a passo no sistema narrando o que faz. Nos momentos importantes, clique em <b>Incluir esta tela no POP</b>.</p>
+            <h1>{continuacao ? 'Continuar a gravação' : 'Gravar a tela para o POP'}</h1>
+            <p>Grave o passo a passo no sistema narrando o que faz. Nos momentos importantes, clique em <b>Incluir esta tela no POP</b>: as telas marcadas ficam disponíveis como print dos passos.</p>
           </div>
         </div>
 
@@ -259,7 +274,7 @@ export default function NovaGravacaoPage() {
           <ol className="dicas">
             <li>Escolha a <b>janela do sistema</b> (aba "Janela") ou a aba do navegador. Evite "Tela inteira": nela, a janelinha de controles aparece nos prints.</li>
             <li>{temPip ? <>Uma <b>janela flutuante</b> do Fluxi fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
-            <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução; se não, a IA escreve a partir da narração.</li>
+            <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução: ela vai junto quando a tela for levada para o POP.</li>
           </ol>
           <p className="notice">Qualidade: até {QUALIDADE.altura}p, {QUALIDADE.quadrosPorSegundo} quadros/s. O vídeo é salvo em partes de 3 minutos, sem limite de duração.</p>
           <div className="dialog-actions">

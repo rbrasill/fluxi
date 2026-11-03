@@ -1,12 +1,11 @@
 'use client';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
-import { ROTULO_STATUS, formatarTempo, type StatusGravacao } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
@@ -15,13 +14,13 @@ import { arquivarProcesso, atualizarProcesso, excluirProcesso, obterProcesso, re
 // Página do processo em duas frentes (decisão 31): os recursos do processo (o fluxograma, um por
 // processo) e a gestão dos POPs dele. Gravações ficam dentro de cada POP.
 
-const ETAPA: Record<string, string> = { transcrevendo: 'Transcrevendo', analisando: 'IA escrevendo', pronto: 'POP gerado', erro: 'Erro na IA' };
-const EM_ABERTO: StatusGravacao[] = ['pausada', 'gravando', 'interrompida'];
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
-export default function ProcessoPage() {
+function ProcessoPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  // ?gerar=<gravação>: veio da gravação transcrita, para gerar o fluxograma com ela.
+  const gerarDe = useSearchParams().get('gerar');
   const [p, setP] = useState<Processo | null | undefined>(undefined);
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
@@ -34,6 +33,9 @@ export default function ProcessoPage() {
     void carregar();
     listarAreas().then(setAreas).catch(() => {});
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (gerarDe && p && !p.arquivado_em) setFluxoDialogo(p.fluxograma ? 'substituir' : 'ia');
+  }, [gerarDe, p?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
@@ -90,7 +92,6 @@ export default function ProcessoPage() {
     setP({ ...p!, area_id: areaId, area: areas.find((a) => a.id === areaId) ?? p!.area });
   }
 
-  const gravacoesAbertas = p.gravacoes.filter((g) => EM_ABERTO.includes(g.status as StatusGravacao));
   const arquivado = !!p.arquivado_em;
   const pops = p.pops.filter((o) => !o.arquivado_em);
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
@@ -123,16 +124,6 @@ export default function ProcessoPage() {
       </div>
 
       {arquivado && <FaixaArquivado tipo="processo" desde={p.arquivado_em!} aoRestaurar={restaurar} aoExcluir={excluir} ocupado={ocupado} />}
-
-      {gravacoesAbertas.map((g) => (
-        <div key={g.id} className="aviso retomar">
-          <span><b>Gravação {ROTULO_STATUS[g.status as StatusGravacao].toLowerCase()}: {g.nome}</b> · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}. Tudo o que foi gravado está salvo.</span>
-          <span className="aviso-acoes">
-            <Link href={`/app/gravacoes/${g.id}`} className="btn">Abrir gravação</Link>
-            {!arquivado && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-primary"><span className="rec-dot" />Continuar gravação</Link>}
-          </span>
-        </div>
-      ))}
 
       {/* Frente 1: a visão macro do processo. */}
       <section className="secao-processo">
@@ -211,40 +202,22 @@ export default function ProcessoPage() {
         </div>
       </section>
 
-      {/* Até a etapa 3 (gravação dentro do POP), as gravações do processo continuam aqui. */}
-      <section className="secao-processo secao-apoio">
-        <div className="secao-head">
-          <h3><Icone nome="tela" tamanho={16} />Gravações de tela</h3>
-          {!arquivado && <Link href={`/app/gravacoes/nova?processo=${p.id}`} className="btn"><span className="rec-dot" />Nova gravação</Link>}
-        </div>
-        {p.gravacoes.length === 0 && <p className="notice">Nenhuma gravação.</p>}
-        <div className="lista-pops">
-          {p.gravacoes.map((g) => (
-            <Link key={g.id} href={`/app/gravacoes/${g.id}`} className="linha-pop">
-              <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
-              <span className="pop-nome">
-                <strong>{g.nome}</strong>
-                <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}{g.transcrita ? ' · transcrita' : ''}</span>
-              </span>
-              {EM_ABERTO.includes(g.status as StatusGravacao)
-                ? <span className={`tag-status st-${g.status}`}>{ROTULO_STATUS[g.status as StatusGravacao]}</span>
-                : ETAPA[g.processamento] && <span className={`tag-status st-${g.processamento}`}>{ETAPA[g.processamento]}</span>}
-              <span className="notice">{new Date(g.criado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {fluxoDialogo && (
         <NovoFluxograma
           processoId={p.id}
           substituir={fluxoDialogo === 'substituir'}
           modoInicial={fluxoDialogo === 'desenhar' ? 'manual' : 'ia'}
           nomeSugerido={p.nome}
+          gravacoes={p.gravacoes.filter((g) => g.transcrita).map((g) => ({ id: g.id, nome: g.nome, pop_nome: g.pop_nome }))}
+          gravacaoInicial={gerarDe ?? undefined}
           aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />
       )}
     </div>
   );
+}
+
+export default function Pagina() {
+  return <Suspense><ProcessoPage /></Suspense>;
 }
