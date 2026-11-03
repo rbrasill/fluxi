@@ -15,11 +15,15 @@ export type PopResumo = {
 };
 /** Gravação de tela do POP (resumo para o editor). */
 export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; transcrita: boolean };
+/** O fluxograma do processo do POP (um por processo). */
+export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & {
   conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
   alteracoes_nao_publicadas: boolean;
+  /** O fluxograma do processo (só informativo no editor do POP). */
+  fluxograma: FluxogramaDoPop | null;
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {

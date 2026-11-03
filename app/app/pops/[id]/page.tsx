@@ -18,7 +18,7 @@ import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
 import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, despublicarPop, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
-import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
+import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -331,7 +331,9 @@ function EditorPop() {
     const pr = processos?.find((x) => x.id === processoId);
     if (!pr) return;
     alterar({ processo_id: pr.id });
-    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area } });
+    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area }, fluxograma: null });
+    // O fluxograma passa a ser o do processo escolhido.
+    obterProcesso(pr.id).then((x) => setPop((p) => p && p.processo_id === pr.id ? { ...p, fluxograma: x.fluxograma } : p)).catch(() => {});
   }
 
   const onde = pop.processo;
@@ -439,6 +441,33 @@ function EditorPop() {
         ))}
         <button className="btn btn-tracejado" onClick={() => setConteudo({ envolvidos: [...c.envolvidos, { area: '', cargo: '' }] })}><Icone nome="mais" tamanho={16} />Adicionar área · cargo</button>
       </section>
+
+      {onde && (
+        <section className="cartao pop-sec" id="pos-fluxograma" aria-labelledby="titulo-fluxograma">
+          <h2 id="titulo-fluxograma">Fluxograma do processo</h2>
+          {pop.fluxograma ? (
+            <div className="fluxo-do-pop">
+              {pop.fluxograma.miniatura
+                ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
+                : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              <div className="fluxo-info">
+                <strong>{pop.fluxograma.nome}</strong>
+                <span>{pop.fluxograma.origem === 'ia' ? 'Gerado com IA' : 'Desenhado à mão'} · atualizado em {new Date(pop.fluxograma.atualizado_em).toLocaleDateString('pt-BR')}</span>
+                <span>
+                  {pop.fluxograma.tem_svg
+                    ? 'Aparece na página pública deste POP e vai no PDF e no DOCX como o link "Abrir diagrama".'
+                    : 'Vai no PDF e no DOCX como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
+                </span>
+              </div>
+              <Link href={`/app/fluxogramas/${pop.fluxograma.id}`} className="btn btn-ghost"><Icone nome="fluxo" tamanho={16} />Abrir fluxograma</Link>
+            </div>
+          ) : (
+            <p className="notice">
+              O processo <strong>{onde.nome}</strong> ainda não tem fluxograma. Ele é desenhado ou gerado com IA na <Link href={`/app/processos/${onde.id}`}>página do processo</Link> e, depois, aparece aqui, na página pública e no PDF e no DOCX.
+            </p>
+          )}
+        </section>
+      )}
 
       <section className={`cartao pop-sec ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela">
         <div className="sec-titulo">

@@ -128,7 +128,11 @@ export async function telasDasGravacoes(id: string) {
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const [marcs, gravacoes] = await Promise.all([marcacoesDoPop(pop.conteudo), gravacoesDoPop(id, pop.conteudo)]);
+  const [marcs, gravacoes, fluxo] = await Promise.all([
+    marcacoesDoPop(pop.conteudo),
+    gravacoesDoPop(id, pop.conteudo),
+    pop.processo_id ? fluxogramaDoProcesso(pop.processo_id) : null,
+  ]);
   const passos = pop.conteudo.procedimentos.flatMap((p) => p.passos).filter((s) => s.imagem_caminho);
   const finais = passos.map((s) => [s.imagem_caminho!, imagemFinal(s, marcs).caminho!] as const);
   const urls = await assinar([...finais.map(([, f]) => f), ...[...marcs.values()].map((m) => m.imagem_caminho)]);
@@ -144,7 +148,11 @@ export async function obter(id: string) {
   const { publicacao_hash, ...resto } = pop;
   // Publicado, mas o que está no editor não é o que está na página pública.
   const alteracoes_nao_publicadas = pop.status === 'publicado' && publicacao_hash !== hashDaVersao(pop, comImagensFinais(pop.conteudo, marcs));
-  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas };
+  // O fluxograma é do processo (decisão 31): o editor só o mostra, como informação.
+  const fluxograma = fluxo
+    ? { id: fluxo.id as string, nome: fluxo.nome as string, origem: fluxo.origem as string, miniatura: (fluxo.miniatura as string | null) ?? null, tem_svg: !!fluxo.tem_svg, atualizado_em: fluxo.atualizado_em as string }
+    : null;
+  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, fluxograma };
 }
 
 /** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
