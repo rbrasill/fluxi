@@ -15,7 +15,7 @@ export type PopResumo = {
   link_publico_ativo: boolean; // chave online/offline da página pública (decisão 34)
 };
 /** Gravação de tela do POP (resumo para o editor). */
-export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; telas_no_pop: number };
+export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
 /** O fluxograma do processo do POP (um por processo). */
 export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };

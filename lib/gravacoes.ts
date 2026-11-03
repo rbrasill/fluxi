@@ -54,7 +54,7 @@ export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; sta
 /** Exclui a gravação para sempre. As telas que já estão nos passos do POP continuam no POP (`telas_mantidas`). */
 export const excluirGravacao = (id: string) => api<{ ok: true; telas_mantidas: number }>(`/api/gravacoes/${id}`, { method: 'DELETE' });
 
-/** Texto da confirmação de exclusão, igual na tela da gravação e no editor do POP. */
+/** Texto da confirmação de exclusão da gravação (só na tela da gravação). */
 export function confirmacaoExcluirGravacao(nome: string, telasNoPop: number) {
   return {
     titulo: `Excluir a gravação "${nome}"?`,

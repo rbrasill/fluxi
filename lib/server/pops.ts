@@ -99,7 +99,6 @@ async function gravacoesDoPop(id: string, conteudo: ConteudoPop) {
       ...g,
       total_marcacoes: telas.length,
       telas_novas: telas.filter((t) => t.incluir_no_pop && !usadas.has(t.id)).length,
-      telas_no_pop: telas.filter((t) => usadas.has(t.id)).length,
     };
   });
 }

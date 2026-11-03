@@ -15,9 +15,9 @@ import { TextoRico } from '@/components/pop/TextoRico';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
-import { confirmacaoExcluirGravacao, excluirGravacao, salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
+import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type GravacaoDoPop, type Pop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
 
@@ -238,16 +238,6 @@ function EditorPop() {
     if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de levar as telas.');
     setLevando(gravacaoId);
     try { await adicionarTelasDaGravacao(id, gravacaoId); setPop(await obterPop(id)); } catch { void avisar('Não foi possível levar as telas para o POP.', 'Tente de novo em instantes.'); } finally { setLevando(''); }
-  }
-
-  // Exclui a gravação para sempre, com confirmação. As telas dela que já estão nos passos continuam no POP.
-  async function excluirGravacaoDoPop(g: GravacaoDoPop) {
-    if (!(await confirmar(confirmacaoExcluirGravacao(g.nome, g.telas_no_pop)))) return;
-    if (timer.current) clearTimeout(timer.current);
-    await enviar();
-    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de excluir a gravação.');
-    setLevando(g.id);
-    try { await excluirGravacao(g.id); setPop(await obterPop(id)); } catch { void avisar('Não foi possível excluir a gravação.', 'Tente de novo em instantes.'); } finally { setLevando(''); }
   }
 
   function removerImagem(i: number, k: number) {
@@ -520,8 +510,6 @@ function EditorPop() {
                     </button>
                   )}
                   <Link href={`/app/gravacoes/${g.id}`} className="btn btn-ghost">Abrir</Link>
-                  <button type="button" className="btn btn-ghost btn-icon btn-excluir" onClick={() => void excluirGravacaoDoPop(g)} disabled={levando === g.id}
-                    aria-label={`Excluir a gravação ${g.nome}`} title="Excluir a gravação para sempre (as telas que já estão nos passos continuam)"><Icone nome="lixo" tamanho={16} /></button>
                 </article>
               ))}
             </div>
