@@ -8,21 +8,28 @@ import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
 import { ErroApi } from './http';
 import { garantir as garantirArea } from './areas';
+import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
+import { excluir as excluirGravacao } from './gravacoes';
 import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
-const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, fluxograma_id, gravacao_id, processo_id, criado_em, atualizado_em';
+const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, processo_id, arquivado_em, criado_em, atualizado_em';
 // Onde o POP está (processo › área › organização), para listas e caminho no topo das telas.
-const ONDE = 'processo:processos(id, nome, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+
+type Arquivavel = { arquivado_em: string | null; processo: { arquivado_em: string | null } | null };
+/** Arquivado por si ou pelo processo: some das listas e não pode ser editado. */
+export const arquivado = (p: Arquivavel) => !!p.arquivado_em || !!p.processo?.arquivado_em;
 
 const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
-export async function listar() {
+/** POPs ativos (ou só os arquivados, por si ou pelo processo). */
+export async function listar(arquivados = false) {
   const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}`).eq('tenant_id', TENANT_PADRAO).order('atualizado_em', { ascending: false });
   if (error) throw error;
-  return data;
+  return (data as unknown as Arquivavel[]).filter((p) => arquivado(p) === arquivados);
 }
 
 async function buscar(id: string) {
@@ -31,7 +38,8 @@ async function buscar(id: string) {
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
-    fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; criado_em: string; atualizado_em: string;
+    processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
+    processo: { id: string; nome: string; arquivado_em: string | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
   };
 }
@@ -63,13 +71,51 @@ function imagemFinal(s: Passo, m: Map<string, MarcacaoDoPop>) {
 
 const assinar = async (caminhos: string[]) => Object.fromEntries(await telas.assinar(caminhos)) as Record<string, string>;
 
+const telasUsadas = (c: ConteudoPop) => new Set(c.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)).filter(Boolean) as string[]);
+
+/** As gravações de tela do POP, com quantas telas marcadas ainda não entraram nos passos. */
+async function gravacoesDoPop(id: string, conteudo: ConteudoPop) {
+  const { data, error } = await supabase().from('gravacoes')
+    .select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(id, incluir_no_pop), segmentos:gravacao_segmentos(transcricao_status)')
+    .eq('tenant_id', TENANT_PADRAO).eq('pop_id', id).order('criado_em');
+  if (error) throw error;
+  const usadas = telasUsadas(conteudo);
+  return (data ?? []).map(({ marcacoes, segmentos, ...g }) => {
+    const telas = marcacoes as { id: string; incluir_no_pop: boolean }[];
+    const segs = segmentos as { transcricao_status: string }[];
+    return {
+      ...g,
+      total_marcacoes: telas.length,
+      telas_novas: telas.filter((t) => t.incluir_no_pop && !usadas.has(t.id)).length,
+      transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta'),
+    };
+  });
+}
+
+/** Telas marcadas em todas as gravações do POP, para escolher o print de um passo. */
+export async function telasDasGravacoes(id: string) {
+  const { data, error } = await supabase().from('gravacao_marcacoes')
+    .select('id, gravacao_id, tempo_ms, imagem_caminho, largura, altura, instrucao, anotacoes, imagem_anotada_caminho, gravacao:gravacoes!inner(nome, criado_em)')
+    .eq('tenant_id', TENANT_PADRAO).eq('gravacao.pop_id', id).order('tempo_ms');
+  if (error) throw error;
+  type Linha = { id: string; gravacao_id: string; tempo_ms: number; imagem_caminho: string; largura: number | null; altura: number | null; instrucao: string | null; anotacoes: Anotacoes | null; imagem_anotada_caminho: string | null; gravacao: { nome: string; criado_em: string } };
+  const linhas = ((data ?? []) as unknown as Linha[]).sort((a, b) => a.gravacao.criado_em.localeCompare(b.gravacao.criado_em) || a.tempo_ms - b.tempo_ms);
+  const urls = await assinar(linhas.flatMap((m) => [m.imagem_caminho, m.imagem_anotada_caminho].filter(Boolean) as string[]));
+  return linhas.map(({ gravacao, imagem_anotada_caminho, ...m }) => ({
+    ...m,
+    gravacao_nome: gravacao.nome,
+    imagem_url: urls[m.imagem_caminho] ?? null,
+    imagem_anotada_url: imagem_anotada_caminho ? urls[imagem_anotada_caminho] ?? null : null,
+  }));
+}
+
 /**
  * POP com links temporários para as imagens dos passos. `imagens` (por imagem_caminho) já aponta
  * para a versão marcada; `telas` traz o original e as marcações, para reabrir o editor.
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const marcs = await marcacoesDoPop(pop.conteudo);
+  const [marcs, gravacoes] = await Promise.all([marcacoesDoPop(pop.conteudo), gravacoesDoPop(id, pop.conteudo)]);
   const passos = pop.conteudo.procedimentos.flatMap((p) => p.passos).filter((s) => s.imagem_caminho);
   const finais = passos.map((s) => [s.imagem_caminho!, imagemFinal(s, marcs).caminho!] as const);
   const urls = await assinar([...finais.map(([, f]) => f), ...[...marcs.values()].map((m) => m.imagem_caminho)]);
@@ -82,44 +128,17 @@ export async function obter(id: string) {
     altura: m.altura,
     anotacoes: m.anotacoes,
   }]));
-  return { ...pop, imagens, telas: telasDoPop };
+  return { ...pop, imagens, telas: telasDoPop, gravacoes };
 }
 
-export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) {
-  let processoId = p.processo_id ?? null;
-  if (processoId) await garantirProcesso(processoId);
+/** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
+export async function criar(p: { nome?: string; processo_id?: string }) {
+  const processoId = p.processo_id ?? null;
   let conteudo = conteudoVazio();
-  let nome = p.nome?.trim() || 'Novo POP';
-  let codigo = gerarCodigo();
+  const nome = p.nome?.trim() || 'Novo POP';
 
-  if (p.fluxograma_id) {
-    const { data } = await supabase().from('fluxogramas').select('codigo, nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.fluxograma_id).maybeSingle();
-    if (!data) throw new ErroApi(404, 'Fluxograma não encontrado');
-    codigo = data.codigo; // o código do processo é o mesmo do fluxograma
-    if (!p.nome) nome = data.nome;
-    processoId ??= data.processo_id;
-  }
-
-  if (p.gravacao_id) {
-    const db = supabase();
-    const [g, m] = await Promise.all([
-      db.from('gravacoes').select('nome, processo_id').eq('tenant_id', TENANT_PADRAO).eq('id', p.gravacao_id).maybeSingle(),
-      db.from('gravacao_marcacoes').select('id, tempo_ms, imagem_caminho, largura, altura, instrucao, instrucao_ia, incluir_no_pop')
-        .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', p.gravacao_id).eq('incluir_no_pop', true).order('tempo_ms'),
-    ]);
-    if (!g.data) throw new ErroApi(404, 'Gravação não encontrada');
-    if (!p.nome && !p.fluxograma_id) nome = g.data.nome;
-    processoId ??= g.data.processo_id;
-    const passos = (m.data ?? []).map((t) => ({
-      texto: t.instrucao || t.instrucao_ia || '',
-      imagem_caminho: t.imagem_caminho,
-      imagem_largura: t.largura ?? undefined,
-      imagem_altura: t.altura ?? undefined,
-      marcacao_id: t.id,
-    }));
-    conteudo = { ...conteudo, procedimentos: [{ nome: 'Passo a passo no sistema', passos: passos.length ? passos : [{ texto: '' }] }] };
-  }
-
+  // O "código do processo" no documento é o código do processo em que o POP está.
+  const codigo = processoId ? (await garantirProcesso(processoId)).codigo : gerarCodigo();
   if (processoId && !conteudo.area) {
     const { data: pr } = await supabase().from('processos').select('area:areas(nome)').eq('id', processoId).maybeSingle();
     const area = (pr?.area as { nome?: string } | null)?.nome;
@@ -132,8 +151,6 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
     codigo,
     conteudo,
     historico: [{ data: hoje(), elaborado_por: '', revisao: 'Rev. 01' }],
-    gravacao_id: p.gravacao_id ?? null,
-    fluxograma_id: p.fluxograma_id ?? null,
     processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
@@ -141,16 +158,29 @@ export async function criar(p: { nome?: string; gravacao_id?: string; fluxograma
   return data;
 }
 
-export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; autor: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; fluxograma_id: string | null; status: string; processo_id: string | null }>) {
-  if (dados.processo_id) await garantirProcesso(dados.processo_id);
-  const { data, error } = await supabase().from('pops').update({ ...dados, atualizado_em: new Date().toISOString() })
+export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; autor: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; status: string; processo_id: string | null }>) {
+  // Mudou de processo: o código do processo no documento acompanha.
+  const codigo = dados.processo_id ? { codigo: (await garantirProcesso(dados.processo_id)).codigo } : {};
+  const { data, error } = await supabase().from('pops').update({ ...dados, ...codigo, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, atualizado_em').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   return data;
 }
 
-export async function excluir(id: string) {
+export async function arquivar(id: string, arquivado: boolean) {
+  const { data, error } = await supabase().from('pops').update({ arquivado_em: arquivado ? new Date().toISOString() : null, atualizado_em: new Date().toISOString() })
+    .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, arquivado_em').maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'POP não encontrado');
+  return data;
+}
+
+/** Apaga o POP com as gravações dele e os prints anexados. Quem confere se está arquivado é `exclusao.ts`. */
+export async function excluirDefinitivo(id: string) {
+  const { data: gravs, error: e1 } = await supabase().from('gravacoes').select('id').eq('tenant_id', TENANT_PADRAO).eq('pop_id', id);
+  if (e1) throw e1;
+  for (const g of gravs ?? []) await excluirGravacao(g.id);
   await telas.removerPasta(dono(id)); // prints anexados no POP
   const { error } = await supabase().from('pops').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
@@ -204,7 +234,7 @@ export async function adicionarTelasDaGravacao(id: string, gravacaoId: string) {
     .select('id, imagem_caminho, largura, altura, instrucao, instrucao_ia')
     .eq('tenant_id', TENANT_PADRAO).eq('gravacao_id', gravacaoId).eq('incluir_no_pop', true).order('tempo_ms');
   if (error) throw error;
-  const usadas = new Set(pop.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)));
+  const usadas = telasUsadas(pop.conteudo);
   const novas = (data ?? []).filter((t) => !usadas.has(t.id));
   if (!novas.length) return { adicionadas: 0 };
   const passos: Passo[] = novas.map((t) => ({
@@ -222,6 +252,8 @@ export async function adicionarTelasDaGravacao(id: string, gravacaoId: string) {
 /** Conteúdo e imagens do POP prontos para virar DOCX ou PDF. */
 async function documento(id: string, origem: string) {
   const original = await buscar(id);
+  // "Abrir diagrama" aponta para o fluxograma do processo (um por processo, decisão 31).
+  const fluxo = original.processo_id ? await fluxogramaDoProcesso(original.processo_id) : null;
   // No documento vai a versão marcada de cada tela (com o tamanho dela, que muda com o recorte).
   const marcs = await marcacoesDoPop(original.conteudo);
   const conteudo: ConteudoPop = {
@@ -250,7 +282,7 @@ async function documento(id: string, origem: string) {
     autor: original.autor,
     criado_em: original.criado_em,
     historico: original.historico,
-    link_fluxograma: original.fluxograma_id ? `${origem}/app/fluxogramas/${original.fluxograma_id}` : null,
+    link_fluxograma: fluxo ? `${origem}/app/fluxogramas/${fluxo.id}` : null,
   };
   const nomeBase = `POP ${original.identificacao ? `${original.identificacao} ` : ''}${original.nome}`.replace(/[\\/:*?"<>|]+/g, ' ').trim();
   return { dados, imagens, nomeBase };

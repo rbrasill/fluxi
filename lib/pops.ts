@@ -1,19 +1,21 @@
 // Cliente da API de POPs.
 import { ErroCliente } from './fluxogramas';
 import type { Anotacoes } from './marcacao/anotacoes';
-import { enviarArquivo } from './gravacoes';
+import { enviarArquivo, type StatusGravacao, type TelaDaGravacao } from './gravacoes';
 import type { ConteudoPop, Historico, Posicao } from './pop/schema';
 
-export type OndePop = { id: string; nome: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
+export type OndePop = { id: string; nome: string; arquivado_em?: string | null; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
 export type StatusPop = 'rascunho' | 'publicado';
 export type PopResumo = {
   id: string; nome: string; codigo: string; identificacao: string; versao: string; status: StatusPop; autor: string;
   posicao: Posicao | null; // onde a pessoa parou no editor
   processo: OndePop;
-  fluxograma_id: string | null; gravacao_id: string | null; processo_id: string | null; criado_em: string; atualizado_em: string;
+  processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
 };
+/** Gravação de tela do POP (resumo para o editor). */
+export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; transcrita: boolean };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
-export type Pop = PopResumo & { conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop> };
+export type Pop = PopResumo & { conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[] };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -22,13 +24,20 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return j as T;
 }
 
-export const listarPops = () => api<PopResumo[]>('/api/pops');
+/** POPs ativos; com `arquivados`, só os arquivados (por si ou pelo processo). */
+export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${arquivados ? '?arquivados=1' : ''}`);
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
-export const criarPop = (dados: { nome?: string; gravacao_id?: string; fluxograma_id?: string; processo_id?: string }) =>
+export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'fluxograma_id' | 'status' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'status' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
+/** Arquiva (some das listas, sem apagar) e restaura. */
+export const arquivarPop = (id: string) => api(`/api/pops/${id}/arquivar`, { method: 'POST' });
+export const restaurarPop = (id: string) => api(`/api/pops/${id}/restaurar`, { method: 'POST' });
+/** Só POP arquivado: apaga com as gravações dele. */
 export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELETE' });
+/** Arquivado por si ou pelo processo: não aparece nas listas nem pode ser editado. */
+export const popArquivado = (p: { arquivado_em: string | null; processo: OndePop }) => !!p.arquivado_em || !!p.processo?.arquivado_em;
 /** Move o POP para outra área, com o processo inteiro dele (POP sem processo: entra num processo da área). */
 export const moverPop = (id: string, dados: { area_id: string; processo_id?: string; novo_processo?: string }) =>
   api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify(dados) });
@@ -58,6 +67,8 @@ export async function anexarPrint(popId: string, png: Blob, largura: number, alt
   return { id, imagem_caminho: caminho, largura, altura, url: URL.createObjectURL(png) };
 }
 export const excluirTelaDoPop = (popId: string, telaId: string) => api(`/api/pops/${popId}/telas/${telaId}`, { method: 'DELETE' });
+/** Telas marcadas em todas as gravações do POP, para escolher o print de um passo. */
+export const listarTelasDasGravacoes = (popId: string) => api<TelaDaGravacao[]>(`/api/pops/${popId}/telas/das-gravacoes`);
 /** Leva para o POP as telas de uma gravação que ainda não estão nele. */
 export const adicionarTelasDaGravacao = (popId: string, gravacaoId: string) =>
   api<{ adicionadas: number }>(`/api/pops/${popId}/telas/da-gravacao`, { method: 'POST', body: JSON.stringify({ gravacao_id: gravacaoId }) });

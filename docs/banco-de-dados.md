@@ -8,13 +8,13 @@ PostgreSQL 17 (Supabase no MVP). O que está aqui é o que existe no banco; as m
 conta (tenants)            quem usa o Fluxi: membros, convites (créditos de IA suspensos, decisão 20)
 └─ organizacoes            empresas cujos processos são modelados
    └─ areas                Comercial, Financeiro… (nome único na organização)
-      └─ processos         a "pasta" do processo (código XXXX-XXXX)
-         ├─ gravacoes      vídeo em segmentos + telas marcadas + transcrição
-         ├─ fluxogramas    XML draw.io + FluxoSchema
-         └─ pops           conteúdo do POP (Modelo v3) + histórico
+      └─ processos         a unidade central (código XXXX-XXXX), com duas frentes:
+         ├─ fluxogramas    o fluxograma do processo (um por processo): XML draw.io + FluxoSchema
+         └─ pops           os POPs do processo: conteúdo (Modelo v3) + histórico
+            └─ gravacoes   vídeo em segmentos + telas marcadas + transcrição (do POP; `processo_id` vem dele)
 ```
 
-Regras: toda área tem organização e todo processo tem área (obrigatórios). Organização só é excluída sem áreas; área só é excluída sem processos; excluir um processo apaga só a pasta (os itens ficam com `processo_id` nulo e continuam nas listas "Todos os itens"). Enquanto não há login, tudo usa a conta padrão `00000000-0000-4000-8000-000000000001` (INC).
+Regras (decisão 31): toda área tem organização e todo processo tem área (obrigatórios); o fluxograma e o POP têm processo; a gravação tem POP. Organização só é excluída sem áreas; área só é excluída sem processos (contando os arquivados). Processo e POP são **arquivados** (`arquivado_em`), não excluídos: somem das listas com tudo o que têm; só o que está arquivado pode ser excluído definitivamente, e aí vai tudo junto (POPs, gravações e seus arquivos, fluxograma). Nunca sobra item sem processo. Enquanto não há login, tudo usa a conta padrão `00000000-0000-4000-8000-000000000001` (INC).
 
 ## Convenções
 - Toda tabela de dados de cliente tem `tenant_id` e RLS ligado, sem políticas: só o servidor (chave `service_role`) lê e escreve.
@@ -27,12 +27,12 @@ Regras: toda área tem organização e todo processo tem área (obrigatórios). 
 |---|---|---|
 | `tenants` | conta: nome, slug, `creditos_ia` (sem uso no momento) | 0001 |
 | `uso_ia` | cada débito de crédito (tipo `fluxograma`, `transcricao`, `pop`); sem uso no momento | 0001, 0004 |
-| `fluxogramas` | código, nome, `xml`, `schema` (FluxoSchema), origem `manual`/`ia`/`modelo`, miniatura, `processo_id` | 0001, 0005 |
-| `gravacoes` | nome, status (`gravando`, `pausada`, `pronta`, `interrompida`, `erro`), duração, `processamento` (`nenhum`→`transcrevendo`→`analisando`→`pronto`/`erro`), `pop_id`, `fluxograma_id`, `processo_id` | 0002, 0004, 0005, 0011 |
+| `fluxogramas` | código (o do processo), nome, `xml`, `schema` (FluxoSchema), origem `manual`/`ia`/`modelo`, miniatura, `processo_id` (único: um fluxograma por processo) | 0001, 0005, 0012 |
+| `gravacoes` | nome, status (`gravando`, `pausada`, `pronta`, `interrompida`, `erro`), duração, `pop_id` (o POP dono) e `processo_id` (o do POP), `processamento` da transcrição sob demanda (`nenhum`→`transcrevendo`→`pronto`/`erro`); `fluxograma_id` ficou sem uso | 0002, 0004, 0005, 0011, 0012 |
 | `gravacao_segmentos` | um arquivo WebM por 3 min: caminho, `inicio_ms`, `transcricao_id`, `transcricao_status`, `falas` (jsonb) | 0002, 0004 |
 | `gravacao_marcacoes` | telas: dona é a gravação (`gravacao_id` + `tempo_ms`) ou o POP (`pop_id`, print anexado no editor); imagem, `instrucao` (digitada), `instrucao_ia`, `incluir_no_pop`; marcações desenhadas em `anotacoes` e a imagem final em `imagem_anotada_caminho` (+ largura/altura) | 0002, 0009, 0011 |
-| `pops` | nome, código (o mesmo do fluxograma), identificação, versão, status, `autor` (elaborado por), `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `posicao` (onde a pessoa parou no editor), `fluxograma_id`, `gravacao_id`, `processo_id` | 0003, 0005, 0010, 0011 |
-| `processos` | código, nome, descrição, `area_id` | 0005, 0006 |
+| `pops` | nome, código (o do processo), identificação, versão, status (`rascunho`/`publicado`), `arquivado_em`, `autor` (elaborado por), `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `posicao` (onde a pessoa parou no editor), `processo_id`; `fluxograma_id` e `gravacao_id` ficaram sem uso (a gravação aponta para o POP) | 0003, 0005, 0010, 0011, 0012 |
+| `processos` | código, nome, descrição, `area_id`, `arquivado_em` | 0005, 0006, 0012 |
 | `areas` | nome, descrição, `organizacao_id` | 0006, 0007 |
 | `organizacoes` | nome (único na conta) | 0007 |
 | `membros` | pessoa ↔ conta: papel `dono`/`admin`/`membro`, `todas_organizacoes` | 0008 |

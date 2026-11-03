@@ -202,7 +202,7 @@ export function EditorDrawio({ id }: { id: string }) {
         <div className="empty">
           <h2>Fluxograma não encontrado</h2>
           <p>Ele pode ter sido excluído, ou houve um erro de conexão.</p>
-          <Link href="/app/fluxogramas" className="btn btn-primary">Voltar para a lista</Link>
+          <Link href="/app/inicio" className="btn btn-primary">Voltar ao Início</Link>
         </div>
       </div>
     );
@@ -211,7 +211,7 @@ export function EditorDrawio({ id }: { id: string }) {
   return (
     <div className="editor" ref={container}>
       <header className="editor-bar">
-        <Link href={fluxo?.processo_id ? `/app/processos/${fluxo.processo_id}` : '/app/fluxogramas'} className="btn btn-icon" aria-label="Voltar" title={fluxo?.processo_id ? 'Voltar ao processo' : 'Voltar'}><Icone nome="voltar" /></Link>
+        <Link href={fluxo?.processo_id ? `/app/processos/${fluxo.processo_id}` : '/app/inicio'} className="btn btn-icon" aria-label="Voltar" title={fluxo?.processo_id ? 'Voltar ao processo' : 'Voltar'}><Icone nome="voltar" /></Link>
         <input
           className="title-input"
           value={nome}

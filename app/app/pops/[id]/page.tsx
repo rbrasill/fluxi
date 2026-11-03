@@ -5,18 +5,19 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
 import { TextoRico } from '@/components/pop/TextoRico';
-import { listar as listarFluxogramas, type FluxogramaResumo } from '@/lib/fluxogramas';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { anexarPrint, excluirTelaDoPop, obterPop, salvarPop, urlDocx, urlPdf, type Pop, type StatusPop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, restaurarPop, salvarPop, urlDocx, urlPdf, type Pop, type StatusPop, type TelaDoPop } from '@/lib/pops';
+import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
@@ -24,6 +25,8 @@ const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcaca
 type Status = 'salvo' | 'alterado' | 'salvando' | 'erro';
 
 const donoDe = (t: TelaDoPop): DonoTela => (t.pop_id ? { pop_id: t.pop_id } : { gravacao_id: t.gravacao_id! });
+// Gravação que ainda pode receber mais conteúdo (pausada ou não finalizada).
+const EM_ABERTO: StatusGravacao[] = ['pausada', 'gravando', 'interrompida'];
 
 function mover<T>(lista: T[], de: number, para: number) {
   if (para < 0 || para >= lista.length) return lista;
@@ -40,7 +43,6 @@ function EditorPop() {
   const retomar = !!useSearchParams().get('retomar');
   const [pop, setPop] = useState<Pop | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>('salvo');
-  const [fluxogramas, setFluxogramas] = useState<FluxogramaResumo[]>([]);
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
   // Tela sendo marcada: a marcação é da tela, então aparece igual na gravação e em todo POP que usa a tela.
   const [marcando, setMarcando] = useState<{ marcacaoId: string; caminho: string; titulo: string } | null>(null);
@@ -49,6 +51,9 @@ function EditorPop() {
   const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar, ou passo recém-movido
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
+  const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
+  const bloqueado = useRef(false); // arquivado: nada é salvo
   const pendente = useRef<Partial<Pop>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Onde a pessoa está editando; vai para o banco para retomar depois, sem passar pelo autosave do conteúdo.
@@ -64,7 +69,6 @@ function EditorPop() {
       // POP sem processo: carrega a lista para poder vinculá-lo.
       if (!d.processo_id) listarProcessos().then(setProcessos).catch(() => setProcessos([]));
     }).catch(() => setPop(null));
-    listarFluxogramas().then(setFluxogramas).catch(() => {});
   }, [id]);
 
   const salvarPosicao = useCallback((keepalive = false) => {
@@ -122,8 +126,11 @@ function EditorPop() {
     }
   }, [id]);
 
+  useEffect(() => { bloqueado.current = !!pop && popArquivado(pop); }, [pop]);
+
   // Salva automaticamente 1 s depois da última alteração.
   const alterar = useCallback((dados: Partial<Pop>) => {
+    if (bloqueado.current) return;
     setPop((p) => (p ? { ...p, ...dados } : p));
     pendente.current = { ...pendente.current, ...dados };
     setStatus('alterado');
@@ -205,6 +212,28 @@ function EditorPop() {
     setAnexando(null);
   }
 
+  // Uma tela marcada numa gravação do POP vira o print do passo (a tela continua sendo da gravação).
+  function usarTelaDaGravacao(i: number, k: number, t: TelaDaGravacao) {
+    const anterior = c.procedimentos[i]?.passos[k];
+    setPop((prev) => prev && {
+      ...prev,
+      imagens: { ...prev.imagens, [t.imagem_caminho]: t.imagem_anotada_url ?? t.imagem_url ?? '' },
+      telas: { ...prev.telas, [t.id]: { gravacao_id: t.gravacao_id, pop_id: null, imagem_url: t.imagem_url, largura: t.largura, altura: t.altura, anotacoes: t.anotacoes } },
+    });
+    setPasso(i, k, { imagem_caminho: t.imagem_caminho, imagem_largura: t.largura ?? undefined, imagem_altura: t.altura ?? undefined, marcacao_id: t.id });
+    if (anterior?.marcacao_id && pop!.telas[anterior.marcacao_id]?.pop_id) void excluirTelaDoPop(id, anterior.marcacao_id).catch(() => {});
+    setAnexando(null);
+  }
+
+  // As telas marcadas que ainda não estão nos passos entram num procedimento novo, no fim.
+  async function levarTelas(gravacaoId: string) {
+    if (timer.current) clearTimeout(timer.current);
+    await enviar();
+    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de levar as telas.');
+    setLevando(gravacaoId);
+    try { await adicionarTelasDaGravacao(id, gravacaoId); setPop(await obterPop(id)); } catch { void avisar('Não foi possível levar as telas para o POP.', 'Tente de novo em instantes.'); } finally { setLevando(''); }
+  }
+
   function removerImagem(i: number, k: number) {
     const s = c.procedimentos[i].passos[k];
     setPasso(i, k, { imagem_caminho: undefined, imagem_largura: undefined, imagem_altura: undefined, marcacao_id: undefined });
@@ -234,20 +263,45 @@ function EditorPop() {
     alterar({ status: novo });
   }
 
+  // Arquivar em vez de excluir (decisão 31): só o POP arquivado pode ser excluído, com as gravações dele.
+  async function arquivar() {
+    if (timer.current) clearTimeout(timer.current);
+    await enviar();
+    if (!(await confirmar({ titulo: `Arquivar o POP "${pop!.nome}"?`, mensagem: 'O POP some das listas e não pode ser editado. Nada é apagado: dá para restaurar depois.', acao: 'Arquivar' }))) return;
+    setOcupado(true);
+    try { await arquivarPop(id); setPop(await obterPop(id)); } catch { void avisar('Não foi possível arquivar o POP.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
+  }
+
+  async function restaurar() {
+    setOcupado(true);
+    try { await restaurarPop(id); setPop(await obterPop(id)); } catch { void avisar('Não foi possível restaurar o POP.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
+  }
+
+  async function excluirDefinitivo() {
+    if (!(await confirmar({ titulo: `Excluir definitivamente o POP "${pop!.nome}"?`, mensagem: 'Apaga o POP com as gravações dele. Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
+    setOcupado(true);
+    try {
+      await excluirPop(id);
+      router.push(pop!.processo_id ? `/app/processos/${pop!.processo_id}` : '/app/pops');
+    } catch (e) {
+      setOcupado(false);
+      void avisar('Não foi possível excluir o POP.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    }
+  }
+
   function vincularProcesso(processoId: string) {
     const pr = processos?.find((x) => x.id === processoId);
     if (!pr) return;
     alterar({ processo_id: pr.id });
-    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, area: pr.area } });
+    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area } });
   }
 
-  // Fluxogramas do mesmo processo (e o que já estiver vinculado).
-  const fluxosDoProcesso = fluxogramas.filter((f) => !pop.processo_id || f.processo_id === pop.processo_id || f.id === pop.fluxograma_id);
   const onde = pop.processo;
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
 
   const chipRetomar = pop.posicao && !chipOculto && !retomar && pop.status === 'rascunho';
+  const arquivado = popArquivado(pop);
 
   return (
     <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
@@ -268,10 +322,10 @@ function EditorPop() {
               </select>
             </div>
           )}
-          <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" />
+          <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
             <SeloStatus status={pop.status} />
-            <span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}
+            {!arquivado && <><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</>}
             {chipRetomar && (
               <button type="button" className="chip-retomar" onClick={() => irParaPosicao(pop.posicao!)} title="Ir para o ponto em que você parou">
                 Você parou em: {pop.posicao!.rotulo} · Ir para lá
@@ -280,18 +334,29 @@ function EditorPop() {
           </p>
         </div>
         <div className="actions">
-          {pop.status === 'publicado'
+          {!arquivado && (pop.status === 'publicado'
             ? <button className="btn btn-ghost" onClick={() => mudarStatus('rascunho')} title="Volta a ser rascunho, em elaboração">Voltar para rascunho</button>
             : <>
                 <button className="btn btn-ghost" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>
                 <button className="btn" onClick={() => mudarStatus('publicado')} title="Marca o POP como vigente"><Icone nome="check" tamanho={16} />Publicar</button>
-              </>}
-          <button className="btn btn-ghost" onClick={abrirMover} title="Leva o POP (com o processo dele) para outra área"><Icone nome="mover" tamanho={16} />Mover</button>
+              </>)}
+          {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Leva o POP (com o processo dele) para outra área"><Icone nome="mover" tamanho={16} />Mover</button>}
+          {!arquivado && <button className="btn btn-ghost btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
           <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
           <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
         </div>
       </div>
 
+      {pop.arquivado_em && <FaixaArquivado tipo="POP" desde={pop.arquivado_em} aoRestaurar={restaurar} aoExcluir={excluirDefinitivo} ocupado={ocupado} />}
+      {!pop.arquivado_em && pop.processo?.arquivado_em && (
+        <div className="aviso arquivado" role="status">
+          <Icone nome="arquivar" tamanho={18} />
+          <span><b>O processo deste POP está arquivado.</b> Para editar, restaure o processo <Link href={`/app/processos/${pop.processo.id}`}>{pop.processo.nome}</Link>.</span>
+        </div>
+      )}
+
+      {/* Arquivado: tudo fica visível, mas nada responde (inert) nem é salvo. */}
+      <div inert={arquivado} className={arquivado ? 'bloqueado' : undefined}>
       <section className="cartao pop-sec" id="pos-cabecalho" data-pos="cabecalho" data-rotulo="Dados do procedimento">
         <h2>Procedimento</h2>
         <div className="grade-3">
@@ -327,18 +392,33 @@ function EditorPop() {
         <button className="btn btn-tracejado" onClick={() => setConteudo({ envolvidos: [...c.envolvidos, { area: '', cargo: '' }] })}><Icone nome="mais" tamanho={16} />Adicionar área · cargo</button>
       </section>
 
-      <section className="cartao pop-sec" id="pos-recursos" data-pos="recursos" data-rotulo="Recursos do processo">
-        <h2>Recursos do processo</h2>
-        <label className="field">
-          Fluxograma
-          <select value={pop.fluxograma_id ?? ''} onChange={(e) => alterar({ fluxograma_id: e.target.value || null })}>
-            <option value="">{fluxosDoProcesso.length ? 'Nenhum' : 'Nenhum fluxograma neste processo'}</option>
-            {fluxosDoProcesso.map((f) => <option key={f.id} value={f.id}>{f.nome} ({f.codigo})</option>)}
-          </select>
-        </label>
-        {pop.fluxograma_id
-          ? <Link href={`/app/fluxogramas/${pop.fluxograma_id}`} className="link-sec">Abrir diagrama</Link>
-          : onde && <Link href={`/app/processos/${onde.id}`} className="link-sec">Criar o fluxograma no processo</Link>}
+      <section className={`cartao pop-sec ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela">
+        <div className="sec-titulo">
+          <h2>Gravações de tela</h2>
+          <Link href={`/app/gravacoes/nova?pop=${id}`} className="btn"><span className="rec-dot" />Gravar tela</Link>
+        </div>
+        {pop.gravacoes.length === 0
+          ? <p className="notice">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos. A narração transcrita serve para gerar o fluxograma do processo.</p>
+          : (
+            <div className="lista-pops">
+              {pop.gravacoes.map((g) => (
+                <article key={g.id} className="linha-pop">
+                  <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
+                  <Link href={`/app/gravacoes/${g.id}`} className="pop-nome">
+                    <strong>{g.nome}</strong>
+                    <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{g.transcrita ? ' · transcrita' : ''}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</span>
+                  </Link>
+                  {EM_ABERTO.includes(g.status) && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost"><span className="rec-dot" />Continuar</Link>}
+                  {g.telas_novas > 0 && (
+                    <button type="button" className="btn btn-ghost" onClick={() => void levarTelas(g.id)} disabled={levando === g.id} title="As telas marcadas que ainda não estão nos passos entram num procedimento novo, no fim">
+                      <Icone nome="pop" tamanho={16} />{levando === g.id ? 'Levando…' : `Levar ${g.telas_novas} ${g.telas_novas === 1 ? 'tela' : 'telas'} para os passos`}
+                    </button>
+                  )}
+                  <Link href={`/app/gravacoes/${g.id}`} className="btn btn-ghost">Abrir</Link>
+                </article>
+              ))}
+            </div>
+          )}
       </section>
 
       <section className="pop-sec">
@@ -413,6 +493,7 @@ function EditorPop() {
         ))}
         <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: pop.autor, revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
       </section>
+      </div>
 
       {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
         const t = pop.telas[marcando.marcacaoId];
@@ -440,6 +521,8 @@ function EditorPop() {
           titulo={`Passo ${anexando.k + 1} do procedimento ${anexando.i + 1}`}
           aoFechar={() => setAnexando(null)}
           aoAnexar={(p) => anexarAoPasso(anexando.i, anexando.k, p)}
+          telasDaGravacao={pop.gravacoes.length ? () => listarTelasDasGravacoes(id) : undefined}
+          aoEscolherTela={(t) => usarTelaDaGravacao(anexando.i, anexando.k, t)}
         />
       )}
 

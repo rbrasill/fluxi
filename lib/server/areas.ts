@@ -1,14 +1,15 @@
 import 'server-only';
 import { ErroApi } from './http';
 import { garantir as garantirOrganizacao } from './organizacoes';
+import { ativos } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 const CAMPOS = 'id, nome, descricao, organizacao_id, criado_em, atualizado_em, organizacao:organizacoes(id, nome)';
 
 export async function listar() {
-  const { data, error } = await supabase().from('areas').select(`${CAMPOS}, processos(count)`).eq('tenant_id', TENANT_PADRAO).order('nome');
+  const { data, error } = await supabase().from('areas').select(`${CAMPOS}, processos(arquivado_em)`).eq('tenant_id', TENANT_PADRAO).order('nome');
   if (error) throw error;
-  return data.map(({ processos, ...a }) => ({ ...a, total_processos: (processos as { count: number }[])[0]?.count ?? 0 }));
+  return data.map(({ processos, ...a }) => ({ ...a, total_processos: ativos(processos) }));
 }
 
 export async function garantir(id: string) {
@@ -36,7 +37,7 @@ export async function obter(id: string) {
   const db = supabase();
   const [a, p] = await Promise.all([
     db.from('areas').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('processos').select('id, codigo, nome, descricao, atualizado_em, fluxogramas(count), gravacoes(count), pops(count)')
+    db.from('processos').select('id, codigo, nome, descricao, arquivado_em, atualizado_em, fluxogramas(count), gravacoes(count), pops(arquivado_em)')
       .eq('tenant_id', TENANT_PADRAO).eq('area_id', id).order('nome'),
   ]);
   for (const r of [a, p]) if (r.error) throw r.error;
@@ -44,7 +45,7 @@ export async function obter(id: string) {
   const n = (x: unknown) => (x as { count: number }[])[0]?.count ?? 0;
   return {
     ...a.data,
-    processos: (p.data ?? []).map(({ fluxogramas, gravacoes, pops, ...x }) => ({ ...x, total: { fluxogramas: n(fluxogramas), gravacoes: n(gravacoes), pops: n(pops) } })),
+    processos: (p.data ?? []).map(({ fluxogramas, gravacoes, pops, ...x }) => ({ ...x, total: { fluxogramas: n(fluxogramas), gravacoes: n(gravacoes), pops: ativos(pops) } })),
   };
 }
 
@@ -56,11 +57,11 @@ export async function atualizar(id: string, dados: { nome?: string; descricao?: 
   return data;
 }
 
-/** Só exclui área vazia: os processos precisam ser movidos antes. */
+/** Só exclui área vazia: os processos (até os arquivados) precisam ser movidos ou excluídos antes. */
 export async function excluir(id: string) {
   const { count, error: e1 } = await supabase().from('processos').select('id', { count: 'exact', head: true }).eq('tenant_id', TENANT_PADRAO).eq('area_id', id);
   if (e1) throw e1;
-  if (count) throw new ErroApi(409, `Esta área tem ${count} processo(s). Mova-os para outra área antes de excluir.`);
+  if (count) throw new ErroApi(409, `Esta área tem ${count} processo(s), contando os arquivados. Mova-os para outra área ou exclua-os antes.`);
   const { error } = await supabase().from('areas').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
   return { ok: true };

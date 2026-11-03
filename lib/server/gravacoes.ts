@@ -2,14 +2,14 @@ import 'server-only';
 import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import type { ConteudoPop } from '@/lib/pop/schema';
 import { ErroApi } from './http';
-import { garantir as garantirProcesso, tocar } from './processos';
+import { tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
 const dono = (id: string): telas.Dono => ({ gravacao_id: id });
 
 // Onde a gravação está (processo › área › organização), para o Início e as listas.
-const ONDE = 'processo:processos(id, nome, area:areas(id, nome, organizacao:organizacoes(id, nome)))';
+const ONDE = 'processo:processos(id, nome, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))), pop:pops!pop_id(id, nome, arquivado_em)';
 
 export type StatusGravacao = 'gravando' | 'pausada' | 'pronta' | 'interrompida' | 'erro';
 
@@ -20,19 +20,28 @@ export async function listar() {
     .eq('tenant_id', TENANT_PADRAO)
     .order('criado_em', { ascending: false });
   if (error) throw error;
-  return data.map(({ marcacoes, ...g }) => ({ ...g, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }));
+  type Dona = { id: string; nome: string; arquivado_em: string | null } | null;
+  return data
+    .filter((g) => !(g.processo as unknown as Dona)?.arquivado_em && !(g.pop as unknown as Dona)?.arquivado_em) // arquivados somem das listas
+    .map(({ marcacoes, pop, ...g }) => {
+      const p = pop as unknown as Dona;
+      return { ...g, pop: p ? { id: p.id, nome: p.nome } : null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 };
+    });
 }
 
-export async function criar(nome: string, processoId?: string) {
-  if (processoId) await garantirProcesso(processoId);
-  const { data, error } = await supabase().from('gravacoes').insert({ tenant_id: TENANT_PADRAO, nome, processo_id: processoId ?? null }).select('id, nome, status').single();
+/** A gravação nasce dentro de um POP (decisão 31) e herda o processo dele. */
+export async function criar(nome: string, popId: string) {
+  const { data: pop, error: e1 } = await supabase().from('pops').select('id, processo_id, arquivado_em, processo:processos(arquivado_em)').eq('tenant_id', TENANT_PADRAO).eq('id', popId).maybeSingle();
+  if (e1) throw e1;
+  if (!pop) throw new ErroApi(404, 'POP não encontrado');
+  if (pop.arquivado_em || (pop.processo as unknown as { arquivado_em: string | null } | null)?.arquivado_em) throw new ErroApi(409, 'O POP está arquivado: restaure-o antes de gravar.');
+  const { data, error } = await supabase().from('gravacoes').insert({ tenant_id: TENANT_PADRAO, nome, pop_id: popId, processo_id: pop.processo_id }).select('id, nome, status').single();
   if (error) throw error;
-  await tocar(processoId);
+  await tocar(pop.processo_id);
   return data;
 }
 
-export async function atualizar(id: string, dados: { nome?: string; status?: StatusGravacao; duracao_ms?: number; largura?: number; altura?: number; processo_id?: string | null }) {
-  if (dados.processo_id) await garantirProcesso(dados.processo_id);
+export async function atualizar(id: string, dados: { nome?: string; status?: StatusGravacao; duracao_ms?: number; largura?: number; altura?: number }) {
   const { data, error } = await supabase()
     .from('gravacoes').update({ ...dados, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
@@ -56,7 +65,7 @@ export const salvarAnotacao = (id: string, marcacaoId: string, a: { anotacoes: A
   telas.salvarAnotacao(dono(id), marcacaoId, a);
 export const excluirMarcacao = (id: string, marcacaoId: string) => telas.excluir(dono(id), marcacaoId);
 
-/** POP ligado à gravação (gerado pela IA ou criado "com estas telas") e as telas que ele já usa. */
+/** O POP dono da gravação e as telas dele que já estão no conteúdo. */
 async function popDaGravacao(id: string, popId: string | null) {
   const { data, error } = await supabase().from('pops').select('id, nome, status, conteudo')
     .eq('tenant_id', TENANT_PADRAO).or(`gravacao_id.eq.${id}${popId ? `,id.eq.${popId}` : ''}`)

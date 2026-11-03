@@ -79,7 +79,7 @@ export default function InicioPage() {
                   <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
                   <span className="pop-nome">
                     <strong>{g.nome}</strong>
-                    <span>{ondeEsta({ processo: g.processo ?? null })}</span>
+                    <span>{g.pop ? `POP ${g.pop.nome} · ` : ''}{ondeEsta({ processo: g.processo ?? null })}</span>
                     <span className="parou">Gravação {ROTULO_STATUS[g.status].toLowerCase()} · {g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela' : 'telas'}</span>
                   </span>
                   <span className="btn">Continuar</span>

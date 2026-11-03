@@ -7,7 +7,13 @@ import type { OndePop } from './pops';
 export type StatusGravacao = 'gravando' | 'pausada' | 'pronta' | 'interrompida' | 'erro';
 export type GravacaoResumo = {
   id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processo_id?: string | null; processo?: OndePop;
+  pop?: { id: string; nome: string } | null; // o POP dono da gravação
   criado_em: string; atualizado_em?: string; total_marcacoes: number;
+};
+/** Tela marcada numa gravação do POP, para virar o print de um passo. */
+export type TelaDaGravacao = {
+  id: string; gravacao_id: string; gravacao_nome: string; tempo_ms: number; imagem_caminho: string; largura: number | null; altura: number | null;
+  instrucao: string | null; anotacoes: Anotacoes | null; imagem_url: string | null; imagem_anotada_url: string | null;
 };
 /** Dona de uma tela: a gravação em que foi marcada ou o POP em que foi anexada. */
 export type DonoTela = { gravacao_id: string } | { pop_id: string };
@@ -42,7 +48,8 @@ const json = (method: string, body: unknown): RequestInit => ({ method, body: JS
 
 export const listarGravacoes = () => api<GravacaoResumo[]>('/api/gravacoes');
 export const obterGravacao = (id: string) => api<Gravacao>(`/api/gravacoes/${id}`);
-export const criarGravacao = (nome: string, processo_id?: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, processo_id }));
+/** A gravação nasce dentro de um POP. */
+export const criarGravacao = (nome: string, pop_id: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, pop_id }));
 export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: StatusGravacao; duracao_ms: number; largura: number; altura: number }>) =>
   api(`/api/gravacoes/${id}`, json('PATCH', dados));
 export const excluirGravacao = (id: string) => api(`/api/gravacoes/${id}`, { method: 'DELETE' });
@@ -73,15 +80,17 @@ export function formatarTempo(ms: number) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export type EstadoProcessamento = {
-  processamento: 'nenhum' | 'transcrevendo' | 'analisando' | 'pronto' | 'erro';
+/** Transcrição da narração (sob demanda): serve para gerar o fluxograma do processo com IA. */
+export type EstadoTranscricao = {
+  processamento: 'nenhum' | 'transcrevendo' | 'pronto' | 'erro';
   erro: string | null;
-  pop_id: string | null;
-  fluxograma_id: string | null;
   segmentos: { total: number; prontos: number };
+  transcrita: boolean;
 };
-export const iniciarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
-export const consultarProcessamento = (id: string) => api<EstadoProcessamento>(`/api/gravacoes/${id}/processar`);
+export const iniciarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
+export const consultarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`);
+/** A transcrição como texto (com os tempos), para colar na IA do fluxograma. */
+export const transcricaoComoTexto = (falas: Fala[]) => falas.map((f) => `[${formatarTempo(f.inicio_ms)}] Falante ${f.falante}: ${f.texto}`).join('\n');
 
 /**
  * Salva as marcações desenhadas numa tela: envia a imagem final ao Storage e registra.

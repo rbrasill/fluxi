@@ -5,15 +5,21 @@ import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, descricao, area_id, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
 
-export async function listar() {
-  const { data, error } = await supabase().from('processos')
-    .select(`${CAMPOS}, fluxogramas(count), gravacoes(count), pops(count)`)
+/** Quantos itens de uma relação embutida não estão arquivados. */
+export const ativos = (x: unknown) => ((x as { arquivado_em: string | null }[] | null) ?? []).filter((i) => !i.arquivado_em).length;
+
+/** Processos ativos (ou só os arquivados). As contagens só consideram POPs ativos. */
+export async function listar(arquivados = false) {
+  let q = supabase().from('processos')
+    .select(`${CAMPOS}, fluxogramas(count), gravacoes(count), pops(arquivado_em)`)
     .eq('tenant_id', TENANT_PADRAO).order('atualizado_em', { ascending: false });
+  q = arquivados ? q.not('arquivado_em', 'is', null) : q.is('arquivado_em', null);
+  const { data, error } = await q;
   if (error) throw error;
   const n = (x: unknown) => (x as { count: number }[])[0]?.count ?? 0;
-  return data.map(({ fluxogramas, gravacoes, pops, ...p }) => ({ ...p, total: { fluxogramas: n(fluxogramas), gravacoes: n(gravacoes), pops: n(pops) } }));
+  return data.map(({ fluxogramas, gravacoes, pops, ...p }) => ({ ...p, total: { fluxogramas: n(fluxogramas), gravacoes: n(gravacoes), pops: ativos(pops) } }));
 }
 
 export async function garantir(id: string) {
@@ -45,19 +51,19 @@ export async function obter(id: string) {
   const db = supabase();
   const [p, f, g, o] = await Promise.all([
     db.from('processos').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
-    db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, marcacoes:gravacao_marcacoes(count), segmentos:gravacao_segmentos(transcricao_status)')
+    db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
+    db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, pop:pops!pop_id(nome), marcacoes:gravacao_marcacoes(count), segmentos:gravacao_segmentos(transcricao_status)')
       .eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('criado_em', { ascending: false }),
-    db.from('pops').select('id, nome, codigo, identificacao, versao, status, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
+    db.from('pops').select('id, nome, codigo, identificacao, versao, status, arquivado_em, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
   ]);
   for (const r of [p, f, g, o]) if (r.error) throw r.error;
   if (!p.data) throw new ErroApi(404, 'Processo não encontrado');
   return {
     ...p.data,
-    fluxogramas: f.data ?? [],
-    gravacoes: (g.data ?? []).map(({ marcacoes, segmentos, ...x }) => {
+    fluxograma: f.data ?? null, // um por processo (decisão 31)
+    gravacoes: (g.data ?? []).map(({ marcacoes, segmentos, pop, ...x }) => {
       const segs = segmentos as { transcricao_status: string }[];
-      return { ...x, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0, transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta') };
+      return { ...x, pop_nome: (pop as unknown as { nome: string } | null)?.nome ?? null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0, transcrita: segs.length > 0 && segs.every((s) => s.transcricao_status === 'pronta') };
     }),
     pops: o.data ?? [],
   };
@@ -101,11 +107,13 @@ export async function atualizar(id: string, dados: { nome?: string; area_id?: st
   return data;
 }
 
-/** Exclui só a pasta; os itens ficam sem processo (não se perde nada por engano). */
-export async function excluir(id: string) {
-  const { error } = await supabase().from('processos').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
+/** Arquivar tira o processo das listas com tudo o que tem dentro; nada é apagado (decisão 31). */
+export async function arquivar(id: string, arquivado: boolean) {
+  const { data, error } = await supabase().from('processos').update({ arquivado_em: arquivado ? new Date().toISOString() : null, atualizado_em: new Date().toISOString() })
+    .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, arquivado_em').maybeSingle();
   if (error) throw error;
-  return { ok: true };
+  if (!data) throw new ErroApi(404, 'Processo não encontrado');
+  return data;
 }
 
 /** Move um item para outro processo (ou para fora, com null). */

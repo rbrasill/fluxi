@@ -1,13 +1,13 @@
 'use client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
-import { adicionarTelasDaGravacao, criarPop } from '@/lib/pops';
-import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, consultarProcessamento, salvarMarcacaoDesenhada, iniciarProcessamento, type EstadoProcessamento, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { adicionarTelasDaGravacao } from '@/lib/pops';
+import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, consultarTranscricao, salvarMarcacaoDesenhada, iniciarTranscricao, type EstadoTranscricao, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -54,7 +54,7 @@ function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao;
             value={instrucao}
             onChange={(e) => setInstrucao(e.target.value)}
             onBlur={() => instrucao !== (m.instrucao ?? '') && void salvar({ instrucao: instrucao.trim() || null })}
-            placeholder={m.instrucao_ia ?? 'Descreva o que fazer nesta tela. Se ficar vazio, a IA sugere a partir da narração.'}
+            placeholder={m.instrucao_ia ?? 'Descreva o que fazer nesta tela. O texto vai junto quando a tela for levada para o POP.'}
           />
         </label>
         {salvo && <span className={`salvo salvo-${salvo}`}>{salvo === 'salvando' ? 'Salvando…' : salvo === 'ok' ? 'Salvo' : 'Erro ao salvar'}</span>}
@@ -76,28 +76,29 @@ function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao;
   );
 }
 
-const ETAPA: Record<string, string> = {
-  transcrevendo: 'Transcrevendo a narração…',
-  analisando: 'A IA está escrevendo o POP e o fluxograma… (1 a 3 min)',
-};
-
-function PainelIA({ gravacaoId }: { gravacaoId: string }) {
-  const [e, setE] = useState<EstadoProcessamento | null>(null);
+// Transcrição da narração, feita quando a pessoa pede (decisão 31): serve para gerar o fluxograma
+// do processo com IA. O POP é escrito à mão, com as telas marcadas.
+function PainelTranscricao({ gravacaoId, processoId, aoPronto }: { gravacaoId: string; processoId: string | null; aoPronto: () => void }) {
+  const [e, setE] = useState<EstadoTranscricao | null>(null);
   const [erro, setErro] = useState('');
   const [iniciando, setIniciando] = useState(false);
-  const emAndamento = e?.processamento === 'transcrevendo' || e?.processamento === 'analisando';
+  const emAndamento = e?.processamento === 'transcrevendo';
 
-  useEffect(() => { consultarProcessamento(gravacaoId).then(setE).catch(() => {}); }, [gravacaoId]);
+  useEffect(() => { consultarTranscricao(gravacaoId).then(setE).catch(() => {}); }, [gravacaoId]);
   useEffect(() => {
     if (!emAndamento) return;
-    const t = setTimeout(() => consultarProcessamento(gravacaoId).then(setE).catch(() => {}), 5000);
+    const t = setTimeout(() => consultarTranscricao(gravacaoId).then((n) => { setE(n); if (n.processamento === 'pronto') aoPronto(); }).catch(() => {}), 5000);
     return () => clearTimeout(t);
-  }, [gravacaoId, e, emAndamento]);
+  }, [gravacaoId, e, emAndamento, aoPronto]);
 
-  async function gerar() {
+  async function transcrever() {
     setErro('');
     setIniciando(true);
-    try { setE(await iniciarProcessamento(gravacaoId)); } catch (x) { setErro(x instanceof Error ? x.message : 'Erro ao iniciar.'); }
+    try {
+      const n = await iniciarTranscricao(gravacaoId);
+      setE(n);
+      if (n.processamento === 'pronto') aoPronto();
+    } catch (x) { setErro(x instanceof Error ? x.message : 'Erro ao iniciar.'); }
     setIniciando(false);
   }
 
@@ -106,20 +107,19 @@ function PainelIA({ gravacaoId }: { gravacaoId: string }) {
   if (e.processamento === 'pronto') {
     return (
       <div className="aviso">
-        POP e fluxograma gerados pela IA. Revise antes de publicar.
-        {e.fluxograma_id && <Link className="btn" href={`/app/fluxogramas/${e.fluxograma_id}`}>Abrir fluxograma</Link>}
-        {e.pop_id && <Link className="btn btn-primary" href={`/app/pops/${e.pop_id}`}>Abrir POP</Link>}
+        <span><b>Narração transcrita.</b> O texto está no fim desta página e pode virar o fluxograma do processo.</span>
+        {processoId && <Link className="btn btn-primary" href={`/app/processos/${processoId}?gerar=${gravacaoId}`}><Icone nome="ia" tamanho={16} />Gerar o fluxograma com esta transcrição</Link>}
       </div>
     );
   }
   if (emAndamento) {
-    const seg = e.processamento === 'transcrevendo' && e.segmentos.total > 1 ? ` (${e.segmentos.prontos}/${e.segmentos.total} partes)` : '';
-    return <div className="aviso">{ETAPA[e.processamento]}{seg} Pode sair desta página; o andamento continua quando você voltar.</div>;
+    const seg = e.segmentos.total > 1 ? ` (${e.segmentos.prontos}/${e.segmentos.total} partes)` : '';
+    return <div className="aviso">Transcrevendo a narração…{seg} Pode sair desta página; o andamento continua quando você voltar.</div>;
   }
   return (
     <div className={`aviso ${e.processamento === 'erro' || erro ? 'erro' : ''}`}>
-      {erro || e.erro || 'A IA transcreve a narração e escreve o POP e o fluxograma a partir da gravação e das telas marcadas.'}
-      <button className="btn btn-primary" onClick={gerar}><Icone nome="pop" tamanho={16} />{e.processamento === 'erro' ? 'Tentar de novo' : 'Gerar POP e fluxograma com IA'}</button>
+      {erro || e.erro || 'Transcreva a narração para gerar o fluxograma do processo com IA. O POP é escrito à mão, com as telas marcadas abaixo.'}
+      <button className="btn btn-primary" onClick={transcrever}><Icone nome="texto" tamanho={16} />{e.processamento === 'erro' ? 'Tentar de novo' : 'Transcrever a narração'}</button>
     </div>
   );
 }
@@ -130,23 +130,20 @@ function Detalhe() {
   const [g, setG] = useState<Gravacao | null | undefined>(undefined);
   const [nome, setNome] = useState('');
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
-  const [criandoPop, setCriandoPop] = useState(false);
   const [levando, setLevando] = useState<'' | 'enviando' | 'ok'>('');
-  const router = useRouter();
 
-  useEffect(() => {
-    obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null));
-  }, [id]);
+  const recarregar = useCallback(() => obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null)), [id]);
+  useEffect(() => { void recarregar(); }, [recarregar]);
 
   if (g === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (g === null) {
     return (
-      <div className="page"><div className="empty"><h2>Gravação não encontrada</h2><Link href="/app/gravacoes" className="btn btn-primary">Voltar</Link></div></div>
+      <div className="page"><div className="empty"><h2>Gravação não encontrada</h2><Link href="/app/inicio" className="btn btn-primary">Voltar</Link></div></div>
     );
   }
 
   const incluidas = g.marcacoes.filter((m) => m.incluir_no_pop).length;
-  const comIa = g.status === 'pronta' && g.segmentos.length > 0;
+  const comAudio = g.status === 'pronta' && g.segmentos.length > 0;
   // Gravação que ainda pode receber mais conteúdo: pausada pela pessoa ou não finalizada (aba fechada no meio).
   const emAberto = g.status === 'pausada' || g.status === 'gravando' || g.status === 'interrompida';
   const gravado = tempoGravado(g);
@@ -170,17 +167,6 @@ function Detalhe() {
     }
   }
 
-  async function criarPopDaGravacao() {
-    setCriandoPop(true);
-    try {
-      const { id: popId } = await criarPop({ gravacao_id: g!.id });
-      router.push(`/app/pops/${popId}`);
-    } catch {
-      setCriandoPop(false);
-      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
-    }
-  }
-
   async function remover(m: Marcacao) {
     if (!(await confirmar({ titulo: 'Excluir esta tela marcada?', mensagem: 'A imagem e as marcações desenhadas nela são apagadas.', acao: 'Excluir', perigo: true }))) return;
     await excluirMarcacao(g!.id, m.id);
@@ -191,9 +177,11 @@ function Detalhe() {
     <div className="page">
       <div className="page-head">
         <div>
-          {g.processo
-            ? <Link href={`/app/processos/${g.processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{g.processo.nome}</Link>
-            : <Link href="/app/gravacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Gravações</Link>}
+          {g.pop
+            ? <Link href={`/app/pops/${g.pop.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />POP {g.pop.nome}</Link>
+            : g.processo
+              ? <Link href={`/app/processos/${g.processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{g.processo.nome}</Link>
+              : <Link href="/app/inicio" className="voltar"><Icone nome="voltar" tamanho={16} />Início</Link>}
           <input
             className="titulo-editavel"
             value={nome}
@@ -201,17 +189,13 @@ function Detalhe() {
             onBlur={() => nome.trim() && nome !== g.nome && void atualizarGravacao(g.id, { nome: nome.trim() })}
             aria-label="Nome da gravação"
           />
-          <p>{gravado ? formatarTempo(gravado) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} no POP{emAberto && <> · <b>{ROTULO_STATUS[g.status]}</b></>}</p>
+          <p>{gravado ? formatarTempo(gravado) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} para o POP{emAberto && <> · <b>{ROTULO_STATUS[g.status]}</b></>}</p>
         </div>
         <div className="actions">
           {g.status === 'pronta' && (
             <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
           )}
-          {/* Com áudio, o caminho principal é a IA (painel abaixo); este fica como alternativa sem IA. */}
-          <button className={`btn ${comIa ? '' : 'btn-primary'}`} onClick={criarPopDaGravacao} disabled={criandoPop || incluidas === 0}
-            title={incluidas === 0 ? 'Marque ao menos uma tela como “Incluir no POP”' : 'Cria o POP só com as telas marcadas e suas instruções, sem IA'}>
-            <Icone nome="pop" tamanho={16} />{criandoPop ? 'Criando POP…' : comIa ? 'Criar POP sem IA' : 'Criar POP com estas telas'}
-          </button>
+          {g.pop && <Link href={`/app/pops/${g.pop.id}`} className="btn"><Icone nome="pop" tamanho={16} />Abrir POP</Link>}
         </div>
       </div>
       {emAberto && (
@@ -226,7 +210,7 @@ function Detalhe() {
           </span>
         </div>
       )}
-      {comIa && <PainelIA gravacaoId={g.id} />}
+      {comAudio && <PainelTranscricao gravacaoId={g.id} processoId={g.processo?.id ?? null} aoPronto={recarregar} />}
       {g.pop && (telasNovas.length > 0 || levando === 'ok') && (
         <div className="aviso">
           {levando === 'ok'
