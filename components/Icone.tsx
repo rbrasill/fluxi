@@ -39,6 +39,8 @@ const caminhos: Record<string, string> = {
   'seta-baixo': 'M6 9l6 6 6-6',
   topo: 'M6 4h12M12 20V9M7 13l5-5 5 5',
   arquivar: 'M3 5h18v4H3zM5 9v10h14V9M10 13h4',
+  'menu-recolher': 'M11 17l-5-5 5-5M18 17l-5-5 5-5',
+  'menu-expandir': 'M13 17l5-5-5-5M6 17l5-5-5-5',
   link: 'M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1',
   externo: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   tabela: 'M4 5h16v14H4zM4 10h16M4 15h16M10 10v9M15 10v9',

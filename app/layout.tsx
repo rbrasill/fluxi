@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${sora.variable} ${manrope.variable}`}>
+    // suppressHydrationWarning: o script do menu recolhido marca o <html> antes de o React assumir.
+    <html lang="pt-BR" className={`${sora.variable} ${manrope.variable}`} suppressHydrationWarning>
       <body>{children}<Dialogos /></body>
     </html>
   );

@@ -404,7 +404,7 @@ function EditorPop() {
       )}
 
       {/* Arquivado: tudo fica visível, mas nada responde (inert) nem é salvo. */}
-      <div inert={arquivado} className={arquivado ? 'bloqueado' : undefined}>
+      <div inert={arquivado} className={`pop-conteudo${arquivado ? ' bloqueado' : ''}`}>
       <section className="cartao pop-sec" id="pos-cabecalho" data-pos="cabecalho" data-rotulo="Dados do procedimento">
         <h2>Procedimento</h2>
         <div className="grade-3">
@@ -525,7 +525,7 @@ function EditorPop() {
             </span>
           </div>
         ))}
-        <button className="btn" onClick={() => setConteudo({ procedimentos: [...c.procedimentos, { nome: '', passos: [{ texto: '' }] }] })}><Icone nome="mais" tamanho={16} />Adicionar procedimento</button>
+        <button className="btn btn-adicionar-proc" onClick={() => setConteudo({ procedimentos: [...c.procedimentos, { nome: '', passos: [{ texto: '' }] }] })}><Icone nome="mais" tamanho={16} />Adicionar procedimento</button>
       </section>
 
       <section className="cartao pop-sec" id="pos-historico" data-pos="historico" data-rotulo="Históricos de revisões">

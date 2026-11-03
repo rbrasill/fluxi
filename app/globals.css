@@ -300,6 +300,10 @@ input { font-family: inherit; }
 .page-pop { max-width: 1000px; }
 .status-linha { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 .pop-sec { display: flex; flex-direction: column; gap: 12px; }
+/* Seções do POP (dentro do bloco que trava o POP arquivado): o mesmo respiro da página */
+.pop-conteudo { display: flex; flex-direction: column; gap: 24px; }
+.btn-adicionar-proc { align-self: stretch; justify-content: center; margin-top: 4px; min-height: 46px; background: #eef8f3; border: 1px dashed #9fd6bf; color: #0b6b50; font-weight: 600; }
+.btn-adicionar-proc:hover { background: #e2f3ea; border-color: #6cc2a0; }
 .pop-sec h2 { margin: 0; font-size: 17px; }
 .titulo-solto { padding: 4px 0; }
 .pop-sec textarea { width: 100%; padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: 10px; font-family: inherit; font-size: 14px; line-height: 1.5; resize: vertical; }
@@ -610,3 +614,20 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
   .pub-topo, .pub-acoes, .pub-indice, .voltar-topo { display: none; }
   .pub, .pub-secao { background: #fff; border: none; }
 }
+
+/* Menu lateral recolhível (só no computador; no celular ele já é a barra do topo) */
+.nav-texto { min-width: 0; }
+.recolher-menu { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: #9db3b7; font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
+.recolher-menu:hover { background: var(--side-2); color: #fff; }
+@media (min-width: 901px) {
+  /* O menu acompanha a rolagem: o botão de recolher fica sempre à vista. */
+  .side { position: sticky; top: 0; height: 100vh; overflow-y: auto; transition: width .18s ease, padding .18s ease; }
+  html[data-menu='recolhido'] .side { width: 72px; padding: 20px 10px; }
+  html[data-menu='recolhido'] .side .brand { justify-content: center; padding: 4px 0; }
+  html[data-menu='recolhido'] .side .brand-logo { display: none; }
+  html[data-menu='recolhido'] .side .brand-marca { display: block; }
+  html[data-menu='recolhido'] .side .nav-texto, html[data-menu='recolhido'] .side .soon { display: none; }
+  html[data-menu='recolhido'] .side .nav-label { font-size: 0; padding: 0; margin: 8px 10px; border-top: 1px solid var(--side-line); }
+  html[data-menu='recolhido'] .side .nav a, html[data-menu='recolhido'] .side .recolher-menu { justify-content: center; gap: 0; padding: 10px 0; }
+}
+@media (max-width: 900px) { .recolher-menu { display: none; } }
