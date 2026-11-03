@@ -16,7 +16,7 @@ import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, restaurarPop, salvarPop, urlDocx, urlPdf, type Pop, type StatusPop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, despublicarPop, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
@@ -53,6 +53,9 @@ function EditorPop() {
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
+  const [publicando, setPublicando] = useState(false);
+  const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta sessão depois de publicar
+  const [copiado, setCopiado] = useState(false);
   const bloqueado = useRef(false); // arquivado: nada é salvo
   const pendente = useRef<Partial<Pop>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -132,6 +135,7 @@ function EditorPop() {
   const alterar = useCallback((dados: Partial<Pop>) => {
     if (bloqueado.current) return;
     setPop((p) => (p ? { ...p, ...dados } : p));
+    setMudouDesdePublicar(true);
     pendente.current = { ...pendente.current, ...dados };
     setStatus('alterado');
     if (timer.current) clearTimeout(timer.current);
@@ -259,8 +263,42 @@ function EditorPop() {
     imagemParaPng(f).then((p) => anexarAoPasso(i, k, p)).catch(() => avisar('Não foi possível colar a imagem.', 'Copie o print de novo ou use “Anexar print”.'));
   }
 
-  function mudarStatus(novo: StatusPop) {
-    alterar({ status: novo });
+  // Publicar guarda a versão atual: a página pública mostra só ela até publicar de novo (decisão 32).
+  async function publicar() {
+    if (timer.current) clearTimeout(timer.current);
+    await enviar();
+    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de publicar.');
+    setPublicando(true);
+    try {
+      const r = await publicarPop(id);
+      setPop((p) => p && { ...p, status: 'publicado', publicado_em: r.publicado_em, alteracoes_nao_publicadas: false });
+      setMudouDesdePublicar(false);
+    } catch (e) {
+      void avisar('Não foi possível publicar o POP.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setPublicando(false);
+    }
+  }
+
+  async function despublicar() {
+    if (!(await confirmar({ titulo: 'Tirar o POP do ar?', mensagem: 'Ele volta a ser rascunho e a página pública deixa de mostrá-lo. O link continua o mesmo: ao publicar de novo, volta a funcionar.', acao: 'Tirar do ar' }))) return;
+    try {
+      await despublicarPop(id);
+      setPop((p) => p && { ...p, status: 'rascunho', alteracoes_nao_publicadas: false });
+    } catch {
+      void avisar('Não foi possível tirar o POP do ar.', 'Tente de novo em instantes.');
+    }
+  }
+
+  async function copiarLink() {
+    const url = urlPublica(pop!.link_publico);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    } catch {
+      void avisar('Copie o link público do POP', url);
+    }
   }
 
   // Arquivar em vez de excluir (decisão 31): só o POP arquivado pode ser excluído, com as gravações dele.
@@ -302,6 +340,8 @@ function EditorPop() {
 
   const chipRetomar = pop.posicao && !chipOculto && !retomar && pop.status === 'rascunho';
   const arquivado = popArquivado(pop);
+  const publicado = pop.status === 'publicado';
+  const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
 
   return (
     <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
@@ -325,6 +365,8 @@ function EditorPop() {
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
             <SeloStatus status={pop.status} />
+            {publicado && pop.publicado_em && <span className="publicado-em">em {new Date(pop.publicado_em).toLocaleDateString('pt-BR')}{!arquivado && <> · <button type="button" className="link-sec" onClick={despublicar}>Tirar do ar</button></>}</span>}
+            {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
             {!arquivado && <><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</>}
             {chipRetomar && (
               <button type="button" className="chip-retomar" onClick={() => irParaPosicao(pop.posicao!)} title="Ir para o ponto em que você parou">
@@ -334,12 +376,18 @@ function EditorPop() {
           </p>
         </div>
         <div className="actions">
-          {!arquivado && (pop.status === 'publicado'
-            ? <button className="btn btn-ghost" onClick={() => mudarStatus('rascunho')} title="Volta a ser rascunho, em elaboração">Voltar para rascunho</button>
-            : <>
-                <button className="btn btn-ghost" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>
-                <button className="btn" onClick={() => mudarStatus('publicado')} title="Marca o POP como vigente"><Icone nome="check" tamanho={16} />Publicar</button>
-              </>)}
+          {!arquivado && !publicado && <button className="btn btn-ghost" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>}
+          {!arquivado && (!publicado || naoPublicadas) && (
+            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={publicar} disabled={publicando}
+              title={publicado ? 'Atualiza a página pública com a versão atual' : 'Publica o POP: a página pública passa a mostrar esta versão'}>
+              <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
+            </button>
+          )}
+          <button className="btn btn-ghost" onClick={copiarLink} disabled={!publicado || arquivado}
+            title={publicado && !arquivado ? 'Copia o endereço da página pública do POP' : 'Publique o POP para ativar o link público'}>
+            <Icone nome={copiado ? 'check' : 'link'} tamanho={16} />{copiado ? 'Link copiado' : 'Copiar link público'}
+          </button>
+          {publicado && !arquivado && <a className="btn btn-ghost btn-icon" href={`/p/${pop.link_publico}`} target="_blank" rel="noopener" aria-label="Abrir página pública" title="Abrir a página pública (versão publicada)"><Icone nome="externo" tamanho={16} /></a>}
           {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Leva o POP (com o processo dele) para outra área"><Icone nome="mover" tamanho={16} />Mover</button>}
           {!arquivado && <button className="btn btn-ghost btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
           <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
@@ -510,6 +558,7 @@ function EditorPop() {
                 imagens: { ...p.imagens, [marcando.caminho]: url ?? t.imagem_url! },
                 telas: { ...p.telas, [marcando.marcacaoId]: { ...t, anotacoes: r?.anotacoes ?? null } },
               });
+              setMudouDesdePublicar(true); // a marcação muda o print que vai para a página pública
               setMarcando(null);
             }}
           />

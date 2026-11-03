@@ -8,7 +8,8 @@ import { gerarXml } from '@/lib/fluxo/gerar-xml';
 import { obter, salvar, type Fluxograma } from '@/lib/fluxogramas';
 
 type Status = 'carregando' | 'salvo' | 'salvando' | 'erro';
-type Exportacao = 'png' | 'svg' | 'miniatura';
+// 'publicacao': o SVG que a página pública mostra (decisão 32), gerado ao abrir e a cada salvamento.
+type Exportacao = 'png' | 'svg' | 'miniatura' | 'publicacao';
 
 const TEXTO_STATUS: Record<Status, string> = {
   carregando: 'Carregando editor…',
@@ -16,6 +17,15 @@ const TEXTO_STATUS: Record<Status, string> = {
   salvando: 'Salvando…',
   erro: 'Erro ao salvar',
 };
+
+/** Conteúdo de um data URI de SVG (base64 ou texto codificado), como texto. */
+function textoDoSvg(dataUri: string) {
+  const [cabecalho, dados = ''] = dataUri.split(',', 2);
+  if (!cabecalho.startsWith('data:image/svg+xml')) return null;
+  if (!cabecalho.includes(';base64')) return decodeURIComponent(dados);
+  const bytes = Uint8Array.from(atob(dados), (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
 
 function baixar(nome: string, href: string) {
   const a = document.createElement('a');
@@ -33,7 +43,8 @@ export function EditorDrawio({ id }: { id: string }) {
   const [menu, setMenu] = useState<'exportar' | 'layout' | null>(null);
   const xmlAtual = useRef('');
   const pendente = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const exportando = useRef<Exportacao | null>(null);
+  // Pedidos de exportação em andamento, na ordem (o draw.io responde na mesma ordem).
+  const exportando = useRef<Exportacao[]>([]);
   const biblioteca = useRef<Promise<unknown[]>>(null);
   const miniaturaAoCarregar = useRef(false);
 
@@ -55,6 +66,14 @@ export function EditorDrawio({ id }: { id: string }) {
     frame.current?.contentWindow?.postMessage(JSON.stringify(msg), DRAWIO_ORIGIN);
   }, []);
 
+  const exportar = useCallback((tipo: Exportacao, msg: object) => {
+    exportando.current.push(tipo);
+    enviar({ action: 'export', ...msg, fluxi: tipo }); // o draw.io devolve o pedido em `message`
+  }, [enviar]);
+
+  // SVG em vetor, com as imagens embutidas e a animação das setas (Flow Animation), para a página pública.
+  const gerarSvgPublico = useCallback(() => exportar('publicacao', { format: 'svg', embedImages: true, border: 20 }), [exportar]);
+
   const gravar = useCallback(
     async (xml: string) => {
       if (xml === salvo.current) return setStatus('salvo');
@@ -62,17 +81,15 @@ export function EditorDrawio({ id }: { id: string }) {
         await salvar(id, { xml });
         salvo.current = xml;
         if (xmlAtual.current === xml) setStatus('salvo');
+        gerarSvgPublico();
       } catch {
         setStatus('erro');
       }
     },
-    [id],
+    [id, gerarSvgPublico],
   );
 
-  const gerarMiniatura = useCallback(() => {
-    exportando.current = 'miniatura';
-    enviar({ action: 'export', format: 'svg', embedImages: false, border: 10 });
-  }, [enviar]);
+  const gerarMiniatura = useCallback(() => exportar('miniatura', { format: 'svg', embedImages: false, border: 10 }), [exportar]);
 
   useEffect(() => {
     if (!fluxo) return;
@@ -100,6 +117,8 @@ export function EditorDrawio({ id }: { id: string }) {
             miniaturaAoCarregar.current = false;
             gerarMiniatura();
           }
+          // Ao abrir, o SVG publicado fica igual ao desenho (fluxograma novo, gerado pela IA ou de antes da publicação).
+          gerarSvgPublico();
           break;
         case 'autosave':
           xmlAtual.current = msg.xml;
@@ -115,11 +134,16 @@ export function EditorDrawio({ id }: { id: string }) {
           gerarMiniatura();
           break;
         case 'export': {
-          const tipo = exportando.current;
-          exportando.current = null;
+          // Exportações assíncronas (PNG, imagens embutidas) podem voltar fora de ordem: vale o tipo devolvido no pedido.
+          const devolvido = msg.message?.fluxi as Exportacao | undefined;
+          const i = devolvido ? exportando.current.indexOf(devolvido) : 0;
+          const tipo = exportando.current.splice(i < 0 ? 0 : i, 1)[0];
           const base = nome.trim() || 'fluxograma';
           if (tipo === 'miniatura') salvar(id, { miniatura: msg.data }).catch(() => {});
-          else if (tipo === 'png') baixar(`${base}.png`, msg.data);
+          else if (tipo === 'publicacao') {
+            const svg = textoDoSvg(msg.data);
+            if (svg) salvar(id, { svg }).catch(() => {});
+          } else if (tipo === 'png') baixar(`${base}.png`, msg.data);
           else if (tipo === 'svg') baixar(`${base}.svg`, msg.data);
           break;
         }
@@ -127,7 +151,7 @@ export function EditorDrawio({ id }: { id: string }) {
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [fluxo, enviar, gravar, gerarMiniatura, id, nome]);
+  }, [fluxo, enviar, gravar, gerarMiniatura, gerarSvgPublico, id, nome]);
 
   // Garante que nada se perde ao sair da página.
   useEffect(() => {
@@ -148,7 +172,7 @@ export function EditorDrawio({ id }: { id: string }) {
     };
   }, [id]);
 
-  function exportar(tipo: 'png' | 'svg' | 'drawio') {
+  function exportarArquivo(tipo: 'png' | 'svg' | 'drawio') {
     setMenu(null);
     const base = nome.trim() || 'fluxograma';
     if (tipo === 'drawio') {
@@ -158,12 +182,7 @@ export function EditorDrawio({ id }: { id: string }) {
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       return;
     }
-    exportando.current = tipo;
-    enviar(
-      tipo === 'png'
-        ? { action: 'export', format: 'png', scale: 2, border: 20, spinKey: 'exporting' }
-        : { action: 'export', format: 'xmlsvg', border: 20, spinKey: 'exporting' },
-    );
+    exportar(tipo, tipo === 'png' ? { format: 'png', scale: 2, border: 20, spinKey: 'exporting' } : { format: 'xmlsvg', border: 20, spinKey: 'exporting' });
   }
 
   function reorganizar(layout: 'horizontalFlow' | 'verticalFlow') {
@@ -250,9 +269,9 @@ export function EditorDrawio({ id }: { id: string }) {
             </button>
             {menu === 'exportar' && (
               <div className="menu-list" role="menu">
-                <button role="menuitem" onClick={() => exportar('png')}>Imagem PNG</button>
-                <button role="menuitem" onClick={() => exportar('svg')}>SVG editável</button>
-                <button role="menuitem" onClick={() => exportar('drawio')}>Arquivo .drawio</button>
+                <button role="menuitem" onClick={() => exportarArquivo('png')}>Imagem PNG</button>
+                <button role="menuitem" onClick={() => exportarArquivo('svg')}>SVG editável</button>
+                <button role="menuitem" onClick={() => exportarArquivo('drawio')}>Arquivo .drawio</button>
               </div>
             )}
           </div>

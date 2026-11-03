@@ -226,10 +226,16 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **IA no uso do POP (a fazer, sem data):** apoio a quem consulta o POP (perguntar, resumir, ser guiado passo a passo). Registrada, não implementada.
 - **Dados existentes:** POP "Lançamento de Notas Fiscais" foi para um processo novo na área Controladoria Administrativa; a gravação de teste de 29/10 foi excluída; a gravação "Vale transporte" passou a ser a segunda gravação do POP de Cadastro de Vale-Transporte; o fluxograma "Feirão da Casa Própria" vai para um processo próprio (migração `0012_arquivar.sql` e ajustes pela API).
 
+## 32. Publicação online do POP e do fluxograma (03/11/2026)
+- **Página pública do POP** em `/p/<link>`: link longo e aleatório (`pops.link_publico`, 32 caracteres), aberto para quem o tiver (decisão 31); quando a plataforma fechar, a mesma página passa a pedir login. Fora do app (sem menu), funciona no celular e não é indexada por buscadores. Mostra a versão publicada: dados do POP, objetivo, envolvidos, procedimentos com os prints (já marcados), histórico de revisões, o **fluxograma do processo** e os botões de PDF e DOCX dessa versão. Só POP publicado e não arquivado; senão, "Este POP não está disponível".
+- **Versão publicada** (escolha do Rafael): ao clicar em "Publicar", o Fluxi guarda uma cópia do POP (`pops.publicacao`) e copia os prints para `tenants/<conta>/publicacoes/<pop>/`, então editar, trocar ou marcar um print depois não muda o que está publicado. A página mostra essa cópia até alguém publicar de novo. No editor: "Alterações não publicadas" e "Publicar alterações" quando o conteúdo (inclusive as marcações dos prints) ficou diferente do publicado; "Tirar do ar" volta para rascunho. POP marcado como publicado antes desta decisão ganha a cópia na primeira visita à página pública. O PDF e o DOCX baixados no app continuam saindo do conteúdo atual (o da área); os da página pública saem da versão publicada.
+- **"Copiar link público"** no topo do editor do POP (desativado em rascunho, com a dica "Publique o POP para ativar o link"), e um botão para abrir a página pública.
+- **Fluxograma em SVG:** não há conversor de draw.io para servidor que rode na Vercel (o oficial é o app de computador). O editor embutido (`embed.diagrams.net`) exporta SVG pela ação `export` com `format: 'svg'` e `embedImages: true`: vetor, nítido em qualquer zoom, e **mantém a animação das setas** (Flow Animation), como confirma a documentação do draw.io. O editor gera e salva o SVG (`fluxogramas.svg`) ao abrir e a cada salvamento; "Gerar de novo com IA" apaga o SVG antigo e o editor, que abre em seguida, gera o novo. O fluxograma é do processo e aparece sempre na última versão salva.
+- **Página pública só do fluxograma** em `/f/<link>` (`fluxogramas.link_publico`), com "Ajustar à tela", "Tamanho real" e o download do SVG: é para onde o **"Abrir diagrama" do PDF e do DOCX** leva (antes levava ao editor interno). O SVG é servido como imagem (`<img>`) e com política de segurança que só deixa passar estilos: a animação roda e nenhum código embutido no arquivo é executado.
+
 ---
 
 ## Em aberto
-- Publicação online do POP e do fluxograma por link público (decisão 31), com versão nova do POP ao publicar (decisão 21)
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth), com a regra "consultar: toda a organização; editar: só a área dona" (decisão 31)
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion

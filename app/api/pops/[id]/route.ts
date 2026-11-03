@@ -14,7 +14,6 @@ const Patch = z.object({
   historico: z.array(HistoricoSchema).optional(),
   posicao: PosicaoSchema.nullable().optional(),
   processo_id: z.string().uuid().nullable().optional(),
-  status: z.enum(['rascunho', 'publicado']).optional(),
 });
 
 export const dynamic = 'force-dynamic';

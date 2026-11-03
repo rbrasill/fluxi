@@ -8,6 +8,8 @@ export type FluxogramaResumo = {
   origem: 'manual' | 'ia' | 'modelo';
   miniatura?: string | null;
   processo_id?: string | null;
+  link_publico?: string; // página pública só do fluxograma: /f/<link_publico>
+  tem_svg?: boolean; // já tem o SVG exportado pelo editor (o que a página pública mostra)
   criado_em: string;
   atualizado_em: string;
 };
@@ -31,7 +33,7 @@ export const listar = () => api<FluxogramaResumo[]>('/api/fluxogramas');
 export const obter = (id: string) => api<Fluxograma>(`/api/fluxogramas/${id}`);
 export const criar = (nome: string, xml = '', origem: 'manual' = 'manual', processo_id?: string) =>
   api<FluxogramaResumo>('/api/fluxogramas', { method: 'POST', body: JSON.stringify({ nome, xml, origem, processo_id }) });
-export const salvar = (id: string, dados: { nome?: string; xml?: string; miniatura?: string }, keepalive = false) =>
+export const salvar = (id: string, dados: { nome?: string; xml?: string; miniatura?: string; svg?: string }, keepalive = false) =>
   api<{ id: string }>(`/api/fluxogramas/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
 export const excluir = (id: string) => api<{ ok: true }>(`/api/fluxogramas/${id}`, { method: 'DELETE' });
 

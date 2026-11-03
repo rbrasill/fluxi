@@ -55,5 +55,5 @@ export type MensagemDrawio =
   | { event: 'load' }
   | { event: 'autosave'; xml: string }
   | { event: 'save'; xml: string; exit?: boolean }
-  | { event: 'export'; format: string; data: string; xml?: string }
+  | { event: 'export'; format: string; data: string; xml?: string; message?: { fluxi?: string } } // message: o pedido original
   | { event: 'exit'; modified?: boolean };
