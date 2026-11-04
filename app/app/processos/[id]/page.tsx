@@ -5,6 +5,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
+import { MoverCopiar } from '@/components/MoverCopiar';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { SeloStatus } from '@/components/SeloStatus';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
@@ -34,6 +35,7 @@ function ProcessoPage() {
   const [salvandoDescricao, setSalvandoDescricao] = useState<'' | 'salvando' | 'erro'>('');
   const [copiado, setCopiado] = useState(false);
   const [alterandoLink, setAlterandoLink] = useState(false);
+  const [movendo, setMovendo] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const carregar = () => obterProcesso(id).then((d) => { setP(d); setNome(d.nome); setDescricao(d.descricao ?? ''); }).catch(() => setP(null));
@@ -160,6 +162,7 @@ function ProcessoPage() {
           </p>
         </div>
         <div className="actions">
+          {!arquivado && <button className="btn btn-ghost" title="Mover para outra área ou criar uma cópia" onClick={() => setMovendo(true)} disabled={ocupado}><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn btn-ghost" title="Tira o processo das listas, com tudo o que tem; dá para restaurar depois" onClick={arquivar} disabled={ocupado}><Icone nome="arquivar" tamanho={16} />Arquivar</button>}
         </div>
       </div>
@@ -277,6 +280,11 @@ function ProcessoPage() {
           aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />
+      )}
+      {movendo && (
+        <MoverCopiar item={{ tipo: 'processo', id: p.id, nome: p.nome, area_id: p.area_id, totais: { pops: pops.length, gravacoes: p.gravacoes.length, fluxograma: !!fluxo } }}
+          aoConcluir={({ acao, id: novo }) => { setMovendo(false); if (acao === 'copiar') router.push(`/app/processos/${novo}`); else void carregar(); }}
+          aoFechar={() => setMovendo(false)} />
       )}
     </div>
     </ReferenciasContext.Provider>

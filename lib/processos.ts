@@ -32,6 +32,9 @@ export const atualizarProcesso = (id: string, dados: { nome?: string; area_id?: 
 /** Arquiva (some das listas com tudo o que tem; nada é apagado) e restaura. */
 export const arquivarProcesso = (id: string) => api(`/api/processos/${id}/arquivar`, { method: 'POST' });
 export const restaurarProcesso = (id: string) => api(`/api/processos/${id}/restaurar`, { method: 'POST' });
+/** Copia o processo para uma área (decisão 36), com a descrição, o fluxograma e cópias dos POPs ativos. */
+export const copiarProcesso = (id: string, dados: { area_id: string; nome?: string }) =>
+  api<{ id: string; pops: number; fluxograma: boolean }>(`/api/processos/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
 /** Liga (online) ou desliga (offline) a página pública do processo. */
 export const definirLinkPublicoProcesso = (id: string, ativo: boolean) =>
   api<{ link_publico_ativo: boolean }>(`/api/processos/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });

@@ -8,11 +8,10 @@ import { gerarPdf } from '@/lib/pop/pdf';
 import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
 import { ErroApi } from './http';
-import { garantir as garantirArea } from './areas';
 import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { excluir as excluirGravacao } from './gravacoes';
 import * as referencias from './referencias';
-import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
+import { areaDoDocumento, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 
@@ -224,33 +223,103 @@ export async function excluirDefinitivo(id: string) {
   return { ok: true };
 }
 
+// --- Mover e copiar (decisão 36) ---
+
+type ProcessoDestino = { id: string; codigo: string; nome: string; arquivado_em: string | null; areaNome: string };
+async function processoDestino(id: string): Promise<ProcessoDestino> {
+  const { data, error } = await supabase().from('processos').select('id, codigo, nome, arquivado_em, area:areas(nome)').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'Processo não encontrado');
+  if (data.arquivado_em) throw new ErroApi(409, 'O processo de destino está arquivado. Restaure-o antes.');
+  return { id: data.id as string, codigo: data.codigo as string, nome: data.nome as string, arquivado_em: data.arquivado_em as string | null, areaNome: (data.area as unknown as { nome: string } | null)?.nome ?? '' };
+}
+const areaDoPop = (pop: { processo: unknown }) => ((pop.processo as { area?: { nome?: string } | null } | null)?.area?.nome ?? null);
+
 /**
- * Move o POP para outra área. A área do POP é a do processo dele, então o processo vai junto, com
- * tudo o que tem (POPs, gravações, fluxogramas). POP solto (sem processo) entra num processo da área
- * de destino, existente ou criado aqui. O campo "Área" do documento acompanha (se estava vazio ou com
- * o nome da área antiga).
+ * Move o POP para outro processo (decisão 36). O código do processo no documento e o campo "Área"
+ * acompanham; as gravações de tela do POP vão junto. O link público continua o mesmo.
  */
-export async function moverParaArea(id: string, p: { area_id: string; processo_id?: string; novo_processo?: string }) {
+export async function moverParaProcesso(id: string, processoId: string) {
   const pop = await buscar(id);
-  const area = await garantirArea(p.area_id);
+  if (pop.processo_id === processoId) throw new ErroApi(400, 'O POP já está neste processo.');
+  const destino = await processoDestino(processoId);
+  await atualizar(id, { processo_id: destino.id, conteudo: { ...pop.conteudo, area: areaDoDocumento(pop.conteudo.area ?? '', areaDoPop(pop), destino.areaNome) } });
+  const { error } = await supabase().from('gravacoes').update({ processo_id: destino.id }).eq('tenant_id', TENANT_PADRAO).eq('pop_id', id);
+  if (error) throw error;
+  await tocar(pop.processo_id as string | null);
+  await tocar(destino.id);
+  return { processo_id: destino.id };
+}
 
-  if (pop.processo_id) {
-    await atualizarProcesso(pop.processo_id, { area_id: area.id });
-    return { processo_id: pop.processo_id };
-  }
+/**
+ * Copia o POP para um processo (decisão 36): textos, prints (copiados para a pasta do POP novo, com
+ * as marcações) e referências. A cópia nasce como rascunho, versão 1.0, com link público próprio e
+ * a mesma identificação (a pessoa ajusta). Gravações de tela não vão.
+ */
+export async function copiar(id: string, p: { processo_id: string; nome?: string }) {
+  const pop = await buscar(id);
+  const destino = await processoDestino(p.processo_id);
+  const mesmo = pop.processo_id === destino.id;
+  const nome = p.nome?.trim() || (mesmo ? `${pop.nome} (cópia)` : pop.nome);
+  const db = supabase();
+  const { data: novo, error } = await db.from('pops').insert({
+    tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '1.0', autor: pop.autor, status: 'rascunho',
+    processo_id: destino.id, conteudo: conteudoVazio(), historico: [{ data: hoje(), elaborado_por: pop.autor ?? '', revisao: 'Rev. 01' }],
+  }).select('id').single();
+  if (error) throw error;
+  const novoId = novo.id as string;
+  const marcs = await marcacoesDoPop(pop.conteudo);
+  const conteudo = await copiarPrints(pop.conteudo, marcs, novoId);
+  conteudo.area = areaDoDocumento(conteudo.area ?? '', areaDoPop(pop), destino.areaNome);
+  const { error: e2 } = await db.from('pops').update({ conteudo }).eq('tenant_id', TENANT_PADRAO).eq('id', novoId);
+  if (e2) throw e2;
+  await referencias.indexar({ tipo: 'pop', id: novoId }, referencias.textosDoPop(conteudo));
+  await tocar(destino.id);
+  return { id: novoId };
+}
 
-  let destino = p.processo_id;
-  if (destino) {
-    const { data, error } = await supabase().from('processos').select('area_id').eq('tenant_id', TENANT_PADRAO).eq('id', destino).maybeSingle();
+/** Cada print usado nos passos vira um arquivo (e uma tela) do POP novo; a marcação desenhada vai junto. */
+async function copiarPrints(conteudo: ConteudoPop, marcs: Map<string, MarcacaoDoPop>, novoId: string): Promise<ConteudoPop> {
+  const db = supabase();
+  const pasta = telas.pastaDe(dono(novoId));
+  const ext = (c: string) => c.match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase() ?? 'png';
+  const copias = new Map<string, { caminho: string; marcacao_id: string }>();
+  const copiarArquivo = async (de: string, para: string) => {
+    const { error } = await db.storage.from(telas.BUCKET).copy(de, para);
     if (error) throw error;
-    if (!data) throw new ErroApi(404, 'Processo não encontrado');
-    if (data.area_id !== area.id) throw new ErroApi(400, 'O processo escolhido não é dessa área.');
-  } else {
-    destino = (await criarProcesso({ nome: p.novo_processo?.trim() || pop.nome, area_id: area.id })).id as string;
+  };
+  const passoCopiado = async (s: Passo): Promise<Passo> => {
+    if (!s.imagem_caminho) return s;
+    const ja = copias.get(s.imagem_caminho);
+    if (ja) return { ...s, imagem_caminho: ja.caminho, marcacao_id: ja.marcacao_id };
+    const m = s.marcacao_id ? marcs.get(s.marcacao_id) : undefined;
+    const base = `${pasta}tela-${crypto.randomUUID()}`;
+    const caminho = `${base}.${ext(s.imagem_caminho)}`;
+    try {
+      await copiarArquivo(s.imagem_caminho, caminho);
+      let anotada: string | null = null;
+      if (m?.imagem_anotada_caminho) { anotada = `${base}-marcada.png`; await copiarArquivo(m.imagem_anotada_caminho, anotada); }
+      const { data, error } = await db.from('gravacao_marcacoes').insert({
+        tenant_id: TENANT_PADRAO, pop_id: novoId, tempo_ms: null, imagem_caminho: caminho, largura: m?.largura ?? s.imagem_largura ?? null, altura: m?.altura ?? s.imagem_altura ?? null,
+        incluir_no_pop: true, anotacoes: m?.anotacoes ?? null, imagem_anotada_caminho: anotada, anotada_largura: m?.anotada_largura ?? null, anotada_altura: m?.anotada_altura ?? null,
+      }).select('id').single();
+      if (error) throw error;
+      copias.set(s.imagem_caminho, { caminho, marcacao_id: data.id as string });
+      return { ...s, imagem_caminho: caminho, marcacao_id: data.id as string };
+    } catch (e) {
+      // Não deu para copiar o arquivo: o passo fica apontando para o print original (some se ele for apagado).
+      console.warn(`cópia do POP ${novoId}: print ${s.imagem_caminho} não foi copiado (${e instanceof Error ? e.message : e})`);
+      const { marcacao_id: _m, ...resto } = s;
+      return resto;
+    }
+  };
+  const procedimentos = [];
+  for (const p of conteudo.procedimentos) {
+    const passos: Passo[] = [];
+    for (const s of p.passos) passos.push(await passoCopiado(s));
+    procedimentos.push({ ...p, passos });
   }
-  await atualizar(id, { processo_id: destino, conteudo: { ...pop.conteudo, area: areaDoDocumento(pop.conteudo.area ?? '', null, area.nome) } });
-  await tocar(destino);
-  return { processo_id: destino };
+  return { ...conteudo, procedimentos };
 }
 
 // --- Prints anexados direto no POP (telas que não vieram de uma gravação) ---

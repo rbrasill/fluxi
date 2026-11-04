@@ -8,7 +8,7 @@ import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
-import { MoverPop } from '@/components/pop/MoverPop';
+import { MoverCopiar } from '@/components/MoverCopiar';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
@@ -194,16 +194,18 @@ function EditorPop() {
     router.push(pop!.processo_id ? `/app/processos/${pop!.processo_id}` : '/app/pops');
   }
 
-  /** Antes de mover: salva o que estiver pendente (a mudança de área regrava o campo "Área" no servidor). */
+  /** Antes de mover ou copiar: salva o que estiver pendente (o servidor regrava o campo "Área" ao mover e copia o conteúdo salvo). */
   async function abrirMover() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de mover o POP.');
+    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de mover ou copiar o POP.');
     setMovendo(true);
   }
 
-  async function aoMover() {
+  /** Mover: recarrega o POP (código, processo e "Área" mudaram). Copiar: abre a cópia. */
+  async function aoMoverOuCopiar({ acao, id: novo }: { acao: 'mover' | 'copiar'; id: string }) {
     setMovendo(false);
+    if (acao === 'copiar') { router.push(`/app/pops/${novo}`); return; }
     setPop(await obterPop(id));
   }
 
@@ -405,7 +407,7 @@ function EditorPop() {
               <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
             </button>
           )}
-          {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Leva o POP (com o processo dele) para outra área"><Icone nome="mover" tamanho={16} />Mover</button>}
+          {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Mover para outro processo ou criar uma cópia"><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn btn-ghost btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
           <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
           <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
@@ -640,7 +642,7 @@ function EditorPop() {
         />
       )}
 
-      {movendo && <MoverPop pop={pop} aoMover={aoMover} aoFechar={() => setMovendo(false)} />}
+      {movendo && <MoverCopiar item={{ tipo: 'pop', id: pop.id, nome: pop.nome, identificacao: pop.identificacao, processo: pop.processo }} aoConcluir={aoMoverOuCopiar} aoFechar={() => setMovendo(false)} />}
     </div>
     </ReferenciasContext.Provider>
   );

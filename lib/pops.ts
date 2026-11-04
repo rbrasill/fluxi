@@ -60,9 +60,12 @@ export const restaurarPop = (id: string) => api(`/api/pops/${id}/restaurar`, { m
 export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELETE' });
 /** Arquivado por si ou pelo processo: não aparece nas listas nem pode ser editado. */
 export const popArquivado = (p: { arquivado_em: string | null; processo: OndePop }) => !!p.arquivado_em || !!p.processo?.arquivado_em;
-/** Move o POP para outra área, com o processo inteiro dele (POP sem processo: entra num processo da área). */
-export const moverPop = (id: string, dados: { area_id: string; processo_id?: string; novo_processo?: string }) =>
-  api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify(dados) });
+/** Move o POP para outro processo (decisão 36): código do processo, campo "Área" e gravações acompanham. */
+export const moverPop = (id: string, processo_id: string) =>
+  api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify({ processo_id }) });
+/** Copia o POP para um processo: a cópia nasce como rascunho, com os textos, prints e referências. */
+export const copiarPop = (id: string, dados: { processo_id: string; nome?: string }) =>
+  api<{ id: string }>(`/api/pops/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
 /** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
 export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
 export type PedidoMelhoria = { campo: 'passo' | 'objetivo'; texto: string; pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string };

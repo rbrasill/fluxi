@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
-import { MoverPop } from '@/components/pop/MoverPop';
+import { MoverCopiar } from '@/components/MoverCopiar';
 import { SeloStatus } from '@/components/SeloStatus';
 import { arquivarPop, criarPop, dataCurta, excluirPop, listarPops, ondeEsta, restaurarPop, type PopResumo } from '@/lib/pops';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
@@ -144,7 +144,7 @@ function ListaPops() {
               </>
             ) : (
               <>
-                <button className="btn btn-ghost btn-icon" aria-label="Mover para outra área" title="Mover para outra área" onClick={() => setMovendo(p)}><Icone nome="mover" tamanho={16} /></button>
+                <button className="btn btn-ghost btn-icon" aria-label="Mover ou copiar" title="Mover para outro processo ou criar uma cópia" onClick={() => setMovendo(p)}><Icone nome="mover" tamanho={16} /></button>
                 <button className="btn btn-ghost btn-icon" aria-label="Arquivar" title="Arquivar" onClick={() => onArquivar(p)}><Icone nome="arquivar" tamanho={16} /></button>
               </>
             )}
@@ -178,7 +178,11 @@ function ListaPops() {
         </div>
       )}
       {novoProcesso && <NovoProcesso aoFechar={() => setNovoProcesso(false)} />}
-      {movendo && <MoverPop pop={movendo} aoMover={() => { setMovendo(null); atualizar(); }} aoFechar={() => setMovendo(null)} />}
+      {movendo && (
+        <MoverCopiar item={{ tipo: 'pop', id: movendo.id, nome: movendo.nome, identificacao: movendo.identificacao, processo: movendo.processo }}
+          aoConcluir={({ acao, id }) => { setMovendo(null); if (acao === 'copiar') router.push(`/app/pops/${id}`); else atualizar(); }}
+          aoFechar={() => setMovendo(null)} />
+      )}
     </div>
   );
 }
