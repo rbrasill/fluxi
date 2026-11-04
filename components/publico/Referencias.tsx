@@ -1,8 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { lerTexto, paraEditor, paraHtml } from '@/lib/pop/texto-rico';
-import { RELACOES, SITUACAO, chaveRef, comOrigem, lerOrigemPublica, type Relacao } from '@/lib/referencias';
+import { RELACOES, SITUACAO, chaveRef, comOrigem, lerOrigemPublica, svgRelacao, type Relacao } from '@/lib/referencias';
 import { obterTituloPublico, type ReferenciaPublica } from '@/lib/publico';
+import { IconeRelacao } from '@/components/pop/IconeRelacao';
 
 // Referências nas páginas públicas (decisão 35): o chip do texto vira link para a página pública do
 // destino, levando de onde a pessoa veio (?de=) para a página de destino oferecer o "Voltar".
@@ -19,7 +20,7 @@ export function htmlPublico(valor: string, refs: Record<string, ReferenciaPublic
       const rel = RELACOES[t.referencia.relacao];
       const rotulo = r?.rotulo || t.texto;
       const situacao = r && r.situacao !== 'ok' ? SITUACAO[r.situacao] : '';
-      const dentro = `<span class="ref-rel">${rel.seta} ${escapar(rel.rotulo)}</span><span class="ref-doc">${escapar(rotulo)}</span>${situacao ? '<span class="ref-situacao"></span>' : ''}`;
+      const dentro = `<span class="ref-rel">${svgRelacao(t.referencia.relacao)}${escapar(rel.rotulo)}</span><span class="ref-doc">${escapar(rotulo)}</span>${situacao ? '<span class="ref-situacao"></span>' : ''}`;
       const classe = `ref-chip rel-${t.referencia.relacao}${situacao ? ' indisponivel' : ''}`;
       const titulo = escapar(situacao ? `${rotulo} (${situacao})` : rotulo);
       if (!r?.url_publica) return `<span class="${classe}" title="${titulo}">${dentro}</span>`;
@@ -50,7 +51,7 @@ export function ReferenciadoEm<T extends ReferenciaPublica & { relacoes: Relacao
           const situacao = x.situacao !== 'ok' ? SITUACAO[x.situacao] : '';
           const dentro = (
             <>
-              {x.relacoes.map((r) => <span key={r} className={`ref-rel-chip rel-${r}`}>{RELACOES[r].inverso}</span>)}
+              {x.relacoes.map((r) => <span key={r} className={`ref-rel-chip rel-${r}`}><IconeRelacao relacao={r} tamanho={13} />{RELACOES[r].inverso}</span>)}
               <strong>{x.rotulo}</strong>
               {situacao && <span className="ref-origem-situacao">{situacao}</span>}
             </>

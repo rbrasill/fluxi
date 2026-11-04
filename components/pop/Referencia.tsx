@@ -4,6 +4,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tip
 import Link from 'next/link';
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeRelacao } from '@/components/pop/IconeRelacao';
 import { ORDEM_RELACOES, RELACOES, SITUACAO, chaveRef, lerRef, type Relacao, type ReferenciaResolvida, type TipoDoc } from '@/lib/referencias';
 
 // Referência a outro POP ou processo dentro do texto rico (decisão 35). No HTML guardado fica
@@ -85,7 +86,7 @@ function ChipReferencia({ node, updateAttributes, deleteNode, selected }: NodeVi
         aria-expanded={menu}
         title={situacao ? `${rotulo} (${situacao})` : rotulo}
       >
-        <span className="ref-rel">{rel.seta} {rel.rotulo}</span>
+        <span className="ref-rel"><IconeRelacao relacao={a.relacao} />{rel.rotulo}</span>
         <span className="ref-doc">{rotulo}</span>
         {situacao && <span className="ref-situacao" aria-label={situacao} />}
       </button>
@@ -96,7 +97,7 @@ function ChipReferencia({ node, updateAttributes, deleteNode, selected }: NodeVi
             {ORDEM_RELACOES.map((k) => (
               <button key={k} type="button" role="menuitemradio" aria-checked={a.relacao === k} className={`ref-opcao rel-${k}`}
                 onMouseDown={(e) => e.preventDefault()} onClick={() => { updateAttributes({ relacao: k }); setMenu(false); }}>
-                {RELACOES[k].seta} {RELACOES[k].rotulo}
+                <IconeRelacao relacao={k} />{RELACOES[k].rotulo}
               </button>
             ))}
           </span>

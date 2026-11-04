@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeRelacao } from '@/components/pop/IconeRelacao';
 import { ORDEM_RELACOES, RELACOES, TIPOS_DOC, type Doc, type Relacao, type ResultadoBusca, type TipoDoc } from '@/lib/referencias';
 import { buscarReferencias } from '@/lib/referencias-cliente';
 
@@ -48,7 +49,7 @@ export function SeletorReferencia({ excluir, aoEscolher, aoFechar }: {
         <div className="seletor-ref-relacao" role="radiogroup" aria-label="Tipo de relação">
           {ORDEM_RELACOES.map((k) => (
             <button key={k} type="button" role="radio" aria-checked={relacao === k} className={`ref-opcao rel-${k}`} onClick={() => setRelacao(k)}>
-              {RELACOES[k].seta} {RELACOES[k].rotulo}
+              <IconeRelacao relacao={k} />{RELACOES[k].rotulo}
             </button>
           ))}
         </div>
@@ -79,7 +80,7 @@ export function SeletorReferencia({ excluir, aoEscolher, aoFechar }: {
                 <strong>{x.tipo === 'pop' ? (x.identificacao || x.codigo) : x.codigo} · {x.nome}</strong>
                 {x.onde && <span>{x.onde}</span>}
               </span>
-              <span className={`ref-previa rel-${relacao}`}>{RELACOES[relacao].seta} {RELACOES[relacao].rotulo}</span>
+              <span className={`ref-previa rel-${relacao}`}><IconeRelacao relacao={relacao} tamanho={13} />{RELACOES[relacao].rotulo}</span>
             </button>
           ))}
         </div>

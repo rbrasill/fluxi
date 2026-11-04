@@ -6,12 +6,17 @@
 export type TipoDoc = 'pop' | 'processo';
 export type Relacao = 'proxima' | 'anterior' | 'depende' | 'consulta';
 
-export const RELACOES: Record<Relacao, { rotulo: string; inverso: string; cor: string; fundo: string; seta: string }> = {
-  proxima: { rotulo: 'Próxima etapa', inverso: 'Próxima etapa de', cor: '#1E8449', fundo: '#E8F5EC', seta: '→' },
-  anterior: { rotulo: 'Etapa anterior', inverso: 'Etapa anterior de', cor: '#5F6B6D', fundo: '#EEF2F3', seta: '←' },
-  depende: { rotulo: 'Depende de', inverso: 'Pré-requisito de', cor: '#B45309', fundo: '#FFF4E0', seta: '⚠' },
-  consulta: { rotulo: 'Consulta', inverso: 'Consultado em', cor: '#1F4E79', fundo: '#E8F0F8', seta: '↗' },
+// Ícones (Tabler, 24×24, traço): arrow-narrow-right-dashed, arrow-narrow-left-dashed, alert-triangle e arrow-bear-right.
+export const RELACOES: Record<Relacao, { rotulo: string; inverso: string; cor: string; fundo: string; icone: string }> = {
+  proxima: { rotulo: 'Próxima etapa', inverso: 'Próxima etapa de', cor: '#1E8449', fundo: '#E8F5EC', icone: 'M5 12h.5m3 0h1.5m3 0h6M15 16l4 -4M15 8l4 4' },
+  anterior: { rotulo: 'Etapa anterior', inverso: 'Etapa anterior de', cor: '#5F6B6D', fundo: '#EEF2F3', icone: 'M5 12h6m3 0h1.5m3 0h.5M5 12l4 4M5 12l4 -4' },
+  depende: { rotulo: 'Depende de', inverso: 'Pré-requisito de', cor: '#B45309', fundo: '#FFF4E0', icone: 'M12 9v4M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0M12 16h.01' },
+  consulta: { rotulo: 'Consulta', inverso: 'Consultado em', cor: '#1F4E79', fundo: '#E8F0F8', icone: 'M12 3h5v5M17 3l-7.536 7.536a5 5 0 0 0 -1.464 3.534v6.93' },
 };
+
+/** O ícone da relação como SVG (para HTML montado em texto, como o da página pública). */
+export const svgRelacao = (r: Relacao, tamanho = 14) =>
+  `<svg class="ref-icone" width="${tamanho}" height="${tamanho}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${RELACOES[r].icone}"/></svg>`;
 export const ORDEM_RELACOES: Relacao[] = ['proxima', 'anterior', 'depende', 'consulta'];
 export const TIPOS_DOC: Record<TipoDoc, string> = { pop: 'POP', processo: 'Processo' };
 
