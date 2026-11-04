@@ -3,9 +3,10 @@ import { gerarCodigo } from '@/lib/codigo';
 import type { ConteudoPop } from '@/lib/pop/schema';
 import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
+import * as referencias from './referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, link_publico, link_publico_ativo, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
 
 /** Quantos itens de uma relação embutida não estão arquivados. */
 export const ativos = (x: unknown) => ((x as { arquivado_em: string | null }[] | null) ?? []).filter((i) => !i.arquivado_em).length;
@@ -58,8 +59,13 @@ export async function obter(id: string) {
   ]);
   for (const r of [p, f, g, o]) if (r.error) throw r.error;
   if (!p.data) throw new ErroApi(404, 'Processo não encontrado');
+  const [refs, referenciado_em] = await Promise.all([
+    referencias.resolverDosTextos([p.data.descricao as string]),
+    referencias.referenciadoEm({ tipo: 'processo', id }),
+  ]);
   return {
     ...p.data,
+    referencias: refs, referenciado_em, // decisão 35
     fluxograma: f.data ?? null, // um por processo (decisão 31)
     gravacoes: (g.data ?? []).map(({ marcacoes, pop, ...x }) => (
       { ...x, pop_nome: (pop as unknown as { nome: string } | null)?.nome ?? null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }
@@ -103,7 +109,20 @@ export async function atualizar(id: string, dados: { nome?: string; area_id?: st
   if (!data) throw new ErroApi(404, 'Processo não encontrado');
   // Mudou de área: o campo "Área" dos POPs do processo acompanha.
   if (novaArea && antes.area_id !== novaArea.id) await sincronizarAreaDosPops(id, (antes.area as { nome?: string } | null)?.nome ?? null, novaArea.nome);
+  // A descrição mudou: o índice de referências acompanha (decisão 35).
+  if (dados.descricao !== undefined) await referencias.indexar({ tipo: 'processo', id }, [{ campo: 'descricao', valor: dados.descricao }]);
   return data;
+}
+
+/** Chave da página pública do processo (decisão 35): online mostra o processo e os POPs publicados; offline, "não disponível". */
+export async function definirLinkPublico(id: string, ativo: boolean) {
+  const { data: p, error: e1 } = await supabase().from('processos').select('id, arquivado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (e1) throw e1;
+  if (!p) throw new ErroApi(404, 'Processo não encontrado');
+  if (ativo && p.arquivado_em) throw new ErroApi(409, 'O processo está arquivado: restaure-o antes de colocar a página no ar.');
+  const { error } = await supabase().from('processos').update({ link_publico_ativo: ativo }).eq('tenant_id', TENANT_PADRAO).eq('id', id);
+  if (error) throw error;
+  return { link_publico_ativo: ativo };
 }
 
 /** Arquivar tira o processo das listas com tudo o que tem dentro; nada é apagado (decisão 31). */

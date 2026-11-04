@@ -10,6 +10,8 @@ import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverPop } from '@/components/pop/MoverPop';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
+import { ReferenciasContext } from '@/components/pop/Referencia';
+import { ReferenciadoEm } from '@/components/publico/Referencias';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
 import { TextoRico } from '@/components/pop/TextoRico';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
@@ -20,6 +22,7 @@ import { SeloStatus } from '@/components/SeloStatus';
 import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
+import type { ResultadoBusca } from '@/lib/referencias';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -312,7 +315,7 @@ function EditorPop() {
   async function arquivar() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    if (!(await confirmar({ titulo: `Arquivar o POP "${pop!.nome}"?`, mensagem: 'O POP some das listas e não pode ser editado. Nada é apagado: dá para restaurar depois.', acao: 'Arquivar' }))) return;
+    if (!(await confirmar({ titulo: `Arquivar o POP "${pop!.nome}"?`, mensagem: `O POP some das listas e não pode ser editado. Nada é apagado: dá para restaurar depois.${citadoEm}`, acao: 'Arquivar' }))) return;
     setOcupado(true);
     try { await arquivarPop(id); setPop(await obterPop(id)); } catch { void avisar('Não foi possível arquivar o POP.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
   }
@@ -323,7 +326,7 @@ function EditorPop() {
   }
 
   async function excluirDefinitivo() {
-    if (!(await confirmar({ titulo: `Excluir definitivamente o POP "${pop!.nome}"?`, mensagem: 'Apaga o POP com as gravações dele. Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
+    if (!(await confirmar({ titulo: `Excluir definitivamente o POP "${pop!.nome}"?`, mensagem: `Apaga o POP com as gravações dele. Essa ação não pode ser desfeita.${citadoEm ? `${citadoEm} As referências passam a apontar para um documento excluído.` : ''}`, acao: 'Excluir', perigo: true }))) return;
     setOcupado(true);
     try {
       await excluirPop(id);
@@ -344,6 +347,13 @@ function EditorPop() {
   }
 
   const onde = pop.processo;
+  const documento = { tipo: 'pop' as const, id };
+  // Uma referência acabou de entrar no texto: o chip já mostra o nome; a situação vem do servidor na próxima carga.
+  function registrarReferencia(r: ResultadoBusca) {
+    const k = `${r.tipo}:${r.id}`;
+    setPop((p) => p && !p.referencias[k] ? { ...p, referencias: { ...p.referencias, [k]: { tipo: r.tipo, id: r.id, nome: r.nome, identificacao: r.identificacao, codigo: r.codigo, rotulo: r.rotulo, situacao: 'ok', publico: false, url_app: `/app/${r.tipo === 'pop' ? 'pops' : 'processos'}/${r.id}`, url_publica: null } } } : p);
+  }
+  const citadoEm = pop.referenciado_em.length ? ` Atenção: este POP é referenciado em ${pop.referenciado_em.length} ${pop.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
   // Ao sair do editor do fluxograma, volta para este POP.
   const editarFluxo = pop.fluxograma ? `/app/fluxogramas/${pop.fluxograma.id}?voltar=${encodeURIComponent(`/app/pops/${id}`)}` : '';
 
@@ -355,6 +365,7 @@ function EditorPop() {
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
 
   return (
+    <ReferenciasContext.Provider value={pop.referencias}>
     <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
       <div className="page-head">
         <div>
@@ -441,7 +452,7 @@ function EditorPop() {
           <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
             pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
         </div>
-        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." />
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">
@@ -484,6 +495,13 @@ function EditorPop() {
               O processo <strong>{onde.nome}</strong> ainda não tem fluxograma. Ele é desenhado ou gerado com IA na <Link href={`/app/processos/${onde.id}`}>página do processo</Link> e, depois, aparece aqui, na página pública e no PDF e no DOCX.
             </p>
           )}
+        </section>
+      )}
+
+      {pop.referenciado_em.length > 0 && (
+        <section className="cartao pop-sec" id="pos-referenciado" aria-labelledby="titulo-referenciado">
+          <h2 id="titulo-referenciado">Referenciado em</h2>
+          <ReferenciadoEm itens={pop.referenciado_em} href={(x) => x.url_app || null} aviso="Estes documentos citam este POP. Na página pública deles, a referência leva à página pública deste POP." />
         </section>
       )}
 
@@ -531,7 +549,7 @@ function EditorPop() {
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
                 <PosicaoPasso numero={k + 1} total={p.passos.length} aoMover={(n) => moverPassoParaPosicao(i, k, n - 1)} />
                 <div className="passo-corpo">
-                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." />
+                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." documento={documento} aoReferenciar={registrarReferencia} />
                   {s.imagem_caminho ? (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}
@@ -624,6 +642,7 @@ function EditorPop() {
 
       {movendo && <MoverPop pop={pop} aoMover={aoMover} aoFechar={() => setMovendo(false)} />}
     </div>
+    </ReferenciasContext.Provider>
   );
 }
 

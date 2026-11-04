@@ -11,6 +11,7 @@ import { ErroApi } from './http';
 import { garantir as garantirArea } from './areas';
 import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { excluir as excluirGravacao } from './gravacoes';
+import * as referencias from './referencias';
 import { areaDoDocumento, atualizar as atualizarProcesso, criar as criarProcesso, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
@@ -126,10 +127,12 @@ export async function telasDasGravacoes(id: string) {
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const [marcs, gravacoes, fluxo] = await Promise.all([
+  const [marcs, gravacoes, fluxo, refs, referenciado_em] = await Promise.all([
     marcacoesDoPop(pop.conteudo),
     gravacoesDoPop(id, pop.conteudo),
     pop.processo_id ? fluxogramaDoProcesso(pop.processo_id) : null,
+    referencias.resolverDosTextos(referencias.textosDoPop(pop.conteudo).map((t) => t.valor)),
+    referencias.referenciadoEm({ tipo: 'pop', id }),
   ]);
   const passos = pop.conteudo.procedimentos.flatMap((p) => p.passos).filter((s) => s.imagem_caminho);
   const finais = passos.map((s) => [s.imagem_caminho!, imagemFinal(s, marcs).caminho!] as const);
@@ -150,7 +153,7 @@ export async function obter(id: string) {
   const fluxograma = fluxo
     ? { id: fluxo.id as string, nome: fluxo.nome as string, origem: fluxo.origem as string, miniatura: (fluxo.miniatura as string | null) ?? null, tem_svg: !!fluxo.tem_svg, atualizado_em: fluxo.atualizado_em as string }
     : null;
-  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, fluxograma };
+  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, fluxograma, referencias: refs, referenciado_em };
 }
 
 /** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
@@ -187,6 +190,8 @@ export async function atualizar(id: string, dados: Partial<{ nome: string; ident
     .eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, atualizado_em').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
+  // O texto mudou: o índice de referências acompanha (decisão 35).
+  if (dados.conteudo) await referencias.indexar({ tipo: 'pop', id }, referencias.textosDoPop(dados.conteudo));
   return data;
 }
 
@@ -215,6 +220,7 @@ export async function excluirDefinitivo(id: string) {
   if (copias?.length) await supabase().storage.from(telas.BUCKET).remove(copias.map((a) => `${pasta}/${a.name}`));
   const { error } = await supabase().from('pops').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
+  await referencias.removerDoIndice({ tipo: 'pop', id });
   return { ok: true };
 }
 
@@ -300,8 +306,8 @@ export const linkDoFluxograma = (origem: string, link: string) => `${origem}/f/$
 
 export type BaseDocumento = { nome: string; codigo: string; identificacao: string; versao: string; autor: string; criado_em: string; historico: Historico[]; conteudo: ConteudoPop };
 
-/** Gera o DOCX ou o PDF a partir do conteúdo (com as imagens já nos caminhos finais). */
-export async function gerarDocumento(formato: 'docx' | 'pdf', base: BaseDocumento, linkFluxograma: string | null) {
+/** Gera o DOCX ou o PDF a partir do conteúdo (com as imagens já nos caminhos finais). `origem` é a base dos links públicos das referências. */
+export async function gerarDocumento(formato: 'docx' | 'pdf', base: BaseDocumento, linkFluxograma: string | null, origem: string) {
   const caminhos = [...new Set(base.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[])];
   const imagens = new Map<string, Uint8Array>();
   await Promise.all(caminhos.map(async (c) => {
@@ -318,6 +324,7 @@ export async function gerarDocumento(formato: 'docx' | 'pdf', base: BaseDocument
     criado_em: base.criado_em,
     historico: base.historico,
     link_fluxograma: linkFluxograma,
+    referencias: referencias.paraDocumento(await referencias.resolverDosTextos(referencias.textosDoPop(base.conteudo).map((t) => t.valor)), origem),
   };
   const nomeBase = `POP ${base.identificacao ? `${base.identificacao} ` : ''}${base.nome}`.replace(/[\\/:*?"<>|]+/g, ' ').trim();
   if (formato === 'pdf') return { arquivo: await gerarPdf(dados, imagens), nomeArquivo: `${nomeBase}.pdf` };
@@ -330,7 +337,7 @@ async function documento(id: string, origem: string, formato: 'docx' | 'pdf') {
   const original = await buscar(id);
   const conteudo = comImagensFinais(original.conteudo, await marcacoesDoPop(original.conteudo));
   const fluxo = original.processo_id ? await fluxogramaDoProcesso(original.processo_id) : null;
-  return gerarDocumento(formato, { ...original, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null);
+  return gerarDocumento(formato, { ...original, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
 }
 
 export const docx = (id: string, origem: string) => documento(id, origem, 'docx');

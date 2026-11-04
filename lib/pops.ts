@@ -1,5 +1,6 @@
 // Cliente da API de POPs.
 import { ErroCliente } from './fluxogramas';
+import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 import type { Anotacoes } from './marcacao/anotacoes';
 import { enviarArquivo, type StatusGravacao, type TelaDaGravacao } from './gravacoes';
 import type { ConteudoPop, Historico, Posicao } from './pop/schema';
@@ -25,6 +26,9 @@ export type Pop = PopResumo & {
   alteracoes_nao_publicadas: boolean;
   /** O fluxograma do processo (só informativo no editor do POP). */
   fluxograma: FluxogramaDoPop | null;
+  /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
+  referencias: Record<string, ReferenciaResolvida>;
+  referenciado_em: ReferenciadoEm[];
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {

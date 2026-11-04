@@ -8,10 +8,11 @@ export type EstadoPaginaPublica = 'rascunho' | 'online' | 'offline' | 'arquivado
 
 const dataBr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
 
-export function PaginaPublica({ estado, publicadoEm, alteracoesNaoPublicadas, url, alterando, copiado, aoAlternar, aoCopiar }: {
+export function PaginaPublica({ tipo = 'pop', estado, publicadoEm = null, alteracoesNaoPublicadas = false, url, alterando, copiado, aoAlternar, aoCopiar }: {
+  tipo?: 'pop' | 'processo';
   estado: EstadoPaginaPublica;
-  publicadoEm: string | null;
-  alteracoesNaoPublicadas: boolean;
+  publicadoEm?: string | null;
+  alteracoesNaoPublicadas?: boolean;
   url: string;
   alterando: boolean;
   copiado: boolean;
@@ -20,7 +21,12 @@ export function PaginaPublica({ estado, publicadoEm, alteracoesNaoPublicadas, ur
 }) {
   const online = estado === 'online';
   const comLink = estado === 'online' || estado === 'offline';
-  const explicacao = {
+  const explicacao = tipo === 'processo' ? {
+    rascunho: '',
+    online: 'Qualquer pessoa com o link vê o processo: a descrição, o fluxograma e os POPs publicados. O que você muda aqui aparece na hora.',
+    offline: 'Quem abrir o link vê “Este processo não está disponível”. Ligue a chave para voltar ao ar.',
+    arquivado: 'Processo arquivado: a página pública fica fora do ar.',
+  }[estado] : {
     rascunho: 'Publique o POP para poder colocar a página pública no ar.',
     online: `Qualquer pessoa com o link vê a versão publicada em ${dataBr(publicadoEm)}.${alteracoesNaoPublicadas ? ' As últimas alterações ainda não estão nela.' : ''}`,
     offline: 'Quem abrir o link vê “Este POP não está disponível”. A versão publicada continua guardada: ligue a chave para voltar ao ar.',
@@ -28,7 +34,7 @@ export function PaginaPublica({ estado, publicadoEm, alteracoesNaoPublicadas, ur
   }[estado];
 
   return (
-    <section className={`pagina-publica ${estado}`} aria-label="Página pública do POP">
+    <section className={`pagina-publica ${estado}`} aria-label={tipo === 'processo' ? 'Página pública do processo' : 'Página pública do POP'}>
       <button
         type="button"
         role="switch"

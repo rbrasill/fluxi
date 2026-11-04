@@ -6,11 +6,15 @@ import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/r
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { ReferenciaNode } from '@/components/pop/Referencia';
+import { SeletorReferencia } from '@/components/pop/SeletorReferencia';
 import { CORES_MARCA_TEXTO, CORES_TEXTO, normalizarDoEditor, paraEditor } from '@/lib/pop/texto-rico';
+import type { Doc, Relacao, ResultadoBusca } from '@/lib/referencias';
 
 // Campo de texto com formatação do POP (objetivo e passos). Só o que sai igual no DOCX e no PDF:
 // negrito, itálico, sublinhado, tachado, cor, marca-texto, listas e tabelas simples (sem mesclar
-// células). Sem fonte, tamanho, títulos, links ou imagens (o modelo do POP define esses).
+// células). Sem fonte, tamanho, títulos, links ou imagens (o modelo do POP define esses). A única
+// "ligação" é a referência a outro POP ou processo (decisão 35), um chip que o leitor clica.
 // O valor é o HTML de lib/pop/texto-rico.ts.
 
 const extensoes = [
@@ -25,6 +29,7 @@ const extensoes = [
   TableRow,
   TableHeader,
   TableCell,
+  ReferenciaNode,
 ];
 
 // Células mescladas não saem iguais no DOCX/PDF: tabela colada de outro lugar entra sem mesclas.
@@ -44,12 +49,16 @@ function tabelaComCabecalho(e: Editor) {
 
 type Menu = 'cor' | 'fundo' | 'tabela' | null;
 
-export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
+export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2, documento, aoReferenciar }: {
   valor: string;
   aoMudar: (v: string) => void;
   rotulo: string;
   placeholder?: string;
   linhas?: number;
+  /** O documento que está sendo editado: não aparece na busca de referências. */
+  documento?: Doc | null;
+  /** Avisa a página quando uma referência entra, para ela resolver o nome e a situação do destino. */
+  aoReferenciar?: (r: ResultadoBusca) => void;
 }) {
   const ultimo = useRef(valor); // o que o editor tem agora (último valor enviado ou recebido)
   const mudar = useRef(aoMudar);
@@ -57,7 +66,14 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
   const [ativo, setAtivo] = useState(false); // foco dentro do campo ou da barra
   const [menu, setMenu] = useState<Menu>(null);
   const [grade, setGrade] = useState({ l: 3, c: 3 }); // tamanho escolhido na grade de "Inserir tabela"
+  const [seletor, setSeletor] = useState(false); // diálogo "Adicionar referência"
   const caixa = useRef<HTMLDivElement>(null);
+
+  function inserirReferencia(r: ResultadoBusca, relacao: Relacao) {
+    setSeletor(false);
+    editor?.chain().focus().inserirReferencia({ tipo: r.tipo, id: r.id, relacao, rotulo: r.rotulo }).run();
+    aoReferenciar?.(r);
+  }
 
   const editor = useEditor({
     extensions: extensoes,
@@ -201,6 +217,11 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
             ))}
           </div>
           <span className="tr-sep" />
+          <button type="button" className="tr-botao tr-botao-texto" title="Adicionar referência a outro POP ou processo" aria-label="Adicionar referência" aria-haspopup="dialog"
+            onMouseDown={semPerderFoco} onClick={() => { setMenu(null); setSeletor(true); }}>
+            <Icone nome="link" tamanho={16} /><span>Referência</span>
+          </button>
+          <span className="tr-sep" />
           {botao('Limpar formatação', false, () => cadeia().unsetAllMarks().run(), <Icone nome="limpar-formato" tamanho={16} />)}
           {botao('Desfazer (Ctrl+Z)', false, () => cadeia().undo().run(), <Icone nome="desfazer" tamanho={16} />, !estado.desfazer)}
           {botao('Refazer (Ctrl+Shift+Z)', false, () => cadeia().redo().run(), <Icone nome="refazer" tamanho={16} />, !estado.refazer)}
@@ -208,6 +229,7 @@ export function TextoRico({ valor, aoMudar, rotulo, placeholder, linhas = 2 }: {
       )}
       <EditorContent editor={editor} />
       {placeholder && (estado?.vazio ?? !valor) && <span className="tr-placeholder" aria-hidden="true">{placeholder}</span>}
+      {seletor && <SeletorReferencia excluir={documento} aoEscolher={inserirReferencia} aoFechar={() => { setSeletor(false); editor?.commands.focus(); }} />}
     </div>
   );
 }

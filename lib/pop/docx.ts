@@ -3,7 +3,7 @@
 import Docxtemplater from 'docxtemplater';
 import PizZip from 'pizzip';
 import type { ConteudoPop, Historico, Passo } from './schema';
-import { colunas, lerTexto, linhasDeCabecalho, textoPuro, type Bloco, type Trecho } from './texto-rico';
+import { colunas, lerTextoParaDocumento, linhasDeCabecalho, textoPuro, type Bloco, type Trecho } from './texto-rico';
 
 export type DadosPop = ConteudoPop & {
   nome: string;
@@ -14,6 +14,8 @@ export type DadosPop = ConteudoPop & {
   criado_em: string; // ISO
   link_fluxograma?: string | null;
   historico: Historico[];
+  /** Referências do texto (decisão 35), por "tipo:id": nome atual e link da página pública do destino. */
+  referencias?: Record<string, { rotulo?: string; url: string | null }>;
 };
 
 export const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -124,9 +126,11 @@ class Numeracao {
 }
 
 type Base = { cor: string; tamanho?: number; semNegrito?: boolean; negrito?: boolean };
+/** Endereço → id da relação (hyperlink) no documento, para as referências. */
+type Links = Map<string, string>;
 
 /** Runs de um parágrafo; a ordem dos elementos de w:rPr segue o esquema do Word. */
-function runsXml(trechos: Trecho[], base: Base) {
+function runsXml(trechos: Trecho[], base: Base, links?: Links) {
   return trechos.map((t) => {
     const sz = base.tamanho ? `<w:sz w:val="${base.tamanho}"/><w:szCs w:val="${base.tamanho}"/>` : '';
     const rPr = (t.negrito || base.negrito ? '<w:b/><w:bCs/>' : base.semNegrito ? '<w:b w:val="0"/><w:bCs w:val="0"/>' : '')
@@ -137,7 +141,9 @@ function runsXml(trechos: Trecho[], base: Base) {
       + (t.sublinhado ? '<w:u w:val="single"/>' : '')
       + (t.fundo ? `<w:shd w:val="clear" w:color="auto" w:fill="${t.fundo.slice(1)}"/>` : '');
     const conteudo = t.texto.split('\n').map((l) => `<w:t xml:space="preserve">${esc(l)}</w:t>`).join('<w:br/>');
-    return `<w:r><w:rPr>${rPr}</w:rPr>${conteudo}</w:r>`;
+    const run = `<w:r><w:rPr>${rPr}</w:rPr>${conteudo}</w:r>`;
+    const rId = t.link ? links?.get(t.link) : undefined;
+    return rId ? `<w:hyperlink r:id="${rId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${run}</w:hyperlink>` : run;
   }).join('');
 }
 
@@ -160,14 +166,14 @@ const MARGEM_CELULA_TABELA = 80; // twips de cada lado
  * @param inicio              runs no começo do primeiro parágrafo (ex.: o rótulo "Passo 3:")
  * @param largura             largura disponível em twips (para as colunas das tabelas)
  */
-function paragrafosXml(valor: string, o: { base: Base; numeracao: Numeracao; largura: number; estilo?: string; espacamento?: string; inicio?: string }) {
+function paragrafosXml(valor: string, o: { base: Base; numeracao: Numeracao; largura: number; estilo?: string; espacamento?: string; inicio?: string; referencias?: DadosPop['referencias']; links?: Links }) {
   const estilo = o.estilo ? `<w:pStyle w:val="${o.estilo}"/>` : '';
   const espacamento = o.espacamento ?? '';
   let inicio = o.inicio ?? '';
   // Marca de parágrafo com a cor e o tamanho do texto: o número ou marcador da lista usa esse formato.
   const marca = (base: Base) => `<w:rPr><w:color w:val="${base.cor}"/>${base.tamanho ? `<w:sz w:val="${base.tamanho}"/><w:szCs w:val="${base.tamanho}"/>` : ''}</w:rPr>`;
   const paragrafo = (trechos: Trecho[], base: Base, extra: { numPr?: string; ind?: string } = {}) => {
-    const xml = `<w:p><w:pPr>${estilo}${extra.numPr ?? ''}${espacamento}${extra.ind ?? ''}${marca(base)}</w:pPr>${inicio}${runsXml(trechos, base)}</w:p>`;
+    const xml = `<w:p><w:pPr>${estilo}${extra.numPr ?? ''}${espacamento}${extra.ind ?? ''}${marca(base)}</w:pPr>${inicio}${runsXml(trechos, base, o.links)}</w:p>`;
     inicio = '';
     return xml;
   };
@@ -225,18 +231,18 @@ function paragrafosXml(valor: string, o: { base: Base; numeracao: Numeracao; lar
     return xml;
   };
 
-  let xml = blocos(aparar(lerTexto(valor)), 0, o.largura, o.base);
+  let xml = blocos(aparar(lerTextoParaDocumento(valor, o.referencias)), 0, o.largura, o.base);
   // Célula de tabela termina num parágrafo (o objetivo e a caixa do passo são células).
   if (!xml.endsWith('</w:p>')) xml += xml ? respiro(o.base) : paragrafo([], o.base);
   return xml;
 }
 
 /** Texto do passo numa tabela de uma célula (fundo creme, barra laranja), centralizada. */
-function caixaTexto(rotulo: string, texto: string, larguraTwips: number, numeracao: Numeracao) {
+function caixaTexto(rotulo: string, texto: string, larguraTwips: number, numeracao: Numeracao, refs: { referencias?: DadosPop['referencias']; links?: Links } = {}) {
   const borda = (lado: string, cor: string, sz: number) => `<w:${lado} w:val="single" w:sz="${sz}" w:space="0" w:color="${cor}"/>`;
   const rotuloXml = `<w:r><w:rPr><w:b/><w:color w:val="${COR_CAIXA_ROTULO}"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr><w:t xml:space="preserve">${esc(rotulo)}  </w:t></w:r>`;
   const paragrafos = paragrafosXml(texto, {
-    base: { cor: COR_TEXTO, tamanho: 21 }, numeracao, inicio: rotuloXml, largura: larguraTwips - 2 * 170,
+    base: { cor: COR_TEXTO, tamanho: 21 }, numeracao, inicio: rotuloXml, largura: larguraTwips - 2 * 170, ...refs,
     espacamento: '<w:spacing w:before="0" w:after="0" w:line="264" w:lineRule="auto"/>',
   });
   return `<w:tbl><w:tblPr><w:tblW w:w="${larguraTwips}" w:type="dxa"/><w:jc w:val="center"/>`
@@ -282,6 +288,15 @@ export function gerarDocx(modelo: Buffer | Uint8Array, dados: DadosPop, imagens:
     rIdLink = 'rIdFluxiLink';
     rels = rels.replace('</Relationships>', `<Relationship Id="${rIdLink}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${esc(dados.link_fluxograma)}" TargetMode="External"/></Relationships>`);
   }
+  // Referências (decisão 35): um hyperlink por endereço público citado no texto.
+  const links: Links = new Map();
+  for (const r of Object.values(dados.referencias ?? {})) {
+    if (!r.url || links.has(r.url)) continue;
+    const rId = `rIdFluxiRef${links.size + 1}`;
+    links.set(r.url, rId);
+    rels = rels.replace('</Relationships>', `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="${esc(r.url)}" TargetMode="External"/></Relationships>`);
+  }
+  const refs = { referencias: dados.referencias, links };
   zip.file(relsPath, rels);
 
   const comum = cabecalho(dados);
@@ -291,14 +306,14 @@ export function gerarDocx(modelo: Buffer | Uint8Array, dados: DadosPop, imagens:
     if (item.tipo === 'subtitulo') return { bloco: paragrafoSubtitulo(item.texto) };
     const { passo, texto, numero } = item;
     const rId = passo.imagem_caminho ? rIdDe.get(passo.imagem_caminho) : undefined;
-    if (!rId) return { bloco: texto ? caixaTexto(`Passo ${numero}:`, texto, LARGURA_CAIXA_TWIPS, numeracao) : '' };
+    if (!rId) return { bloco: texto ? caixaTexto(`Passo ${numero}:`, texto, LARGURA_CAIXA_TWIPS, numeracao, refs) : '' };
     figura++;
     const { cx, cy } = tamanhoImagem(passo.imagem_largura ?? 1600, passo.imagem_altura ?? 900);
     const imagem = paragrafoImagem(rId, 1000 + figura, cx, cy, `Tela ${figura}`, !!texto);
-    return { bloco: texto ? imagem + caixaTexto(`Passo ${numero}:`, texto, Math.round(cx / EMU_POR_TWIP), numeracao) : imagem };
+    return { bloco: texto ? imagem + caixaTexto(`Passo ${numero}:`, texto, Math.round(cx / EMU_POR_TWIP), numeracao, refs) : imagem };
   });
   // Objetivo: o modelo tem um parágrafo NoSpacing, cor do texto e sem negrito (a tabela aplicaria negrito).
-  const objetivo = paragrafosXml(dados.objetivo, { base: { cor: COR_TEXTO, semNegrito: true }, numeracao, estilo: 'NoSpacing', largura: 9468 - 2 * 108 });
+  const objetivo = paragrafosXml(dados.objetivo, { base: { cor: COR_TEXTO, semNegrito: true }, numeracao, estilo: 'NoSpacing', largura: 9468 - 2 * 108, ...refs });
 
   const contexto = {
     area: dados.area,

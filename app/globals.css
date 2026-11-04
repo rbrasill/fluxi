@@ -694,3 +694,76 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
   html[data-menu='recolhido'] .side .nav a, html[data-menu='recolhido'] .side .recolher-menu { justify-content: center; gap: 0; padding: 10px 0; }
 }
 @media (max-width: 900px) { .recolher-menu { display: none; } }
+
+/* Referências entre POPs e processos (decisão 35) */
+.rel-proxima { color: #1E8449; }
+.rel-anterior { color: #5F6B6D; }
+.rel-depende { color: #B45309; }
+.rel-consulta { color: #1F4E79; }
+.ref-caixa { position: relative; display: inline; }
+.ref-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; margin: 0 1px; padding: 1px 10px 1px 8px; border: 1px solid; border-radius: 999px; background: #fff; font: inherit; font-size: .93em; line-height: 1.45; text-decoration: none; vertical-align: baseline; cursor: pointer; }
+.ref-chip.rel-proxima { background: #E8F5EC; border-color: #A9D8B8; }
+.ref-chip.rel-anterior { background: #EEF2F3; border-color: #C5CFD1; }
+.ref-chip.rel-depende { background: #FFF4E0; border-color: #F3D3A8; }
+.ref-chip.rel-consulta { background: #E8F0F8; border-color: #B7CDE3; }
+.ref-chip .ref-rel { font-size: .74em; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.ref-chip .ref-doc { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-chip.indisponivel { border-style: dashed; }
+.ref-chip.indisponivel .ref-doc { text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, .35); }
+.ref-situacao { width: 8px; height: 8px; border-radius: 999px; background: var(--danger); flex: none; }
+.ref-chip.selecionado { outline: 2px solid var(--primary); outline-offset: 1px; }
+a.ref-chip:hover { filter: brightness(.96); }
+.ref-menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 30; min-width: 280px; display: flex; flex-direction: column; gap: 4px; padding: 8px; background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; box-shadow: 0 8px 24px rgba(11, 31, 36, .14); font-size: 13px; white-space: normal; text-align: left; }
+.ref-menu-titulo { padding: 2px 4px 6px; font-weight: 600; color: var(--muted); }
+.ref-menu-grupo { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ref-opcao { padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: #fff; font: inherit; font-size: 12px; font-weight: 700; color: var(--muted); cursor: pointer; }
+.ref-opcao.rel-proxima[aria-checked='true'] { color: #1E8449; background: #E8F5EC; border-color: #A9D8B8; }
+.ref-opcao.rel-anterior[aria-checked='true'] { color: #5F6B6D; background: #EEF2F3; border-color: #C5CFD1; }
+.ref-opcao.rel-depende[aria-checked='true'] { color: #B45309; background: #FFF4E0; border-color: #F3D3A8; }
+.ref-opcao.rel-consulta[aria-checked='true'] { color: #1F4E79; background: #E8F0F8; border-color: #B7CDE3; }
+.ref-menu-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border: 0; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; color: var(--ink); text-decoration: none; cursor: pointer; text-align: left; }
+.ref-menu-item:hover { background: var(--bg); }
+.ref-menu-item.perigo { color: var(--danger); }
+.tr-botao-texto { gap: 5px; padding: 0 8px; font-size: 13px; font-weight: 600; }
+/* Diálogo "Adicionar referência" */
+.seletor-ref-relacao { display: flex; flex-wrap: wrap; gap: 6px; }
+.seletor-ref-busca { display: flex; flex-wrap: wrap; gap: 10px; }
+.seletor-ref-busca .search { flex: 1 1 260px; max-width: none; }
+.seletor-ref .segmented { flex: 0 0 auto; }
+.seletor-ref .segmented button { flex: none; padding: 0 12px; }
+.seletor-ref-lista { max-height: 50vh; min-height: 120px; overflow: auto; display: flex; flex-direction: column; gap: 2px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; }
+.seletor-ref-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.seletor-ref-item.marcado { background: var(--primary-soft); }
+.seletor-ref-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.seletor-ref-texto strong { font-size: 14px; }
+.seletor-ref-texto span { font-size: 12px; color: var(--muted); }
+.ref-tipo { flex: none; padding: 2px 7px; border-radius: 6px; background: #e8edec; color: var(--muted); font-size: 11px; font-weight: 800; }
+.ref-tipo.tipo-pop { background: var(--primary-soft); color: var(--primary-dark); }
+.ref-tipo.tipo-processo { background: #eef5ff; color: #1d4ed8; }
+.ref-previa { flex: none; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+/* "Referenciado em" (editor e páginas públicas) */
+.ref-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ref-origem { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; }
+a.ref-origem:hover strong { text-decoration: underline; }
+.ref-rel-chip { padding: 2px 9px; border: 1px solid; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+.ref-rel-chip.rel-proxima { background: #E8F5EC; border-color: #A9D8B8; }
+.ref-rel-chip.rel-anterior { background: #EEF2F3; border-color: #C5CFD1; }
+.ref-rel-chip.rel-depende { background: #FFF4E0; border-color: #F3D3A8; }
+.ref-rel-chip.rel-consulta { background: #E8F0F8; border-color: #B7CDE3; }
+.ref-origem-situacao { font-size: 12px; color: var(--muted); }
+/* Páginas públicas: "Voltar para", caminho clicável e a lista de POPs do processo */
+.pub-voltar { display: inline-flex; align-items: center; gap: 8px; width: fit-content; padding: 8px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--primary); font-size: 14px; font-weight: 600; text-decoration: none; }
+.pub-voltar:hover { border-color: var(--primary); }
+.pub-caminho a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, .45); text-underline-offset: 3px; }
+.pub-caminho a:hover { text-decoration-color: currentColor; }
+.pub-pops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.pub-pop { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); text-decoration: none; }
+.pub-pop:hover { border-color: var(--primary); }
+.pub-pop-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pub-pop-texto span { font-size: 13px; color: var(--muted); }
+.pub-texto .ref-chip { vertical-align: baseline; }
+/* Descrição do processo (editor) */
+.descricao-processo { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.descricao-processo h3 { margin: 0; font-size: 16px; }
+.descricao-processo .notice.erro { color: var(--danger); }
+.descricao-processo[inert] { opacity: .7; }
