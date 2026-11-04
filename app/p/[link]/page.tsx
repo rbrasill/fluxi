@@ -6,6 +6,7 @@ import { VoltarAoTopo } from '@/components/VoltarAoTopo';
 import { CabecalhoPublico, Indisponivel } from '@/components/publico/CabecalhoPublico';
 import { ReferenciadoEm, RicoPublico, VoltarPara } from '@/components/publico/Referencias';
 import { VisualizadorImagens, type ImagemAmpliavel } from '@/components/publico/VisualizadorImagens';
+import { ICONE_DOC } from '@/components/SeloDocumento';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { comOrigem } from '@/lib/referencias';
 import { dataBr, obterPopPublico, urlDocumentoPublico, urlSvg, type PopPublico } from '@/lib/publico';
@@ -60,7 +61,7 @@ function PopPublicoPage() {
       <main className="pub-corpo">
         <VoltarPara de={de} />
         <header className="pub-titulo">
-          <span className="pub-tipo">Procedimento Operacional Padrão</span>
+          <span className="pub-tipo"><img src={ICONE_DOC.pop} alt="" width={20} height={20} />Procedimento Operacional Padrão</span>
           <h1>{pop.nome}</h1>
           <dl className="pub-dados">
             {dados.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}

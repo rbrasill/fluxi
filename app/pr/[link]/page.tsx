@@ -7,7 +7,7 @@ import { CabecalhoPublico, Indisponivel } from '@/components/publico/CabecalhoPu
 import { ReferenciadoEm, RicoPublico, VoltarPara } from '@/components/publico/Referencias';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { comOrigem } from '@/lib/referencias';
-import { ICONE_PROCESSO } from '@/components/SeloProcesso';
+import { ICONE_DOC } from '@/components/SeloDocumento';
 import { dataBr, obterProcessoPublico, urlSvg, type ProcessoPublico } from '@/lib/publico';
 
 // Página pública do processo (decisão 35): descrição, fluxograma e os POPs publicados e no ar. É o
@@ -44,7 +44,7 @@ function ProcessoPublicoPage() {
       <main className="pub-corpo">
         <VoltarPara de={de} />
         <header className="pub-titulo">
-          <span className="pub-tipo"><img src={ICONE_PROCESSO} alt="" width={20} height={20} />Processo</span>
+          <span className="pub-tipo"><img src={ICONE_DOC.processo} alt="" width={20} height={20} />Processo</span>
           <h1>{p.nome}</h1>
           <dl className="pub-dados">
             {dados.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}

@@ -9,6 +9,7 @@ import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverCopiar } from '@/components/MoverCopiar';
+import { SeloDocumento } from '@/components/SeloDocumento';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
@@ -386,6 +387,7 @@ function EditorPop() {
               </select>
             </div>
           )}
+          <SeloDocumento tipo="pop" />
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
             <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />

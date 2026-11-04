@@ -6,7 +6,7 @@ import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
-import { SeloProcesso } from '@/components/SeloProcesso';
+import { SeloDocumento } from '@/components/SeloDocumento';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { SeloStatus } from '@/components/SeloStatus';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
@@ -149,7 +149,7 @@ function ProcessoPage() {
             {p.area?.organizacao && <><Link href={`/app/organizacoes/${p.area.organizacao.id}`}>{p.area.organizacao.nome}</Link><span>›</span></>}
             {p.area && <Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link>}
           </nav>
-          <SeloProcesso />
+          <SeloDocumento tipo="processo" />
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <p className="processo-meta">
