@@ -4,7 +4,7 @@ import { excluirProcesso } from '@/lib/server/exclusao';
 import { atualizar, obter } from '@/lib/server/processos';
 
 type Ctx = { params: Promise<{ id: string }> };
-const Patch = z.object({ nome: z.string().trim().min(1).max(200).optional(), area_id: z.string().uuid().optional(), descricao: z.string().trim().max(5000).optional() });
+const Patch = z.object({ nome: z.string().trim().min(1).max(200).optional(), area_id: z.string().uuid().optional(), descricao: z.string().max(60000).optional() });
 
 export const dynamic = 'force-dynamic';
 export const GET = (_: Request, { params }: Ctx) => responder(async () => obter((await params).id));

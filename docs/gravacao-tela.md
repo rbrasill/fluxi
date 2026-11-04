@@ -45,12 +45,8 @@ No editor do POP, qualquer passo aceita um print sem gravar de novo (**Anexar pr
 
 ## Depois de encerrar
 1. Vídeo e prints vão direto do navegador para o Supabase Storage (`tenants/{id}/gravacoes/…`), com link assinado.
-2. O áudio é transcrito (AssemblyAI) com marcação de tempo.
-3. A IA gera o fluxograma e o POP a partir da narração; cada tela marcada vira um **passo ilustrado** no procedimento correspondente, com:
-   - o print (recortável depois);
-   - a instrução digitada ou, se vazia, a sugerida pela IA com base na narração;
-   - o trecho de tempo, para abrir o vídeo exatamente naquele ponto.
-4. Tela de revisão: a pessoa confere, edita a instrução, reordena ou remove prints antes de gerar o POP.
+2. Na tela da gravação, a pessoa confere o vídeo e as telas marcadas (instrução, marcações) e leva as telas para os passos do POP ("Levar as telas para o POP" ou "Anexar print → Tela da gravação" no editor).
+3. A gravação não é transcrita e não gera POP nem fluxograma (decisões 31 e 33): o POP é escrito à mão, e o fluxograma do processo é desenhado ou gerado com IA a partir de uma descrição ou de uma reunião.
 
 ## Qualidade no MVP (Supabase)
 - Até 1080p, 15 quadros/s, VP9 a 1,5 Mbps (texto de sistema nítido) + áudio Opus 96 kbps. Configuração em `lib/gravacao/config.ts`.

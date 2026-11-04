@@ -3,6 +3,7 @@ import * as fluxogramas from './fluxogramas';
 import * as gravacoes from './gravacoes';
 import { ErroApi } from './http';
 import * as pops from './pops';
+import { removerDoIndice } from './referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Exclusão definitiva (decisão 31): só o que está arquivado pode ser excluído, e vai tudo junto
@@ -23,10 +24,11 @@ export async function excluirProcesso(id: string) {
   for (const r of [o, g, f]) if (r.error) throw r.error;
   // Os arquivos ficam no Storage: cada exclusão apaga a pasta do item antes da linha.
   for (const x of o.data ?? []) await pops.excluirDefinitivo(x.id);
-  for (const x of g.data ?? []) await gravacoes.excluir(x.id);
+  for (const x of g.data ?? []) await gravacoes.excluir(x.id, { preservarTelas: false });
   for (const x of f.data ?? []) await fluxogramas.excluir(x.id);
   const { error: e } = await db.from('processos').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (e) throw e;
+  await removerDoIndice({ tipo: 'processo', id });
   return { ok: true };
 }
 

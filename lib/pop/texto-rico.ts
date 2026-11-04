@@ -4,7 +4,9 @@
 //   <span style="color: #rrggbb"> (cor do texto) e <mark data-color="#rrggbb"> (marca-texto).
 // Células mescladas não existem: colspan/rowspan são ignorados (cada célula conta uma).
 // Texto sem HTML (o que a IA escreve e os POPs antigos) continua valendo: cada linha é um parágrafo.
+// Referência a outro POP ou processo (decisão 35): <a data-ref="pop:<id>" data-rel="proxima">rótulo</a>.
 // Este arquivo não depende do navegador: o DOCX e o PDF leem o mesmo formato no servidor.
+import { RELACOES, chaveRef, lerRef, textoReferencia, type Relacao, type TipoDoc } from '../referencias';
 
 export type Trecho = {
   texto: string; // pode ter "\n" (quebra de linha dentro do parágrafo)
@@ -14,6 +16,10 @@ export type Trecho = {
   tachado?: boolean;
   cor?: string; // #rrggbb
   fundo?: string; // #rrggbb (marca-texto)
+  /** Referência a outro documento: o texto é o rótulo guardado ao inserir (o nome atual é resolvido ao mostrar). */
+  referencia?: { tipo: TipoDoc; id: string; relacao: Relacao };
+  /** Só nos documentos (PDF/DOCX): endereço da página pública do destino. Nunca vem do HTML. */
+  link?: string;
 };
 export type Celula = { cabecalho: boolean; blocos: Bloco[] };
 export type Bloco =
@@ -126,7 +132,8 @@ export function lerTexto(valor: string | null | undefined): Bloco[] {
     paragrafo ??= [];
     const m = atual();
     const ultimo = paragrafo.at(-1);
-    const igual = ultimo && (['negrito', 'italico', 'sublinhado', 'tachado', 'cor', 'fundo'] as const).every((k) => ultimo[k] === m[k]);
+    // Cada referência é um trecho próprio (nunca se junta ao texto em volta).
+    const igual = ultimo && !ultimo.referencia && !m.referencia && (['negrito', 'italico', 'sublinhado', 'tachado', 'cor', 'fundo'] as const).every((k) => ultimo[k] === m[k]);
     if (igual) ultimo.texto += texto;
     else paragrafo.push({ texto, ...m });
   };
@@ -197,6 +204,17 @@ export function lerTexto(valor: string | null | undefined): Bloco[] {
       }
       case 'thead': case 'tbody': case 'tfoot': case 'colgroup': case 'col':
         break; // estrutura da tabela sem efeito no conteúdo
+      case 'a': {
+        // Referência (data-ref) é uma marca; <a> comum entra como marca vazia, só para o fechamento bater.
+        if (fecha) {
+          const i = marcas.map((x) => x.tag).lastIndexOf('a');
+          if (i >= 0) marcas.splice(i, 1);
+        } else if (!/\/\s*$/.test(attrs)) {
+          const r = lerRef(atributo(attrs, 'data-ref'), atributo(attrs, 'data-rel'));
+          marcas.push({ tag: 'a', m: r ? { referencia: r } : {} });
+        }
+        break;
+      }
       default: {
         const m: Marcas | null =
           nome === 'strong' || nome === 'b' ? { negrito: true }
@@ -244,10 +262,17 @@ export function paraEditor(valor: string | null | undefined): string {
   return v.split(/\r?\n/).map((l) => `<p>${escapar(l)}</p>`).join('');
 }
 
-/** HTML no formato do editor a partir dos blocos (só as tags e atributos permitidos, texto escapado). */
-export function paraHtml(blocos: Bloco[]): string {
+type TrechoReferencia = Trecho & { referencia: NonNullable<Trecho['referencia']> };
+
+/**
+ * HTML no formato do editor a partir dos blocos (só as tags e atributos permitidos, texto escapado).
+ * `referencia` troca como cada referência sai (a página pública gera o link; o padrão é o formato guardado).
+ */
+export function paraHtml(blocos: Bloco[], opcoes: { referencia?: (t: TrechoReferencia) => string } = {}): string {
   const trecho = (t: Trecho) => {
-    let h = escapar(t.texto).replace(/\n/g, '<br>');
+    let h = t.referencia
+      ? (opcoes.referencia ? opcoes.referencia(t as TrechoReferencia) : `<a data-ref="${chaveRef(t.referencia)}" data-rel="${t.referencia.relacao}">${escapar(t.texto)}</a>`)
+      : escapar(t.texto).replace(/\n/g, '<br>');
     if (t.negrito) h = `<strong>${h}</strong>`;
     if (t.italico) h = `<em>${h}</em>`;
     if (t.sublinhado) h = `<u>${h}</u>`;
@@ -272,6 +297,43 @@ export function paraHtml(blocos: Bloco[]): string {
 
 /** Passa qualquer texto (simples ou HTML de fora, como o da IA) pelo formato do editor: o que não é permitido sai. */
 export const normalizarHtml = (valor: string | null | undefined) => paraHtml(lerTexto(paraEditor(valor)));
+
+/** Aplica `fn` a cada trecho, inclusive dentro de listas e tabelas. */
+export function mapearTrechos(blocos: Bloco[], fn: (t: Trecho) => Trecho): Bloco[] {
+  return blocos.map((b): Bloco => {
+    if (b.tipo === 'paragrafo') return { ...b, trechos: b.trechos.map(fn) };
+    if (b.tipo === 'lista') return { ...b, itens: b.itens.map((item) => mapearTrechos(item, fn)) };
+    return { ...b, linhas: b.linhas.map((l) => l.map((c) => ({ ...c, blocos: mapearTrechos(c.blocos, fn) }))) };
+  });
+}
+
+/** As referências do texto, na ordem em que aparecem (repetidas incluídas). */
+export function referenciasDoTexto(valor: string | null | undefined): NonNullable<Trecho['referencia']>[] {
+  const saida: NonNullable<Trecho['referencia']>[] = [];
+  mapearTrechos(lerTexto(valor), (t) => { if (t.referencia) saida.push(t.referencia); return t; });
+  return saida;
+}
+
+/**
+ * Para os documentos (PDF e DOCX): cada referência vira o texto "Relação: POP X · Nome", na cor da
+ * relação, com link para a página pública do destino quando ela existe. `resolvidas` é por chave
+ * "tipo:id"; sem ela, fica o rótulo guardado no texto.
+ */
+export function lerTextoParaDocumento(valor: string | null | undefined, resolvidas: Record<string, { rotulo?: string; url: string | null }> = {}): Bloco[] {
+  return mapearTrechos(lerTexto(valor), (t) => {
+    if (!t.referencia) return t;
+    const r = resolvidas[chaveRef(t.referencia)];
+    return {
+      texto: textoReferencia(t.referencia.relacao, r?.rotulo || t.texto),
+      negrito: t.negrito,
+      italico: t.italico,
+      cor: RELACOES[t.referencia.relacao].cor,
+      fundo: t.fundo,
+      sublinhado: !!r?.url,
+      link: r?.url ?? undefined,
+    };
+  });
+}
 
 /** O editor vazio (só parágrafos sem texto) volta como texto vazio, para os filtros de "passo vazio". */
 export const normalizarDoEditor = (html: string) => (textoPuro(html) ? html : '');

@@ -8,7 +8,10 @@ import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
-import { MoverPop } from '@/components/pop/MoverPop';
+import { MoverCopiar } from '@/components/MoverCopiar';
+import { PaginaPublica } from '@/components/pop/PaginaPublica';
+import { ReferenciasContext } from '@/components/pop/Referencia';
+import { ReferenciadoEm } from '@/components/publico/Referencias';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
 import { TextoRico } from '@/components/pop/TextoRico';
 import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
@@ -16,9 +19,10 @@ import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, despublicarPop, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
+import type { ResultadoBusca } from '@/lib/referencias';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -56,6 +60,7 @@ function EditorPop() {
   const [publicando, setPublicando] = useState(false);
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta sessão depois de publicar
   const [copiado, setCopiado] = useState(false);
+  const [alterandoLink, setAlterandoLink] = useState(false);
   const bloqueado = useRef(false); // arquivado: nada é salvo
   const pendente = useRef<Partial<Pop>>({});
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,16 +194,18 @@ function EditorPop() {
     router.push(pop!.processo_id ? `/app/processos/${pop!.processo_id}` : '/app/pops');
   }
 
-  /** Antes de mover: salva o que estiver pendente (a mudança de área regrava o campo "Área" no servidor). */
+  /** Antes de mover ou copiar: salva o que estiver pendente (o servidor regrava o campo "Área" ao mover e copia o conteúdo salvo). */
   async function abrirMover() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de mover o POP.');
+    if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de mover ou copiar o POP.');
     setMovendo(true);
   }
 
-  async function aoMover() {
+  /** Mover: recarrega o POP (código, processo e "Área" mudaram). Copiar: abre a cópia. */
+  async function aoMoverOuCopiar({ acao, id: novo }: { acao: 'mover' | 'copiar'; id: string }) {
     setMovendo(false);
+    if (acao === 'copiar') { router.push(`/app/pops/${novo}`); return; }
     setPop(await obterPop(id));
   }
 
@@ -280,13 +287,18 @@ function EditorPop() {
     }
   }
 
-  async function despublicar() {
-    if (!(await confirmar({ titulo: 'Tirar o POP do ar?', mensagem: 'Ele volta a ser rascunho e a página pública deixa de mostrá-lo. O link continua o mesmo: ao publicar de novo, volta a funcionar.', acao: 'Tirar do ar' }))) return;
+  // Chave da página pública (decisão 34): muda na hora; se o servidor recusar, volta como estava.
+  async function alternarLink() {
+    const ativo = !pop!.link_publico_ativo;
+    setAlterandoLink(true);
+    setPop((p) => p && { ...p, link_publico_ativo: ativo });
     try {
-      await despublicarPop(id);
-      setPop((p) => p && { ...p, status: 'rascunho', alteracoes_nao_publicadas: false });
-    } catch {
-      void avisar('Não foi possível tirar o POP do ar.', 'Tente de novo em instantes.');
+      await definirLinkPublico(id, ativo);
+    } catch (e) {
+      setPop((p) => p && { ...p, link_publico_ativo: !ativo });
+      void avisar(ativo ? 'Não foi possível colocar a página pública no ar.' : 'Não foi possível tirar a página pública do ar.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setAlterandoLink(false);
     }
   }
 
@@ -305,7 +317,7 @@ function EditorPop() {
   async function arquivar() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    if (!(await confirmar({ titulo: `Arquivar o POP "${pop!.nome}"?`, mensagem: 'O POP some das listas e não pode ser editado. Nada é apagado: dá para restaurar depois.', acao: 'Arquivar' }))) return;
+    if (!(await confirmar({ titulo: `Arquivar o POP "${pop!.nome}"?`, mensagem: `O POP some das listas e não pode ser editado. Nada é apagado: dá para restaurar depois.${citadoEm}`, acao: 'Arquivar' }))) return;
     setOcupado(true);
     try { await arquivarPop(id); setPop(await obterPop(id)); } catch { void avisar('Não foi possível arquivar o POP.', 'Tente de novo em instantes.'); } finally { setOcupado(false); }
   }
@@ -316,7 +328,7 @@ function EditorPop() {
   }
 
   async function excluirDefinitivo() {
-    if (!(await confirmar({ titulo: `Excluir definitivamente o POP "${pop!.nome}"?`, mensagem: 'Apaga o POP com as gravações dele. Essa ação não pode ser desfeita.', acao: 'Excluir', perigo: true }))) return;
+    if (!(await confirmar({ titulo: `Excluir definitivamente o POP "${pop!.nome}"?`, mensagem: `Apaga o POP com as gravações dele. Essa ação não pode ser desfeita.${citadoEm ? `${citadoEm} As referências passam a apontar para um documento excluído.` : ''}`, acao: 'Excluir', perigo: true }))) return;
     setOcupado(true);
     try {
       await excluirPop(id);
@@ -337,6 +349,15 @@ function EditorPop() {
   }
 
   const onde = pop.processo;
+  const documento = { tipo: 'pop' as const, id };
+  // Uma referência acabou de entrar no texto: o chip já mostra o nome; a situação vem do servidor na próxima carga.
+  function registrarReferencia(r: ResultadoBusca) {
+    const k = `${r.tipo}:${r.id}`;
+    setPop((p) => p && !p.referencias[k] ? { ...p, referencias: { ...p.referencias, [k]: { tipo: r.tipo, id: r.id, nome: r.nome, identificacao: r.identificacao, codigo: r.codigo, rotulo: r.rotulo, situacao: r.situacao, publico: r.situacao === 'ok', url_app: `/app/${r.tipo === 'pop' ? 'pops' : 'processos'}/${r.id}`, url_publica: null } } } : p);
+  }
+  const citadoEm = pop.referenciado_em.length ? ` Atenção: este POP é referenciado em ${pop.referenciado_em.length} ${pop.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
+  // Ao sair do editor do fluxograma, volta para este POP.
+  const editarFluxo = pop.fluxograma ? `/app/fluxogramas/${pop.fluxograma.id}?voltar=${encodeURIComponent(`/app/pops/${id}`)}` : '';
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
 
@@ -346,6 +367,7 @@ function EditorPop() {
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
 
   return (
+    <ReferenciasContext.Provider value={pop.referencias}>
     <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
       <div className="page-head">
         <div>
@@ -366,8 +388,8 @@ function EditorPop() {
           )}
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
-            <SeloStatus status={pop.status} />
-            {publicado && pop.publicado_em && <span className="publicado-em">em {new Date(pop.publicado_em).toLocaleDateString('pt-BR')}{!arquivado && <> · <button type="button" className="link-sec" onClick={despublicar}>Tirar do ar</button></>}</span>}
+            <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />
+            {publicado && pop.publicado_em && <span className="publicado-em">em {new Date(pop.publicado_em).toLocaleDateString('pt-BR')}</span>}
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
             {!arquivado && <><span className={`dot ${status === 'salvo' ? '' : status === 'erro' ? 'error' : 'saving'}`} />{textoStatus}</>}
             {chipRetomar && (
@@ -385,12 +407,7 @@ function EditorPop() {
               <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
             </button>
           )}
-          <button className="btn btn-ghost" onClick={copiarLink} disabled={!publicado || arquivado}
-            title={publicado && !arquivado ? 'Copia o endereço da página pública do POP' : 'Publique o POP para ativar o link público'}>
-            <Icone nome={copiado ? 'check' : 'link'} tamanho={16} />{copiado ? 'Link copiado' : 'Copiar link público'}
-          </button>
-          {publicado && !arquivado && <a className="btn btn-ghost btn-icon" href={`/p/${pop.link_publico}`} target="_blank" rel="noopener" aria-label="Abrir página pública" title="Abrir a página pública (versão publicada)"><Icone nome="externo" tamanho={16} /></a>}
-          {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Leva o POP (com o processo dele) para outra área"><Icone nome="mover" tamanho={16} />Mover</button>}
+          {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Mover para outro processo ou criar uma cópia"><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn btn-ghost btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
           <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
           <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
@@ -404,6 +421,17 @@ function EditorPop() {
           <span><b>O processo deste POP está arquivado.</b> Para editar, restaure o processo <Link href={`/app/processos/${pop.processo.id}`}>{pop.processo.nome}</Link>.</span>
         </div>
       )}
+
+      <PaginaPublica
+        estado={arquivado ? 'arquivado' : !publicado ? 'rascunho' : pop.link_publico_ativo ? 'online' : 'offline'}
+        publicadoEm={pop.publicado_em}
+        alteracoesNaoPublicadas={naoPublicadas}
+        url={`/p/${pop.link_publico}`}
+        alterando={alterandoLink}
+        copiado={copiado}
+        aoAlternar={alternarLink}
+        aoCopiar={copiarLink}
+      />
 
       {/* Arquivado: tudo fica visível, mas nada responde (inert) nem é salvo. */}
       <div inert={arquivado} className={`pop-conteudo${arquivado ? ' bloqueado' : ''}`}>
@@ -426,7 +454,7 @@ function EditorPop() {
           <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
             pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
         </div>
-        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." />
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">
@@ -447,9 +475,11 @@ function EditorPop() {
           <h2 id="titulo-fluxograma">Fluxograma do processo</h2>
           {pop.fluxograma ? (
             <div className="fluxo-do-pop">
-              {pop.fluxograma.miniatura
-                ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
-                : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              <Link href={editarFluxo} className="fluxo-previa" aria-label="Editar fluxograma" title="Editar fluxograma">
+                {pop.fluxograma.miniatura
+                  ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
+                  : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
+              </Link>
               <div className="fluxo-info">
                 <strong>{pop.fluxograma.nome}</strong>
                 <span>{pop.fluxograma.origem === 'ia' ? 'Gerado com IA' : 'Desenhado à mão'} · atualizado em {new Date(pop.fluxograma.atualizado_em).toLocaleDateString('pt-BR')}</span>
@@ -457,9 +487,10 @@ function EditorPop() {
                   {pop.fluxograma.tem_svg
                     ? 'Aparece na página pública deste POP e vai no PDF e no DOCX como o link "Abrir diagrama".'
                     : 'Vai no PDF e no DOCX como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
+                  {' '}É do processo: o que você mudar nele vale para todos os POPs do processo.
                 </span>
               </div>
-              <Link href={`/app/fluxogramas/${pop.fluxograma.id}`} className="btn btn-ghost"><Icone nome="fluxo" tamanho={16} />Abrir fluxograma</Link>
+              <Link href={editarFluxo} className="btn" title="Abre o editor: mude o desenho, os textos e as setas; salva sozinho"><Icone nome="marcar" tamanho={16} />Editar fluxograma</Link>
             </div>
           ) : (
             <p className="notice">
@@ -469,13 +500,20 @@ function EditorPop() {
         </section>
       )}
 
+      {pop.referenciado_em.length > 0 && (
+        <section className="cartao pop-sec" id="pos-referenciado" aria-labelledby="titulo-referenciado">
+          <h2 id="titulo-referenciado">Referenciado em</h2>
+          <ReferenciadoEm itens={pop.referenciado_em} href={(x) => x.url_app || null} aviso="Estes documentos citam este POP. Na página pública deles, a referência leva à página pública deste POP." />
+        </section>
+      )}
+
       <section className={`cartao pop-sec ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela">
         <div className="sec-titulo">
           <h2>Gravações de tela</h2>
           <Link href={`/app/gravacoes/nova?pop=${id}`} className="btn"><span className="rec-dot" />Gravar tela</Link>
         </div>
         {pop.gravacoes.length === 0
-          ? <p className="notice">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos. A narração transcrita serve para gerar o fluxograma do processo.</p>
+          ? <p className="notice">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos.</p>
           : (
             <div className="lista-pops">
               {pop.gravacoes.map((g) => (
@@ -483,7 +521,7 @@ function EditorPop() {
                   <span className="pop-icone"><Icone nome="tela" tamanho={20} /></span>
                   <Link href={`/app/gravacoes/${g.id}`} className="pop-nome">
                     <strong>{g.nome}</strong>
-                    <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{g.transcrita ? ' · transcrita' : ''}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</span>
+                    <span>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</span>
                   </Link>
                   {EM_ABERTO.includes(g.status) && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost"><span className="rec-dot" />Continuar</Link>}
                   {g.telas_novas > 0 && (
@@ -513,7 +551,7 @@ function EditorPop() {
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${k + 1} do procedimento ${i + 1}`}>
                 <PosicaoPasso numero={k + 1} total={p.passos.length} aoMover={(n) => moverPassoParaPosicao(i, k, n - 1)} />
                 <div className="passo-corpo">
-                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." />
+                  <TextoRico valor={s.texto} aoMudar={(v) => setPasso(i, k, { texto: v })} rotulo={`Passo ${k + 1} do procedimento ${i + 1}`} placeholder="Descreva o passo: o que fazer e onde clicar." documento={documento} aoReferenciar={registrarReferencia} />
                   {s.imagem_caminho ? (
                     <div className="passo-img">
                       {pop.imagens[s.imagem_caminho] ? <img src={pop.imagens[s.imagem_caminho]} alt={`Tela do passo ${k + 1}`} /> : <span className="notice">Imagem da gravação</span>}
@@ -604,8 +642,9 @@ function EditorPop() {
         />
       )}
 
-      {movendo && <MoverPop pop={pop} aoMover={aoMover} aoFechar={() => setMovendo(false)} />}
+      {movendo && <MoverCopiar item={{ tipo: 'pop', id: pop.id, nome: pop.nome, identificacao: pop.identificacao, processo: pop.processo }} aoConcluir={aoMoverOuCopiar} aoFechar={() => setMovendo(false)} />}
     </div>
+    </ReferenciasContext.Provider>
   );
 }
 

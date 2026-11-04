@@ -1,5 +1,6 @@
 // Cliente da API de POPs.
 import { ErroCliente } from './fluxogramas';
+import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 import type { Anotacoes } from './marcacao/anotacoes';
 import { enviarArquivo, type StatusGravacao, type TelaDaGravacao } from './gravacoes';
 import type { ConteudoPop, Historico, Posicao } from './pop/schema';
@@ -12,9 +13,10 @@ export type PopResumo = {
   processo: OndePop;
   processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
   link_publico: string; publicado_em: string | null; // página pública: /p/<link_publico>
+  link_publico_ativo: boolean; // chave online/offline da página pública (decisão 34)
 };
 /** Gravação de tela do POP (resumo para o editor). */
-export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number; transcrita: boolean };
+export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
 /** O fluxograma do processo do POP (um por processo). */
 export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
@@ -24,6 +26,9 @@ export type Pop = PopResumo & {
   alteracoes_nao_publicadas: boolean;
   /** O fluxograma do processo (só informativo no editor do POP). */
   fluxograma: FluxogramaDoPop | null;
+  /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
+  referencias: Record<string, ReferenciaResolvida>;
+  referenciado_em: ReferenciadoEm[];
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -43,7 +48,9 @@ export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identif
 /** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
 export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
 /** Volta para rascunho: a página pública deixa de mostrar o POP. */
-export const despublicarPop = (id: string) => api(`/api/pops/${id}/despublicar`, { method: 'POST' });
+/** Liga (online) ou desliga (offline) a página pública do POP. */
+export const definirLinkPublico = (id: string, ativo: boolean) =>
+  api<{ link_publico_ativo: boolean }>(`/api/pops/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });
 /** Endereço da página pública do POP. */
 export const urlPublica = (link: string) => `${location.origin}/p/${link}`;
 /** Arquiva (some das listas, sem apagar) e restaura. */
@@ -53,9 +60,12 @@ export const restaurarPop = (id: string) => api(`/api/pops/${id}/restaurar`, { m
 export const excluirPop = (id: string) => api(`/api/pops/${id}`, { method: 'DELETE' });
 /** Arquivado por si ou pelo processo: não aparece nas listas nem pode ser editado. */
 export const popArquivado = (p: { arquivado_em: string | null; processo: OndePop }) => !!p.arquivado_em || !!p.processo?.arquivado_em;
-/** Move o POP para outra área, com o processo inteiro dele (POP sem processo: entra num processo da área). */
-export const moverPop = (id: string, dados: { area_id: string; processo_id?: string; novo_processo?: string }) =>
-  api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify(dados) });
+/** Move o POP para outro processo (decisão 36): código do processo, campo "Área" e gravações acompanham. */
+export const moverPop = (id: string, processo_id: string) =>
+  api<{ processo_id: string }>(`/api/pops/${id}/mover`, { method: 'POST', body: JSON.stringify({ processo_id }) });
+/** Copia o POP para um processo: a cópia nasce como rascunho, com os textos, prints e referências. */
+export const copiarPop = (id: string, dados: { processo_id: string; nome?: string }) =>
+  api<{ id: string }>(`/api/pops/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
 /** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
 export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
 export type PedidoMelhoria = { campo: 'passo' | 'objetivo'; texto: string; pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string };

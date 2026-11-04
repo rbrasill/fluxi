@@ -23,6 +23,13 @@ export async function obter(id: string) {
   return data;
 }
 
+/** As imagens geradas pelo editor (miniatura e SVG publicado), para a cópia de processo (decisão 36). */
+export async function imagensDe(id: string) {
+  const { data, error } = await supabase().from('fluxogramas').select('miniatura, svg').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (error) throw error;
+  return { miniatura: (data?.miniatura as string | null) ?? null, svg: (data?.svg as string | null) ?? null };
+}
+
 /** O fluxograma do processo (um por processo, decisão 31), se já existe. */
 export async function doProcesso(processoId: string) {
   const { data, error } = await supabase().from('fluxogramas').select(RESUMO).eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).maybeSingle();

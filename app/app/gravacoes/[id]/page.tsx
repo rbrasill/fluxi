@@ -1,13 +1,13 @@
 'use client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
 import { adicionarTelasDaGravacao } from '@/lib/pops';
-import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, consultarTranscricao, salvarMarcacaoDesenhada, iniciarTranscricao, type EstadoTranscricao, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
+import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, confirmacaoExcluirGravacao, excluirGravacao, salvarMarcacaoDesenhada, excluirMarcacao, formatarTempo, obterGravacao, tempoGravado, type Gravacao, type Marcacao } from '@/lib/gravacoes';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
@@ -76,54 +76,6 @@ function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao;
   );
 }
 
-// Transcrição da narração, feita quando a pessoa pede (decisão 31): serve para gerar o fluxograma
-// do processo com IA. O POP é escrito à mão, com as telas marcadas.
-function PainelTranscricao({ gravacaoId, processoId, aoPronto }: { gravacaoId: string; processoId: string | null; aoPronto: () => void }) {
-  const [e, setE] = useState<EstadoTranscricao | null>(null);
-  const [erro, setErro] = useState('');
-  const [iniciando, setIniciando] = useState(false);
-  const emAndamento = e?.processamento === 'transcrevendo';
-
-  useEffect(() => { consultarTranscricao(gravacaoId).then(setE).catch(() => {}); }, [gravacaoId]);
-  useEffect(() => {
-    if (!emAndamento) return;
-    const t = setTimeout(() => consultarTranscricao(gravacaoId).then((n) => { setE(n); if (n.processamento === 'pronto') aoPronto(); }).catch(() => {}), 5000);
-    return () => clearTimeout(t);
-  }, [gravacaoId, e, emAndamento, aoPronto]);
-
-  async function transcrever() {
-    setErro('');
-    setIniciando(true);
-    try {
-      const n = await iniciarTranscricao(gravacaoId);
-      setE(n);
-      if (n.processamento === 'pronto') aoPronto();
-    } catch (x) { setErro(x instanceof Error ? x.message : 'Erro ao iniciar.'); }
-    setIniciando(false);
-  }
-
-  if (!e) return null;
-  if (iniciando) return <div className="aviso"><span className="spinner" />Preparando o áudio para a transcrição… Em gravações longas, pode levar 1 ou 2 minutos.</div>;
-  if (e.processamento === 'pronto') {
-    return (
-      <div className="aviso">
-        <span><b>Narração transcrita.</b> O texto está no fim desta página e pode virar o fluxograma do processo.</span>
-        {processoId && <Link className="btn btn-primary" href={`/app/processos/${processoId}?gerar=${gravacaoId}`}><Icone nome="ia" tamanho={16} />Gerar o fluxograma com esta transcrição</Link>}
-      </div>
-    );
-  }
-  if (emAndamento) {
-    const seg = e.segmentos.total > 1 ? ` (${e.segmentos.prontos}/${e.segmentos.total} partes)` : '';
-    return <div className="aviso">Transcrevendo a narração…{seg} Pode sair desta página; o andamento continua quando você voltar.</div>;
-  }
-  return (
-    <div className={`aviso ${e.processamento === 'erro' || erro ? 'erro' : ''}`}>
-      {erro || e.erro || 'Transcreva a narração para gerar o fluxograma do processo com IA. O POP é escrito à mão, com as telas marcadas abaixo.'}
-      <button className="btn btn-primary" onClick={transcrever}><Icone nome="texto" tamanho={16} />{e.processamento === 'erro' ? 'Tentar de novo' : 'Transcrever a narração'}</button>
-    </div>
-  );
-}
-
 function Detalhe() {
   const { id } = useParams<{ id: string }>();
   const falhas = useSearchParams().get('falhas');
@@ -131,6 +83,8 @@ function Detalhe() {
   const [nome, setNome] = useState('');
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
   const [levando, setLevando] = useState<'' | 'enviando' | 'ok'>('');
+  const [excluindo, setExcluindo] = useState(false);
+  const router = useRouter();
 
   const recarregar = useCallback(() => obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null)), [id]);
   useEffect(() => { void recarregar(); }, [recarregar]);
@@ -143,7 +97,6 @@ function Detalhe() {
   }
 
   const incluidas = g.marcacoes.filter((m) => m.incluir_no_pop).length;
-  const comAudio = g.status === 'pronta' && g.segmentos.length > 0;
   // Gravação que ainda pode receber mais conteúdo: pausada pela pessoa ou não finalizada (aba fechada no meio).
   const emAberto = g.status === 'pausada' || g.status === 'gravando' || g.status === 'interrompida';
   const gravado = tempoGravado(g);
@@ -164,6 +117,20 @@ function Detalhe() {
     } catch {
       setLevando('');
       void avisar('Não foi possível levar as telas para o POP.', 'Tente de novo em instantes.');
+    }
+  }
+
+  // Exclusão definitiva, com confirmação. As telas que já estão no POP continuam lá.
+  async function excluirTudo() {
+    const noPop = g!.pop ? g!.marcacoes.filter((m) => g!.pop!.telas.includes(m.id)).length : 0;
+    if (!(await confirmar(confirmacaoExcluirGravacao(g!.nome, noPop)))) return;
+    setExcluindo(true);
+    try {
+      await excluirGravacao(g!.id);
+      router.replace(g!.pop ? `/app/pops/${g!.pop.id}` : g!.processo ? `/app/processos/${g!.processo.id}` : '/app/inicio');
+    } catch {
+      setExcluindo(false);
+      void avisar('Não foi possível excluir a gravação.', 'Tente de novo em instantes.');
     }
   }
 
@@ -196,6 +163,9 @@ function Detalhe() {
             <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
           )}
           {g.pop && <Link href={`/app/pops/${g.pop.id}`} className="btn"><Icone nome="pop" tamanho={16} />Abrir POP</Link>}
+          <button type="button" className="btn btn-ghost btn-excluir" onClick={excluirTudo} disabled={excluindo} title="Apaga o vídeo e as telas marcadas para sempre (as telas que já estão no POP continuam lá)">
+            <Icone nome="lixo" tamanho={16} />{excluindo ? 'Excluindo…' : 'Excluir gravação'}
+          </button>
         </div>
       </div>
       {emAberto && (
@@ -210,7 +180,6 @@ function Detalhe() {
           </span>
         </div>
       )}
-      {comAudio && <PainelTranscricao gravacaoId={g.id} processoId={g.processo?.id ?? null} aoPronto={recarregar} />}
       {g.pop && (telasNovas.length > 0 || levando === 'ok') && (
         <div className="aviso">
           {levando === 'ok'
@@ -235,19 +204,6 @@ function Detalhe() {
         </section>
       </div>
 
-      {g.falas.length > 0 && (
-        <details className="transcricao" open>
-          <summary>Transcrição da narração</summary>
-          <div className="falas">
-            {g.falas.map((f, i) => (
-              <p key={i} className="fala">
-                <button onClick={() => setIrPara({ ms: f.inicio_ms, n: Date.now() })} title="Ver este momento no vídeo">{formatarTempo(f.inicio_ms)}</button>
-                <span><b>Falante {f.falante}</b>{f.texto}</span>
-              </p>
-            ))}
-          </div>
-        </details>
-      )}
     </div>
   );
 }

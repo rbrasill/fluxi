@@ -93,7 +93,7 @@ export default function InicioPage() {
                     <span>{ondeEsta(p)}</span>
                     {p.status === 'rascunho' && p.posicao && <span className="parou">Parou em: {p.posicao.rotulo}</span>}
                   </span>
-                  <SeloStatus status={p.status} />
+                  <SeloStatus status={p.status} offline={!p.link_publico_ativo} />
                   <span className="notice">{dataCurta(p.atualizado_em)}</span>
                   {p.status === 'rascunho' && <span className="btn">Continuar</span>}
                 </Link>

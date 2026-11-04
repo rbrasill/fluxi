@@ -1,8 +1,15 @@
 'use client';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { EditorDrawio } from '@/components/EditorDrawio';
 
-export default function EditorPage() {
+function Editor() {
   const { id } = useParams<{ id: string }>();
-  return <EditorDrawio id={id} />;
+  // ?voltar=/app/pops/<id>: quem abriu a partir do POP volta para o POP. Só caminhos do próprio app.
+  const voltar = useSearchParams().get('voltar');
+  return <EditorDrawio id={id} voltar={voltar && /^\/app\/[\w\-/]+$/.test(voltar) ? voltar : null} />;
+}
+
+export default function EditorPage() {
+  return <Suspense><Editor /></Suspense>;
 }

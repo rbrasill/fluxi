@@ -1,11 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
-import { obterGravacao, transcricaoComoTexto } from '@/lib/gravacoes';
 
 // Cria o fluxograma do processo (um por processo, decisão 31): desenhado à mão ou gerado com IA a
-// partir de descrição, transcrição ou áudio. Com `substituir`, o processo já tem fluxograma e a IA
+// partir de uma descrição, da transcrição ou do áudio de uma reunião. Gravação de tela não vira
+// fluxograma (decisão 33): ela serve só ao POP. Com `substituir`, o processo já tem fluxograma e a IA
 // gera outro no lugar dele (o desenho atual é perdido; o aviso fica no diálogo).
 
 type Modo = 'manual' | 'ia';
@@ -13,32 +13,18 @@ type Fonte = 'descricao' | 'transcricao' | 'audio';
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
 
-export function NovoFluxograma({ processoId, substituir = false, modoInicial = 'manual', nomeSugerido = '', gravacoes = [], gravacaoInicial, aoFechar, aoCriar }: {
+export function NovoFluxograma({ processoId, substituir = false, modoInicial = 'manual', nomeSugerido = '', aoFechar, aoCriar }: {
   processoId: string;
   substituir?: boolean;
   modoInicial?: Modo;
   nomeSugerido?: string;
-  /** Gravações transcritas dos POPs do processo: a narração pode virar o fluxograma. */
-  gravacoes?: { id: string; nome: string; pop_nome: string | null }[];
-  gravacaoInicial?: string;
   aoFechar: () => void;
   aoCriar: (id: string) => void;
 }) {
   const [nome, setNome] = useState(nomeSugerido);
   const [modo, setModo] = useState<Modo>(substituir ? 'ia' : modoInicial);
-  const [fonte, setFonte] = useState<Fonte>(gravacaoInicial ? 'transcricao' : 'descricao');
+  const [fonte, setFonte] = useState<Fonte>('descricao');
   const [texto, setTexto] = useState('');
-  const [gravacaoId, setGravacaoId] = useState(gravacaoInicial ?? '');
-  const [carregandoTranscricao, setCarregandoTranscricao] = useState(false);
-
-  // A transcrição da gravação escolhida entra no campo (e pode ser editada antes de gerar).
-  useEffect(() => {
-    if (!gravacaoId) return;
-    let viva = true;
-    setCarregandoTranscricao(true);
-    obterGravacao(gravacaoId).then((g) => { if (viva) setTexto(transcricaoComoTexto(g.falas)); }).catch(() => { if (viva) setErro('Não foi possível carregar a transcrição.'); }).finally(() => { if (viva) setCarregandoTranscricao(false); });
-    return () => { viva = false; };
-  }, [gravacaoId]);
   const [audio, setAudio] = useState<File | null>(null);
   const [etapa, setEtapa] = useState('');
   const [erro, setErro] = useState('');
@@ -90,7 +76,7 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
             </button>
             <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado}>
               <strong><Icone nome="ia" tamanho={14} /> Gerar com IA</strong>
-              <span>A partir de uma descrição, transcrição ou áudio.</span>
+              <span>A partir de uma descrição, ou da transcrição ou do áudio de uma reunião.</span>
             </button>
           </div>
         )}
@@ -100,22 +86,12 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
             <div className="segmented" role="tablist">
               {(['descricao', 'transcricao', 'audio'] as Fonte[]).map((f) => (
                 <button key={f} type="button" role="tab" aria-selected={fonte === f} onClick={() => setFonte(f)} disabled={ocupado}>
-                  {f === 'descricao' ? 'Descrever o processo' : f === 'transcricao' ? 'Transcrição' : 'Áudio / vídeo'}
+                  {f === 'descricao' ? 'Descrever o processo' : f === 'transcricao' ? 'Transcrição de reunião' : 'Áudio / vídeo de reunião'}
                 </button>
               ))}
             </div>
             {fonte !== 'audio' ? (
               <>
-                {fonte === 'transcricao' && gravacoes.length > 0 && (
-                  <label className="field">
-                    Usar a transcrição de uma gravação deste processo
-                    <select value={gravacaoId} onChange={(e) => setGravacaoId(e.target.value)} disabled={ocupado || carregandoTranscricao}>
-                      <option value="">Escolher a gravação…</option>
-                      {gravacoes.map((g) => <option key={g.id} value={g.id}>{g.nome}{g.pop_nome ? ` · POP ${g.pop_nome}` : ''}</option>)}
-                    </select>
-                  </label>
-                )}
-                {carregandoTranscricao && <p className="form-etapa"><span className="spinner" />Carregando a transcrição…</p>}
                 <textarea
                   className="texto-ia"
                   rows={8}
@@ -125,7 +101,7 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
                   placeholder={
                     fonte === 'descricao'
                       ? 'Descreva o processo em ordem: quem inicia, o que cada área faz, as decisões (se aprovado…, se não…) e como termina.'
-                      : 'Cole aqui a transcrição de uma gravação de tela ou de uma reunião (Teams, Meet, Zoom…).'
+                      : 'Cole aqui a transcrição de uma reunião sobre o processo (Teams, Meet, Zoom…).'
                   }
                 />
                 {fonte === 'transcricao' && (

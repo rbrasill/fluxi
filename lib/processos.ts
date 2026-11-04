@@ -1,5 +1,6 @@
 // Cliente da API de processos (a "pasta" de cada processo).
 import { ErroCliente } from './fluxogramas';
+import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 
 export type ProcessoResumo = {
   id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null;
@@ -7,9 +8,11 @@ export type ProcessoResumo = {
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
+  link_publico: string; link_publico_ativo: boolean; // página pública /pr/<link> (decisão 35)
+  referencias: Record<string, ReferenciaResolvida>; referenciado_em: ReferenciadoEm[];
   fluxograma: { id: string; codigo: string; nome: string; origem: string; miniatura: string | null; link_publico: string; tem_svg: boolean; atualizado_em: string } | null; // um por processo
-  gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; pop_nome: string | null; total_marcacoes: number; transcrita: boolean }[];
-  pops: { id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; arquivado_em: string | null; atualizado_em: string }[];
+  gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; pop_nome: string | null; total_marcacoes: number }[];
+  pops: { id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; link_publico_ativo: boolean; arquivado_em: string | null; atualizado_em: string }[];
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
@@ -29,6 +32,12 @@ export const atualizarProcesso = (id: string, dados: { nome?: string; area_id?: 
 /** Arquiva (some das listas com tudo o que tem; nada é apagado) e restaura. */
 export const arquivarProcesso = (id: string) => api(`/api/processos/${id}/arquivar`, { method: 'POST' });
 export const restaurarProcesso = (id: string) => api(`/api/processos/${id}/restaurar`, { method: 'POST' });
+/** Copia o processo para uma área (decisão 36), com a descrição, o fluxograma e cópias dos POPs ativos. */
+export const copiarProcesso = (id: string, dados: { area_id: string; nome?: string }) =>
+  api<{ id: string; pops: number; fluxograma: boolean }>(`/api/processos/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
+/** Liga (online) ou desliga (offline) a página pública do processo. */
+export const definirLinkPublicoProcesso = (id: string, ativo: boolean) =>
+  api<{ link_publico_ativo: boolean }>(`/api/processos/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });
 /** Só processo arquivado: apaga com os POPs, gravações e fluxograma dele. */
 export const excluirProcesso = (id: string) => api(`/api/processos/${id}`, { method: 'DELETE' });
 

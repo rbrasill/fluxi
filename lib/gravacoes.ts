@@ -24,10 +24,9 @@ export type Marcacao = {
   instrucao: string | null; instrucao_ia: string | null; incluir_no_pop: boolean;
   anotacoes: Anotacoes | null; imagem_anotada_url: string | null;
 };
-export type Fala = { falante: string; inicio_ms: number; texto: string };
 export type Gravacao = Omit<GravacaoResumo, 'total_marcacoes' | 'processo'> & {
   largura: number | null; altura: number | null; segmentos: SegmentoGravado[]; marcacoes: Marcacao[];
-  processamento: string; falas: Fala[]; processo: { id: string; nome: string; codigo: string } | null;
+  processamento: string; processo: { id: string; nome: string; codigo: string } | null;
   /** POP ligado à gravação (gerado pela IA ou criado com as telas) e as telas que ele já usa. */
   pop: { id: string; nome: string; status: string; telas: string[] } | null;
 };
@@ -52,7 +51,19 @@ export const obterGravacao = (id: string) => api<Gravacao>(`/api/gravacoes/${id}
 export const criarGravacao = (nome: string, pop_id: string) => api<{ id: string }>('/api/gravacoes', json('POST', { nome, pop_id }));
 export const atualizarGravacao = (id: string, dados: Partial<{ nome: string; status: StatusGravacao; duracao_ms: number; largura: number; altura: number }>) =>
   api(`/api/gravacoes/${id}`, json('PATCH', dados));
-export const excluirGravacao = (id: string) => api(`/api/gravacoes/${id}`, { method: 'DELETE' });
+/** Exclui a gravação para sempre. As telas que já estão nos passos do POP continuam no POP (`telas_mantidas`). */
+export const excluirGravacao = (id: string) => api<{ ok: true; telas_mantidas: number }>(`/api/gravacoes/${id}`, { method: 'DELETE' });
+
+/** Texto da confirmação de exclusão da gravação (só na tela da gravação). */
+export function confirmacaoExcluirGravacao(nome: string, telasNoPop: number) {
+  return {
+    titulo: `Excluir a gravação "${nome}"?`,
+    mensagem: 'O vídeo e as telas marcadas serão apagados para sempre. Não é possível desfazer.'
+      + (telasNoPop === 1 ? ' A tela que já está num passo do POP continua no POP.' : telasNoPop > 1 ? ` As ${telasNoPop} telas que já estão nos passos do POP continuam no POP.` : ''),
+    acao: 'Excluir gravação',
+    perigo: true,
+  };
+}
 export const atualizarMarcacao = (id: string, mid: string, dados: { instrucao?: string | null; incluir_no_pop?: boolean }) =>
   api(`/api/gravacoes/${id}/marcacoes/${mid}`, json('PATCH', dados));
 export const excluirMarcacao = (id: string, mid: string) => api(`/api/gravacoes/${id}/marcacoes/${mid}`, { method: 'DELETE' });
@@ -80,17 +91,6 @@ export function formatarTempo(ms: number) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-/** Transcrição da narração (sob demanda): serve para gerar o fluxograma do processo com IA. */
-export type EstadoTranscricao = {
-  processamento: 'nenhum' | 'transcrevendo' | 'pronto' | 'erro';
-  erro: string | null;
-  segmentos: { total: number; prontos: number };
-  transcrita: boolean;
-};
-export const iniciarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`, { method: 'POST' });
-export const consultarTranscricao = (id: string) => api<EstadoTranscricao>(`/api/gravacoes/${id}/processar`);
-/** A transcrição como texto (com os tempos), para colar na IA do fluxograma. */
-export const transcricaoComoTexto = (falas: Fala[]) => falas.map((f) => `[${formatarTempo(f.inicio_ms)}] Falante ${f.falante}: ${f.texto}`).join('\n');
 
 /**
  * Salva as marcações desenhadas numa tela: envia a imagem final ao Storage e registra.

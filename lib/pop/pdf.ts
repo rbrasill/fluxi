@@ -14,7 +14,7 @@ import {
   COR_AZUL, COR_BORDA_IMAGEM, COR_CAIXA_BARRA, COR_CAIXA_BORDA, COR_CAIXA_FUNDO, COR_CAIXA_ROTULO, COR_TEXTO,
   DESCRICAO_FLUXOGRAMA, cabecalho, sequenciaPassos, tamanhoImagemPt, type DadosPop,
 } from './docx';
-import { colunas, lerTexto, linhasDeCabecalho, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
+import { colunas, lerTextoParaDocumento, linhasDeCabecalho, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
 
 const PASTA = () => path.join(process.cwd(), 'templates/pop');
 const AZUL = `#${COR_AZUL}`;
@@ -119,6 +119,7 @@ const trechosPdf = (trechos: Trecho[]) => trechos.map((t) => {
     ...(decoracao.length ? { decoration: decoracao } : {}),
     ...(t.cor ? { color: t.cor } : {}),
     ...(t.fundo ? { background: t.fundo } : {}),
+    ...(t.link ? { link: t.link } : {}),
   };
 });
 
@@ -131,7 +132,7 @@ function aparar(blocos: BlocoTexto[]) {
 }
 
 /** Blocos do pdfmake; `inicio` entra no começo do primeiro parágrafo (o rótulo "Passo N:"). */
-function textoRicoPdf(valor: string, inicio: Bloco[] = []): Bloco[] {
+function textoRicoPdf(valor: string, inicio: Bloco[] = [], referencias?: DadosPop['referencias']): Bloco[] {
   let prefixo = inicio;
   const paragrafo = (trechos: Trecho[]): Bloco => {
     const runs = [...prefixo, ...trechosPdf(trechos)];
@@ -161,18 +162,18 @@ function textoRicoPdf(valor: string, inicio: Bloco[] = []): Bloco[] {
     const tipo = (b.ordenada ? NUMERACOES : MARCADORES)[Math.min(nivel, 2)];
     return [...rotulo, { [b.ordenada ? 'ol' : 'ul']: itens, type: tipo, markerColor: TEXTO, margin: [nivel ? 0 : RECUO_LISTA - 12, 0, 0, 0] }];
   });
-  const saida = blocos(aparar(lerTexto(valor)), 0);
+  const saida = blocos(aparar(lerTextoParaDocumento(valor, referencias)), 0);
   return saida.length ? saida : [paragrafo([])];
 }
 
 /** Caixa do passo: fundo creme, barra laranja à esquerda, "Passo N:" em destaque. */
-function caixaPasso(numero: number, texto: string, largura: number): Bloco {
+function caixaPasso(numero: number, texto: string, largura: number, referencias?: DadosPop['referencias']): Bloco {
   const rotulo = { text: `Passo ${numero}:  `, bold: true, color: `#${COR_CAIXA_ROTULO}` };
   return centralizado({
     table: {
       dontBreakRows: true,
       widths: [largura - 17 - 3.5],
-      body: [[{ stack: textoRicoPdf(texto, [rotulo]), color: TEXTO, fontSize: 10.5, lineHeight: lh(1.1), fillColor: `#${COR_CAIXA_FUNDO}` }]],
+      body: [[{ stack: textoRicoPdf(texto, [rotulo], referencias), color: TEXTO, fontSize: 10.5, lineHeight: lh(1.1), fillColor: `#${COR_CAIXA_FUNDO}` }]],
     },
     layout: {
       hLineWidth: () => 0.5, vLineWidth: (i: number) => (i === 0 ? 3 : 0.5),
@@ -219,9 +220,9 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
     if (chave) {
       const { largura, altura } = tamanhoImagemPt(passo.imagem_largura ?? 1600, passo.imagem_altura ?? 900);
       partes.push({ ...imagemPasso(chave, largura, altura), margin: [0, 6, 0, texto ? 0 : 10] });
-      if (texto) partes.push(caixaPasso(numero, texto, largura));
+      if (texto) partes.push(caixaPasso(numero, texto, largura, dados.referencias));
     } else if (texto) {
-      partes.push(caixaPasso(numero, texto, LARGURA_CAIXA));
+      partes.push(caixaPasso(numero, texto, LARGURA_CAIXA, dados.referencias));
     }
     // Subtítulo, print e caixa ficam juntos (keepNext no DOCX); o espaço depois da caixa pode ir para a próxima página.
     if (partes.length) procedimentos.push({ stack: partes, unbreakable: true });
@@ -306,7 +307,7 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
       secao('Objetivo do Processo', { nome: 'objetivo', tamanho: 17, y: 0 }, { x: 427.1, y: -1.2 }),
       vazio(9),
       {
-        table: { widths: [larguraCol(9468)], heights: [70.85], body: [[{ stack: textoRicoPdf(dados.objetivo), verticalAlignment: 'middle' }]] },
+        table: { widths: [larguraCol(9468)], heights: [70.85], body: [[{ stack: textoRicoPdf(dados.objetivo, [], dados.referencias), verticalAlignment: 'middle' }]] },
         layout: semBordas(),
       },
       vazio(12),
