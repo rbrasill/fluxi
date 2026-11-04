@@ -17,9 +17,9 @@ const normalizar = (s: string | null | undefined) => (s ?? '').normalize('NFD').
 export async function buscar(q: string, excluir?: Doc | null): Promise<ResultadoBusca[]> {
   const db = supabase();
   const [o, p] = await Promise.all([
-    db.from('pops').select('id, nome, identificacao, codigo, arquivado_em, processo:processos(nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
+    db.from('pops').select('id, nome, identificacao, codigo, status, link_publico_ativo, arquivado_em, processo:processos(nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
       .eq('tenant_id', TENANT_PADRAO).is('arquivado_em', null),
-    db.from('processos').select('id, nome, codigo, arquivado_em, area:areas(nome, organizacao:organizacoes(nome))')
+    db.from('processos').select('id, nome, codigo, link_publico_ativo, arquivado_em, area:areas(nome, organizacao:organizacoes(nome))')
       .eq('tenant_id', TENANT_PADRAO).is('arquivado_em', null),
   ]);
   if (o.error) throw o.error;
@@ -30,12 +30,14 @@ export async function buscar(q: string, excluir?: Doc | null): Promise<Resultado
       const pr = x.processo as unknown as { nome: string; area: Onde } | null;
       return { tipo: 'pop' as const, id: x.id as string, nome: x.nome as string, identificacao: (x.identificacao as string) || null, codigo: x.codigo as string,
         rotulo: rotuloDoc({ tipo: 'pop', nome: x.nome as string, identificacao: x.identificacao as string, codigo: x.codigo as string }),
-        onde: caminho(pr?.area?.organizacao?.nome, pr?.area?.nome, pr?.nome) };
+        onde: caminho(pr?.area?.organizacao?.nome, pr?.area?.nome, pr?.nome),
+        situacao: (x.status !== 'publicado' ? 'nao_publicado' : !x.link_publico_ativo ? 'offline' : 'ok') as Situacao };
     }),
     ...(p.data ?? []).map((x) => {
       const a = x.area as unknown as Onde;
       return { tipo: 'processo' as const, id: x.id as string, nome: x.nome as string, identificacao: null, codigo: x.codigo as string,
-        rotulo: rotuloDoc({ tipo: 'processo', nome: x.nome as string, codigo: x.codigo as string }), onde: caminho(a?.organizacao?.nome, a?.nome) };
+        rotulo: rotuloDoc({ tipo: 'processo', nome: x.nome as string, codigo: x.codigo as string }), onde: caminho(a?.organizacao?.nome, a?.nome),
+        situacao: (x.link_publico_ativo ? 'ok' : 'offline') as Situacao };
     }),
   ].filter((x) => !(excluir && x.tipo === excluir.tipo && x.id === excluir.id));
   const termo = normalizar(q);

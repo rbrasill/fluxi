@@ -2,7 +2,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { IconeRelacao } from '@/components/pop/IconeRelacao';
-import { ORDEM_RELACOES, RELACOES, TIPOS_DOC, type Doc, type Relacao, type ResultadoBusca, type TipoDoc } from '@/lib/referencias';
+import { ORDEM_RELACOES, RELACOES, TIPOS_DOC, type Doc, type Relacao, type ResultadoBusca, type Situacao, type TipoDoc } from '@/lib/referencias';
+
+// Situação da página pública de cada resultado: quem escolhe já sabe se o leitor vai conseguir abrir.
+const SITUACAO_BUSCA: Record<Situacao, { rotulo: string; dica: string }> = {
+  ok: { rotulo: 'Online', dica: 'A página pública está no ar: o leitor abre o documento pela referência.' },
+  nao_publicado: { rotulo: 'Não publicado', dica: 'Ainda não foi publicado: a referência abre a página "não disponível" até ser publicado.' },
+  offline: { rotulo: 'Offline', dica: 'A página pública está desligada: a referência abre a página "não disponível" até ser ligada.' },
+  arquivado: { rotulo: 'Arquivado', dica: 'Arquivado: a página pública fica fora do ar.' },
+  excluido: { rotulo: 'Excluído', dica: 'O documento foi excluído.' },
+};
 import { buscarReferencias } from '@/lib/referencias-cliente';
 
 // Diálogo "Adicionar referência" (decisão 35): busca por nome, identificação ou código, filtro
@@ -80,6 +89,7 @@ export function SeletorReferencia({ excluir, aoEscolher, aoFechar }: {
                 <strong>{x.tipo === 'pop' ? (x.identificacao || x.codigo) : x.codigo} · {x.nome}</strong>
                 {x.onde && <span>{x.onde}</span>}
               </span>
+              <span className={`ref-online ${x.situacao === 'ok' ? 'sim' : 'nao'}`} title={SITUACAO_BUSCA[x.situacao].dica}>{SITUACAO_BUSCA[x.situacao].rotulo}</span>
               <span className={`ref-previa rel-${relacao}`}><IconeRelacao relacao={relacao} tamanho={13} />{RELACOES[relacao].rotulo}</span>
             </button>
           ))}

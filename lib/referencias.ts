@@ -70,7 +70,7 @@ export type ReferenciaResolvida = {
 export type ReferenciadoEm = ReferenciaResolvida & { relacoes: Relacao[] };
 
 /** Resultado da busca para inserir uma referência. */
-export type ResultadoBusca = { tipo: TipoDoc; id: string; nome: string; identificacao: string | null; codigo: string; rotulo: string; onde: string };
+export type ResultadoBusca = { tipo: TipoDoc; id: string; nome: string; identificacao: string | null; codigo: string; rotulo: string; onde: string; situacao: Situacao };
 
 /** Texto de uma referência num documento (PDF, DOCX): "Próxima etapa: POP MKT-002 · Nome". */
 export const textoReferencia = (relacao: Relacao, rotulo: string) => `${RELACOES[relacao].rotulo}: ${rotulo}`;
