@@ -250,7 +250,7 @@ function ProcessoPage() {
         <div className="lista-pops">
           {pops.map((o) => (
             <article key={o.id} className="linha-pop pop-destaque">
-              <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
+              <span className="pop-icone"><Icone nome="rota" tamanho={22} /></span>
               <Link href={`/app/pops/${o.id}`} className="pop-nome">
                 <strong>{o.nome}</strong>
                 <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {data(o.atualizado_em)}</span>

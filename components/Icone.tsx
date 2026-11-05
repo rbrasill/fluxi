@@ -15,6 +15,8 @@ const caminhos: Record<string, string> = {
   mover: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zM9 13h6M13 10.5l2.5 2.5-2.5 2.5',
   gravacao: 'M9 3h6v11H9zM5 11a7 7 0 0 0 14 0M12 18v3',
   pop: 'M14 3H6v18h12V7zM14 3v4h4M9 13h6M9 17h4',
+  // Rota: o caminho de um ponto a outro; usado nos POPs da página do processo.
+  rota: 'M6 17a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM18 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM8 19h7.5a3.5 3.5 0 0 0 0-7h-7a3.5 3.5 0 0 1 0-7H16',
   cursor: 'M5 3l14 7-6 2-2 6z',
   caixa: 'M4 6h16v12H4z',
   seta: 'M5 19L19 5M10 5h9v9',
