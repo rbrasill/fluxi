@@ -86,7 +86,7 @@ function PopPublicoPage() {
 
         {textoPuro(c.objetivo) && (
           <section className="pub-secao" id="objetivo">
-            <h2>Objetivo do processo</h2>
+            <h2>Objetivo do POP (Procedimento Operacional Padrão)</h2>
             <Rico valor={c.objetivo} />
           </section>
         )}

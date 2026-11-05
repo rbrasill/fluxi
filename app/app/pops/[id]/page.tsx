@@ -450,13 +450,13 @@ function EditorPop() {
         </div>
       </section>
 
-      <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do processo">
+      <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do POP">
         <div className="sec-titulo">
-          <h2>Objetivo do processo</h2>
-          <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
+          <h2>Objetivo do POP (Procedimento Operacional Padrão)</h2>
+          <MelhorarComIa variante="botao" rotulo="Objetivo do POP" vazio={!textoPuro(c.objetivo)}
             pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
         </div>
-        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do POP" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">
