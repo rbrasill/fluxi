@@ -6,6 +6,7 @@ import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { restaurarProcesso } from '@/lib/processos';
 
 export default function AreaPage() {
@@ -83,7 +84,8 @@ export default function AreaPage() {
             <span className="pop-icone"><Icone nome={p.arquivado_em ? 'arquivar' : 'pasta'} tamanho={20} /></span>
             <Link href={`/app/processos/${p.id}`} className="pop-nome">
               <strong>{p.nome}</strong>
-              <span>{p.arquivado_em ? `Arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : p.descricao || ' '}</span>
+              {/* A descrição é texto rico (decisão 35): aqui vai só o texto, em até duas linhas. */}
+              <span className="resumo-descricao">{p.arquivado_em ? `Arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : textoPuro(p.descricao) || ' '}</span>
             </Link>
             <span className="contagens">
               <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>
