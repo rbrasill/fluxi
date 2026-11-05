@@ -419,11 +419,11 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .contagens { display: flex; gap: 12px; font-size: 13px; color: var(--muted); }
 .contagens span { display: inline-flex; align-items: center; gap: 4px; }
 .processo-meta { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-/* Selo do tipo acima do nome: "Processo" (roxo) ou "POP" (azul-acinzentado, a cor das pegadas), para saber onde se está. */
+/* Selo do tipo acima do nome: "Processo" (roxo) ou "POP" (laranja, com as pegadas na cor original), para saber onde se está. */
 .selo-doc { display: flex; align-items: center; gap: 6px; width: fit-content; margin-bottom: 6px; padding: 3px 10px 3px 6px; border-radius: 999px; border: 1px solid; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 .selo-doc img { display: block; flex-shrink: 0; }
 .selo-processo { background: #f2f1f9; border-color: #dddaf0; color: #544c88; }
-.selo-pop { background: #eef3f6; border-color: #d3dee6; color: #3f5a6e; }
+.selo-pop { background: #fff4ec; border-color: #ffd9c2; color: #b8470b; }
 .area-editavel { border: 1px solid transparent; border-radius: 8px; padding: 2px 6px; background: transparent; color: var(--muted); font-size: 14px; width: min(320px, 100%); }
 .area-editavel:hover, .area-editavel:focus { border-color: var(--line-strong); color: var(--ink); }
 .secao-processo { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
