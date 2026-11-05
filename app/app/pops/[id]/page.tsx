@@ -154,8 +154,8 @@ function EditorPop() {
     return () => window.removeEventListener('beforeunload', aviso);
   }, []);
 
-  if (pop === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (pop === null) return <div className="page"><div className="empty"><h2>POP não encontrado</h2><Link className="btn btn-primary" href="/app/pops">Voltar</Link></div></div>;
+  if (pop === undefined) return <div className="page fundo-pop"><p className="notice">Carregando…</p></div>;
+  if (pop === null) return <div className="page fundo-pop"><div className="empty"><h2>POP não encontrado</h2><Link className="btn btn-primary" href="/app/pops">Voltar</Link></div></div>;
 
   const c = pop.conteudo;
   const setConteudo = (novo: Partial<ConteudoPop>) => alterar({ conteudo: { ...c, ...novo } });
@@ -369,7 +369,7 @@ function EditorPop() {
 
   return (
     <ReferenciasContext.Provider value={pop.referencias}>
-    <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
+    <div className="page page-pop fundo-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
       <div className="page-head">
         <div>
           {onde ? (

@@ -1,5 +1,7 @@
 :root {
   --bg: #f4f6f5;
+  --fundo-processo: #e9f1f4; /* fundo da página dentro de um processo */
+  --fundo-pop: #fbf3ea; /* fundo da página dentro de um POP */
   --surface: #ffffff;
   --ink: #0e1a1f;
   --muted: #5b6b70;
@@ -67,6 +69,9 @@ input { font-family: inherit; }
 /* Lista */
 /* Centralizada: em telas largas (ou com o menu recolhido) a sobra fica dividida entre os dois lados. */
 .page { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
+/* Fundo de cada tipo de documento: dentro de um processo (azul-acinzentado) ou de um POP (pêssego), para saber onde se está. */
+body:has(.fundo-processo) { background: var(--fundo-processo); }
+body:has(.fundo-pop) { background: var(--fundo-pop); }
 .page-head { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .page-head h1 { margin: 0; font-size: 28px; font-weight: 600; }
 .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }

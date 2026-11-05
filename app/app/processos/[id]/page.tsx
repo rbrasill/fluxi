@@ -49,8 +49,8 @@ function ProcessoPage() {
     listarAreas().then(setAreas).catch(() => {});
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
+  if (p === undefined) return <div className="page fundo-processo"><p className="notice">Carregando…</p></div>;
+  if (p === null) return <div className="page fundo-processo"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
   const citadoEm = p.referenciado_em.length ? ` Atenção: este processo é referenciado em ${p.referenciado_em.length} ${p.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
 
   // Novo POP: a pessoa dá o nome antes (o POP não herda o nome do processo).
@@ -140,7 +140,7 @@ function ProcessoPage() {
 
   return (
     <ReferenciasContext.Provider value={p.referencias}>
-    <div className="page">
+    <div className="page fundo-processo">
       <div className="page-head">
         <div>
           <nav className="migalha" aria-label="Caminho">
