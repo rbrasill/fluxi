@@ -9,6 +9,13 @@ import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { restaurarProcesso } from '@/lib/processos';
 
+// Resumo da descrição na lista: só o texto (a descrição é texto rico), numa linha, até 120 caracteres.
+const LIMITE_RESUMO = 120;
+function resumo(descricao: string | null | undefined) {
+  const t = textoPuro(descricao).replace(/\s+/g, ' ').trim();
+  return { texto: t.length > LIMITE_RESUMO ? `${t.slice(0, LIMITE_RESUMO).trimEnd()}…` : t, completo: t };
+}
+
 export default function AreaPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -84,8 +91,9 @@ export default function AreaPage() {
             <span className="pop-icone"><Icone nome={p.arquivado_em ? 'arquivar' : 'pasta'} tamanho={20} /></span>
             <Link href={`/app/processos/${p.id}`} className="pop-nome">
               <strong>{p.nome}</strong>
-              {/* A descrição é texto rico (decisão 35): aqui vai só o texto, em até duas linhas. */}
-              <span className="resumo-descricao">{p.arquivado_em ? `Arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : textoPuro(p.descricao) || ' '}</span>
+              {p.arquivado_em
+                ? <span>Arquivado em {new Date(p.arquivado_em).toLocaleDateString('pt-BR')}</span>
+                : <span className="resumo-descricao" title={resumo(p.descricao).completo || undefined}>{resumo(p.descricao).texto || ' '}</span>}
             </Link>
             <span className="contagens">
               <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>
