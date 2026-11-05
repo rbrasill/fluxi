@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { DialogoNome } from '@/components/DialogoNome';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
 import { SeloDocumento } from '@/components/SeloDocumento';
@@ -32,7 +33,7 @@ function ProcessoPage() {
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [fluxoDialogo, setFluxoDialogo] = useState<'desenhar' | 'ia' | 'substituir' | null>(null);
-  const [criandoPop, setCriandoPop] = useState(false);
+  const [criandoPop, setCriandoPop] = useState(false); // diálogo "Novo POP" aberto
   const [ocupado, setOcupado] = useState(false);
   const [descricao, setDescricao] = useState('');
   const [salvandoDescricao, setSalvandoDescricao] = useState<'' | 'salvando' | 'erro'>('');
@@ -52,15 +53,10 @@ function ProcessoPage() {
   if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
   const citadoEm = p.referenciado_em.length ? ` Atenção: este processo é referenciado em ${p.referenciado_em.length} ${p.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
 
-  async function novoPop() {
-    setCriandoPop(true);
-    try {
-      const { id: popId } = await criarPop({ processo_id: p!.id, nome: p!.nome });
-      router.push(`/app/pops/${popId}`);
-    } catch {
-      setCriandoPop(false);
-      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
-    }
+  // Novo POP: a pessoa dá o nome antes (o POP não herda o nome do processo).
+  async function novoPop(nome: string) {
+    const { id: popId } = await criarPop({ processo_id: p!.id, nome });
+    router.push(`/app/pops/${popId}`);
   }
 
   // Arquivar em vez de excluir (decisão 31): só o que está arquivado pode ser excluído, e vai tudo junto.
@@ -246,7 +242,7 @@ function ProcessoPage() {
       <section className="secao-processo">
         <div className="secao-head">
           <h2><Icone nome="pop" tamanho={18} />POPs do processo</h2>
-          {!arquivado && <button className="btn btn-primary" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Novo POP'}</button>}
+          {!arquivado && <button className="btn btn-primary" onClick={() => setCriandoPop(true)}><Icone nome="mais" />Novo POP</button>}
         </div>
         {pops.length === 0 && (
           <p className="notice">{arquivado ? 'Nenhum POP ativo neste processo.' : 'Nenhum POP ainda. Cada POP ensina a executar uma atividade do processo: crie um e escreva o passo a passo, gravando a tela se quiser.'}</p>
@@ -290,6 +286,10 @@ function ProcessoPage() {
           aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />
+      )}
+      {criandoPop && (
+        <DialogoNome titulo="Novo POP" rotulo="Nome do POP" exemplo="Ex.: Criação de pedido de compra" aviso={<>O POP entra no processo <b>{p.nome}</b>.</>}
+          aoCriar={novoPop} aoFechar={() => setCriandoPop(false)} />
       )}
       {movendo && (
         <MoverCopiar item={{ tipo: 'processo', id: p.id, nome: p.nome, area_id: p.area_id, totais: { pops: pops.length, gravacoes: p.gravacoes.length, fluxograma: !!fluxo } }}

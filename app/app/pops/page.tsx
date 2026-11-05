@@ -31,6 +31,7 @@ function ListaPops() {
   const [novoProcesso, setNovoProcesso] = useState(false);
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
   const [processoId, setProcessoId] = useState('');
+  const [nomeNovo, setNomeNovo] = useState('');
   const [criando, setCriando] = useState(false);
   const [movendo, setMovendo] = useState<PopResumo | null>(null);
 
@@ -50,6 +51,7 @@ function ListaPops() {
 
   function abrirNovo() {
     setNovo(true);
+    setNomeNovo('');
     setErro('');
     listarProcessos().then(setProcessos).catch(() => setProcessos([]));
   }
@@ -57,10 +59,11 @@ function ListaPops() {
   async function criar(e: React.FormEvent) {
     e.preventDefault();
     const pr = processos?.find((x) => x.id === processoId);
-    if (!pr) return;
+    if (!pr || !nomeNovo.trim()) return;
     setCriando(true);
     try {
-      const { id } = await criarPop({ processo_id: pr.id, nome: pr.nome });
+      // A pessoa dá o nome do POP (ele não herda o nome do processo).
+      const { id } = await criarPop({ processo_id: pr.id, nome: nomeNovo.trim() });
       router.push(`/app/pops/${id}`);
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Erro ao criar');
@@ -165,6 +168,10 @@ function ListaPops() {
                 ))}
               </select>
             </label>
+            <label className="field">
+              Nome do POP
+              <input value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} maxLength={200} required placeholder="Ex.: Criação de pedido de compra" />
+            </label>
             <p className="notice">
               O POP começa em branco. Para a IA escrever o POP a partir de uma gravação de tela, abra o processo e use <b>Gravar a tela</b>.
               {' '}O processo não existe ainda? <button type="button" className="link-sec" onClick={() => { setNovo(false); setNovoProcesso(true); }}>Criar processo</button>
@@ -172,7 +179,7 @@ function ListaPops() {
             {erro && <p className="form-erro" role="alert">{erro}</p>}
             <div className="dialog-actions">
               <button type="button" className="btn" onClick={() => setNovo(false)} disabled={criando}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={criando || !processoId}>{criando ? 'Criando…' : 'Criar e editar'}</button>
+              <button type="submit" className="btn btn-primary" disabled={criando || !processoId || !nomeNovo.trim()}>{criando ? 'Criando…' : 'Criar e editar'}</button>
             </div>
           </form>
         </div>
