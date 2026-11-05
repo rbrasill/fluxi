@@ -780,5 +780,6 @@ a.ref-origem:hover strong { text-decoration: underline; }
 /* Descrição do processo (editor) */
 .descricao-processo { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .descricao-processo h3 { margin: 0; font-size: 16px; }
+.sec-titulo-acoes { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .descricao-processo .notice.erro { color: var(--danger); }
 .descricao-processo[inert] { opacity: .7; }

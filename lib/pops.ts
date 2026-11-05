@@ -68,7 +68,11 @@ export const copiarPop = (id: string, dados: { processo_id: string; nome?: strin
   api<{ id: string }>(`/api/pops/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
 /** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
 export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
-export type PedidoMelhoria = { campo: 'passo' | 'objetivo'; texto: string; pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string };
+export type PedidoMelhoria = {
+  campo: 'passo' | 'objetivo' | 'descricao'; texto: string;
+  pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string; // POP
+  processo?: string; area?: string; organizacao?: string; // descrição do processo
+};
 export const melhorarTextoComIa = (dados: PedidoMelhoria) =>
   api<SugestaoIa>('/api/ia/melhorar-texto', { method: 'POST', body: JSON.stringify(dados) });
 export const urlDocx = (id: string) => `/api/pops/${id}/docx`;

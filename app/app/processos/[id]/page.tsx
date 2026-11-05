@@ -9,9 +9,11 @@ import { MoverCopiar } from '@/components/MoverCopiar';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { SeloStatus } from '@/components/SeloStatus';
+import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { TextoRico } from '@/components/pop/TextoRico';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
 import type { ResultadoBusca } from '@/lib/referencias';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
@@ -216,7 +218,13 @@ function ProcessoPage() {
         <div className="cartao descricao-processo" inert={arquivado}>
           <div className="sec-titulo">
             <h3>Descrição do processo</h3>
-            {salvandoDescricao && <span className={`notice ${salvandoDescricao === 'erro' ? 'erro' : ''}`}>{salvandoDescricao === 'salvando' ? 'Salvando…' : 'Erro ao salvar. Tente editar de novo.'}</span>}
+            <div className="sec-titulo-acoes">
+              {salvandoDescricao && <span className={`notice ${salvandoDescricao === 'erro' ? 'erro' : ''}`}>{salvandoDescricao === 'salvando' ? 'Salvando…' : 'Erro ao salvar. Tente editar de novo.'}</span>}
+              {!arquivado && (
+                <MelhorarComIa variante="botao" rotulo="Descrição do processo" vazio={!textoPuro(descricao)} aoAplicar={mudarDescricao}
+                  pedido={() => ({ campo: 'descricao', texto: descricao, processo: p.nome, area: p.area?.nome, organizacao: p.area?.organizacao?.nome })} />
+              )}
+            </div>
           </div>
           <TextoRico valor={descricao} aoMudar={mudarDescricao} rotulo="Descrição do processo" linhas={4}
             placeholder="O que é este processo, onde começa e onde termina. Use “Referência” para citar os POPs e os outros processos ligados a ele."
