@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeProcesso } from '@/components/IconeProcesso';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { SeloStatus } from '@/components/SeloStatus';
 import { ROTULO_STATUS, formatarTempo, listarGravacoes, type GravacaoResumo } from '@/lib/gravacoes';
@@ -110,7 +111,7 @@ export default function InicioPage() {
             <div className="lista-pops">
               {semPop.slice(0, 8).map((p) => (
                 <Link key={p.id} href={`/app/processos/${p.id}`} className="linha-pop">
-                  <span className="pop-icone"><Icone nome="pasta" tamanho={20} /></span>
+                  <IconeProcesso />
                   <span className="pop-nome"><strong>{p.nome}</strong><span>{[p.area?.organizacao?.nome, p.area?.nome].filter(Boolean).join(' · ')}</span></span>
                   <span className="btn">Documentar</span>
                 </Link>

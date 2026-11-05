@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeProcesso } from '@/components/IconeProcesso';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
@@ -49,7 +50,7 @@ export default function ProcessosPage() {
       <div className="lista-pops">
         {filtrados.map((p) => (
           <Link key={p.id} href={`/app/processos/${p.id}`} className="linha-pop linha-processo">
-            <span className="pop-icone"><Icone nome="pasta" tamanho={20} /></span>
+            <IconeProcesso />
             <span className="pop-nome">
               <strong>{p.nome}</strong>
               <span>{p.area?.organizacao?.nome} · {p.area?.nome}</span>

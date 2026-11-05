@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeProcesso } from '@/components/IconeProcesso';
 import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
@@ -88,7 +89,7 @@ export default function AreaPage() {
       <div className="lista-pops">
         {lista.map((p) => (
           <article key={p.id} className={`linha-pop linha-processo ${p.arquivado_em ? 'arquivada' : ''}`}>
-            <span className="pop-icone"><Icone nome={p.arquivado_em ? 'arquivar' : 'pasta'} tamanho={20} /></span>
+            <IconeProcesso arquivado={!!p.arquivado_em} />
             <Link href={`/app/processos/${p.id}`} className="pop-nome">
               <strong>{p.nome}</strong>
               {p.arquivado_em
