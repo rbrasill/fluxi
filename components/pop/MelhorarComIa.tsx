@@ -4,8 +4,9 @@ import { Icone } from '@/components/Icone';
 import { normalizarHtml } from '@/lib/pop/texto-rico';
 import { melhorarTextoComIa, type PedidoMelhoria, type SugestaoIa } from '@/lib/pops';
 
-// Botão de IA ao lado do texto (passo ou objetivo): pede a revisão, mostra o antes e a sugestão
-// lado a lado e só troca o texto se a pessoa escolher "Usar sugestão" (decisão 30).
+// Botão de IA ao lado do texto (passo ou objetivo do POP, descrição do processo): pede a revisão,
+// mostra o antes e a sugestão lado a lado e só troca o texto se a pessoa escolher "Usar sugestão"
+// (decisão 30).
 
 type Estado = { fase: 'carregando' } | { fase: 'pronto'; sugestao: SugestaoIa } | { fase: 'erro'; mensagem: string };
 

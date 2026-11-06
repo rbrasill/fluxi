@@ -3,10 +3,19 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { IconeProcesso } from '@/components/IconeProcesso';
 import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { restaurarProcesso } from '@/lib/processos';
+
+// Resumo da descrição na lista: só o texto (a descrição é texto rico), numa linha, até 120 caracteres.
+const LIMITE_RESUMO = 120;
+function resumo(descricao: string | null | undefined) {
+  const t = textoPuro(descricao).replace(/\s+/g, ' ').trim();
+  return { texto: t.length > LIMITE_RESUMO ? `${t.slice(0, LIMITE_RESUMO).trimEnd()}…` : t, completo: t };
+}
 
 export default function AreaPage() {
   const { id } = useParams<{ id: string }>();
@@ -80,10 +89,12 @@ export default function AreaPage() {
       <div className="lista-pops">
         {lista.map((p) => (
           <article key={p.id} className={`linha-pop linha-processo ${p.arquivado_em ? 'arquivada' : ''}`}>
-            <span className="pop-icone"><Icone nome={p.arquivado_em ? 'arquivar' : 'pasta'} tamanho={20} /></span>
+            <IconeProcesso arquivado={!!p.arquivado_em} />
             <Link href={`/app/processos/${p.id}`} className="pop-nome">
               <strong>{p.nome}</strong>
-              <span>{p.arquivado_em ? `Arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : p.descricao || ' '}</span>
+              {p.arquivado_em
+                ? <span>Arquivado em {new Date(p.arquivado_em).toLocaleDateString('pt-BR')}</span>
+                : <span className="resumo-descricao" title={resumo(p.descricao).completo || undefined}>{resumo(p.descricao).texto || ' '}</span>}
             </Link>
             <span className="contagens">
               <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>

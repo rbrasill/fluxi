@@ -1,16 +1,21 @@
 import 'server-only';
 import { z } from 'zod';
 import { termosAlterados } from '@/lib/pop/termos-protegidos';
-import { normalizarHtml, textoPuro } from '@/lib/pop/texto-rico';
+import { lerTexto, mapearTrechos, normalizarHtml, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
+import { chaveRef } from '@/lib/referencias';
 import { completarJson } from './groq';
 import { ErroApi } from './http';
 
-// Revisão do texto de um passo (ou do objetivo) do POP com IA: corrige e deixa mais claro, sem
-// inventar nada e mantendo a formatação. A pessoa vê a sugestão e decide se usa (decisão 30).
+// Revisão de texto com IA: um passo ou o objetivo do POP, ou a descrição do processo. Corrige e
+// deixa mais claro, sem inventar nada e mantendo a formatação e as referências. A pessoa vê a
+// sugestão e decide se usa (decisão 30).
 
 export type PedidoMelhoria = {
-  campo: 'passo' | 'objetivo';
+  campo: 'passo' | 'objetivo' | 'descricao';
   texto: string;
+  processo?: string; // nome do processo (descrição)
+  area?: string; // área do processo (descrição)
+  organizacao?: string; // organização do processo (descrição)
   pop?: string; // nome do POP
   procedimento?: string; // nome do procedimento do passo
   numero?: number; // número do passo
@@ -45,6 +50,7 @@ const REGRAS_CAMPO = {
 - Títulos e subtítulos dentro do texto (ex.: "Validação da Assinatura Digital", "Resultado da Validação") continuam em linha própria; se o texto começa com um título, deixe-o em negrito.
 - Referências ao print ("na tela abaixo", "ícones destacados", "na aba sinalizada") continuam no texto.`,
   objetivo: `É o OBJETIVO do processo: para que serve o procedimento e qual resultado ele garante. Escreva em frases completas, sem descrever os passos. Não resuma nem encurte um objetivo longo: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
+  descricao: `É a DESCRIÇÃO de um PROCESSO (não de um POP): o que o processo é, para que serve, onde começa e onde termina, os sistemas e as áreas envolvidos e o resultado. Escreva em frases completas e bem pontuadas; se for uma frase longa demais, divida em frases menores na mesma ordem. Não transforme em lista de passos, não resuma nem encurte: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
 };
 
 const EXEMPLOS = `Exemplos (antes → depois):
@@ -60,15 +66,44 @@ const curto = (s: string | undefined, n = 400) => {
   return t.length > n ? `${t.slice(0, n)}…` : t;
 };
 
-function montarPrompt(p: PedidoMelhoria, html: string) {
+// Referências a outros documentos (decisão 35) não passam pela IA: cada uma vira um marcador
+// [[REF1]], [[REF2]]… e volta no lugar dele depois. Se a IA perder ou repetir um marcador, a
+// sugestão é recusada (assim um chip nunca some ao "Usar sugestão").
+const MARCADOR = /\[\[REF(\d+)\]\]/g;
+const escaparHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+export function protegerReferencias(html: string) {
+  const refs: string[] = [];
+  const blocos = mapearTrechos(lerTexto(html), (t) => {
+    if (!t.referencia) return t;
+    refs.push(`<a data-ref="${chaveRef(t.referencia)}" data-rel="${t.referencia.relacao}">${escaparHtml(t.texto)}</a>`);
+    const { referencia: _r, ...resto } = t;
+    return { ...resto, texto: `[[REF${refs.length}]]` };
+  });
+  return { html: refs.length ? paraHtml(blocos) : html, refs };
+}
+
+export function restaurarReferencias(html: string, refs: string[]) {
+  const vistos = [...html.matchAll(MARCADOR)].map((m) => Number(m[1]));
+  const faltando = refs.map((_, i) => i + 1).filter((n) => vistos.filter((v) => v === n).length !== 1);
+  if (faltando.length || vistos.some((v) => v < 1 || v > refs.length)) {
+    throw new ErroApi(422, 'A IA mexeu nas referências a outros documentos e a sugestão foi descartada. Tente de novo.');
+  }
+  return refs.length ? normalizarHtml(html.replace(MARCADOR, (_, n) => refs[Number(n) - 1])) : html;
+}
+
+function montarPrompt(p: PedidoMelhoria, html: string, comReferencias: boolean) {
   const contexto = [
+    p.processo && `Processo: ${p.processo}`,
+    p.organizacao && `Organização: ${p.organizacao}`,
+    p.area && `Área: ${p.area}`,
     p.pop && `POP: ${p.pop}`,
     p.procedimento && `Procedimento: ${p.procedimento}`,
     p.numero && `Passo número ${p.numero}`,
     p.anterior && `Passo anterior (só contexto, não reescreva): ${curto(p.anterior)}`,
     p.seguinte && `Passo seguinte (só contexto, não reescreva): ${curto(p.seguinte)}`,
   ].filter(Boolean).join('\n');
-  return `Você revisa textos de POPs (Procedimentos Operacionais Padrão) de uma empresa brasileira. Revise o texto abaixo.
+  return `Você revisa textos de processos e de POPs (Procedimentos Operacionais Padrão) de uma empresa brasileira. Revise o texto abaixo.
 
 ${REGRAS_CAMPO[p.campo]}
 
@@ -80,7 +115,7 @@ Regras:
 - Texto muito curto ou que é só uma referência ao print (ex.: "2", "caminho pasta"): devolva igual.
 - Mantenha a estrutura: títulos, linhas em branco (<p></p>) e a ordem do conteúdo.
 - Mantenha a formatação: devolva HTML usando só estas tags: <p>, <br>, <strong>, <em>, <u>, <s>, <ul>, <ol>, <li>, <table>, <tbody>, <tr>, <th>, <td>, <span style="color: #RRGGBB"> e <mark data-color="#RRGGBB">. Trechos em negrito, coloridos ou marcados continuam assim; listas continuam listas; tabelas mantêm as linhas e colunas.
-- Se o texto já estiver bom, devolva-o igual e "mudancas" vazio.
+${comReferencias ? '- Os marcadores [[REF1]], [[REF2]]… são referências a outros documentos: mantenha cada um exatamente uma vez, escrito igual, no mesmo ponto da frase.\n' : ''}- Se o texto já estiver bom, devolva-o igual e "mudancas" vazio.
 - Em "mudancas", diga em até 5 frases curtas o que mudou (ex.: "Corrigi a concordância em 'os campos obrigatório'").
 
 ${EXEMPLOS}
@@ -90,11 +125,12 @@ ${html}`;
 }
 
 export async function melhorarTexto(p: PedidoMelhoria) {
-  const html = normalizarHtml(p.texto);
-  if (!textoPuro(html)) throw new ErroApi(400, 'Escreva o texto antes de pedir a melhoria.');
+  const original = normalizarHtml(p.texto);
+  if (!textoPuro(original)) throw new ErroApi(400, 'Escreva o texto antes de pedir a melhoria.');
+  const { html, refs } = protegerReferencias(original);
   const { resultado, modelo } = await completarJson(
     // Textos longos (títulos, listas, vários itens) pedem mais cuidado com a estrutura: raciocínio médio.
-    { prompt: montarPrompt(p, html), schema: SCHEMA, esforco: html.length > 1200 ? 'medium' : 'low', maxTokens: 6000, temperatura: 0.3 },
+    { prompt: montarPrompt(p, html, refs.length > 0), schema: SCHEMA, esforco: html.length > 1200 ? 'medium' : 'low', maxTokens: 6000, temperatura: 0.3 },
     (bruto) => {
       const r = Resposta.parse(bruto);
       // O que a IA devolve passa pelo mesmo filtro do editor: só as tags e cores permitidas.
@@ -105,10 +141,10 @@ export async function melhorarTexto(p: PedidoMelhoria) {
       if (alterados.length) {
         throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Tente de novo.`);
       }
-      return { texto, mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
+      return { texto: restaurarReferencias(texto, refs), mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
     },
   );
   // Quando volta igual, a IA às vezes ainda descreve uma "mudança" (ex.: um ponto final que já existia).
-  const igual = textoPuro(resultado.texto) === textoPuro(html);
+  const igual = textoPuro(resultado.texto) === textoPuro(original);
   return { texto: resultado.texto, mudancas: igual ? [] : resultado.mudancas, igual, modelo };
 }

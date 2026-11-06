@@ -154,8 +154,8 @@ function EditorPop() {
     return () => window.removeEventListener('beforeunload', aviso);
   }, []);
 
-  if (pop === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (pop === null) return <div className="page"><div className="empty"><h2>POP não encontrado</h2><Link className="btn btn-primary" href="/app/pops">Voltar</Link></div></div>;
+  if (pop === undefined) return <div className="page fundo-pop"><p className="notice">Carregando…</p></div>;
+  if (pop === null) return <div className="page fundo-pop"><div className="empty"><h2>POP não encontrado</h2><Link className="btn btn-primary" href="/app/pops">Voltar</Link></div></div>;
 
   const c = pop.conteudo;
   const setConteudo = (novo: Partial<ConteudoPop>) => alterar({ conteudo: { ...c, ...novo } });
@@ -369,7 +369,7 @@ function EditorPop() {
 
   return (
     <ReferenciasContext.Provider value={pop.referencias}>
-    <div className="page page-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
+    <div className="page page-pop fundo-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
       <div className="page-head">
         <div>
           {onde ? (
@@ -450,13 +450,13 @@ function EditorPop() {
         </div>
       </section>
 
-      <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do processo">
+      <section className={`cartao pop-sec ${destaque === 'objetivo' ? 'retomado' : ''}`} id="pos-objetivo" data-pos="objetivo" data-rotulo="Objetivo do POP">
         <div className="sec-titulo">
-          <h2>Objetivo do processo</h2>
-          <MelhorarComIa variante="botao" rotulo="Objetivo do processo" vazio={!textoPuro(c.objetivo)}
+          <h2>Objetivo do POP (Procedimento Operacional Padrão)</h2>
+          <MelhorarComIa variante="botao" rotulo="Objetivo do POP" vazio={!textoPuro(c.objetivo)}
             pedido={() => ({ campo: 'objetivo', texto: c.objetivo, pop: pop.nome })} aoAplicar={(v) => setConteudo({ objetivo: v })} />
         </div>
-        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do processo" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
+        <TextoRico valor={c.objetivo} aoMudar={(v) => setConteudo({ objetivo: v })} rotulo="Objetivo do POP" linhas={3} placeholder="Para que serve este procedimento e qual resultado ele garante." documento={documento} aoReferenciar={registrarReferencia} />
       </section>
 
       <section className={`cartao pop-sec ${destaque === 'envolvidos' ? 'retomado' : ''}`} id="pos-envolvidos" data-pos="envolvidos" data-rotulo="Envolvidos">

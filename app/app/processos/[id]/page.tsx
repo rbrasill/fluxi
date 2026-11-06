@@ -4,14 +4,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { DialogoNome } from '@/components/DialogoNome';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { SeloStatus } from '@/components/SeloStatus';
+import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { TextoRico } from '@/components/pop/TextoRico';
+import { textoPuro } from '@/lib/pop/texto-rico';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
 import type { ResultadoBusca } from '@/lib/referencias';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
@@ -30,7 +33,7 @@ function ProcessoPage() {
   const [nome, setNome] = useState('');
   const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [fluxoDialogo, setFluxoDialogo] = useState<'desenhar' | 'ia' | 'substituir' | null>(null);
-  const [criandoPop, setCriandoPop] = useState(false);
+  const [criandoPop, setCriandoPop] = useState(false); // diálogo "Novo POP" aberto
   const [ocupado, setOcupado] = useState(false);
   const [descricao, setDescricao] = useState('');
   const [salvandoDescricao, setSalvandoDescricao] = useState<'' | 'salvando' | 'erro'>('');
@@ -46,19 +49,14 @@ function ProcessoPage() {
     listarAreas().then(setAreas).catch(() => {});
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (p === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (p === null) return <div className="page"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
+  if (p === undefined) return <div className="page fundo-processo"><p className="notice">Carregando…</p></div>;
+  if (p === null) return <div className="page fundo-processo"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
   const citadoEm = p.referenciado_em.length ? ` Atenção: este processo é referenciado em ${p.referenciado_em.length} ${p.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
 
-  async function novoPop() {
-    setCriandoPop(true);
-    try {
-      const { id: popId } = await criarPop({ processo_id: p!.id, nome: p!.nome });
-      router.push(`/app/pops/${popId}`);
-    } catch {
-      setCriandoPop(false);
-      void avisar('Não foi possível criar o POP.', 'Tente de novo em instantes.');
-    }
+  // Novo POP: a pessoa dá o nome antes (o POP não herda o nome do processo).
+  async function novoPop(nome: string) {
+    const { id: popId } = await criarPop({ processo_id: p!.id, nome });
+    router.push(`/app/pops/${popId}`);
   }
 
   // Arquivar em vez de excluir (decisão 31): só o que está arquivado pode ser excluído, e vai tudo junto.
@@ -142,7 +140,7 @@ function ProcessoPage() {
 
   return (
     <ReferenciasContext.Provider value={p.referencias}>
-    <div className="page">
+    <div className="page fundo-processo">
       <div className="page-head">
         <div>
           <nav className="migalha" aria-label="Caminho">
@@ -216,7 +214,13 @@ function ProcessoPage() {
         <div className="cartao descricao-processo" inert={arquivado}>
           <div className="sec-titulo">
             <h3>Descrição do processo</h3>
-            {salvandoDescricao && <span className={`notice ${salvandoDescricao === 'erro' ? 'erro' : ''}`}>{salvandoDescricao === 'salvando' ? 'Salvando…' : 'Erro ao salvar. Tente editar de novo.'}</span>}
+            <div className="sec-titulo-acoes">
+              {salvandoDescricao && <span className={`notice ${salvandoDescricao === 'erro' ? 'erro' : ''}`}>{salvandoDescricao === 'salvando' ? 'Salvando…' : 'Erro ao salvar. Tente editar de novo.'}</span>}
+              {!arquivado && (
+                <MelhorarComIa variante="botao" rotulo="Descrição do processo" vazio={!textoPuro(descricao)} aoAplicar={mudarDescricao}
+                  pedido={() => ({ campo: 'descricao', texto: descricao, processo: p.nome, area: p.area?.nome, organizacao: p.area?.organizacao?.nome })} />
+              )}
+            </div>
           </div>
           <TextoRico valor={descricao} aoMudar={mudarDescricao} rotulo="Descrição do processo" linhas={4}
             placeholder="O que é este processo, onde começa e onde termina. Use “Referência” para citar os POPs e os outros processos ligados a ele."
@@ -238,7 +242,7 @@ function ProcessoPage() {
       <section className="secao-processo">
         <div className="secao-head">
           <h2><Icone nome="pop" tamanho={18} />POPs do processo</h2>
-          {!arquivado && <button className="btn btn-primary" onClick={novoPop} disabled={criandoPop}><Icone nome="mais" />{criandoPop ? 'Criando…' : 'Novo POP'}</button>}
+          {!arquivado && <button className="btn btn-primary" onClick={() => setCriandoPop(true)}><Icone nome="mais" />Novo POP</button>}
         </div>
         {pops.length === 0 && (
           <p className="notice">{arquivado ? 'Nenhum POP ativo neste processo.' : 'Nenhum POP ainda. Cada POP ensina a executar uma atividade do processo: crie um e escreva o passo a passo, gravando a tela se quiser.'}</p>
@@ -246,7 +250,7 @@ function ProcessoPage() {
         <div className="lista-pops">
           {pops.map((o) => (
             <article key={o.id} className="linha-pop pop-destaque">
-              <span className="pop-icone"><Icone nome="pop" tamanho={22} /></span>
+              <span className="pop-icone"><Icone nome="rota" tamanho={22} /></span>
               <Link href={`/app/pops/${o.id}`} className="pop-nome">
                 <strong>{o.nome}</strong>
                 <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {data(o.atualizado_em)}</span>
@@ -282,6 +286,10 @@ function ProcessoPage() {
           aoFechar={() => setFluxoDialogo(null)}
           aoCriar={(fid) => router.push(`/app/fluxogramas/${fid}`)}
         />
+      )}
+      {criandoPop && (
+        <DialogoNome titulo="Novo POP" rotulo="Nome do POP" exemplo="Ex.: Criação de pedido de compra" aviso={<>O POP entra no processo <b>{p.nome}</b>.</>}
+          aoCriar={novoPop} aoFechar={() => setCriandoPop(false)} />
       )}
       {movendo && (
         <MoverCopiar item={{ tipo: 'processo', id: p.id, nome: p.nome, area_id: p.area_id, totais: { pops: pops.length, gravacoes: p.gravacoes.length, fluxograma: !!fluxo } }}

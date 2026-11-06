@@ -1,9 +1,10 @@
 'use client';
 import { useState } from 'react';
 
-/** Diálogo simples de criação: um campo de nome. */
-export function DialogoNome({ titulo, rotulo, exemplo, aoCriar, aoFechar }: {
+/** Diálogo simples de criação: um campo de nome (e, se vier, uma linha explicando onde o item entra). */
+export function DialogoNome({ titulo, rotulo, exemplo, aviso, aoCriar, aoFechar }: {
   titulo: string; rotulo: string; exemplo: string;
+  aviso?: React.ReactNode;
   aoCriar: (nome: string) => Promise<void>;
   aoFechar: () => void;
 }) {
@@ -29,8 +30,9 @@ export function DialogoNome({ titulo, rotulo, exemplo, aoCriar, aoFechar }: {
         <h2 id="dialogo-nome">{titulo}</h2>
         <label className="field">
           {rotulo}
-          <input autoFocus required value={nome} onChange={(e) => setNome(e.target.value)} placeholder={exemplo} />
+          <input autoFocus required maxLength={200} value={nome} onChange={(e) => setNome(e.target.value)} placeholder={exemplo} />
         </label>
+        {aviso && <p className="notice">{aviso}</p>}
         {erro && <p className="form-erro" role="alert">{erro}</p>}
         <div className="dialog-actions">
           <button type="button" className="btn" onClick={aoFechar} disabled={criando}>Cancelar</button>
