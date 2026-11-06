@@ -278,6 +278,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **O que fica (nomes internos, sem efeito para quem usa):** o repositório e o pacote (`fluxi`), a variável `FLUXI_TENANT_ID`, a chave do menu recolhido guardada no navegador (`fluxi:menu-recolhido`, para ninguém perder a preferência), os caminhos no Storage, o id da biblioteca de formas do draw.io e os ids internos do DOCX. Os documentos antigos em `docs/` continuam citando Fluxi; vale ler como INCFlow.
 - O nome ainda não foi registrado (INPI, domínio); fica para depois.
 
+
+## 38. Fontes guardadas no projeto (06/11/2026)
+- **Problema:** o deploy de produção na Vercel falhou com "Can't resolve '@vercel/turbopack-next/internal/font/google/font'". O `next/font/google` baixa as fontes do Google na hora do build, e o Turbopack às vezes não consegue ler a resposta: o mesmo código passou no Preview e falhou na produção.
+- **Decisão:** as fontes Sora (títulos) e Manrope (texto) ficam em `app/fontes/` e entram pelo `next/font/local`. O build não depende mais de acesso ao Google, e o navegador também não chama o Google: as fontes saem do próprio site.
+- **Arquivos:** versões variáveis (todos os pesos num arquivo só), recorte latino, que cobre o português. Licença SIL Open Font License 1.1, que permite guardar e distribuir junto com o app; o texto está em `app/fontes/LICENCA.txt`.
+
 ---
 
 ## Em aberto
