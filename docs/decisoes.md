@@ -276,7 +276,8 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Decisão do Rafael:** a plataforma passa a se chamar **INCFlow** (antes Fluxi), escolhido entre sugestões de nomes.
 - **O que muda (tudo o que a pessoa vê):** o logo do menu e do topo das páginas públicas (`public/logo-incflow.png`: o mesmo símbolo, com "INCFlow" na mesma fonte do app, a Sora), o título da aba do navegador, "Publicado com INCFlow" no rodapé das páginas públicas do POP e do processo, o título da janela flutuante da gravação, o título do editor de fluxograma e os textos de ajuda que citavam o nome.
 - **O que fica (nomes internos, sem efeito para quem usa):** o repositório e o pacote (`fluxi`), a variável `FLUXI_TENANT_ID`, a chave do menu recolhido guardada no navegador (`fluxi:menu-recolhido`, para ninguém perder a preferência), os caminhos no Storage, o id da biblioteca de formas do draw.io e os ids internos do DOCX. Os documentos antigos em `docs/` continuam citando Fluxi; vale ler como INCFlow.
-- O nome ainda não foi registrado (INPI, domínio); fica para depois.
+- **Endereço de produção:** `https://incflow.vercel.app` (antes `https://fluxi-khaki.vercel.app`). Os links públicos (`/p`, `/pr`, `/f`) e os links das referências no PDF e no DOCX saem do endereço em que o app está aberto, então os novos já usam o domínio novo; os que foram copiados ou exportados antes continuam com o antigo.
+- O nome ainda não foi registrado (INPI, domínio próprio); fica para depois.
 
 
 ## 38. Fontes guardadas no projeto (06/11/2026)
