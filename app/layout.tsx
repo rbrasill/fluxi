@@ -7,7 +7,7 @@ const sora = Sora({ subsets: ['latin'], variable: '--font-display', weight: ['50
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-body' });
 
 export const metadata: Metadata = {
-  title: 'Fluxi',
+  title: 'INCFlow',
   description: 'Mapeamento de processos com fluxogramas BPMN e POPs.',
 };
 

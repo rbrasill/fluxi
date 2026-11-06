@@ -190,7 +190,7 @@ export function EditorDrawio({ id, voltar = null }: { id: string; voltar?: strin
     enviar({ action: 'layout', layouts: [{ layout }] });
   }
 
-  // Fluxograma gerado pela IA: monta de novo a partir da estrutura original, com o layout em raias do Fluxi.
+  // Fluxograma gerado pela IA: monta de novo a partir da estrutura original, com o layout em raias do INCFlow.
   async function refazerPadrao() {
     setMenu(null);
     if (!fluxo?.schema) return;

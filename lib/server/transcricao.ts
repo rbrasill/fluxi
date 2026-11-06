@@ -6,7 +6,7 @@ import { TENANT_PADRAO, supabase } from './supabase';
 // - Universal-3.5 Pro (US$ 0,21/h), com Universal-2 como reserva automática;
 // - só identificação de falantes (+US$ 0,02/h); sem keyterms, PII ou outros extras pagos;
 // - idioma fixo (pt), sem detecção automática;
-// - cada áudio é transcrito uma vez (o texto fica salvo no Fluxi) e o original é apagado no AssemblyAI.
+// - cada áudio é transcrito uma vez (o texto fica salvo no INCFlow) e o original é apagado no AssemblyAI.
 const API = 'https://api.assemblyai.com/v2';
 const BUCKET = 'gravacoes';
 export const CONFIG_TRANSCRICAO = {
@@ -66,7 +66,7 @@ export async function consultarFalas(id: string, deslocamentoMs = 0) {
   return { status: 'pronta' as const, falas, duracaoSeg: j.audio_duration ?? 0 };
 }
 
-/** Apaga a transcrição no AssemblyAI (LGPD): o texto já está salvo no Fluxi. */
+/** Apaga a transcrição no AssemblyAI (LGPD): o texto já está salvo no INCFlow. */
 export async function excluirRemota(id: string) {
   await chamar(`/transcript/${id}`, { method: 'DELETE' }).catch(() => {});
 }

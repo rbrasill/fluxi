@@ -25,7 +25,7 @@ export function configuracao(biblioteca: ItemBiblioteca[]) {
     defaultLibraries: 'fluxi-bpmn-inc;general',
     libraries: [
       {
-        title: { main: 'Fluxi' },
+        title: { main: 'INCFlow' },
         entries: [
           {
             id: 'fluxi-bpmn-inc',

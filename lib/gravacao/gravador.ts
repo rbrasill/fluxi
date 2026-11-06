@@ -57,7 +57,7 @@ export class Gravador {
         frameRate: { ideal: QUALIDADE.quadrosPorSegundo, max: 30 },
       },
       audio: op.audioDoSistema,
-      // Não oferecer a própria aba do Fluxi; permitir trocar de aba durante a gravação.
+      // Não oferecer a própria aba do INCFlow; permitir trocar de aba durante a gravação.
       // Abre o seletor na aba "Janela": gravando uma janela, a janelinha de controles não aparece nos prints.
       ...({ displaySurface: 'window', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: op.audioDoSistema ? 'include' : 'exclude' } as object),
     } as DisplayMediaStreamOptions);

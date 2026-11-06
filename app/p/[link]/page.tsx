@@ -151,7 +151,7 @@ function PopPublicoPage() {
           </section>
         )}
 
-        <footer className="pub-rodape">Versão publicada em {dataBr(pop.publicado_em)} · Publicado com Fluxi</footer>
+        <footer className="pub-rodape">Versão publicada em {dataBr(pop.publicado_em)} · Publicado com INCFlow</footer>
       </main>
       <VoltarAoTopo />
       {ampliada !== null && prints[ampliada] && <VisualizadorImagens imagens={prints} inicial={ampliada} aoFechar={() => setAmpliada(null)} />}

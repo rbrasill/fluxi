@@ -52,7 +52,7 @@ input { font-family: inherit; }
   display: flex; flex-direction: column; gap: 20px; padding: 20px 14px;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; color: #fff; text-decoration: none; }
-.brand-logo { width: 158px; height: 40px; flex: none; }
+.brand-logo { width: 199px; height: 32px; flex: none; }
 .brand-marca { display: none; width: 36px; height: 36px; flex: none; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #6f8a8f; padding: 10px 12px 6px; }
@@ -600,7 +600,7 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 /* Páginas públicas: POP publicado (/p/<link>) e só o fluxograma (/f/<link>) */
 .pub { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
 .pub-topo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 24px; background: var(--side); color: var(--side-ink); }
-.pub-logo { width: 126px; height: 32px; }
+.pub-logo { width: 199px; height: 32px; }
 .pub-caminho { font-size: 13px; color: var(--side-ink); }
 .pub-corpo { width: 100%; max-width: 920px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 20px; }
 .pub-titulo { display: flex; flex-direction: column; gap: 10px; }

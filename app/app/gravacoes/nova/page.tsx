@@ -273,7 +273,7 @@ export default function NovaGravacaoPage() {
           </div>
           <ol className="dicas">
             <li>Escolha a <b>janela do sistema</b> (aba "Janela") ou a aba do navegador. Evite "Tela inteira": nela, a janelinha de controles aparece nos prints.</li>
-            <li>{temPip ? <>Uma <b>janela flutuante</b> do Fluxi fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
+            <li>{temPip ? <>Uma <b>janela flutuante</b> do INCFlow fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
             <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução: ela vai junto quando a tela for levada para o POP.</li>
           </ol>
           <p className="notice">Qualidade: até {QUALIDADE.altura}p, {QUALIDADE.quadrosPorSegundo} quadros/s. O vídeo é salvo em partes de 3 minutos, sem limite de duração.</p>

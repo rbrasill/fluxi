@@ -1,5 +1,7 @@
-# fluxi
+# INCFlow
 aplicação para mapeamento de processos end-to-end (de ponta a ponta)
+
+> Antes chamada **Fluxi** (decisão 37). O repositório, o pacote e os nomes internos (variável `FLUXI_TENANT_ID`, chaves no navegador, caminhos no Storage) continuam como `fluxi`.
 
 ## Rodar localmente
 ```bash
