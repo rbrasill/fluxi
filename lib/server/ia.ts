@@ -39,19 +39,29 @@ const claude = () =>
     process.env.ANTHROPIC_WORKSPACE_ID ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } } : {},
   ));
 
-async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, maxTokens = 16000): Promise<z.infer<T>> {
+export type OpcoesIa = {
+  modelo?: string;
+  maxTokens?: number;
+  esforco?: 'low' | 'medium' | 'high';
+  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido, como a entrevista por voz). */
+  pensar?: boolean;
+  limiteMs?: number;
+};
+
+/** Chama o Claude pedindo a resposta no formato do schema (Structured Outputs). */
+export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, opcoes: OpcoesIa = {}): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie manualmente por enquanto.');
   try {
     const resposta = await claude().beta.messages.parse({
-      model: MODELO,
+      model: opcoes.modelo ?? MODELO,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      max_tokens: maxTokens,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'medium', format: zodOutputFormat(schema) },
+      max_tokens: opcoes.maxTokens ?? 16000,
+      thinking: opcoes.pensar === false ? { type: 'disabled' } : { type: 'adaptive' },
+      output_config: { effort: opcoes.esforco ?? 'medium', format: zodOutputFormat(schema) },
       system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: conteudo }],
-    }, { timeout: 290_000 }); // cabe no maxDuration (300 s) da rota
+    }, { timeout: opcoes.limiteMs ?? 290_000 }); // cabe no maxDuration (300 s) da rota
     if (resposta.stop_reason === 'refusal') throw new ErroApi(422, 'A IA não conseguiu processar este conteúdo.');
     if (resposta.stop_reason === 'max_tokens') throw new ErroApi(422, 'O processo ficou grande demais para gerar de uma vez. Tente uma gravação menor.');
     if (!resposta.parsed_output) throw new ErroApi(502, 'A IA devolveu uma resposta inválida. Tente novamente.');
@@ -117,7 +127,7 @@ export async function analisarGravacao(transcricao: string, telas: { id: string;
     AnaliseGravacaoSchema,
     SISTEMA_GRAVACAO,
     `<transcricao>\n${transcricao}\n</transcricao>\n\n<telas_marcadas>\n${lista}\n</telas_marcadas>`,
-    32000,
+    { maxTokens: 32000 },
   );
 }
 

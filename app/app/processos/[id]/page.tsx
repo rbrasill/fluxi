@@ -7,6 +7,7 @@ import { avisar, confirmar } from '@/components/Dialogos';
 import { DialogoNome } from '@/components/DialogoNome';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
+import { EntrevistasDoProcesso } from '@/components/processo/Entrevistas';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { SeloStatus } from '@/components/SeloStatus';
@@ -227,6 +228,8 @@ function ProcessoPage() {
             documento={{ tipo: 'processo', id: p.id }} aoReferenciar={registrarReferencia} />
           <p className="notice">Aparece na página pública do processo. As referências viram links para os documentos citados.</p>
         </div>
+        {/* Entrevista por voz com a IA (decisão 39): outra forma de chegar à descrição e ao fluxograma. */}
+        <EntrevistasDoProcesso processoId={p.id} arquivado={arquivado} />
       </section>
 
       {p.referenciado_em.length > 0 && (
