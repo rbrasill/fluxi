@@ -141,7 +141,7 @@ function EntrevistaPage() {
             <li>Durante a conversa nada aparece na tela: só um sinal de quem está falando.</li>
             <li>Pode pedir para ela verificar algo de conhecimento geral (o que é um sistema, uma sigla): ela consulta e responde na hora.</li>
             <li>No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
-            <li>Dura de quinze a trinta minutos (no máximo 45). A IA se despede sozinha; você também pode encerrar quando quiser.</li>
+            <li>Dura o necessário para cobrir o processo (no máximo 45 minutos). A IA se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
           {retomando && <p className="notice">Esta entrevista já tem {e.turnos.length} falas. Ao continuar, a IA retoma de onde parou.</p>}
@@ -309,6 +309,7 @@ function DetalhesMetricas({ m }: { m: Metricas }) {
     <p className="notice">
       {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
       {m.sessoes && m.sessoes > 1 ? `A conversa teve ${m.sessoes} sessões de voz (foi continuada). ` : ''}
+      {m.conexao_ms !== undefined ? `Abertura: a voz conectou ${seg(m.conexao_ms)} depois do clique${m.abertura_ms !== undefined ? ` e a IA começou a falar ${seg(m.abertura_ms)} depois` : ''}. ` : ''}
       Reação: do fim da sua fala ao início da resposta da IA, sem contar os sinais de escuta. Custos pelas tabelas da OpenAI (US$ 0,05/min) e da Anthropic.
     </p>
   );

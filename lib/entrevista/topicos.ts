@@ -34,6 +34,8 @@ export type Metricas = {
   tempo_pessoa_s?: number; // quanto tempo cada lado passou falando
   tempo_ia_s?: number;
   silencio_max_ms?: number; // maior intervalo sem ninguém falar
+  conexao_ms?: number; // do clique em começar até a sessão de voz começar (a última sessão)
+  abertura_ms?: number; // da sessão começar até a IA começar a falar (a última sessão)
   analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number }; // a análise no fim (Claude)
   consultas?: Consulta[]; // o que a IA foi verificar durante a conversa (Claude), com demora e custo
   sessoes?: number;

@@ -22,7 +22,6 @@ type Mensagem = { type: string; delta?: string; start_ms?: number; end_ms?: numb
 
 const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar)
 const LIMITE_MS = 45 * 60_000; // teto de uma sessão (custo): encerra sozinha
-const INICIO_SOZINHA_MS = 3_000; // a IA não abriu a conversa sozinha: pede a abertura
 const NIVEL_VOZ = 0.02; // volume (RMS) a partir do qual alguém está falando
 const MAX_CONSULTAS = 20; // por sessão (custo)
 const CONHECIDOS = new Set(['session.started', 'session.input_transcript.delta', 'session.output_transcript.delta', 'session.usage.updated', 'session.closed', 'session.delegation.created', 'session.thinking.appended', 'session.commentary.appended', 'session.instructions.appended', 'session.updated', 'error']);
@@ -51,6 +50,8 @@ export class MotorEntrevista {
   private erros: string[] = [];
   private consultas: Consulta[] = [];
   private iaFalou = false;
+  private conexaoMs: number | undefined; // do clique até a sessão começar
+  private aberturaMs: number | undefined; // da sessão começar até a IA falar
   private fimPedido = false;
   private alguemFalando = false;
   private timers: ReturnType<typeof setInterval>[] = [];
@@ -66,6 +67,7 @@ export class MotorEntrevista {
   }
 
   async iniciar() {
+    const clique = performance.now();
     this.ativo = true;
     this.mudar('conectando');
     this.ctx = new AudioContext(); // nasce dentro do clique (política de autoplay)
@@ -117,6 +119,10 @@ export class MotorEntrevista {
     await pc.setRemoteDescription({ type: 'answer', sdp });
     await iniciou;
     this.inicioSessao = performance.now();
+    this.conexaoMs = Math.round(this.inicioSessao - clique);
+    // O GPT-Live não abre a conversa sozinho (nos quatro primeiros testes, só falou depois do pedido):
+    // pede a abertura assim que a sessão começa, sem esperar.
+    if (!this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: this.anteriores.length ? 'Retome a entrevista em uma frase e faça a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
     this.gravar(gravacao.stream);
     await this.ctx.resume();
     window.addEventListener('beforeunload', this.aoSair);
@@ -124,10 +130,6 @@ export class MotorEntrevista {
     this.timers.push(setInterval(() => { const metricas = this.metricas(); this.aoEvento({ tipo: 'metricas', metricas, duracao_s: metricas.duracao_s ?? 0 }); }, 1000));
     this.timers.push(setInterval(() => void this.salvar(), SALVAR_MS));
     this.timers.push(setInterval(() => { if (this.ativo && performance.now() - this.inicioSessao > LIMITE_MS) { this.aoEvento({ tipo: 'aviso', texto: 'A entrevista chegou ao limite de 45 minutos e foi encerrada.' }); this.aoEvento({ tipo: 'fim' }); } }, 5000));
-    // Se a IA não abrir a conversa sozinha, pede a abertura.
-    setTimeout(() => {
-      if (this.ativo && !this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: this.anteriores.length ? 'Retome a entrevista em uma frase e faça a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
-    }, INICIO_SOZINHA_MS);
     this.mudar('ouvindo');
   }
 
@@ -171,6 +173,7 @@ export class MotorEntrevista {
         break;
       case 'session.output_transcript.delta':
         if (m.delta) {
+          if (!this.iaFalou) this.aberturaMs = Math.max(0, Math.round(typeof m.start_ms === 'number' ? m.start_ms : agoraMs));
           this.iaFalou = true;
           this.conversa.adicionar({ quem: 'ia', texto: m.delta, inicio_ms: inicio, fim_ms: fim });
           this.verificarFim();
@@ -262,6 +265,8 @@ export class MotorEntrevista {
       desconhecidos: this.desconhecidos,
       erros: [...(this.metricasAnteriores.erros ?? []), ...this.erros].slice(-30),
       consultas: [...(this.metricasAnteriores.consultas ?? []), ...this.consultas].slice(-30),
+      conexao_ms: this.conexaoMs ?? this.metricasAnteriores.conexao_ms,
+      abertura_ms: this.aberturaMs ?? this.metricasAnteriores.abertura_ms,
     };
   }
 
