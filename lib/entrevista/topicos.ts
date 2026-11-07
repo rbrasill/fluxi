@@ -35,11 +35,15 @@ export type Metricas = {
   tempo_ia_s?: number;
   silencio_max_ms?: number; // maior intervalo sem ninguém falar
   analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number }; // a análise no fim (Claude)
+  consultas?: Consulta[]; // o que a IA foi verificar durante a conversa (Claude), com demora e custo
   sessoes?: number;
   eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
   desconhecidos?: string[]; // tipos de evento que o app não trata (diagnóstico)
   erros?: string[];
 };
+
+/** Uma consulta da IA durante a conversa ("deixa eu ver aqui"): o Claude responde e ela fala a resposta. */
+export type Consulta = { pergunta: string; resposta: string; demora_ms: number; custo_usd: number; falhou?: boolean };
 
 export type Etapa = {
   nome: string;
@@ -82,6 +86,9 @@ export function resumoMetricas(m: Metricas) {
   const tp = m.tempo_pessoa_s ?? 0, ti = m.tempo_ia_s ?? 0;
   const custo_voz_usd = ((m.duracao_s ?? 0) / 60) * PRECO_VOZ_USD_MIN;
   const custo_analise_usd = m.analise?.custo_usd ?? 0;
+  const consultas = m.consultas ?? [];
+  const custo_consultas_usd = consultas.reduce((a, c) => a + (c.custo_usd || 0), 0);
+  const demoras = consultas.filter((c) => !c.falhou).map((c) => c.demora_ms);
   return {
     reacao_mediana_ms: mediana(reacoes),
     reacao_media_ms: reacoes.length ? reacoes.reduce((a, b) => a + b, 0) / reacoes.length : undefined,
@@ -94,6 +101,9 @@ export function resumoMetricas(m: Metricas) {
     silencio_max_ms: m.silencio_max_ms,
     custo_voz_usd,
     custo_analise_usd,
-    custo_total_usd: custo_voz_usd + custo_analise_usd,
+    consultas: consultas.length,
+    consulta_mediana_ms: mediana(demoras),
+    custo_consultas_usd,
+    custo_total_usd: custo_voz_usd + custo_analise_usd + custo_consultas_usd,
   };
 }

@@ -43,7 +43,7 @@ export type OpcoesIa = {
   modelo?: string;
   maxTokens?: number;
   esforco?: 'low' | 'medium' | 'high';
-  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido, como a entrevista por voz). */
+  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido). Só no Haiku 5.5: o Sonnet 5.5 recusa. */
   pensar?: boolean;
   limiteMs?: number;
   /** Recebe o uso de tokens da chamada (para medir custo). */
@@ -55,10 +55,12 @@ export type UsoIa = { modelo: string; entrada: number; saida: number; cache_leit
 export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, opcoes: OpcoesIa = {}): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie manualmente por enquanto.');
   try {
+    const modelo = opcoes.modelo ?? MODELO;
+    // O Haiku 5.5 não tem fallback no servidor; os outros modelos trocam sozinhos se recusarem.
+    const fallback = modelo.startsWith('claude-haiku') ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const };
     const resposta = await claude().beta.messages.parse({
-      model: opcoes.modelo ?? MODELO,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
+      model: modelo,
+      ...fallback,
       max_tokens: opcoes.maxTokens ?? 16000,
       thinking: opcoes.pensar === false ? { type: 'disabled' } : { type: 'adaptive' },
       output_config: { effort: opcoes.esforco ?? 'medium', format: zodOutputFormat(schema) },

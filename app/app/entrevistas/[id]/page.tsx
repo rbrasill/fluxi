@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
-import { ROTULO_STATUS, resumoMetricas, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
+import { ROTULO_STATUS, resumoMetricas, type Consulta, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
@@ -15,7 +15,8 @@ import { encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entr
 
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const seg = (ms?: number) => (ms === undefined ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
-const usd = (v: number) => `US$ ${v.toFixed(2).replace('.', ',')}`;
+// Centavos; abaixo de um centavo (as consultas custam frações), quatro casas.
+const usd = (v: number) => `US$ ${v.toFixed(v > 0 && v < 0.01 ? 4 : 2).replace('.', ',')}`;
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 // Durante a conversa a tela não muda de texto (a esfera mostra quem fala); só o antes e o depois têm aviso.
 const AVISO_FASE: Partial<Record<Fase, { titulo: string; sub: string }>> = {
@@ -138,6 +139,7 @@ function EntrevistaPage() {
             <li>A IA faz perguntas por voz sobre o processo e você responde falando, como numa conversa com um consultor.</li>
             <li>É uma conversa ao vivo nos dois sentidos: a IA continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
             <li>Durante a conversa nada aparece na tela: só um sinal de quem está falando.</li>
+            <li>Pode pedir para ela verificar algo de conhecimento geral (o que é um sistema, uma sigla): ela consulta e responde na hora.</li>
             <li>No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
             <li>Dura de quinze a trinta minutos (no máximo 45). A IA se despede sozinha; você também pode encerrar quando quiser.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
@@ -220,6 +222,7 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
         <h3 className="sem-margem">Como foi a conversa</h3>
         {painelMetricas}
         <DetalhesMetricas m={e.metricas ?? {}} />
+        {e.metricas?.consultas?.length ? <Consultas lista={e.metricas.consultas} /> : null}
         {diagnostico ? (
           <details className="diagnostico"><summary>Diagnóstico da sessão de voz</summary>
             {e.metricas.erros?.length ? <><span className="ficha-rotulo">Erros</span><ul className="ficha-lista">{e.metricas.erros.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
@@ -292,10 +295,10 @@ function PainelMetricas({ metricas }: { metricas: Metricas }) {
       <div><dt>Falas por cima da IA</dt><dd title="Vezes em que você falou enquanto a IA falava (ou numa pausa curta dela)">{r.sobreposicoes} de {r.falas_pessoa}<small>{r.falas_ia} respostas da IA</small></dd></div>
       <div><dt>Tempo de fala</dt><dd title="Quanto do tempo falado foi seu e quanto foi da IA">{pct(r.participacao_pessoa)} você<small>{mmss(metricas.tempo_pessoa_s ?? 0)} você · {mmss(metricas.tempo_ia_s ?? 0)} IA</small></dd></div>
       <div><dt>Sinais de escuta</dt><dd title='"aham", "sei", "uhum" da IA enquanto você explicava'>{r.apoios}<small>maior silêncio {seg(r.silencio_max_ms)}</small></dd></div>
-      <div><dt>Duração</dt><dd title="Tempo de sessão de voz (o que a OpenAI cobra)">{mmss(metricas.duracao_s ?? 0)}<small>{metricas.sessoes ?? 1} {(metricas.sessoes ?? 1) === 1 ? 'sessão' : 'sessões'}</small></dd></div>
-      <div><dt>Custo da voz</dt><dd title="GPT-Live: US$ 0,05 por minuto de sessão, cobrado por segundo">{usd(r.custo_voz_usd)}</dd></div>
+      <div><dt>Consultas da IA</dt><dd title='Vezes em que a IA foi verificar algo ("deixa eu ver aqui"): quanto você esperou pela resposta (mediana) e o custo'>{r.consultas}{r.consultas > 0 && <small>{seg(r.consulta_mediana_ms)} · {usd(r.custo_consultas_usd)}</small>}</dd></div>
+      <div><dt>Custo da voz</dt><dd title="GPT-Live: US$ 0,05 por minuto de sessão, cobrado por segundo">{usd(r.custo_voz_usd)}<small>{mmss(metricas.duracao_s ?? 0)} · {metricas.sessoes ?? 1} {(metricas.sessoes ?? 1) === 1 ? 'sessão' : 'sessões'}</small></dd></div>
       <div><dt>Custo da análise</dt><dd title="Claude, no fim: a descrição, a ficha e as pendências">{metricas.analise ? usd(r.custo_analise_usd) : '—'}{metricas.analise && <small>{(metricas.analise.entrada_tokens / 1000).toFixed(1).replace('.', ',')}k + {(metricas.analise.saida_tokens / 1000).toFixed(1).replace('.', ',')}k tokens</small>}</dd></div>
-      <div><dt>Custo total</dt><dd title="Voz + análise">{usd(r.custo_total_usd)}</dd></div>
+      <div><dt>Custo total</dt><dd title="Voz + consultas + análise">{usd(r.custo_total_usd)}</dd></div>
     </dl>
   );
 }
@@ -308,6 +311,19 @@ function DetalhesMetricas({ m }: { m: Metricas }) {
       {m.sessoes && m.sessoes > 1 ? `A conversa teve ${m.sessoes} sessões de voz (foi continuada). ` : ''}
       Reação: do fim da sua fala ao início da resposta da IA, sem contar os sinais de escuta. Custos pelas tabelas da OpenAI (US$ 0,05/min) e da Anthropic.
     </p>
+  );
+}
+
+/** O que a IA foi verificar durante a conversa, a resposta que ela recebeu e quanto a pessoa esperou. */
+function Consultas({ lista }: { lista: Consulta[] }) {
+  return (
+    <details className="diagnostico"><summary>Consultas da IA durante a conversa ({lista.length})</summary>
+      <ul className="ficha-lista">
+        {lista.map((c, i) => (
+          <li key={i}>{c.falhou ? <><strong>Não deu certo:</strong> {c.resposta}</> : <><strong>{c.pergunta}</strong> {c.resposta}</>} <small>({seg(c.demora_ms)}{c.falhou ? '' : ` · ${usd(c.custo_usd)}`})</small></li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

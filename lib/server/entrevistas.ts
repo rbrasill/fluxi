@@ -16,8 +16,10 @@ const BUCKET = 'gravacoes';
 const MODELO_VOZ = process.env.INCFLOW_MODELO_VOZ || 'gpt-live-1'; // US$ 0,05 por minuto de sessão
 const VOZ = process.env.INCFLOW_VOZ_ENTREVISTA || 'bossa'; // vozes em português do Brasil: bossa e tempo
 const MODELO_ANALISE = process.env.INCFLOW_MODELO_ANALISE || 'claude-sonnet-5-5';
+const MODELO_CONSULTA = process.env.INCFLOW_MODELO_CONSULTA || 'claude-haiku-5-5'; // rápido: a pessoa está esperando
 const URL_SESSOES = process.env.INCFLOW_LIVE_URL || 'https://api.openai.com/v1/live/sessions';
-export const FRASE_FINAL = 'Entrevista concluída.';
+/** A expressão da despedida: quando a IA a diz (e termina de falar), o app encerra a entrevista sozinho. */
+export const FRASE_FINAL = 'Vamos concluir por aqui';
 
 export type Linha = {
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
@@ -59,7 +61,7 @@ export async function listar() {
   return (data ?? []).map(({ turnos, metricas, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
-    return { ...e, falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0 };
+    return { ...e, falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0) };
   });
 }
 
@@ -99,12 +101,13 @@ Você é uma consultora de mapeamento de processos fazendo uma entrevista por vo
 - Curto e direto: uma ideia por vez, uma pergunta por vez. Números pequenos por extenso. Nada de listas faladas.
 - Assim que a pessoa terminar a frase, responda sem demora. Se ela pausar para pensar e continuar, você só ouve. Nunca fique só no "aham" esperando: terminou, a vez é sua.
 - Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
+- Pronúncia: "INC" é uma palavra só e se fala "ínqui" (como "ink", em inglês); nunca soletre as letras. "INCFlow" se fala "ínqui flôu".
 
 Backchannel policy: Use sons curtos de escuta ("aham", "uhum", "sei") com moderação enquanto a pessoa explica, sem competir com a fala dela. Um som de escuta nunca substitui uma resposta.
 
 Interruption policy: Quando a pessoa começar a falar por cima de você, pare de falar imediatamente, mesmo no meio da frase, e ouça até ela terminar; depois responda ao que ela disse. Se ela pedir para parar ou esperar, corrigir algo, fazer uma pergunta ou pedir para encerrar, pare na hora, sem terminar a frase e sem acrescentar nada. Não retome o que foi cortado, a não ser que ela peça. Só um "aham", "uhum", "sei" ou "tá" breve dela não é interrupção: aí continue.
 
-Delegation policy: Não há trabalho de apoio nesta conversa. Nunca gere <|SpawnThinking|>; responda sempre a partir da conversa.
+Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou explicar algo de conhecimento geral (o que é um sistema, uma sigla, uma lei, uma prática de mercado), ou quando você precisar disso para entender o que ela disse, gere <|SpawnThinking|> e diga em poucas palavras que vai ver ("Deixa eu ver aqui."). Quando o resultado chegar, conte o essencial em uma ou duas frases e volte ao processo com uma pergunta que ligue o que você descobriu ao que a pessoa contou. Nunca gere <|SpawnThinking|> para saber como o processo dela funciona: isso só ela sabe, então pergunte a ela. Não prometa responder depois ("te respondo já"): consulte agora ou diga que não sabe e siga.
 
 # O que vamos mapear
 Processo: ${l.tema}
@@ -120,11 +123,13 @@ ${TOPICOS_TEXTO}
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
 - Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar. Se ela perguntar o que você quer saber, ou parecer perdida, responda com uma pergunta concreta.
 - Enquanto a pessoa explica, não a interrompa; interrompa só para evitar um mal-entendido grande.
+- Se a pessoa pedir um instante, espere em silêncio até ela voltar.
 
 # Ritmo e encerramento
 - Uma boa entrevista tem de quinze a trinta minutos. Não prolongue sem necessidade.
-- Quando os tópicos estiverem cobertos (ou a pessoa pedir para parar), faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, agradeça, avise que a descrição será gerada a partir da conversa e termine a sua última fala com a frase exata: "${FRASE_FINAL}"
-- Nunca diga "${FRASE_FINAL}" antes da despedida final.`;
+- Quando os tópicos estiverem cobertos, faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, despeça-se em uma ou duas frases, como numa conversa de verdade, dizendo "${FRASE_FINAL.toLowerCase()}". Por exemplo: "Olha, acho que deu para entender bem o processo. Então ${FRASE_FINAL.toLowerCase()}. Muito obrigada pela conversa!"
+- Se a pessoa precisar sair ou pedir para parar antes, não insista: agradeça e despeça-se do mesmo jeito, dizendo "${FRASE_FINAL.toLowerCase()}" (o que ficou faltando vira pendência para uma próxima conversa).
+- "${FRASE_FINAL}" encerra a entrevista: diga só na despedida, uma única vez. Não use frases de sistema como "entrevista concluída".`;
 }
 
 /** Histórico para continuar uma conversa interrompida (o GPT-Live aceita até 128 mensagens e cerca de 8 mil tokens). */
@@ -151,10 +156,11 @@ export async function abrirSessao(id: string, sdp: string) {
     model: MODELO_VOZ,
     instructions: instrucoesDaSessao(linha, continuando),
     audio: { output: { voice: VOZ } },
-    delegation: { type: 'client' }, // sem trabalho de apoio: a condução está nas instruções
+    delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
     ...(continuando ? { input: historicoParaSessao(linha.turnos) } : {}),
-    // O navegador só pode encerrar a sessão e pedir uma fala (a abertura, se a IA não começar sozinha).
+    // O navegador só pode encerrar a sessão, pedir uma fala (a abertura, se a IA não começar sozinha) e
+    // entregar o resultado de uma consulta.
     client: { data_channel: { allowed_client_events: ['session.close', 'session.commentary.append', 'session.thinking.append'] } },
   };
   let r: Response;
@@ -174,6 +180,38 @@ export async function abrirSessao(id: string, sdp: string) {
   return { sdp: j.transport.sdp, continuando };
 }
 
+// --- Consulta durante a conversa: a IA pede ("deixa eu ver aqui"), o Claude responde, ela fala (decisão 44) ---
+// O GPT-Live não manda o assunto da consulta (só avisa que quer uma): o navegador manda o fim da conversa e o
+// Claude descobre o que é para verificar. Só conhecimento geral: sobre o processo, quem sabe é a pessoa.
+
+const ConsultaSchema = z.object({
+  pergunta: z.string().describe('O que a entrevistadora foi verificar, em uma frase curta'),
+  resposta: z.string().describe('De uma a três frases curtas, para ela dizer em voz alta'),
+});
+
+export const SISTEMA_CONSULTA = `Você apoia, nos bastidores, uma consultora que está entrevistando uma pessoa por voz para mapear um processo de trabalho. No meio da conversa ela disse que ia verificar uma coisa e espera a sua resposta para continuar falando. Pelo fim da conversa, descubra o que ela precisa saber (em geral, o que a pessoa pediu para ela pesquisar ou explicar: um sistema, uma sigla, um termo, uma lei, uma prática comum) e responda.
+
+- "pergunta": o que foi verificado, em uma frase curta.
+- "resposta": de uma a três frases curtas e simples, em português do Brasil, para serem ditas em voz alta: só o essencial, sem listas e sem marcações.
+- Use conhecimento geral. Não afirme nada sobre a empresa ou sobre o processo da pessoa: isso só ela sabe (no máximo, diga como costuma ser e sugira confirmar com ela).
+- A conversa veio de reconhecimento de voz: corrija nomes pelo contexto (por exemplo, "TOTOS" é TOTVS).
+- Se não souber ou não tiver certeza, diga isso com franqueza em uma frase.`;
+
+export function montarPedidoConsulta(l: Pick<Linha, 'tema' | 'contexto'>, turnos: Turno[]) {
+  let fim = transcricaoDaConversa(turnos.slice(-30));
+  if (fim.length > 8000) fim = fim.slice(-8000);
+  return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<fim_da_conversa>\n${fim}\n</fim_da_conversa>`;
+}
+
+export async function consultar(id: string, turnos: Turno[]) {
+  const linha = await carregar(id);
+  if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  const inicio = Date.now();
+  let uso: UsoIa | undefined;
+  const r = await chamarEstruturado(ConsultaSchema, SISTEMA_CONSULTA, montarPedidoConsulta(linha, turnos), { modelo: MODELO_CONSULTA, maxTokens: 800, pensar: false, esforco: 'low', limiteMs: 12_000, aoUsar: (u) => { uso = u; } });
+  return { pergunta: r.pergunta.trim().slice(0, 300), resposta: r.resposta.trim().slice(0, 1200), modelo: uso?.modelo ?? MODELO_CONSULTA, demora_ms: Date.now() - inicio, custo_usd: uso ? custoAnalise(uso) : 0 };
+}
+
 // --- A conversa e as métricas (o navegador manda durante a sessão e no fim) ---
 
 const TurnoSchema = z.object({
@@ -184,6 +222,8 @@ const TurnoSchema = z.object({
   sobreposta: z.boolean().optional(),
   apoio: z.boolean().optional(),
 });
+export const ConsultaPedidoSchema = z.object({ turnos: z.array(TurnoSchema).max(60) });
+
 export const ConversaSchema = z.object({
   turnos: z.array(TurnoSchema).max(2000),
   metricas: z.object({
@@ -196,6 +236,13 @@ export const ConversaSchema = z.object({
     tempo_pessoa_s: z.number().optional(),
     tempo_ia_s: z.number().optional(),
     silencio_max_ms: z.number().optional(),
+    consultas: z.array(z.object({
+      pergunta: z.string().max(300),
+      resposta: z.string().max(1500),
+      demora_ms: z.number().min(0),
+      custo_usd: z.number().min(0).max(1),
+      falhou: z.boolean().optional(),
+    })).max(30).optional(),
     sessoes: z.number().optional(),
     eventos: z.record(z.string(), z.number()).optional(),
     desconhecidos: z.array(z.string().max(200)).max(50).optional(),
@@ -253,7 +300,7 @@ Produza, em português do Brasil:
 1. "descricao": a descrição do processo para o cadastro, em HTML simples (só <p>, <ul>, <ol>, <li>, <strong> e <em>), com dois a cinco parágrafos: o que o processo é e para que serve; onde começa (o gatilho) e onde termina (o resultado); as áreas, os cargos e os sistemas envolvidos; as principais etapas em uma frase corrida (sem virar lista de passos: isso é o fluxograma); regras e prazos importantes. Frases completas, tom de documento, sem "o entrevistado disse".
 2. "ficha": a estrutura do processo: objetivo, gatilho, resultado e as etapas na ordem em que acontecem, cada uma com responsável (cargo ou área), descrição curta, ferramentas, entradas, saídas, regras e exceções citadas (listas vazias quando nada foi dito); e as dificuldades relatadas.
 3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório, escrito como perguntas para uma próxima conversa (vazio se nada).
-Ignore saudações, desvios de assunto e o que não descreve o processo.`;
+Ignore saudações, desvios de assunto e o que não descreve o processo. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
 
 export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
   return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<entrevista>\n${transcricaoDaConversa(l.turnos)}\n</entrevista>`;

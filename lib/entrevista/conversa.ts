@@ -10,11 +10,14 @@ import type { Metricas, Turno } from './topicos';
 export type Pedaco = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms: number; fim_ms: number };
 type Trecho = Required<Pick<Turno, 'quem' | 'texto' | 'inicio_ms' | 'fim_ms'>>;
 
-const JUNTAR_MS = { pessoa: 1500, ia: 900 }; // pausa máxima dentro de um mesmo trecho
+// Pausa máxima dentro de um mesmo trecho. A IA respira cerca de um segundo no meio de frases longas
+// ("tem alguma confirmação… ou retorno que ela recebe?"): isso não é uma fala nova.
+const JUNTAR_MS = { pessoa: 1500, ia: 1500 };
 const APOIO_PALAVRAS = 3;
 const APOIO_MS = 1600;
 const PAUSA_MS = 1500; // a pessoa entrou numa pausa curta de uma fala da IA que não tinha terminado em pergunta
 const VEZ_MS = 600; // silêncio do outro lado a partir do qual a fala dele conta como terminada
+const REACAO_EMENDOU_MS = 1000;
 
 /** Marcas da transcrição ("[laugh]") em texto; um "]" solto no começo (resto de uma marca cortada) sai. */
 const limparTexto = (s: string) => s.replace(/\s*\[\s*(laugh|laughs|laughter|risos?|risada)\s*\]?/gi, ' (risos)').replace(/^\s*\]\s*/, '').replace(/\s+/g, ' ').trim();
@@ -42,13 +45,18 @@ export class Conversa {
     const fim = Math.max(inicio, p.fim_ms + this.deslocamento_ms);
     const i = this.abertos[p.quem];
     const atual = i !== undefined ? this.trechos[i] : undefined;
-    // O outro lado falou depois deste trecho e já terminou antes deste pedaço: a vez mudou, então fecha.
-    // Uma fala curta do outro lado ("aham") não muda a vez: o trecho continua.
+    // A vez mudou (fecha o trecho) quando o outro lado falou depois deste trecho e já terminou antes deste
+    // pedaço, ou quando começou a falar só depois que este trecho parou (pegou a vez na pausa).
+    // Um "aham" da IA não muda a vez da pessoa: o trecho dela continua. Já a pessoa falar qualquer coisa
+    // na pausa da IA (mesmo curta, que pode ser o começo de uma resposta) faz a próxima fala da IA ser nova.
     // Os pedaços chegam ao vivo: o trecho do outro lado ainda pode estar crescendo, então ele só conta
     // como "terminado" se já está em silêncio há um tempo (VEZ_MS) quando este pedaço chega.
     const j = this.abertos[p.quem === 'ia' ? 'pessoa' : 'ia'];
     const outro = j !== undefined ? this.trechos[j] : undefined;
-    const virouAVez = atual && outro && !ehCurta(outro) && outro.fim_ms > atual.fim_ms && inicio - outro.fim_ms >= VEZ_MS;
+    const virouAVez = atual && outro && (
+      (!ehCurta(outro) && outro.fim_ms > atual.fim_ms && inicio - outro.fim_ms >= VEZ_MS) ||
+      (outro.inicio_ms >= atual.fim_ms && (p.quem === 'ia' || !ehCurta(outro)))
+    );
     if (atual && !virouAVez && inicio - atual.fim_ms <= JUNTAR_MS[p.quem]) {
       atual.texto += texto;
       atual.fim_ms = Math.max(atual.fim_ms, fim);
@@ -81,6 +89,8 @@ export class Conversa {
 /**
  * Reação: do fim de cada fala da pessoa ao início da resposta seguinte da IA (os "aham" não contam, e só
  * quando a pessoa não continuou falando antes). Falas da IA: só as respostas; os apoios ficam à parte.
+ * Se a IA emendou antes do fim marcado da fala (até REACAO_EMENDOU_MS antes: o fim da transcrição é
+ * aproximado), a reação conta como zero; mais cedo que isso, a IA já estava falando e não é reação.
  */
 export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' | 'sobreposicoes' | 'falas_pessoa' | 'falas_ia' | 'apoios' | 'tempo_pessoa_s' | 'tempo_ia_s' | 'silencio_max_ms'> {
   const reais = turnos.filter((t) => !t.apoio);
@@ -101,7 +111,7 @@ export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' 
     if (!proximaIa || proximaIa.inicio_ms === undefined) continue;
     if (outraPessoa && (outraPessoa.inicio_ms ?? 0) < proximaIa.inicio_ms) continue; // a pessoa continuou falando
     const r = proximaIa.inicio_ms - t.fim_ms;
-    if (r >= 0 && r < 30_000) reacao_ms.push(Math.round(r));
+    if (r >= -REACAO_EMENDOU_MS && r < 30_000) reacao_ms.push(Math.max(0, Math.round(r)));
   }
   return {
     reacao_ms,

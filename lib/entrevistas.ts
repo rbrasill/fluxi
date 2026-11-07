@@ -8,7 +8,7 @@ export type Entrevista = {
   resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number };
+export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -26,6 +26,9 @@ export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; 
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */
 export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas }) =>
   api<{ ok: true }>(`/api/entrevistas/${id}/conversa`, { method: 'PUT', body: JSON.stringify(dados), keepalive: JSON.stringify(dados).length < 60_000 });
+/** Uma consulta da IA no meio da conversa: manda o fim da conversa, recebe o que ela foi verificar e a resposta. */
+export const consultarDuranteEntrevista = (id: string, turnos: Turno[]) =>
+  api<{ pergunta: string; resposta: string; modelo: string; demora_ms: number; custo_usd: number }>(`/api/entrevistas/${id}/consulta`, { method: 'POST', body: JSON.stringify({ turnos }), signal: AbortSignal.timeout(15_000) });
 /** Encerra e gera o resultado (demora: a conversa inteira é analisada). */
 export const encerrarEntrevista = (id: string) => api<{ status: StatusEntrevista }>(`/api/entrevistas/${id}/encerrar`, { method: 'POST' });
 

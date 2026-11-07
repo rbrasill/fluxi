@@ -3,9 +3,11 @@
 // decide parar, encaixar uma correção ou seguir falando é o próprio modelo. O microfone usa o cancelamento
 // de eco do navegador. Pelo canal de dados chegam os pedaços de transcrição dos dois lados (com o tempo de
 // cada um); daqui sai a conversa, as métricas (reação, falas sobrepostas, duração) e a gravação.
-import { abrirSessaoDeVoz, salvarConversa } from '@/lib/entrevistas';
+// Quando a IA quer verificar algo ("deixa eu ver aqui"), o GPT-Live avisa e o app pergunta ao Claude,
+// devolvendo a resposta para ela falar (decisão 44).
+import { abrirSessaoDeVoz, consultarDuranteEntrevista, salvarConversa } from '@/lib/entrevistas';
 import { Conversa, metricasDaConversa } from './conversa';
-import type { Metricas, Turno } from './topicos';
+import type { Consulta, Metricas, Turno } from './topicos';
 
 export type Fase = 'parado' | 'conectando' | 'falando' | 'ouvindo' | 'juntos' | 'encerrando';
 export type Evento =
@@ -22,7 +24,11 @@ const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde 
 const LIMITE_MS = 45 * 60_000; // teto de uma sessão (custo): encerra sozinha
 const INICIO_SOZINHA_MS = 3_000; // a IA não abriu a conversa sozinha: pede a abertura
 const NIVEL_VOZ = 0.02; // volume (RMS) a partir do qual alguém está falando
+const MAX_CONSULTAS = 20; // por sessão (custo)
 const CONHECIDOS = new Set(['session.started', 'session.input_transcript.delta', 'session.output_transcript.delta', 'session.usage.updated', 'session.closed', 'session.delegation.created', 'session.thinking.appended', 'session.commentary.appended', 'session.instructions.appended', 'session.updated', 'error']);
+
+/** Sem acento, pontuação nem maiúsculas, para achar a frase da despedida na transcrição. */
+export const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
 export class MotorEntrevista {
   private pc: RTCPeerConnection | null = null;
@@ -43,6 +49,7 @@ export class MotorEntrevista {
   private eventos: Record<string, number> = {};
   private desconhecidos: string[] = [];
   private erros: string[] = [];
+  private consultas: Consulta[] = [];
   private iaFalou = false;
   private fimPedido = false;
   private alguemFalando = false;
@@ -51,7 +58,7 @@ export class MotorEntrevista {
   private ultimoSalvo = '';
   private aoSair = () => { this.enviar({ type: 'session.close' }); void this.salvar(); };
 
-  constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Entrevista concluída.') {
+  constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Vamos concluir por aqui') {
     // Ao continuar, a sessão nova começa depois do fim da conversa já salva.
     const fim = anteriores.reduce((m, t) => Math.max(m, t.fim_ms ?? t.inicio_ms ?? 0), 0);
     this.conversa = new Conversa(anteriores, anteriores.length ? fim + 2000 : 0);
@@ -173,8 +180,8 @@ export class MotorEntrevista {
         if (typeof m.usage?.seconds === 'number') this.usoSessao_s = m.usage.seconds; // acumulado: vale o último
         break;
       case 'session.delegation.created':
-        // Não há trabalho de apoio nesta entrevista: avisa o modelo para seguir a conversa.
-        this.enviar({ type: 'session.thinking.append', delegation_id: (m.delegation as { id?: string } | undefined)?.id ?? null, content: 'Não há consulta a fazer; continue a entrevista normalmente.' });
+        // A IA quer verificar algo: o evento não diz o quê, então vai o fim da conversa para o Claude.
+        void this.consultar((m.delegation as { id?: string } | undefined)?.id ?? null);
         break;
       case 'session.closed':
         this.fechada?.();
@@ -188,12 +195,28 @@ export class MotorEntrevista {
     }
   }
 
-  /** A IA disse a frase final: depois que ela terminar de falar (e ninguém mais falar), encerra. */
+  /** Pergunta ao Claude o que a IA quer verificar e entrega a resposta para ela falar (o GPT-Live parafraseia). */
+  private async consultar(delegation_id: string | null) {
+    const responder = (content: string) => this.enviar({ type: 'session.commentary.append', delegation_id, content });
+    if (this.consultas.length >= MAX_CONSULTAS) return responder('Não dá para consultar mais nada nesta conversa. Diga isso em uma frase e siga a entrevista.');
+    const inicio = performance.now();
+    try {
+      const r = await consultarDuranteEntrevista(this.id, this.conversa.turnos().slice(-30));
+      this.consultas.push({ pergunta: r.pergunta, resposta: r.resposta, demora_ms: Math.round(performance.now() - inicio), custo_usd: r.custo_usd });
+      if (this.ativo) responder(`Resultado da consulta (${r.pergunta}): ${r.resposta}`);
+    } catch (e) {
+      const texto = e instanceof Error ? e.message : String(e);
+      this.consultas.push({ pergunta: '', resposta: texto.slice(0, 300), demora_ms: Math.round(performance.now() - inicio), custo_usd: 0, falhou: true });
+      this.registrarErro(`Consulta: ${texto}`);
+      if (this.ativo) responder('A consulta não deu certo. Diga em uma frase que não conseguiu verificar agora e siga a entrevista.');
+    }
+  }
+
+  /** A IA disse a frase da despedida: depois que ela terminar de falar (e ninguém mais falar), encerra. */
   private verificarFim() {
     if (this.fimPedido) return;
     const ultimaIa = [...this.conversa.turnos()].reverse().find((t) => t.quem === 'ia');
-    const alvo = this.fraseFinal.toLowerCase().replace(/[.!]/g, '');
-    if (!ultimaIa || !ultimaIa.texto.toLowerCase().replace(/[.!]/g, '').includes(alvo)) return;
+    if (!ultimaIa || !normalizar(ultimaIa.texto).includes(normalizar(this.fraseFinal))) return;
     this.fimPedido = true;
     let silencio = 0;
     const t = setInterval(() => {
@@ -238,6 +261,7 @@ export class MotorEntrevista {
       eventos: this.eventos,
       desconhecidos: this.desconhecidos,
       erros: [...(this.metricasAnteriores.erros ?? []), ...this.erros].slice(-30),
+      consultas: [...(this.metricasAnteriores.consultas ?? []), ...this.consultas].slice(-30),
     };
   }
 

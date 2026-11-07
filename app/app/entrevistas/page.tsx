@@ -11,7 +11,7 @@ import { criarEntrevista, excluirEntrevista, listarEntrevistas, type EntrevistaR
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
-const usd = (v: number) => `US$ ${v.toFixed(2).replace('.', ',')}`;
+const usd = (v: number) => `US$ ${v.toFixed(v > 0 && v < 0.01 ? 4 : 2).replace('.', ',')}`;
 
 export default function EntrevistasPage() {
   const router = useRouter();
@@ -74,7 +74,7 @@ export default function EntrevistasPage() {
                 <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
                 <Link href={`/app/entrevistas/${x.id}`} className="pop-nome">
                   <strong>{x.tema || 'Entrevista'}</strong>
-                  <span>{data(x.criado_em)} · {ROTULO_STATUS[x.status]} · {x.falas} {x.falas === 1 ? 'fala' : 'falas'}{x.duracao_s ? ` · ${duracao(x.duracao_s)} · ${usd((x.duracao_s / 60) * PRECO_VOZ_USD_MIN + (x.custo_analise_usd ?? 0))}` : ''}</span>
+                  <span>{data(x.criado_em)} · {ROTULO_STATUS[x.status]} · {x.falas} {x.falas === 1 ? 'fala' : 'falas'}{x.duracao_s ? ` · ${duracao(x.duracao_s)} · ${usd((x.duracao_s / 60) * PRECO_VOZ_USD_MIN + (x.custo_analise_usd ?? 0) + (x.custo_consultas_usd ?? 0))}` : ''}</span>
                 </Link>
                 <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title="Excluir a entrevista"><Icone nome="lixo" tamanho={16} />Excluir</button>
                 <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>{x.status === 'em_andamento' ? 'Continuar' : 'Abrir'}</Link>
@@ -92,12 +92,13 @@ function Totais({ lista }: { lista: EntrevistaResumo[] }) {
   const voz_s = lista.reduce((a, x) => a + (x.duracao_s || 0), 0);
   const voz = (voz_s / 60) * PRECO_VOZ_USD_MIN;
   const analise = lista.reduce((a, x) => a + (x.custo_analise_usd || 0), 0);
+  const consultas = lista.reduce((a, x) => a + (x.custo_consultas_usd || 0), 0);
   return (
     <dl className="metricas-entrevista totais-entrevistas">
       <div><dt>Entrevistas</dt><dd>{lista.length}</dd></div>
       <div><dt>Tempo de voz</dt><dd>{duracao(voz_s)}</dd></div>
       <div><dt>Custo da voz</dt><dd title="US$ 0,05 por minuto">{usd(voz)}</dd></div>
-      <div><dt>Custo total</dt><dd title="Voz + análise">{usd(voz + analise)}<small>análise {usd(analise)}</small></dd></div>
+      <div><dt>Custo total</dt><dd title="Voz + consultas + análise">{usd(voz + analise + consultas)}<small>análise {usd(analise)}{consultas > 0 ? ` · consultas ${usd(consultas)}` : ''}</small></dd></div>
     </dl>
   );
 }
