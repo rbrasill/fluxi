@@ -1,49 +1,33 @@
 import 'server-only';
 import { z } from 'zod';
-import { IDS_TOPICOS, TOPICOS, transcricaoDaConversa, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { TOPICOS, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { ErroApi } from './http';
 import { chamarEstruturado } from './ia';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-// Entrevista por voz com a IA (decisão 39). Três serviços externos, cada um numa função:
-// - a escuta ao vivo (AssemblyAI Universal-Streaming): o navegador liga direto, com um token temporário;
-// - a conversa (Claude): a cada resposta da pessoa, decide o que dizer em seguida;
-// - a voz (AssemblyAI TTS): transforma a fala da IA em áudio.
-// Nada aparece na tela durante a chamada; a transcrição é o "ouvido" da IA. Quando a chamada termina, a
-// conversa inteira é analisada de uma vez e vira a descrição do processo, a ficha e as pendências.
+// Entrevista por voz com a IA, só com o GPT-Live da OpenAI (decisão 41), fora do processo, para testar.
+// O navegador fala direto com o GPT-Live por WebRTC (áudio nos dois sentidos ao mesmo tempo: full duplex);
+// o servidor só abre a sessão (com a chave da OpenAI, que não vai para o navegador) e guarda o que volta:
+// a conversa transcrita, as métricas e a gravação. A condução da entrevista está nas instruções da sessão.
+// Quando a conversa termina, o Claude lê a conversa inteira e escreve a descrição, a ficha e as pendências.
 
 const BUCKET = 'gravacoes';
-// A conversa precisa responder rápido (Haiku, sem raciocínio estendido); a análise no fim pode pensar (Sonnet).
-const MODELO_CONVERSA = process.env.INCFLOW_MODELO_ENTREVISTA || 'claude-haiku-5-5';
+const MODELO_VOZ = process.env.INCFLOW_MODELO_VOZ || 'gpt-live-1'; // US$ 0,05 por minuto de sessão
+const VOZ = process.env.INCFLOW_VOZ_ENTREVISTA || 'bossa'; // vozes em português do Brasil: bossa e tempo
 const MODELO_ANALISE = process.env.INCFLOW_MODELO_ANALISE || 'claude-sonnet-5-5';
-const MAX_PERGUNTAS = 40;
-
-const ESCUTA = {
-  url: process.env.INCFLOW_ESCUTA_URL || 'wss://streaming.assemblyai.com/v3/ws',
-  token: process.env.INCFLOW_ESCUTA_TOKEN_URL || 'https://token.assemblyai.com/v1/token',
-  modelo: process.env.INCFLOW_MODELO_ESCUTA || 'universal-3-6-pro', // US$ 0,45/h; 'universal-streaming-multilingual' custa US$ 0,15/h
-};
-const VOZ = {
-  url: process.env.INCFLOW_VOZ_URL || 'https://tts.us.assemblyai.com/v1/speech',
-  voz: process.env.INCFLOW_VOZ_ENTREVISTA || 'aai-benicio', // a voz em português do catálogo da AssemblyAI
-};
+const URL_SESSOES = process.env.INCFLOW_LIVE_URL || 'https://api.openai.com/v1/live/sessions';
+export const FRASE_FINAL = 'Entrevista concluída.';
 
 export type Linha = {
-  id: string; processo_id: string; status: StatusEntrevista;
-  turnos: Turno[]; cobertos: string[]; anotacoes: string[];
+  id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
+  turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, status, turnos, cobertos, anotacoes, resultado, erro, audio_caminho, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, criado_em, encerrado_em, atualizado_em';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const agora = () => new Date().toISOString();
-
-function chaveAssembly() {
-  const k = process.env.ASSEMBLYAI_API_KEY;
-  if (!k) throw new ErroApi(503, 'A entrevista por voz ainda não está configurada (falta ASSEMBLYAI_API_KEY).');
-  return k;
-}
 
 async function carregar(id: string): Promise<Linha> {
   if (!UUID.test(id)) throw new ErroApi(404, 'Entrevista não encontrada');
@@ -58,124 +42,157 @@ async function salvar(id: string, dados: Partial<Linha>) {
   if (error) throw error;
 }
 
-// --- O processo que está sendo mapeado (contexto para a IA) ---
+// --- Criar e listar ---
 
-export type Contexto = { id: string; codigo: string; nome: string; descricao: string; area: string | null; organizacao: string | null; arquivado: boolean; tem_fluxograma: boolean; pops: string[] };
-
-async function contextoDoProcesso(processoId: string): Promise<Contexto> {
-  const db = supabase();
-  const [p, f, o] = await Promise.all([
-    db.from('processos').select('id, codigo, nome, descricao, arquivado_em, area:areas(nome, organizacao:organizacoes(nome))').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
-    db.from('fluxogramas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).maybeSingle(),
-    db.from('pops').select('nome').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).is('arquivado_em', null),
-  ]);
-  for (const r of [p, f, o]) if (r.error) throw r.error;
-  if (!p.data) throw new ErroApi(404, 'Processo não encontrado');
-  const area = p.data.area as unknown as { nome: string; organizacao: { nome: string } | null } | null;
-  return {
-    id: p.data.id as string, codigo: p.data.codigo as string, nome: p.data.nome as string, descricao: (p.data.descricao as string | null) ?? '',
-    area: area?.nome ?? null, organizacao: area?.organizacao?.nome ?? null, arquivado: !!p.data.arquivado_em,
-    tem_fluxograma: !!f.data, pops: (o.data ?? []).map((x) => x.nome as string),
-  };
+export async function criar(d: { tema: string; contexto?: string }) {
+  const { data, error } = await supabase().from('entrevistas')
+    .insert({ tenant_id: TENANT_PADRAO, processo_id: null, tema: d.tema.trim(), contexto: (d.contexto ?? '').trim(), motor: 'gpt-live', status: 'em_andamento', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {} })
+    .select('id').single();
+  if (error) throw error;
+  return { id: (data as { id: string }).id };
 }
 
-/** Nomes que a escuta tende a errar: o processo, a área, a organização e os POPs (keyterms da AssemblyAI). */
-export const termosDoProcesso = (ctx: Contexto) =>
-  [...new Set([ctx.nome, ctx.area, ctx.organizacao, ...ctx.pops].filter((x): x is string => !!x && x.trim().length > 1).map((x) => x.trim().slice(0, 80)))].slice(0, 40);
+export async function listar() {
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, criado_em, encerrado_em')
+    .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map(({ turnos, metricas, ...e }) => {
+    const t = (turnos as Turno[] | null) ?? [];
+    return { ...e, falas: t.length, duracao_s: (metricas as Metricas | null)?.duracao_s ?? 0 };
+  });
+}
 
-// --- A conversa: o que a IA diz a cada vez ---
+export async function obter(id: string) {
+  const linha = await carregar(id);
+  // Uma gravação por sessão de voz (quem continua a entrevista grava um arquivo novo).
+  const arquivos = await gravacoes(id);
+  let audios: string[] = [];
+  if (arquivos.length) {
+    const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
+    audios = (data ?? []).map((x) => x.signedUrl).filter((u): u is string => !!u);
+  }
+  return { ...linha, audios, frase_final: FRASE_FINAL };
+}
 
-const TOPICOS_TEXTO = TOPICOS.map((t) => `- [${t.id}] ${t.nome}: ${t.o_que}`).join('\n');
+export async function excluir(id: string) {
+  await carregar(id);
+  const arquivos = await gravacoes(id);
+  if (arquivos.length) await supabase().storage.from(BUCKET).remove(arquivos);
+  const { error } = await supabase().from('entrevistas').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
+  if (error) throw error;
+}
 
-export const SISTEMA_ENTREVISTA = `Você é consultor(a) de mapeamento de processos e está conduzindo uma ENTREVISTA POR VOZ com uma pessoa que executa ou conhece bem um processo de trabalho. Tudo o que você escrever em "fala" é lido em voz alta por uma voz sintética; a pessoa responde falando, e a fala dela chega a você transcrita por reconhecimento de voz (pode ter erros em nomes de sistemas, siglas e números).
+// --- A sessão de voz (GPT-Live) ---
 
-Objetivo: entender o processo de ponta a ponta para, depois da conversa, escrever a descrição do processo e desenhar o fluxograma. Tópicos a cobrir (o id entre colchetes é o que você usa em "cobertos"):
+const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
+
+/** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
+export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean) {
+  return `# Papel
+Você é uma consultora de mapeamento de processos fazendo uma entrevista por voz, ao vivo, com uma pessoa que executa ou conhece bem um processo de trabalho. Você trabalha para o INCFlow, a plataforma de processos da INC. Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você".
+
+# O que vamos mapear
+Processo: ${l.tema}
+${l.contexto ? `Contexto dado por quem abriu a entrevista: ${l.contexto}\n` : ''}
+# Objetivo
+Entender o processo de ponta a ponta para, depois da conversa, escrever a descrição e desenhar o fluxograma. Tópicos a cobrir:
 ${TOPICOS_TEXTO}
 
-Como conduzir:
-- Uma pergunta por vez, curta e direta, em português do Brasil falado, tratando a pessoa por "você". Nada de listas, markdown, siglas que a pessoa não usou nem perguntas duplas. Números pequenos por extenso.
-- Comece pela visão geral e pelo início do processo. Depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
+# Como conduzir
+- ${continuando ? 'A conversa já começou antes e foi interrompida: retome em uma frase de onde parou (veja o histórico) e siga.' : 'Abra se apresentando em uma frase, diga que a conversa fica gravada, que a pessoa pode responder com calma e interromper quando quiser, e faça a primeira pergunta.'}
+- Uma pergunta por vez, curta e direta. Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
-- Se não entender uma palavra ou um nome, peça para repetir ou soletrar. Se a pessoa fugir do assunto, acolha em uma frase e volte ao processo. Se ela pedir para parar, vá direto para o encerramento.
-- A pessoa pode falar por cima de você (a transcrição marca "interrompeu o entrevistador" e quanto da sua fala chegou a tocar). Aí responda ao que ela disse e siga dali; não repita o que foi cortado, a não ser que ela peça.
-- Encerramento: quando todos os tópicos estiverem cobertos (ou a conversa já estiver longa), faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, agradeça, avise que a descrição e o fluxograma serão gerados a partir da conversa e marque "encerrar": true nessa última fala.
-- Ritmo: uma boa entrevista tem de quinze a trinta perguntas. Não prolongue sem necessidade.
+- Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar.
 
-Responda sempre com:
-- "fala": o que dizer agora (a reação à última fala da pessoa, se couber, e a próxima pergunta).
-- "cobertos": ids de TODOS os tópicos já razoavelmente cobertos até aqui, incluindo os de antes.
-- "anotacao": uma frase objetiva com o que a última resposta revelou sobre o processo (vazia se nada novo).
-- "encerrar": true só na despedida final.`;
+# Conversa ao vivo
+- Você ouve enquanto fala. Se a pessoa falar por cima com uma correção, um "espera", uma informação nova ou uma dúvida, pare a frase, incorpore o que ela disse e siga a partir daí. Não repita o que foi cortado, a não ser que ela peça.
+- Sons curtos de quem está ouvindo ("aham", "sei", "certo") não são interrupção: continue.
+- Enquanto a pessoa explica, não a interrompa; no máximo, um "aham" breve numa pausa longa.
+- Números pequenos por extenso. Nada de listas faladas longas.
 
-const RespostaTurno = z.object({
-  fala: z.string().min(1),
-  cobertos: z.array(z.string()),
-  anotacao: z.string(),
-  encerrar: z.boolean(),
-});
-
-export function montarPedidoTurno(ctx: Contexto, linha: Pick<Linha, 'turnos' | 'cobertos' | 'anotacoes'>) {
-  const perguntas = linha.turnos.filter((t) => t.quem === 'ia').length;
-  const cabecalho = [
-    '<processo>',
-    `Nome: ${ctx.nome}`,
-    `Área: ${ctx.area ?? 'não informada'} · Organização: ${ctx.organizacao ?? 'não informada'}`,
-    `POPs já escritos deste processo: ${ctx.pops.length ? ctx.pops.join('; ') : 'nenhum'}`,
-    `Descrição já cadastrada: ${textoPuro(ctx.descricao).slice(0, 1500) || 'nenhuma'}`,
-    '</processo>',
-  ].join('\n');
-  const estado = `<topicos_cobertos>${linha.cobertos.join(', ') || 'nenhum ainda'}</topicos_cobertos>\n<anotacoes>\n${linha.anotacoes.map((a) => `- ${a}`).join('\n') || '(nenhuma)'}\n</anotacoes>`;
-  const conversa = linha.turnos.length ? `<conversa>\n${transcricaoDaConversa(linha.turnos)}\n</conversa>\nPerguntas feitas até agora: ${perguntas}.` : '';
-  const instrucao = !linha.turnos.length
-    ? 'A conversa ainda não começou. Apresente-se em uma ou duas frases como a assistente de mapeamento do INCFlow, diga que a conversa fica gravada, que a pessoa pode responder com calma e pedir para parar quando quiser, e faça a primeira pergunta.'
-    : perguntas >= MAX_PERGUNTAS
-      ? 'A conversa já está longa: faça o resumo do processo e encaminhe o encerramento.'
-      : 'Responda à última fala do entrevistado e faça a próxima pergunta.';
-  return [cabecalho, estado, conversa, instrucao].filter(Boolean).join('\n\n');
+# Ritmo e encerramento
+- Uma boa entrevista tem de quinze a trinta minutos. Não prolongue sem necessidade.
+- Quando os tópicos estiverem cobertos (ou a pessoa pedir para parar), faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, agradeça, avise que a descrição será gerada a partir da conversa e termine a sua última fala com a frase exata: "${FRASE_FINAL}"
+- Nunca diga "${FRASE_FINAL}" antes da despedida final.`;
 }
 
-/** Une os tópicos já cobertos com os que a IA marcou agora (só ids conhecidos, na ordem da lista). */
-export const juntarCobertos = (antes: string[], novos: string[]) => {
-  const todos = new Set([...antes, ...novos]);
-  return IDS_TOPICOS.filter((id) => todos.has(id));
-};
-
-export type Interrupcao = { interrompeu: true; ouviu: number };
-
-/** Pede a próxima fala da IA e guarda a conversa; `textoPessoa` vazio é a abertura. */
-async function proximaFala(linha: Linha, ctx: Contexto, textoPessoa?: string, corte?: Interrupcao) {
-  const turnos: Turno[] = textoPessoa
-    ? [...linha.turnos, { quem: 'pessoa', texto: textoPessoa, em: agora(), ...(corte ? { interrompeu: true, ouviu: Math.max(0, Math.min(1, corte.ouviu)) } : {}) }]
-    : [...linha.turnos];
-  const r = await chamarEstruturado(RespostaTurno, SISTEMA_ENTREVISTA, montarPedidoTurno(ctx, { ...linha, turnos }), {
-    modelo: MODELO_CONVERSA, pensar: false, esforco: 'low', maxTokens: 700, limiteMs: 50_000,
-  });
-  const fala = r.fala.trim();
-  turnos.push({ quem: 'ia', texto: fala, em: agora() });
-  const cobertos = juntarCobertos(linha.cobertos, r.cobertos);
-  const anotacao = r.anotacao.trim();
-  const anotacoes = anotacao ? [...linha.anotacoes, anotacao].slice(-80) : linha.anotacoes;
-  await salvar(linha.id, { turnos, cobertos, anotacoes });
-  return { fala, encerrar: r.encerrar, cobertos, perguntas: turnos.filter((t) => t.quem === 'ia').length };
+/** Histórico para continuar uma conversa interrompida (o GPT-Live aceita até 128 mensagens e cerca de 8 mil tokens). */
+export function historicoParaSessao(turnos: Turno[]) {
+  const msgs: { role: 'user' | 'assistant'; content: { type: 'input_text' | 'output_text'; text: string }[] }[] = [];
+  let chars = 0;
+  for (const t of [...turnos].reverse()) {
+    const texto = t.texto.slice(0, 2000);
+    if (msgs.length >= 120 || chars + texto.length > 24_000) break;
+    chars += texto.length;
+    msgs.unshift(t.quem === 'ia' ? { role: 'assistant', content: [{ type: 'output_text', text: texto }] } : { role: 'user', content: [{ type: 'input_text', text: texto }] });
+  }
+  return msgs;
 }
 
-export async function criar(processoId: string) {
-  const ctx = await contextoDoProcesso(processoId);
-  if (ctx.arquivado) throw new ErroApi(409, 'O processo está arquivado: restaure antes de entrevistar.');
-  const { data, error } = await supabase().from('entrevistas')
-    .insert({ tenant_id: TENANT_PADRAO, processo_id: processoId, status: 'em_andamento', turnos: [], cobertos: [], anotacoes: [] })
-    .select(CAMPOS).single();
-  if (error) throw error;
-  const linha = data as Linha;
-  const r = await proximaFala(linha, ctx);
-  return { id: linha.id, fala: r.fala };
-}
-
-export async function responderTurno(id: string, texto: string, corte?: Interrupcao) {
+/** Abre uma sessão de voz: recebe a oferta WebRTC do navegador e devolve a resposta da OpenAI. */
+export async function abrirSessao(id: string, sdp: string) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
-  return proximaFala(linha, await contextoDoProcesso(linha.processo_id), texto.trim(), corte);
+  const chave = process.env.OPENAI_API_KEY;
+  if (!chave) throw new ErroApi(503, 'A entrevista por voz ainda não está configurada (falta OPENAI_API_KEY).');
+  const continuando = linha.turnos.length > 0;
+  const session = {
+    model: MODELO_VOZ,
+    instructions: instrucoesDaSessao(linha, continuando),
+    audio: { output: { voice: VOZ } },
+    delegation: { type: 'client' }, // sem trabalho de apoio: a condução está nas instruções
+    store: false,
+    ...(continuando ? { input: historicoParaSessao(linha.turnos) } : {}),
+    // O navegador só pode encerrar a sessão e pedir uma fala (a abertura, se a IA não começar sozinha).
+    client: { data_channel: { allowed_client_events: ['session.close', 'session.commentary.append', 'session.thinking.append'] } },
+  };
+  let r: Response;
+  try {
+    r = await fetch(URL_SESSOES, {
+      method: 'POST', signal: AbortSignal.timeout(20_000),
+      headers: { authorization: `Bearer ${chave}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ session, transport: { type: 'webrtc', sdp } }),
+    });
+  } catch (e) {
+    throw new ErroApi(502, `Sem conexão com a OpenAI (${e instanceof Error ? e.message : e}).`);
+  }
+  const j = await r.json().catch(() => ({})) as { session?: { id?: string }; transport?: { sdp?: string }; error?: { message?: string } };
+  if (r.status === 401) throw new ErroApi(502, 'A OpenAI recusou a chave (OPENAI_API_KEY).');
+  if (!r.ok || !j.transport?.sdp) throw new ErroApi(502, `A OpenAI não abriu a sessão de voz (${r.status}${j.error?.message ? `: ${j.error.message}` : ''}).`);
+  if (j.session?.id) await salvar(id, { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50) });
+  return { sdp: j.transport.sdp, continuando };
+}
+
+// --- A conversa e as métricas (o navegador manda durante a sessão e no fim) ---
+
+const TurnoSchema = z.object({
+  quem: z.enum(['ia', 'pessoa']),
+  texto: z.string().max(8000),
+  inicio_ms: z.number().min(0).optional(),
+  fim_ms: z.number().min(0).optional(),
+  sobreposta: z.boolean().optional(),
+});
+export const ConversaSchema = z.object({
+  turnos: z.array(TurnoSchema).max(2000),
+  metricas: z.object({
+    duracao_s: z.number().min(0).optional(),
+    reacao_ms: z.array(z.number()).max(2000).optional(),
+    sobreposicoes: z.number().optional(),
+    falas_pessoa: z.number().optional(),
+    falas_ia: z.number().optional(),
+    sessoes: z.number().optional(),
+    eventos: z.record(z.string(), z.number()).optional(),
+    desconhecidos: z.array(z.string().max(200)).max(50).optional(),
+    erros: z.array(z.string().max(500)).max(50).optional(),
+  }).optional(),
+});
+
+export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchema>) {
+  const linha = await carregar(id);
+  if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas } } : {}) });
+  return { ok: true };
 }
 
 // --- Depois da chamada: a conversa inteira vira a descrição, a ficha e as pendências ---
@@ -201,7 +218,7 @@ const ResultadoSchema = z.object({
   pendencias: z.array(z.string()).describe('Perguntas para uma próxima conversa'),
 });
 
-export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos. Recebe a transcrição de uma entrevista por voz em que um entrevistador (IA) fez perguntas e uma pessoa explicou como um processo de trabalho funciona. A transcrição veio de reconhecimento de voz: corrija nomes e termos pelo contexto, mas não invente nada que não foi dito.
+export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos. Recebe a transcrição de uma entrevista por voz em que um entrevistador (IA) fez perguntas e uma pessoa explicou como um processo de trabalho funciona. A transcrição veio de reconhecimento de voz: corrija nomes e termos pelo contexto, mas não invente nada que não foi dito. A conversa foi ao vivo e os dois podiam falar ao mesmo tempo: falas marcadas "falou junto com o entrevistador" foram ditas por cima da fala dele e costumam ser correções ou informações novas, que valem mais que o que foi dito antes.
 
 Produza, em português do Brasil:
 1. "descricao": a descrição do processo para o cadastro, em HTML simples (só <p>, <ul>, <ol>, <li>, <strong> e <em>), com dois a cinco parágrafos: o que o processo é e para que serve; onde começa (o gatilho) e onde termina (o resultado); as áreas, os cargos e os sistemas envolvidos; as principais etapas em uma frase corrida (sem virar lista de passos: isso é o fluxograma); regras e prazos importantes. Frases completas, tom de documento, sem "o entrevistado disse".
@@ -209,8 +226,8 @@ Produza, em português do Brasil:
 3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório, escrito como perguntas para uma próxima conversa (vazio se nada).
 Ignore saudações, desvios de assunto e o que não descreve o processo.`;
 
-export function montarPedidoAnalise(ctx: Contexto, turnos: Turno[]) {
-  return `<processo>\nNome: ${ctx.nome}\nÁrea: ${ctx.area ?? 'não informada'} · Organização: ${ctx.organizacao ?? 'não informada'}\nDescrição já cadastrada: ${textoPuro(ctx.descricao).slice(0, 1500) || 'nenhuma'}\n</processo>\n\n<entrevista>\n${transcricaoDaConversa(turnos)}\n</entrevista>`;
+export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
+  return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<entrevista>\n${transcricaoDaConversa(l.turnos)}\n</entrevista>`;
 }
 
 const TAGS_OK = new Set(['p', 'ul', 'ol', 'li', 'strong', 'em', 'br']);
@@ -237,14 +254,13 @@ export async function encerrar(id: string) {
   if (linha.status === 'concluida') return { status: 'concluida' as const };
   if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) return { status: 'processando' as const };
   const encerrado_em = linha.encerrado_em ?? agora();
-  if (!linha.turnos.some((t) => t.quem === 'pessoa')) {
+  if (!linha.turnos.some((t) => t.quem === 'pessoa' && t.texto.trim())) {
     await salvar(id, { status: 'concluida', encerrado_em, resultado: null });
     return { status: 'concluida' as const };
   }
   await salvar(id, { status: 'processando', encerrado_em, erro: null });
   try {
-    const ctx = await contextoDoProcesso(linha.processo_id);
-    const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(ctx, linha.turnos), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium' });
+    const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(linha), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium' });
     const resultado: ResultadoEntrevista = { descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias };
     await salvar(id, { status: 'concluida', resultado });
     return { status: 'concluida' as const };
@@ -254,106 +270,28 @@ export async function encerrar(id: string) {
   }
 }
 
-// --- Leitura ---
-
-export async function obter(id: string) {
-  const linha = await carregar(id);
-  const ctx = await contextoDoProcesso(linha.processo_id);
-  let audio_url: string | null = null;
-  if (linha.audio_caminho) {
-    const { data } = await supabase().storage.from(BUCKET).createSignedUrl(linha.audio_caminho, 60 * 60);
-    audio_url = data?.signedUrl ?? null;
-  }
-  return {
-    ...linha,
-    audio_url,
-    processo: { id: ctx.id, codigo: ctx.codigo, nome: ctx.nome, area: ctx.area, organizacao: ctx.organizacao, arquivado: ctx.arquivado, descricao_vazia: !textoPuro(ctx.descricao), tem_fluxograma: ctx.tem_fluxograma },
-  };
-}
-
-export async function listar(processoId: string) {
-  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, criado_em, encerrado_em')
-    .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map(({ turnos, ...e }) => {
-    const t = (turnos as Turno[] | null) ?? [];
-    return { ...e, perguntas: t.filter((x) => x.quem === 'ia').length, respostas: t.filter((x) => x.quem === 'pessoa').length };
-  });
-}
-
-export async function excluir(id: string) {
-  const linha = await carregar(id);
-  if (linha.audio_caminho) await supabase().storage.from(BUCKET).remove([linha.audio_caminho]);
-  const { error } = await supabase().from('entrevistas').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
-  if (error) throw error;
-}
-
-// --- Escuta ao vivo (token temporário para o navegador ligar direto na AssemblyAI) ---
-
-export async function escuta(id: string) {
-  const linha = await carregar(id);
-  if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
-  const chave = chaveAssembly();
-  let r: Response;
-  try {
-    r = await fetch(ESCUTA.token, {
-      method: 'POST', signal: AbortSignal.timeout(10_000),
-      headers: { authorization: chave, 'content-type': 'application/json' },
-      // O token só serve para abrir a conexão (60 s); a sessão dura no máximo 2 h.
-      body: JSON.stringify({ product: 'streaming', expires_in_seconds: 60, max_session_duration_seconds: 2 * 3600 }),
-    });
-  } catch (e) {
-    throw new ErroApi(502, `Sem conexão com a AssemblyAI (${e instanceof Error ? e.message : e}).`);
-  }
-  const j = await r.json().catch(() => ({})) as { token?: string; error?: string; message?: string };
-  if (!r.ok || !j.token) throw new ErroApi(502, `A AssemblyAI não liberou a escuta (${r.status}${j.error || j.message ? `: ${j.error || j.message}` : ''}).`);
-  const ctx = await contextoDoProcesso(linha.processo_id);
-  const q = new URLSearchParams({
-    token: j.token, speech_model: ESCUTA.modelo, sample_rate: '16000', encoding: 'pcm_s16le',
-    // Quem explica um processo pensa em voz alta: espera mais antes de dar a fala por encerrada.
-    min_turn_silence: '400', max_turn_silence: '1600',
-  });
-  if (ESCUTA.modelo.startsWith('universal-3')) q.set('language_codes', 'pt');
-  else { q.set('format_turns', 'true'); q.set('end_of_turn_confidence_threshold', '0.5'); }
-  return { url: `${ESCUTA.url}?${q}`, termos: termosDoProcesso(ctx) };
-}
-
-// --- Voz da IA (texto → áudio WAV) ---
-
-export async function voz(id: string, texto: string) {
-  await carregar(id);
-  const chave = chaveAssembly();
-  let r: Response;
-  try {
-    r = await fetch(VOZ.url, {
-      method: 'POST', signal: AbortSignal.timeout(40_000),
-      headers: { authorization: chave, 'content-type': 'application/json' },
-      body: JSON.stringify({ text: texto.slice(0, 4500), voice_id: VOZ.voz, language: 'portuguese', container: 'wav', encoding: 'pcm_s16le', sample_rate: 24000, stream: false }),
-    });
-  } catch (e) {
-    throw new ErroApi(502, `Sem conexão com a voz da AssemblyAI (${e instanceof Error ? e.message : e}).`);
-  }
-  if (!r.ok) {
-    const j = await r.json().catch(() => ({})) as { message?: string; error?: string };
-    throw new ErroApi(502, `A voz da AssemblyAI falhou (${r.status}${j.message || j.error ? `: ${j.message || j.error}` : ''}).`);
-  }
-  return { audio: await r.arrayBuffer(), tipo: r.headers.get('content-type') || 'audio/wav' };
-}
-
 // --- Áudio da conversa (gravado no navegador; fica no Storage para ouvir depois) ---
 
-const caminhoDoAudio = (id: string) => `tenants/${TENANT_PADRAO}/entrevistas/${id}/conversa.webm`;
+const pastaDoAudio = (id: string) => `tenants/${TENANT_PADRAO}/entrevistas/${id}`;
+
+/** Os arquivos de áudio da entrevista, na ordem em que foram gravados. */
+async function gravacoes(id: string) {
+  const pasta = pastaDoAudio(id);
+  const { data, error } = await supabase().storage.from(BUCKET).list(pasta, { limit: 100 });
+  if (error) return [];
+  return (data ?? []).map((f) => f.name).filter((n) => /^conversa-\d+\.webm$/.test(n)).sort().map((n) => `${pasta}/${n}`);
+}
 
 export async function urlDeUploadAudio(id: string) {
   await carregar(id);
-  const caminho = caminhoDoAudio(id);
-  const { data, error } = await supabase().storage.from(BUCKET).createSignedUploadUrl(caminho, { upsert: true });
+  const caminho = `${pastaDoAudio(id)}/conversa-${Date.now()}.webm`;
+  const { data, error } = await supabase().storage.from(BUCKET).createSignedUploadUrl(caminho);
   if (error) throw error;
   return { caminho, url: data.signedUrl };
 }
 
 export async function registrarAudio(id: string, caminho: string) {
-  if (caminho !== caminhoDoAudio(id)) throw new ErroApi(403, 'Arquivo inválido');
+  if (!new RegExp(`^${pastaDoAudio(id)}/conversa-\\d+\\.webm$`).test(caminho)) throw new ErroApi(403, 'Arquivo inválido');
   await carregar(id);
   await salvar(id, { audio_caminho: caminho });
   return { ok: true };

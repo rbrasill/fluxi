@@ -24,6 +24,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <NavLink href="/app/pops" titulo="POPs"><Icone nome="pop" /><span className="nav-texto">POPs</span></NavLink>
           <span className="nav-label">ESTRUTURA</span>
           <NavLink href="/app/organizacoes" tambem={["/app/areas", "/app/processos"]} titulo="Organizações"><Icone nome="empresa" /><span className="nav-texto">Organizações</span></NavLink>
+          <span className="nav-label">LABORATÓRIO</span>
+          <NavLink href="/app/entrevistas" titulo="Entrevista com IA (em teste)"><Icone nome="microfone" /><span className="nav-texto">Entrevista com IA</span><span className="soon">TESTE</span></NavLink>
           <span className="nav-label">CONTA</span>
           <a href="#" aria-disabled="true" title="Pessoas e acessos (em breve)"><Icone nome="areas" /><span className="nav-texto">Pessoas e acessos</span><span className="soon">EM BREVE</span></a>
         </nav>

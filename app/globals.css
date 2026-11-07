@@ -795,24 +795,18 @@ a.ref-origem:hover strong { text-decoration: underline; }
 
 /* Entrevista por voz com a IA (decisão 39) */
 .sem-margem { margin: 0; }
-.entrevistas-cartao { margin-top: 12px; }
-.entrevistas-cartao h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
 .pop-icone.icone-entrevista { background: #e6f1f3; color: var(--primary); }
 .entrevista-vivo { align-items: center; gap: 14px; padding: 40px 24px; text-align: center; }
 .orb { width: 160px; height: 160px; border-radius: 999px; display: grid; place-items: center; color: #fff; background: var(--muted); transition: background .3s; }
 .orb.falando { background: var(--primary); animation: orb-fala 1.6s ease-in-out infinite; }
 .orb.ouvindo { background: #0b6b50; animation: orb-ouve 1.3s ease-in-out infinite; }
 .orb.pensando { background: #544c88; }
+.orb.juntos { background: #b45309; animation: orb-ouve 0.9s ease-in-out infinite; }
 .orb.pensando svg { animation: gira 1.4s linear infinite; }
 @keyframes orb-fala { 0%, 100% { box-shadow: 0 0 0 0 rgba(0, 95, 115, .35); } 50% { box-shadow: 0 0 0 22px rgba(0, 95, 115, 0); } }
 @keyframes orb-ouve { 0%, 100% { box-shadow: 0 0 0 0 rgba(11, 107, 80, .4); transform: scale(1); } 50% { box-shadow: 0 0 0 26px rgba(11, 107, 80, 0); transform: scale(1.04); } }
 .entrevista-estado { margin: 8px 0 0; font-size: 22px; font-weight: 600; }
 .entrevista-sub { margin: 0; color: var(--muted); font-size: 14px; }
-.entrevista-topicos { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.entrevista-topicos span { width: 12px; height: 12px; border-radius: 999px; background: var(--line-strong); }
-.entrevista-topicos span.coberto { background: #0b6b50; }
-.entrevista-topicos small { margin-left: 6px; color: var(--muted); font-size: 12px; }
-.entrevista-fala { margin: 0; max-width: 560px; font-size: 16px; line-height: 1.5; }
 .entrevista-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
 .entrevista-erro { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border: 1px solid #f5b5b0; border-radius: 12px; background: #fdecec; color: #912018; font-size: 14px; }
 .descricao-sugerida { font-size: 15px; line-height: 1.55; }
@@ -834,5 +828,14 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .conversa-lida { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; }
 .conversa-lida p { margin: 0; }
 .conversa-lida .ia b { color: var(--primary-dark); }
-.entrevista-interrompeu { color: #0b6b50; font-weight: 600; }
-.entrevista-metricas { font-size: 12px; }
+
+/* Entrevista só com o GPT-Live, fora do processo (decisão 41) */
+.field textarea { padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 10px; font: inherit; font-size: 14px; font-weight: 500; resize: vertical; }
+.metricas-entrevista { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; width: 100%; max-width: 640px; }
+.metricas-entrevista > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; }
+.metricas-entrevista dt { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.metricas-entrevista dd { margin: 2px 0 0; font-size: 17px; font-weight: 600; }
+@media (max-width: 640px) { .metricas-entrevista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.conversa-lida .sobreposta { padding-left: 10px; border-left: 3px solid #b45309; }
+.conversa-tempo { display: inline-block; min-width: 44px; margin-right: 6px; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+.diagnostico summary { cursor: pointer; font-size: 13px; color: var(--muted); }

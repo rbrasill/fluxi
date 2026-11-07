@@ -1,5 +1,5 @@
-// O que a entrevista com a IA precisa descobrir sobre o processo (decisão 39). A IA marca os tópicos
-// cobertos a cada resposta e escolhe a próxima pergunta pelo que falta; a tela mostra o andamento.
+// O que a entrevista com a IA precisa descobrir sobre o processo (decisões 39 e 41) e os tipos
+// compartilhados entre o navegador e o servidor.
 export const TOPICOS = [
   { id: 'objetivo', nome: 'Objetivo', o_que: 'para que o processo existe e o que entrega no fim' },
   { id: 'gatilho', nome: 'Início', o_que: 'o que dispara o processo, quem pede e com que frequência acontece' },
@@ -11,17 +11,29 @@ export const TOPICOS = [
   { id: 'regras', nome: 'Regras', o_que: 'prazos, critérios de decisão, alçadas e aprovações' },
   { id: 'excecoes', nome: 'Exceções', o_que: 'o que acontece quando algo sai do padrão e os caminhos alternativos' },
   { id: 'dificuldades', nome: 'Dificuldades', o_que: 'gargalos, retrabalho, esperas e o que costuma dar problema' },
-  { id: 'confirmacao', nome: 'Confirmação', o_que: 'a pessoa ouviu o resumo do processo e confirmou (ou corrigiu)' },
 ] as const;
 
-export type TopicoId = (typeof TOPICOS)[number]['id'];
-export const IDS_TOPICOS: readonly string[] = TOPICOS.map((t) => t.id);
-
-/** `interrompeu`: a pessoa falou por cima da IA; `ouviu` é a fração (0 a 1) da fala da IA que chegou a tocar. */
-export type Turno = { quem: 'ia' | 'pessoa'; texto: string; em: string; interrompeu?: boolean; ouviu?: number };
+/**
+ * Um trecho de fala. `inicio_ms`/`fim_ms`: posição na linha do tempo da conversa (desde o começo da
+ * primeira sessão de voz). `sobreposta`: a pessoa falou enquanto a IA ainda falava.
+ */
+export type Turno = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms?: number; fim_ms?: number; sobreposta?: boolean; em?: string };
 
 export type StatusEntrevista = 'em_andamento' | 'processando' | 'concluida' | 'erro';
 export const ROTULO_STATUS: Record<StatusEntrevista, string> = { em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
+
+/** Medidas da conversa (as da especificação de voz full duplex do Rafael). */
+export type Metricas = {
+  duracao_s?: number; // tempo de sessão de voz cobrado (soma das sessões)
+  reacao_ms?: number[]; // do fim de uma fala da pessoa ao início da fala seguinte da IA
+  sobreposicoes?: number; // falas da pessoa feitas enquanto a IA falava
+  falas_pessoa?: number;
+  falas_ia?: number;
+  sessoes?: number;
+  eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
+  desconhecidos?: string[]; // tipos de evento que o app não trata (diagnóstico)
+  erros?: string[];
+};
 
 export type Etapa = {
   nome: string;
@@ -40,10 +52,30 @@ export type ResultadoEntrevista = {
   pendencias: string[];
 };
 
-/** A conversa em texto (para o fluxograma e para a leitura). */
+const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
+
+/** A conversa em texto (para a análise e para a leitura), com o tempo e a marca de fala sobreposta. */
 export const transcricaoDaConversa = (turnos: Turno[]) =>
   turnos.map((t) => {
-    if (t.quem === 'ia') return `Entrevistador: ${t.texto}`;
-    const corte = t.interrompeu ? ` (interrompeu o entrevistador${t.ouviu !== undefined ? `, que tinha falado cerca de ${Math.round(t.ouviu * 100)}% da fala anterior` : ''})` : '';
-    return `Entrevistado${corte}: ${t.texto}`;
+    const tempo = t.inicio_ms !== undefined ? `[${mmss(t.inicio_ms)}] ` : '';
+    if (t.quem === 'ia') return `${tempo}Entrevistador: ${t.texto}`;
+    return `${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${t.texto}`;
   }).join('\n');
+
+const mediana = (xs: number[]) => {
+  if (!xs.length) return undefined;
+  const o = [...xs].sort((a, b) => a - b);
+  return o.length % 2 ? o[(o.length - 1) / 2] : (o[o.length / 2 - 1] + o[o.length / 2]) / 2;
+};
+
+/** Resumo das métricas para a tela. Custo: US$ 0,05 por minuto de sessão (gpt-live-1, cobrado por segundo). */
+export function resumoMetricas(m: Metricas) {
+  const reacoes = m.reacao_ms ?? [];
+  return {
+    reacao_mediana_ms: mediana(reacoes),
+    reacao_media_ms: reacoes.length ? reacoes.reduce((a, b) => a + b, 0) / reacoes.length : undefined,
+    sobreposicoes: m.sobreposicoes ?? 0,
+    falas_pessoa: m.falas_pessoa ?? 0,
+    custo_voz_usd: ((m.duracao_s ?? 0) / 60) * 0.05,
+  };
+}

@@ -1,54 +1,47 @@
 'use client';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { avisar, confirmar } from '@/components/Dialogos';
-import { ROTULO_STATUS, TOPICOS, transcricaoDaConversa, type Etapa } from '@/lib/entrevista/topicos';
+import { confirmar } from '@/components/Dialogos';
+import { ROTULO_STATUS, resumoMetricas, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
-import { gerarComIa } from '@/lib/fluxogramas';
-import { atualizarProcesso } from '@/lib/processos';
 
-// Entrevista por voz com a IA (decisão 39). Três telas: a abertura (o que vai acontecer e o microfone),
-// a conversa (só o estado: a IA fala, ouve ou pensa; nada de texto) e o resultado (descrição sugerida,
-// ficha do processo, pendências e a conversa transcrita), gerado quando a chamada termina.
+// Entrevista por voz com a IA, só com o GPT-Live (decisão 41), fora do processo. Três telas: a abertura
+// (o que vai acontecer e o microfone), a conversa (só o estado: a IA fala, ouve, ou os dois falam juntos;
+// nada de texto) e o resultado (a informação gerada, as métricas e a conversa transcrita).
 
-const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const seg = (ms?: number) => (ms === undefined ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
+const usd = (v: number) => `US$ ${v.toFixed(2).replace('.', ',')}`;
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 const ESTADO: Record<Fase, { titulo: string; sub: string; icone: string }> = {
   parado: { titulo: 'Pronto', sub: '', icone: 'microfone' },
-  conectando: { titulo: 'Ligando o microfone e a escuta…', sub: 'Permita o uso do microfone se o navegador perguntar.', icone: 'microfone' },
-  falando: { titulo: 'A IA está falando', sub: 'Ouça a pergunta; depois é a sua vez.', icone: 'alto-falante' },
-  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar. Se quiser, fale por cima dela: ela para e ouve.', icone: 'microfone' },
-  pensando: { titulo: 'Pensando na próxima pergunta…', sub: '', icone: 'ia' },
+  conectando: { titulo: 'Ligando o microfone e a voz…', sub: 'Permita o uso do microfone se o navegador perguntar.', icone: 'microfone' },
+  falando: { titulo: 'A IA está falando', sub: 'Pode falar por cima a qualquer momento: ela continua ouvindo.', icone: 'alto-falante' },
+  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar.', icone: 'microfone' },
+  juntos: { titulo: 'Vocês dois estão falando', sub: 'A IA ouve o que você diz enquanto fala.', icone: 'conversa' },
   encerrando: { titulo: 'Encerrando a conversa…', sub: '', icone: 'parar' },
 };
 
 function EntrevistaPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [e, setE] = useState<Entrevista | null | undefined>(undefined);
   const [tela, setTela] = useState<'inicio' | 'conversa' | 'processando' | 'resultado'>('inicio');
   const [fase, setFase] = useState<Fase>('parado');
-  const [perguntas, setPerguntas] = useState(0);
-  const [cobertos, setCobertos] = useState<string[]>([]);
-  const [aviso, setAviso] = useState('');
-  const [interrompeu, setInterrompeu] = useState(false); // a pessoa falou por cima da IA nesta vez
-  const [interrupcoes, setInterrupcoes] = useState(0);
-  const [respostas, setRespostas] = useState<number[]>([]); // ms do fim da fala da pessoa ao início da voz da IA
-  const faseAnterior = useRef<Fase>('parado');
-  const [falaNaTela, setFalaNaTela] = useState('');
-  const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
+  const [metricas, setMetricas] = useState<Metricas>({});
   const [segundos, setSegundos] = useState(0);
+  const [aviso, setAviso] = useState('');
+  const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [etapaFim, setEtapaFim] = useState('');
   const [ciente, setCiente] = useState(false);
   const motor = useRef<MotorEntrevista | null>(null);
+  const encerrando = useRef(false);
 
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
-    setPerguntas(d.turnos.filter((t) => t.quem === 'ia').length);
-    setCobertos(d.cobertos);
+    setMetricas(d.metricas ?? {});
     if (d.status !== 'em_andamento') setTela('resultado');
     return d;
   }).catch(() => { setE(null); return null; });
@@ -67,16 +60,9 @@ function EntrevistaPage() {
   }, [tela, e]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function aoEvento(ev: Evento) {
-    if (ev.tipo === 'fase') {
-      setFase(ev.fase);
-      setInterrompeu(!!ev.interrompeu);
-      if (ev.fase === 'ouvindo' && ev.interrompeu && faseAnterior.current === 'falando') setInterrupcoes((n) => n + 1);
-      faseAnterior.current = ev.fase;
-    }
-    else if (ev.tipo === 'metrica') setRespostas((r) => [...r, ev.respostaMs]);
-    else if (ev.tipo === 'pergunta') { setPerguntas(ev.perguntas); setCobertos(ev.cobertos); setErro(null); }
+    if (ev.tipo === 'fase') setFase(ev.fase);
+    else if (ev.tipo === 'metricas') setMetricas(ev.metricas);
     else if (ev.tipo === 'aviso') setAviso(ev.texto);
-    else if (ev.tipo === 'fala') setFalaNaTela(ev.texto);
     else if (ev.tipo === 'erro') setErro({ texto: ev.texto, repetir: ev.repetir });
     else if (ev.tipo === 'fim') void encerrar(false);
   }
@@ -85,19 +71,23 @@ function EntrevistaPage() {
     if (!e) return;
     setTela('conversa');
     setErro(null);
-    setFalaNaTela('');
-    const m = new MotorEntrevista(id, aoEvento);
+    setSegundos(Math.round(e.metricas?.duracao_s ?? 0));
+    encerrando.current = false;
+    const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final);
     motor.current = m;
-    const ultima = [...e.turnos].reverse().find((t) => t.quem === 'ia')?.texto ?? 'Olá! Vamos começar. Me conta, em linhas gerais, como funciona esse processo?';
     try {
-      await m.iniciar(ultima);
+      await m.iniciar();
     } catch (err) {
-      setErro({ texto: `Não foi possível começar (${msg(err)}).`, repetir: () => { void m.encerrar(); void comecar(); } });
+      await m.encerrar().catch(() => {});
+      motor.current = null;
+      setErro({ texto: `Não foi possível começar (${msg(err)}).`, repetir: () => void comecar() });
     }
   }
 
   async function encerrar(perguntar: boolean) {
+    if (encerrando.current) return;
     if (perguntar && !(await confirmar({ titulo: 'Encerrar a entrevista agora?', mensagem: 'A IA gera a descrição e a ficha do processo com o que já foi conversado.', acao: 'Encerrar' }))) return;
+    encerrando.current = true;
     setTela('processando');
     setErro(null);
     setEtapaFim('Encerrando a conversa…');
@@ -121,42 +111,49 @@ function EntrevistaPage() {
     await carregar();
   }
 
-  if (e === undefined) return <div className="page fundo-processo"><p className="notice">Carregando…</p></div>;
-  if (e === null) return <div className="page fundo-processo"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
+  if (e === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
+  if (e === null) return <div className="page"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/entrevistas" className="btn btn-primary">Voltar</Link></div></div>;
 
   const cabecalho = (
     <div className="page-head">
       <div>
-        <nav className="migalha" aria-label="Caminho">
-          {e.processo.organizacao && <><span>{e.processo.organizacao}</span><span>›</span></>}
-          {e.processo.area && <><span>{e.processo.area}</span><span>›</span></>}
-          <Link href={`/app/processos/${e.processo.id}`}>{e.processo.nome}</Link>
-        </nav>
-        <h1>Entrevista com IA</h1>
-        <p>Processo <b>{e.processo.nome}</b> · <span className="code">{e.processo.codigo}</span></p>
+        <nav className="migalha" aria-label="Caminho"><Link href="/app/entrevistas">Entrevista com IA</Link></nav>
+        <h1>{e.tema || 'Entrevista'}</h1>
+        {e.contexto && <p>{e.contexto}</p>}
       </div>
     </div>
   );
+  const r = resumoMetricas(metricas);
+  const painelMetricas = (
+    <dl className="metricas-entrevista">
+      <div><dt>Reação da IA</dt><dd title="Do fim da sua fala ao início da fala da IA (mediana)">{seg(r.reacao_mediana_ms)}</dd></div>
+      <div><dt>Falas sobrepostas</dt><dd title="Vezes em que você falou enquanto a IA falava">{r.sobreposicoes} de {r.falas_pessoa}</dd></div>
+      <div><dt>Duração</dt><dd>{mmss(metricas.duracao_s ?? 0)}</dd></div>
+      <div><dt>Custo da voz</dt><dd title="US$ 0,05 por minuto de sessão do GPT-Live (a análise no fim é à parte)">{usd(r.custo_voz_usd)}</dd></div>
+    </dl>
+  );
 
   if (tela === 'inicio') {
-    const retomando = e.turnos.some((t) => t.quem === 'pessoa');
+    const retomando = e.turnos.length > 0;
     return (
-      <div className="page page-estreita fundo-processo">
+      <div className="page page-estreita">
         {cabecalho}
         <div className="cartao">
           <h3 className="sem-margem">{retomando ? 'Continuar a entrevista' : 'Como funciona'}</h3>
           <ul className="dicas">
-            <li>A IA faz perguntas por voz sobre o processo <b>{e.processo.nome}</b> e você responde falando, como numa conversa com um consultor.</li>
-            <li>Durante a conversa nada aparece na tela: só um sinal de quando a IA está falando, ouvindo ou pensando. O microfone fica aberto o tempo todo: você pode falar por cima da IA, que para e ouve.</li>
-            <li>A conversa fica gravada e é transcrita. No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto.</li>
-            <li>Dura de quinze a trinta minutos. Você pode encerrar quando quiser; o que já foi conversado é aproveitado.</li>
-            <li>Use fones de ouvido e um lugar silencioso. Fale com calma: a IA espera você terminar a frase.</li>
+            <li>A IA faz perguntas por voz sobre o processo e você responde falando, como numa conversa com um consultor.</li>
+            <li>É uma conversa ao vivo nos dois sentidos: a IA continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
+            <li>Durante a conversa nada aparece na tela: só um sinal de quem está falando.</li>
+            <li>No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
+            <li>Dura de quinze a trinta minutos (no máximo 45). A IA se despede sozinha; você também pode encerrar quando quiser.</li>
+            <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
-          {retomando && <p className="notice">Esta entrevista já tem {e.turnos.filter((t) => t.quem === 'pessoa').length} respostas. Ao continuar, a IA repete a última pergunta.</p>}
-          <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (AssemblyAI e Anthropic).</label>
+          {retomando && <p className="notice">Esta entrevista já tem {e.turnos.length} falas. Ao continuar, a IA retoma de onde parou.</p>}
+          <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
+          {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
-            <Link href={`/app/processos/${e.processo.id}`} className="btn">Voltar ao processo</Link>
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || e.processo.arquivado}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar' : 'Começar a entrevista'}</button>
+            <Link href="/app/entrevistas" className="btn">Voltar</Link>
+            <button className="btn btn-primary" onClick={comecar} disabled={!ciente}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar' : 'Começar a entrevista'}</button>
           </div>
         </div>
       </div>
@@ -167,24 +164,14 @@ function EntrevistaPage() {
     const est = ESTADO[fase];
     const processando = tela === 'processando';
     return (
-      <div className="page page-estreita fundo-processo">
+      <div className="page page-estreita">
         {cabecalho}
         <div className="cartao entrevista-vivo" data-fase={processando ? 'processando' : fase}>
           <div className={`orb ${processando ? 'pensando' : fase}`} aria-hidden="true"><Icone nome={processando ? 'ia' : est.icone} tamanho={56} /></div>
           <h2 className="entrevista-estado" aria-live="polite">{processando ? etapaFim : est.titulo}</h2>
-          {!processando && (fase === 'ouvindo' && interrompeu ? <p className="entrevista-sub entrevista-interrompeu">Você interrompeu a IA: pode continuar, ela está ouvindo.</p> : est.sub && <p className="entrevista-sub">{est.sub}</p>)}
-          {!processando && <p className="entrevista-sub"><b>{perguntas}</b> {perguntas === 1 ? 'pergunta' : 'perguntas'} · {mmss(segundos)}</p>}
-          {!processando && respostas.length > 0 && (
-            <p className="entrevista-sub entrevista-metricas" title="Do fim da sua fala ao início da voz da IA">
-              Resposta da IA: {(respostas[respostas.length - 1] / 1000).toFixed(1).replace('.', ',')} s (média {(respostas.reduce((a, b) => a + b, 0) / respostas.length / 1000).toFixed(1).replace('.', ',')} s)
-              {interrupcoes > 0 && ` · ${interrupcoes} ${interrupcoes === 1 ? 'interrupção' : 'interrupções'}`}
-            </p>
-          )}
-          <div className="entrevista-topicos" title={`Tópicos cobertos: ${cobertos.length} de ${TOPICOS.length}`}>
-            {TOPICOS.map((t) => <span key={t.id} className={cobertos.includes(t.id) ? 'coberto' : ''} title={`${t.nome}${cobertos.includes(t.id) ? ' · coberto' : ''}`} />)}
-            <small>{cobertos.length} de {TOPICOS.length} tópicos</small>
-          </div>
-          {falaNaTela && <p className="entrevista-fala">{falaNaTela}</p>}
+          {!processando && est.sub && <p className="entrevista-sub">{est.sub}</p>}
+          {!processando && <p className="entrevista-sub">{mmss(segundos)}</p>}
+          {!processando && painelMetricas}
           {aviso && <p className="notice">{aviso}</p>}
           {erro && (
             <div className="entrevista-erro" role="alert">
@@ -194,7 +181,6 @@ function EntrevistaPage() {
           )}
           {!processando && (
             <div className="entrevista-acoes">
-              <button className="btn" onClick={() => motor.current?.repetir()} disabled={fase !== 'ouvindo'} title="A IA repete a última pergunta"><Icone nome="refazer" tamanho={16} />Repetir a pergunta</button>
               <button className="btn btn-parar" onClick={() => encerrar(true)} disabled={fase === 'conectando' || fase === 'encerrando'}><Icone nome="parar" tamanho={16} />Encerrar entrevista</button>
             </div>
           )}
@@ -203,48 +189,18 @@ function EntrevistaPage() {
     );
   }
 
-  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} aoReprocessar={reprocessar} aoAtualizar={setE} router={router} />;
+  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} painelMetricas={painelMetricas} aoReprocessar={reprocessar} />;
 }
 
-function Resultado({ e, aviso, erro, cabecalho, aoReprocessar, aoAtualizar, router }: {
-  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode;
-  aoReprocessar: () => Promise<void>; aoAtualizar: (e: Entrevista) => void; router: ReturnType<typeof useRouter>;
+function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }: {
+  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; painelMetricas: React.ReactNode; aoReprocessar: () => Promise<void>;
 }) {
-  const [aplicando, setAplicando] = useState(false);
-  const [aplicado, setAplicado] = useState(false);
-  const [gerando, setGerando] = useState(false);
   const r = e.resultado;
   const parado = e.status === 'processando' && Date.now() - new Date(e.atualizado_em).getTime() > 3 * 60_000;
-
-  async function usarDescricao() {
-    if (!r) return;
-    if (!e.processo.descricao_vazia && !(await confirmar({ titulo: 'Substituir a descrição do processo?', mensagem: 'A descrição atual do processo é trocada pela sugerida na entrevista. Dá para editar depois.', acao: 'Substituir' }))) return;
-    setAplicando(true);
-    try {
-      await atualizarProcesso(e.processo.id, { descricao: r.descricao });
-      aoAtualizar({ ...e, processo: { ...e.processo, descricao_vazia: false } });
-      setAplicado(true);
-    } catch (err) {
-      void avisar('Não foi possível aplicar a descrição.', msg(err));
-    } finally {
-      setAplicando(false);
-    }
-  }
-
-  async function gerarFluxograma() {
-    if (e.processo.tem_fluxograma && !(await confirmar({ titulo: 'Gerar outro fluxograma?', mensagem: 'O processo já tem um fluxograma. A IA desenha outro no lugar dele, a partir da entrevista.', acao: 'Gerar de novo' }))) return;
-    setGerando(true);
-    try {
-      const f = await gerarComIa({ texto: transcricaoDaConversa(e.turnos), origem: 'transcricao', nome: e.processo.nome, processo_id: e.processo.id, substituir: e.processo.tem_fluxograma });
-      router.push(`/app/fluxogramas/${f.id}`);
-    } catch (err) {
-      setGerando(false);
-      void avisar('Não foi possível gerar o fluxograma.', msg(err));
-    }
-  }
+  const diagnostico = e.metricas?.erros?.length || e.metricas?.desconhecidos?.length;
 
   return (
-    <div className="page page-estreita fundo-processo">
+    <div className="page page-estreita">
       {cabecalho}
       {aviso && <p className="notice">{aviso}</p>}
       {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span>{erro.repetir && <button className="btn" onClick={erro.repetir}>Tentar de novo</button>}</div>}
@@ -260,20 +216,24 @@ function Resultado({ e, aviso, erro, cabecalho, aoReprocessar, aoAtualizar, rout
         </div>
       )}
       {e.status === 'concluida' && !r && (
-        <div className="cartao"><h3 className="sem-margem">Entrevista encerrada sem respostas</h3><p className="notice">Ninguém respondeu às perguntas, então não há o que gerar. Abra uma nova entrevista no processo.</p></div>
+        <div className="cartao"><h3 className="sem-margem">Entrevista encerrada sem respostas</h3><p className="notice">Nada do que você falou chegou a ser transcrito, então não há o que gerar. Abra uma nova entrevista.</p></div>
       )}
+
+      <div className="cartao">
+        <h3 className="sem-margem">Como foi a conversa</h3>
+        {painelMetricas}
+        {diagnostico ? (
+          <details className="diagnostico"><summary>Diagnóstico da sessão de voz</summary>
+            {e.metricas.erros?.length ? <><span className="ficha-rotulo">Erros</span><ul className="ficha-lista">{e.metricas.erros.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
+            {e.metricas.desconhecidos?.length ? <><span className="ficha-rotulo">Eventos não tratados</span><p className="notice">{e.metricas.desconhecidos.join(', ')}</p></> : null}
+          </details>
+        ) : null}
+      </div>
 
       {r && (
         <>
           <div className="cartao">
-            <div className="sec-titulo">
-              <h3 className="sem-margem">Descrição sugerida</h3>
-              <div className="sec-titulo-acoes">
-                {aplicado
-                  ? <span className="notice">Aplicada ao processo. <Link href={`/app/processos/${e.processo.id}`}>Ver o processo</Link></span>
-                  : <button className="btn btn-primary" onClick={usarDescricao} disabled={aplicando || e.processo.arquivado} title={e.processo.descricao_vazia ? 'Passa a ser a descrição do processo' : 'Substitui a descrição atual do processo'}><Icone nome="check" tamanho={16} />{aplicando ? 'Aplicando…' : 'Usar como descrição do processo'}</button>}
-              </div>
-            </div>
+            <h3 className="sem-margem">Descrição do processo</h3>
             <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />
           </div>
 
@@ -301,30 +261,25 @@ function Resultado({ e, aviso, erro, cabecalho, aoReprocessar, aoAtualizar, rout
               <ul className="ficha-lista">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
             </div>
           )}
-
-          <div className="cartao">
-            <div className="sec-titulo">
-              <div>
-                <h3 className="sem-margem">Fluxograma</h3>
-                <p className="notice">A IA desenha o fluxograma do processo a partir da conversa{e.processo.tem_fluxograma ? ' (no lugar do atual)' : ''}.</p>
-              </div>
-              <button className="btn btn-primary" onClick={gerarFluxograma} disabled={gerando || e.processo.arquivado}><Icone nome="fluxo" tamanho={16} />{gerando ? 'Gerando…' : e.processo.tem_fluxograma ? 'Gerar de novo com a entrevista' : 'Gerar fluxograma'}</button>
-            </div>
-          </div>
         </>
       )}
 
       {e.turnos.length > 0 && (
-        <details className="cartao conversa-detalhes">
-          <summary>Conversa transcrita ({e.turnos.filter((t) => t.quem === 'ia').length} perguntas)</summary>
-          {e.audio_url && <audio controls src={e.audio_url} className="conversa-audio" preload="none" />}
+        <details className="cartao conversa-detalhes" open={!r}>
+          <summary>Conversa transcrita ({e.turnos.length} falas)</summary>
+          {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
           <div className="conversa-lida">
-            {e.turnos.map((t, i) => <p key={i} className={t.quem}><b>{t.quem === 'ia' ? 'IA' : 'Você'}:</b> {t.texto}</p>)}
+            {e.turnos.map((t, i) => (
+              <p key={i} className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}`}>
+                {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
+                <b>{t.quem === 'ia' ? 'IA' : 'Você'}{t.sobreposta ? ' (por cima da IA)' : ''}:</b> {t.texto}
+              </p>
+            ))}
           </div>
         </details>
       )}
 
-      <div className="fluxo-acoes"><Link href={`/app/processos/${e.processo.id}`} className="btn"><Icone nome="voltar" tamanho={16} />Voltar ao processo</Link></div>
+      <div className="fluxo-acoes"><Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar às entrevistas</Link></div>
     </div>
   );
 }
