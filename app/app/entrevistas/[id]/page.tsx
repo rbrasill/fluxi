@@ -67,15 +67,17 @@ function EntrevistaPage() {
     else if (ev.tipo === 'aviso') setAviso(ev.texto);
     else if (ev.tipo === 'erro') setErro({ texto: ev.texto, repetir: ev.repetir });
     else if (ev.tipo === 'fim') void encerrar(false);
+    else if (ev.tipo === 'pausa') void pausar();
   }
 
   async function comecar() {
     if (!e) return;
     setTela('conversa');
     setErro(null);
+    setAviso('');
     setSegundos(Math.round(e.metricas?.duracao_s ?? 0));
     encerrando.current = false;
-    const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final);
+    const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final, e.frase_pausa);
     motor.current = m;
     try {
       await m.iniciar();
@@ -105,6 +107,23 @@ function EntrevistaPage() {
     await envio;
     await carregar();
     setTela('resultado');
+  }
+
+  /** Pausa para continuar depois: desliga a sessão (nada é cobrado), guarda a conversa e o áudio, e a entrevista fica aberta. */
+  async function pausar() {
+    if (encerrando.current) return;
+    encerrando.current = true;
+    setTela('processando');
+    setErro(null);
+    setEtapaFim('Pausando a conversa…');
+    const m = motor.current;
+    motor.current = null;
+    m?.marcarPausa();
+    const blob = await m?.encerrar().catch(() => null);
+    if (blob && blob.size > 0) await enviarAudioDaEntrevista(id, blob).catch(() => setAviso('O áudio desta parte da conversa não pôde ser guardado.'));
+    await carregar();
+    setAviso((a) => a || 'Entrevista pausada: a ligação com a IA foi desligada e nada é cobrado enquanto ela estiver pausada. Clique em Continuar quando quiser seguir.');
+    setTela('inicio');
   }
 
   async function reprocessar() {
@@ -144,7 +163,8 @@ function EntrevistaPage() {
             <li>Dura o necessário para cobrir o processo (no máximo 45 minutos). A IA se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
-          {retomando && <p className="notice">Esta entrevista já tem {e.turnos.length} falas. Ao continuar, a IA retoma de onde parou.</p>}
+          {aviso && <p className="notice">{aviso}</p>}
+          {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a JOI retoma de onde vocês pararam.</p>}
           <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
@@ -180,6 +200,7 @@ function EntrevistaPage() {
           )}
           {!processando && (
             <div className="entrevista-acoes">
+              <button className="btn" onClick={() => void pausar()} disabled={fase === 'conectando' || fase === 'encerrando'} title="Desliga a ligação com a IA (sem custo) e guarda a conversa para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar</button>
               <button className="btn btn-parar" onClick={() => encerrar(true)} disabled={fase === 'conectando' || fase === 'encerrando'}><Icone nome="parar" tamanho={16} />Encerrar entrevista</button>
             </div>
           )}
@@ -305,11 +326,17 @@ function PainelMetricas({ metricas }: { metricas: Metricas }) {
 
 function DetalhesMetricas({ m }: { m: Metricas }) {
   const a = m.analise;
+  const c = m.conexao_etapas;
+  const sinais = Object.entries(m.apoios_por_sinal ?? {}).sort((x, y) => y[1] - x[1]);
+  const sessoes = m.sessoes ?? 1;
+  const fechadas = m.eventos?.['session.closed'];
   return (
     <p className="notice">
       {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
-      {m.sessoes && m.sessoes > 1 ? `A conversa teve ${m.sessoes} sessões de voz (foi continuada). ` : ''}
-      {m.conexao_ms !== undefined ? `Abertura: a voz conectou ${seg(m.conexao_ms)} depois do clique${m.abertura_ms !== undefined ? ` e a IA começou a falar ${seg(m.abertura_ms)} depois` : ''}. ` : ''}
+      {sessoes > 1 ? `A conversa teve ${sessoes} sessões de voz${m.pausas ? ` (${m.pausas} ${m.pausas === 1 ? 'pausa' : 'pausas'})` : ''}. ` : ''}
+      {fechadas !== undefined ? `Sessões desligadas com confirmação da OpenAI: ${fechadas} de ${sessoes}. ` : ''}
+      {m.conexao_ms !== undefined ? `Abertura${sessoes > 1 ? ' (última sessão)' : ''}: a voz conectou ${seg(m.conexao_ms)} depois do clique${c ? ` (microfone ${seg(c.microfone_ms)}, conexão ${seg(c.oferta_ms)}, servidor ${seg(c.servidor_ms)}${c.openai_ms !== undefined ? `, dos quais OpenAI ${seg(c.openai_ms)}` : ''}, início da sessão ${seg(c.inicio_ms)})` : ''}${m.abertura_ms !== undefined ? ` e a IA começou a falar ${seg(m.abertura_ms)} depois` : ''}. ` : ''}
+      {sinais.length ? `Sinais de escuta: ${sinais.map(([k, n]) => `"${k}" ${n}`).join(', ')}. ` : ''}
       Reação: do fim da sua fala ao início da resposta da IA, sem contar os sinais de escuta. Custos pelas tabelas da OpenAI (US$ 0,05/min) e da Anthropic.
     </p>
   );

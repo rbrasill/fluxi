@@ -20,6 +20,8 @@ const MODELO_CONSULTA = process.env.INCFLOW_MODELO_CONSULTA || 'claude-haiku-5-5
 const URL_SESSOES = process.env.INCFLOW_LIVE_URL || 'https://api.openai.com/v1/live/sessions';
 /** A expressão da despedida: quando a IA a diz (e termina de falar), o app encerra a entrevista sozinho. */
 export const FRASE_FINAL = 'Vamos concluir por aqui';
+/** A expressão de pausa: a IA a diz quando a pessoa precisa sair; o app desliga a sessão e a entrevista fica aberta para continuar. */
+export const FRASE_PAUSA = 'A gente continua depois';
 // Quem é a entrevistadora (fase de teste, decisão 45): nome e com quem trabalha, ditos na abertura.
 const NOME_IA = 'JOI';
 const COM_QUEM = 'com o Rafael Brasil, na área de processos da INC';
@@ -77,7 +79,7 @@ export async function obter(id: string) {
     const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
     audios = (data ?? []).map((x) => x.signedUrl).filter((u): u is string => !!u);
   }
-  return { ...linha, audios, frase_final: FRASE_FINAL };
+  return { ...linha, audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA };
 }
 
 export async function excluir(id: string) {
@@ -106,7 +108,7 @@ Você é a ${NOME_IA}, consultora de mapeamento de processos, fazendo uma entrev
 - Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
 - Pronúncia: "INC" é uma palavra só e se fala "ínqui" (como "ink", em inglês); nunca soletre as letras. "INCFlow" se fala "ínqui flôu". O seu nome, "${NOME_IA}", se fala "djói" (como "joy", em inglês).
 
-Backchannel policy: Use sons curtos de escuta ("aham", "uhum", "sei") com moderação enquanto a pessoa explica, sem competir com a fala dela. Um som de escuta nunca substitui uma resposta.
+Backchannel policy: Enquanto a pessoa explica, mostre que está ouvindo com sinais curtos e variados, sem vício: alterne "aham", "uhum", "sei", "certo", "entendi", "tá", "faz sentido", "ah, legal", e muitas vezes fique só em silêncio. Nunca repita o mesmo sinal duas vezes seguidas e use poucos: no máximo um a cada trecho longo da fala dela, sem competir com ela. Varie também o começo das respostas (não comece sempre com "Entendi" ou "Tá"). Um sinal de escuta nunca substitui uma resposta.
 
 Interruption policy: Quando a pessoa começar a falar por cima de você, pare de falar imediatamente, mesmo no meio da frase, e ouça até ela terminar; depois responda ao que ela disse. Se ela pedir para parar ou esperar, corrigir algo, fazer uma pergunta ou pedir para encerrar, pare na hora, sem terminar a frase e sem acrescentar nada. Não retome o que foi cortado, a não ser que ela peça. Só um "aham", "uhum", "sei" ou "tá" breve dela não é interrupção: aí continue.
 
@@ -120,7 +122,7 @@ Entender o processo de ponta a ponta para, depois da conversa, escrever a descri
 ${TOPICOS_TEXTO}
 
 # Como conduzir
-- ${continuando ? 'A conversa já começou antes e foi interrompida: retome em uma frase de onde parou (veja o histórico) e siga.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "Oi, eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da INC', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
+- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "Oi, eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da INC', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
 - Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
@@ -132,8 +134,9 @@ ${TOPICOS_TEXTO}
 - A entrevista termina quando os tópicos estiverem cobertos, não pelo tempo. Antes de resumir, repasse os tópicos e explore o que ainda estiver em aberto, uma pergunta por vez. Confira em especial: o que acontece quando uma aprovação ou decisão é negada ou algo dá errado; prazos; quem participa de cada etapa; com que frequência o processo acontece; o que costuma dar problema. Se a pessoa não souber responder, siga para o próximo ponto (vira pendência).
 - "Acho que é isso" ou "tá bom" depois de um resumo não é pedido para encerrar: se ainda houver lacuna, pergunte.
 - Com os tópicos cobertos, faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, despeça-se em uma ou duas frases, como numa conversa de verdade, dizendo "${FRASE_FINAL.toLowerCase()}". Por exemplo: "Olha, acho que deu para entender bem o processo. Então ${FRASE_FINAL.toLowerCase()}. Muito obrigada pela conversa!"
-- Se a pessoa disser que quer parar ou precisa sair com pontos ainda em aberto, diga em uma frase o que falta e pergunte se dá para responder só mais uma ou duas perguntas rápidas. Se ela repetir que acabou, disser que não pode ou que precisa sair, não insista: agradeça e despeça-se na hora, dizendo "${FRASE_FINAL.toLowerCase()}" (o que ficou faltando vira pendência para uma próxima conversa).
-- "${FRASE_FINAL}" encerra a entrevista: diga só na despedida, uma única vez. Não use frases de sistema como "entrevista concluída".`;
+- Se a pessoa precisar sair ou pedir para continuar outra hora antes de os tópicos estarem cobertos: se ela perguntar se ficou alguma dúvida, faça na hora a pergunta mais importante; senão, diga em uma frase o que ficou faltando e combine de continuar depois, despedindo-se com "${FRASE_PAUSA.toLowerCase()}". Por exemplo: "Tranquilo! Ficou faltando entender o que acontece quando o terreno é reprovado. ${FRASE_PAUSA}, tá? Obrigada!" A conversa fica guardada e, quando a pessoa voltar, vocês seguem de onde pararam.
+- Se a pessoa disser que não vai ter outra conversa, que já falou tudo o que sabe ou que quer encerrar de vez, não insista: agradeça e despeça-se dizendo "${FRASE_FINAL.toLowerCase()}" (o que faltou vira pendência).
+- "${FRASE_FINAL}" encerra a entrevista de vez; "${FRASE_PAUSA}" pausa a entrevista para continuar outra hora. Diga só uma das duas, uma única vez, e só na despedida. Não use frases de sistema como "entrevista concluída".`;
 }
 
 /** Histórico para continuar uma conversa interrompida (o GPT-Live aceita até 128 mensagens e cerca de 8 mil tokens). */
@@ -141,6 +144,7 @@ export function historicoParaSessao(turnos: Turno[]) {
   const msgs: { role: 'user' | 'assistant'; content: { type: 'input_text' | 'output_text'; text: string }[] }[] = [];
   let chars = 0;
   for (const t of [...turnos].reverse()) {
+    if (t.apoio) continue; // os "aham" não ajudam a retomar e gastam o limite do histórico
     const texto = t.texto.slice(0, 2000);
     if (msgs.length >= 120 || chars + texto.length > 24_000) break;
     chars += texto.length;
@@ -168,6 +172,7 @@ export async function abrirSessao(id: string, sdp: string) {
     client: { data_channel: { allowed_client_events: ['session.close', 'session.commentary.append', 'session.thinking.append'] } },
   };
   let r: Response;
+  const inicio = Date.now();
   try {
     r = await fetch(URL_SESSOES, {
       method: 'POST', signal: AbortSignal.timeout(20_000),
@@ -180,8 +185,9 @@ export async function abrirSessao(id: string, sdp: string) {
   const j = await r.json().catch(() => ({})) as { session?: { id?: string }; transport?: { sdp?: string }; error?: { message?: string } };
   if (r.status === 401) throw new ErroApi(502, 'A OpenAI recusou a chave (OPENAI_API_KEY).');
   if (!r.ok || !j.transport?.sdp) throw new ErroApi(502, `A OpenAI não abriu a sessão de voz (${r.status}${j.error?.message ? `: ${j.error.message}` : ''}).`);
+  const openai_ms = Date.now() - inicio; // quanto da abertura foi a OpenAI (o resto é a Vercel e a rede)
   if (j.session?.id) await salvar(id, { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50) });
-  return { sdp: j.transport.sdp, continuando };
+  return { sdp: j.transport.sdp, continuando, openai_ms };
 }
 
 // --- Consulta durante a conversa: a IA pede ("deixa eu ver aqui"), o Claude responde, ela fala (decisão 44) ---
@@ -242,6 +248,15 @@ export const ConversaSchema = z.object({
     silencio_max_ms: z.number().optional(),
     conexao_ms: z.number().min(0).optional(),
     abertura_ms: z.number().min(0).optional(),
+    conexao_etapas: z.object({
+      microfone_ms: z.number().min(0).optional(),
+      oferta_ms: z.number().min(0).optional(),
+      servidor_ms: z.number().min(0).optional(),
+      openai_ms: z.number().min(0).optional(),
+      inicio_ms: z.number().min(0).optional(),
+    }).optional(),
+    apoios_por_sinal: z.record(z.string().max(40), z.number()).optional(),
+    pausas: z.number().min(0).optional(),
     consultas: z.array(z.object({
       pergunta: z.string().max(300),
       resposta: z.string().max(1500),

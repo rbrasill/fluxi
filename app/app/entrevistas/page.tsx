@@ -74,7 +74,7 @@ export default function EntrevistasPage() {
                 <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
                 <Link href={`/app/entrevistas/${x.id}`} className="pop-nome">
                   <strong>{x.tema || 'Entrevista'}</strong>
-                  <span>{data(x.criado_em)} · {ROTULO_STATUS[x.status]} · {x.falas} {x.falas === 1 ? 'fala' : 'falas'}{x.duracao_s ? ` · ${duracao(x.duracao_s)} · ${usd((x.duracao_s / 60) * PRECO_VOZ_USD_MIN + (x.custo_analise_usd ?? 0) + (x.custo_consultas_usd ?? 0))}` : ''}</span>
+                  <span>{data(x.criado_em)} · {x.status === 'em_andamento' && x.falas > 0 ? 'Pausada' : ROTULO_STATUS[x.status]} · {x.falas} {x.falas === 1 ? 'fala' : 'falas'}{x.duracao_s ? ` · ${duracao(x.duracao_s)} · ${usd((x.duracao_s / 60) * PRECO_VOZ_USD_MIN + (x.custo_analise_usd ?? 0) + (x.custo_consultas_usd ?? 0))}` : ''}</span>
                 </Link>
                 <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title="Excluir a entrevista"><Icone nome="lixo" tamanho={16} />Excluir</button>
                 <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>{x.status === 'em_andamento' ? 'Continuar' : 'Abrir'}</Link>

@@ -26,8 +26,19 @@ const palavras = (s: string) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 const terminaEmPergunta = (s: string) => /\?\s*$/.test(s.trim());
 /** Fala curta ("aham", "sei", "isso"): poucas palavras, pouco tempo e não é pergunta. */
 const ehCurta = (t: Trecho) => palavras(t.texto) <= APOIO_PALAVRAS && t.fim_ms - t.inicio_ms <= APOIO_MS && !terminaEmPergunta(t.texto);
+// Os sinais de escuta ("aham", "sei", "faz sentido"…). Uma fala curta da IA fora desta lista ("Claro, sem
+// problema.", "Até mais!") é resposta, não sinal de escuta.
+const SINAIS = new Set(['aham', 'aha', 'ahan', 'uhum', 'uhm', 'hum', 'hm', 'hmm', 'humm', 'mhm', 'sei', 'ta', 'ta bom', 'ta certo', 'certo', 'entendi', 'ok', 'okay', 'isso', 'sim', 'legal', 'ah legal', 'que legal', 'faz sentido', 'nossa', 'olha so', 'que bom', 'interessante', 'ah', 'e', 'e mesmo', 'ah sim', 'ah ta', 'ah entendi', 'aham aham', 'uhum uhum', 'sei sei', 'ta ta']);
+/** O sinal de escuta como foi dito, sem pontuação ("Tá bom." → "tá bom"). */
+export const sinalDeEscuta = (texto: string) => texto.toLowerCase().replace(/[^\p{L}\p{N} ]+/gu, ' ').replace(/\s+/g, ' ').trim();
+const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+/** Os sinais de uma fala curta ("Aham. Tá bom." → ["aham", "tá bom"]); vazio se alguma parte não for sinal de escuta. */
+const sinaisDaFala = (texto: string) => {
+  const partes = texto.split(/[.,!?;…]+/).map(sinalDeEscuta).filter(Boolean);
+  return partes.length && partes.every((p) => SINAIS.has(semAcento(p))) ? partes : [];
+};
 /** Fala de apoio da IA enquanto a pessoa explica. (Da pessoa, uma fala curta é resposta: "isso", "é".) */
-export const ehApoio = (t: Trecho) => t.quem === 'ia' && ehCurta(t);
+export const ehApoio = (t: Trecho) => t.quem === 'ia' && ehCurta(t) && sinaisDaFala(t.texto).length > 0;
 
 export class Conversa {
   private trechos: Trecho[] = [];
@@ -92,7 +103,7 @@ export class Conversa {
  * Se a IA emendou antes do fim marcado da fala (até REACAO_EMENDOU_MS antes: o fim da transcrição é
  * aproximado), a reação conta como zero; mais cedo que isso, a IA já estava falando e não é reação.
  */
-export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' | 'sobreposicoes' | 'falas_pessoa' | 'falas_ia' | 'apoios' | 'tempo_pessoa_s' | 'tempo_ia_s' | 'silencio_max_ms'> {
+export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' | 'sobreposicoes' | 'falas_pessoa' | 'falas_ia' | 'apoios' | 'apoios_por_sinal' | 'tempo_pessoa_s' | 'tempo_ia_s' | 'silencio_max_ms'> {
   const reais = turnos.filter((t) => !t.apoio);
   const dur = (t: Turno) => Math.max(0, (t.fim_ms ?? 0) - (t.inicio_ms ?? 0));
   // Maior silêncio: o maior intervalo em que ninguém estava falando.
@@ -119,6 +130,7 @@ export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' 
     falas_pessoa: turnos.filter((t) => t.quem === 'pessoa').length,
     falas_ia: reais.filter((t) => t.quem === 'ia').length,
     apoios: turnos.filter((t) => t.quem === 'ia' && t.apoio).length,
+    apoios_por_sinal: turnos.filter((t) => t.quem === 'ia' && t.apoio).flatMap((t) => sinaisDaFala(t.texto)).reduce<Record<string, number>>((a, k) => { a[k] = (a[k] ?? 0) + 1; return a; }, {}),
     tempo_pessoa_s: Math.round(turnos.filter((t) => t.quem === 'pessoa').reduce((a, t) => a + dur(t), 0) / 1000),
     tempo_ia_s: Math.round(reais.filter((t) => t.quem === 'ia').reduce((a, t) => a + dur(t), 0) / 1000),
     silencio_max_ms,

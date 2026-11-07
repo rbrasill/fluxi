@@ -5,7 +5,7 @@ import { ErroCliente } from './fluxogramas';
 export type Entrevista = {
   id: string; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
-  resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string;
+  resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string; frase_pausa: string;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
 export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number };
@@ -22,7 +22,7 @@ export const listarEntrevistas = () => api<EntrevistaResumo[]>('/api/entrevistas
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
 /** Abre a sessão de voz no GPT-Live: manda a oferta WebRTC e recebe a resposta. */
-export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
+export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean; openai_ms?: number }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */
 export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas }) =>
   api<{ ok: true }>(`/api/entrevistas/${id}/conversa`, { method: 'PUT', body: JSON.stringify(dados), keepalive: JSON.stringify(dados).length < 60_000 });

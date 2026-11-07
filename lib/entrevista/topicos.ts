@@ -36,6 +36,10 @@ export type Metricas = {
   silencio_max_ms?: number; // maior intervalo sem ninguém falar
   conexao_ms?: number; // do clique em começar até a sessão de voz começar (a última sessão)
   abertura_ms?: number; // da sessão começar até a IA começar a falar (a última sessão)
+  // As etapas da conexão (a última sessão): microfone, oferta WebRTC, ida ao servidor (dos quais a OpenAI) e início da sessão
+  conexao_etapas?: { microfone_ms?: number; oferta_ms?: number; servidor_ms?: number; openai_ms?: number; inicio_ms?: number };
+  apoios_por_sinal?: Record<string, number>; // quantas vezes cada sinal de escuta ("aham", "sei"...), para ver se virou vício
+  pausas?: number; // vezes em que a entrevista foi pausada para continuar depois
   analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number }; // a análise no fim (Claude)
   consultas?: Consulta[]; // o que a IA foi verificar durante a conversa (Claude), com demora e custo
   sessoes?: number;

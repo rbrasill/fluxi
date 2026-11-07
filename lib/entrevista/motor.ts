@@ -16,18 +16,26 @@ export type Evento =
   | { tipo: 'nivel'; ia: number; pessoa: number } // volume de cada lado (0 a 1), várias vezes por segundo, para a esfera
   | { tipo: 'aviso'; texto: string }
   | { tipo: 'erro'; texto: string; repetir?: () => void }
-  | { tipo: 'fim' }; // a IA se despediu: hora de encerrar e processar
+  | { tipo: 'fim' } // a IA se despediu: hora de encerrar e processar
+  | { tipo: 'pausa' }; // pausar e continuar depois: desliga a sessão (sem custo) e a entrevista fica aberta
 
 type Mensagem = { type: string; delta?: string; start_ms?: number; end_ms?: number; usage?: { seconds?: number }; error?: { message?: string }; reason?: string; [k: string]: unknown };
 
 const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar)
-const LIMITE_MS = 45 * 60_000; // teto de uma sessão (custo): encerra sozinha
+const LIMITE_MS = 45 * 60_000; // teto de uma sessão (custo): pausa sozinha
+const INATIVIDADE_MS = 2 * 60_000; // ninguém falou nesse tempo: pausa sozinha (a sessão parada também é cobrada)
 const NIVEL_VOZ = 0.02; // volume (RMS) a partir do qual alguém está falando
 const MAX_CONSULTAS = 20; // por sessão (custo)
 const CONHECIDOS = new Set(['session.started', 'session.input_transcript.delta', 'session.output_transcript.delta', 'session.usage.updated', 'session.closed', 'session.delegation.created', 'session.thinking.appended', 'session.commentary.appended', 'session.instructions.appended', 'session.updated', 'error']);
 
-/** Sem acento, pontuação nem maiúsculas, para achar a frase da despedida na transcrição. */
+/** Sem acento, pontuação nem maiúsculas, para achar a frase da despedida (ou da pausa) na transcrição. */
 export const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+const somar = (a: Record<string, number> = {}, b: Record<string, number> = {}) => {
+  const r = { ...a };
+  for (const [k, v] of Object.entries(b)) r[k] = (r[k] ?? 0) + v;
+  return r;
+};
 
 export class MotorEntrevista {
   private pc: RTCPeerConnection | null = null;
@@ -51,7 +59,13 @@ export class MotorEntrevista {
   private consultas: Consulta[] = [];
   private iaFalou = false;
   private conexaoMs: number | undefined; // do clique até a sessão começar
+  private conexaoEtapas: NonNullable<Metricas['conexao_etapas']> = {};
   private aberturaMs: number | undefined; // da sessão começar até a IA falar
+  private ultimaFala = 0; // performance.now() do último pedaço de transcrição (de qualquer lado)
+  private consultando = 0; // consultas em andamento (a espera não conta como inatividade)
+  private pausou = false;
+  // Os testes de tela encurtam a espera da pausa por inatividade (window.__entrevistaInatividadeMs).
+  private inatividadeMs = (globalThis as { __entrevistaInatividadeMs?: number }).__entrevistaInatividadeMs ?? INATIVIDADE_MS;
   private fimPedido = false;
   private alguemFalando = false;
   private timers: ReturnType<typeof setInterval>[] = [];
@@ -59,7 +73,7 @@ export class MotorEntrevista {
   private ultimoSalvo = '';
   private aoSair = () => { this.enviar({ type: 'session.close' }); void this.salvar(); };
 
-  constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Vamos concluir por aqui') {
+  constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Vamos concluir por aqui', private frasePausa = 'A gente continua depois') {
     // Ao continuar, a sessão nova começa depois do fim da conversa já salva.
     const fim = anteriores.reduce((m, t) => Math.max(m, t.fim_ms ?? t.inicio_ms ?? 0), 0);
     this.conversa = new Conversa(anteriores, anteriores.length ? fim + 2000 : 0);
@@ -72,6 +86,10 @@ export class MotorEntrevista {
     this.mudar('conectando');
     this.ctx = new AudioContext(); // nasce dentro do clique (política de autoplay)
     this.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    // Cada etapa da conexão fica medida (para achar onde está a demora: navegador, Vercel ou OpenAI).
+    let marca = performance.now();
+    const etapa = () => { const agora = performance.now(), ms = Math.round(agora - marca); marca = agora; return ms; };
+    this.conexaoEtapas = { microfone_ms: Math.round(marca - clique) };
     if (!this.ativo) return;
     const pc = new RTCPeerConnection();
     this.pc = pc;
@@ -94,7 +112,12 @@ export class MotorEntrevista {
       voz.connect(gravacao);
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' && this.ativo) this.aoEvento({ tipo: 'erro', texto: 'A conexão de voz caiu. Encerre a entrevista: o que já foi conversado está guardado.' });
+      // Sem conexão, a sessão não serve mais: pausa (desliga tudo; o que foi conversado está guardado).
+      if (pc.connectionState === 'failed' && this.ativo) {
+        this.registrarErro('A conexão de voz caiu.');
+        this.aoEvento({ tipo: 'aviso', texto: 'A conexão de voz caiu e a entrevista foi pausada. O que já foi conversado está guardado: clique em Continuar para seguir.' });
+        this.aoEvento({ tipo: 'pausa' });
+      }
     };
     const dc = pc.createDataChannel('oai-events');
     this.dc = dc;
@@ -114,23 +137,47 @@ export class MotorEntrevista {
       pc.addEventListener('icegatheringstatechange', fim);
       setTimeout(r, 3000); // os candidatos que já houver bastam
     });
-    const { sdp } = await abrirSessaoDeVoz(this.id, pc.localDescription!.sdp);
+    this.conexaoEtapas.oferta_ms = etapa();
+    const { sdp, openai_ms } = await abrirSessaoDeVoz(this.id, pc.localDescription!.sdp);
+    this.conexaoEtapas.servidor_ms = etapa();
+    if (typeof openai_ms === 'number') this.conexaoEtapas.openai_ms = openai_ms;
     if (!this.ativo) return;
     await pc.setRemoteDescription({ type: 'answer', sdp });
     await iniciou;
+    this.conexaoEtapas.inicio_ms = etapa();
     this.inicioSessao = performance.now();
+    this.ultimaFala = this.inicioSessao;
     this.conexaoMs = Math.round(this.inicioSessao - clique);
     // O GPT-Live não abre a conversa sozinho (nos quatro primeiros testes, só falou depois do pedido):
     // pede a abertura assim que a sessão começa, sem esperar.
-    if (!this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: this.anteriores.length ? 'Retome a entrevista em uma frase e faça a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
+    if (!this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: this.anteriores.length ? 'A pessoa voltou para continuar a entrevista: diga que bom que ela voltou, lembre em uma frase onde vocês pararam e siga com a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
     this.gravar(gravacao.stream);
     await this.ctx.resume();
     window.addEventListener('beforeunload', this.aoSair);
+    window.addEventListener('pagehide', this.aoSair);
     this.timers.push(setInterval(() => this.medir(), 50));
     this.timers.push(setInterval(() => { const metricas = this.metricas(); this.aoEvento({ tipo: 'metricas', metricas, duracao_s: metricas.duracao_s ?? 0 }); }, 1000));
     this.timers.push(setInterval(() => void this.salvar(), SALVAR_MS));
-    this.timers.push(setInterval(() => { if (this.ativo && performance.now() - this.inicioSessao > LIMITE_MS) { this.aoEvento({ tipo: 'aviso', texto: 'A entrevista chegou ao limite de 45 minutos e foi encerrada.' }); this.aoEvento({ tipo: 'fim' }); } }, 5000));
+    // Proteções de custo: a sessão nunca fica ligada sem uso. Teto por sessão e pausa por inatividade.
+    this.timers.push(setInterval(() => {
+      if (!this.ativo || this.fimPedido) return;
+      const agora = performance.now();
+      if (agora - this.inicioSessao > LIMITE_MS) {
+        this.fimPedido = true;
+        this.aoEvento({ tipo: 'aviso', texto: 'Esta sessão chegou a 45 minutos e foi pausada para não gerar custo. A conversa está guardada: clique em Continuar para seguir.' });
+        this.aoEvento({ tipo: 'pausa' });
+      } else if (!this.consultando && agora - this.ultimaFala > this.inatividadeMs) { // pela transcrição: ruído de fundo não segura a sessão
+        this.fimPedido = true;
+        this.aoEvento({ tipo: 'aviso', texto: 'Ninguém falou por 2 minutos e a entrevista foi pausada para não gerar custo. A conversa está guardada: clique em Continuar quando quiser.' });
+        this.aoEvento({ tipo: 'pausa' });
+      }
+    }, 5000));
     this.mudar('ouvindo');
+  }
+
+  /** Antes de encerrar para continuar depois: a pausa entra nas métricas. */
+  marcarPausa() {
+    this.pausou = true;
   }
 
   /** Um erro do lado do navegador (microfone, conexão): fica no diagnóstico da entrevista. */
@@ -145,6 +192,7 @@ export class MotorEntrevista {
     this.mudar('encerrando');
     this.timers.forEach(clearInterval);
     window.removeEventListener('beforeunload', this.aoSair);
+    window.removeEventListener('pagehide', this.aoSair);
     // Pede o fim da sessão e espera o "session.closed" (com o uso final) por até 2 s.
     const fechou = new Promise<void>((r) => { this.fechada = r; setTimeout(r, 2000); });
     this.enviar({ type: 'session.close' });
@@ -169,12 +217,16 @@ export class MotorEntrevista {
     const fim = typeof m.end_ms === 'number' ? m.end_ms : inicio;
     switch (m.type) {
       case 'session.input_transcript.delta':
-        if (m.delta) this.conversa.adicionar({ quem: 'pessoa', texto: m.delta, inicio_ms: inicio, fim_ms: fim });
+        if (m.delta) {
+          this.ultimaFala = performance.now();
+          this.conversa.adicionar({ quem: 'pessoa', texto: m.delta, inicio_ms: inicio, fim_ms: fim });
+        }
         break;
       case 'session.output_transcript.delta':
         if (m.delta) {
           if (!this.iaFalou) this.aberturaMs = Math.max(0, Math.round(typeof m.start_ms === 'number' ? m.start_ms : agoraMs));
           this.iaFalou = true;
+          this.ultimaFala = performance.now();
           this.conversa.adicionar({ quem: 'ia', texto: m.delta, inicio_ms: inicio, fim_ms: fim });
           this.verificarFim();
         }
@@ -203,6 +255,7 @@ export class MotorEntrevista {
     const responder = (content: string) => this.enviar({ type: 'session.commentary.append', delegation_id, content });
     if (this.consultas.length >= MAX_CONSULTAS) return responder('Não dá para consultar mais nada nesta conversa. Diga isso em uma frase e siga a entrevista.');
     const inicio = performance.now();
+    this.consultando++;
     try {
       const r = await consultarDuranteEntrevista(this.id, this.conversa.turnos().slice(-30));
       this.consultas.push({ pergunta: r.pergunta, resposta: r.resposta, demora_ms: Math.round(performance.now() - inicio), custo_usd: r.custo_usd });
@@ -212,20 +265,29 @@ export class MotorEntrevista {
       this.consultas.push({ pergunta: '', resposta: texto.slice(0, 300), demora_ms: Math.round(performance.now() - inicio), custo_usd: 0, falhou: true });
       this.registrarErro(`Consulta: ${texto}`);
       if (this.ativo) responder('A consulta não deu certo. Diga em uma frase que não conseguiu verificar agora e siga a entrevista.');
+    } finally {
+      this.consultando--;
+      this.ultimaFala = performance.now();
     }
   }
 
-  /** A IA disse a frase da despedida: depois que ela terminar de falar (e ninguém mais falar), encerra. */
+  /**
+   * A IA disse a frase da despedida ("vamos concluir por aqui": encerra) ou da pausa ("a gente continua
+   * depois": desliga a sessão e a entrevista fica aberta). Age depois que ela terminar de falar e ninguém mais falar.
+   */
   private verificarFim() {
     if (this.fimPedido) return;
     const ultimaIa = [...this.conversa.turnos()].reverse().find((t) => t.quem === 'ia');
-    if (!ultimaIa || !normalizar(ultimaIa.texto).includes(normalizar(this.fraseFinal))) return;
+    if (!ultimaIa) return;
+    const dito = normalizar(ultimaIa.texto);
+    const tipo = dito.includes(normalizar(this.fraseFinal)) ? 'fim' : dito.includes(normalizar(this.frasePausa)) ? 'pausa' : null;
+    if (!tipo) return;
     this.fimPedido = true;
     let silencio = 0;
     const t = setInterval(() => {
       if (!this.ativo) return clearInterval(t);
       silencio = this.alguemFalando ? 0 : silencio + 250;
-      if (silencio >= 2500) { clearInterval(t); this.aoEvento({ tipo: 'fim' }); }
+      if (silencio >= 2500) { clearInterval(t); this.aoEvento({ tipo }); }
     }, 250);
   }
 
@@ -261,12 +323,14 @@ export class MotorEntrevista {
       ...metricasDaConversa(turnos),
       duracao_s: Math.round(this.duracaoAnterior_s + sessao_s),
       sessoes: (this.metricasAnteriores.sessoes ?? 0) + 1,
-      eventos: this.eventos,
+      eventos: somar(this.metricasAnteriores.eventos, this.eventos), // de todas as sessões (as sessões fechadas aparecem em session.closed)
       desconhecidos: this.desconhecidos,
       erros: [...(this.metricasAnteriores.erros ?? []), ...this.erros].slice(-30),
       consultas: [...(this.metricasAnteriores.consultas ?? []), ...this.consultas].slice(-30),
       conexao_ms: this.conexaoMs ?? this.metricasAnteriores.conexao_ms,
+      conexao_etapas: this.conexaoMs !== undefined ? this.conexaoEtapas : this.metricasAnteriores.conexao_etapas,
       abertura_ms: this.aberturaMs ?? this.metricasAnteriores.abertura_ms,
+      pausas: (this.metricasAnteriores.pausas ?? 0) + (this.pausou ? 1 : 0),
     };
   }
 
