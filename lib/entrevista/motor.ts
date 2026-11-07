@@ -124,9 +124,14 @@ export class MotorEntrevista {
     this.mudar('ouvindo');
   }
 
+  /** Um erro do lado do navegador (microfone, conexão): fica no diagnóstico da entrevista. */
+  registrarErro(texto: string) {
+    if (this.erros.length < 30) this.erros.push(texto.slice(0, 500));
+  }
+
   /** Para tudo: fecha a sessão, guarda a conversa e devolve o áudio gravado (null se não gravou). */
   async encerrar(): Promise<Blob | null> {
-    if (!this.ativo && this.fase === 'parado') return null;
+    if (!this.ativo && this.fase === 'parado') { if (this.erros.length) await this.salvar(true).catch(() => {}); return null; }
     this.ativo = false;
     this.mudar('encerrando');
     this.timers.forEach(clearInterval);

@@ -17,14 +17,12 @@ const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${St
 const seg = (ms?: number) => (ms === undefined ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
 const usd = (v: number) => `US$ ${v.toFixed(2).replace('.', ',')}`;
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
-const ESTADO: Record<Fase, { titulo: string; sub: string }> = {
-  parado: { titulo: 'Pronto', sub: '' },
+// Durante a conversa a tela não muda de texto (a esfera mostra quem fala); só o antes e o depois têm aviso.
+const AVISO_FASE: Partial<Record<Fase, { titulo: string; sub: string }>> = {
   conectando: { titulo: 'Ligando o microfone e a voz…', sub: 'Permita o uso do microfone se o navegador perguntar.' },
-  falando: { titulo: 'A IA está falando', sub: 'Pode falar por cima a qualquer momento: ela continua ouvindo.' },
-  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar.' },
-  juntos: { titulo: 'Vocês dois estão falando', sub: 'A IA ouve o que você diz enquanto fala.' },
   encerrando: { titulo: 'Encerrando a conversa…', sub: '' },
 };
+const LEGENDA_CONVERSA = 'Conversa ao vivo: fale com naturalidade e interrompa a IA quando quiser.';
 
 function EntrevistaPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,6 +79,7 @@ function EntrevistaPage() {
     try {
       await m.iniciar();
     } catch (err) {
+      m.registrarErro(`Ao começar: ${msg(err)}`);
       await m.encerrar().catch(() => {});
       motor.current = null;
       setErro({ texto: `Não foi possível começar (${msg(err)}).`, repetir: () => void comecar() });
@@ -126,15 +125,7 @@ function EntrevistaPage() {
       </div>
     </div>
   );
-  const r = resumoMetricas(metricas);
-  const painelMetricas = (
-    <dl className="metricas-entrevista">
-      <div><dt>Reação da IA</dt><dd title="Do fim da sua fala ao início da fala da IA (mediana)">{seg(r.reacao_mediana_ms)}</dd></div>
-      <div><dt>Falas por cima da IA</dt><dd title="Vezes em que você falou enquanto a IA falava (ou numa pausa curta dela)">{r.sobreposicoes} de {r.falas_pessoa}</dd></div>
-      <div><dt>Duração</dt><dd>{mmss(metricas.duracao_s ?? 0)}</dd></div>
-      <div><dt>Custo da voz</dt><dd title="US$ 0,05 por minuto de sessão do GPT-Live (a análise no fim é à parte)">{usd(r.custo_voz_usd)}</dd></div>
-    </dl>
-  );
+  const painelMetricas = <PainelMetricas metricas={metricas} />;
 
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
@@ -164,16 +155,19 @@ function EntrevistaPage() {
   }
 
   if (tela === 'conversa' || tela === 'processando') {
-    const est = ESTADO[fase];
+    const aviso_fase = AVISO_FASE[fase];
     const processando = tela === 'processando';
     return (
       <div className="page page-estreita">
         {cabecalho}
         <div className="cartao entrevista-vivo escuro" data-fase={processando ? 'processando' : fase}>
           <Orbe modo={processando ? 'processando' : fase === 'conectando' ? 'conectando' : 'conversa'} niveis={niveis} />
-          <h2 className="entrevista-estado" aria-live="polite">{processando ? etapaFim : est.titulo}</h2>
-          {!processando && est.sub && <p className="entrevista-sub">{est.sub}</p>}
-          {!processando && <p className="entrevista-sub">{mmss(segundos)}</p>}
+          {processando
+            ? <h2 className="entrevista-estado" aria-live="polite">{etapaFim}</h2>
+            : aviso_fase
+              ? <><h2 className="entrevista-estado">{aviso_fase.titulo}</h2>{aviso_fase.sub && <p className="entrevista-sub">{aviso_fase.sub}</p>}</>
+              : <p className="entrevista-sub entrevista-legenda">{LEGENDA_CONVERSA}</p>}
+          {!processando && <p className="entrevista-tempo">{mmss(segundos)}</p>}
           {!processando && painelMetricas}
           {aviso && <p className="notice">{aviso}</p>}
           {erro && (
@@ -225,7 +219,7 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
       <div className="cartao">
         <h3 className="sem-margem">Como foi a conversa</h3>
         {painelMetricas}
-        {(e.metricas?.apoios ?? 0) > 0 && <p className="notice">A IA fez {e.metricas.apoios} {e.metricas.apoios === 1 ? 'sinal' : 'sinais'} de escuta ("aham", "sei") enquanto você explicava.</p>}
+        <DetalhesMetricas m={e.metricas ?? {}} />
         {diagnostico ? (
           <details className="diagnostico"><summary>Diagnóstico da sessão de voz</summary>
             {e.metricas.erros?.length ? <><span className="ficha-rotulo">Erros</span><ul className="ficha-lista">{e.metricas.erros.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
@@ -285,6 +279,35 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
 
       <div className="fluxo-acoes"><Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar às entrevistas</Link></div>
     </div>
+  );
+}
+
+/** Indicadores e custos da entrevista (os da especificação do Rafael e os de custo), ao vivo e no resultado. */
+function PainelMetricas({ metricas }: { metricas: Metricas }) {
+  const r = resumoMetricas(metricas);
+  const pct = (x?: number) => (x === undefined ? '—' : `${Math.round(x * 100)}%`);
+  return (
+    <dl className="metricas-entrevista">
+      <div><dt>Reação da IA</dt><dd title="Do fim da sua fala ao início da resposta da IA: mediana (e a maior)">{seg(r.reacao_mediana_ms)}{r.reacao_max_ms !== undefined && <small>máx. {seg(r.reacao_max_ms)}</small>}</dd></div>
+      <div><dt>Falas por cima da IA</dt><dd title="Vezes em que você falou enquanto a IA falava (ou numa pausa curta dela)">{r.sobreposicoes} de {r.falas_pessoa}<small>{r.falas_ia} respostas da IA</small></dd></div>
+      <div><dt>Tempo de fala</dt><dd title="Quanto do tempo falado foi seu e quanto foi da IA">{pct(r.participacao_pessoa)} você<small>{mmss(metricas.tempo_pessoa_s ?? 0)} você · {mmss(metricas.tempo_ia_s ?? 0)} IA</small></dd></div>
+      <div><dt>Sinais de escuta</dt><dd title='"aham", "sei", "uhum" da IA enquanto você explicava'>{r.apoios}<small>maior silêncio {seg(r.silencio_max_ms)}</small></dd></div>
+      <div><dt>Duração</dt><dd title="Tempo de sessão de voz (o que a OpenAI cobra)">{mmss(metricas.duracao_s ?? 0)}<small>{metricas.sessoes ?? 1} {(metricas.sessoes ?? 1) === 1 ? 'sessão' : 'sessões'}</small></dd></div>
+      <div><dt>Custo da voz</dt><dd title="GPT-Live: US$ 0,05 por minuto de sessão, cobrado por segundo">{usd(r.custo_voz_usd)}</dd></div>
+      <div><dt>Custo da análise</dt><dd title="Claude, no fim: a descrição, a ficha e as pendências">{metricas.analise ? usd(r.custo_analise_usd) : '—'}{metricas.analise && <small>{(metricas.analise.entrada_tokens / 1000).toFixed(1).replace('.', ',')}k + {(metricas.analise.saida_tokens / 1000).toFixed(1).replace('.', ',')}k tokens</small>}</dd></div>
+      <div><dt>Custo total</dt><dd title="Voz + análise">{usd(r.custo_total_usd)}</dd></div>
+    </dl>
+  );
+}
+
+function DetalhesMetricas({ m }: { m: Metricas }) {
+  const a = m.analise;
+  return (
+    <p className="notice">
+      {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
+      {m.sessoes && m.sessoes > 1 ? `A conversa teve ${m.sessoes} sessões de voz (foi continuada). ` : ''}
+      Reação: do fim da sua fala ao início da resposta da IA, sem contar os sinais de escuta. Custos pelas tabelas da OpenAI (US$ 0,05/min) e da Anthropic.
+    </p>
   );
 }
 

@@ -14,6 +14,10 @@ const JUNTAR_MS = { pessoa: 1500, ia: 900 }; // pausa máxima dentro de um mesmo
 const APOIO_PALAVRAS = 3;
 const APOIO_MS = 1600;
 const PAUSA_MS = 1500; // a pessoa entrou numa pausa curta de uma fala da IA que não tinha terminado em pergunta
+const VEZ_MS = 600; // silêncio do outro lado a partir do qual a fala dele conta como terminada
+
+/** Marcas da transcrição ("[laugh]") em texto; um "]" solto no começo (resto de uma marca cortada) sai. */
+const limparTexto = (s: string) => s.replace(/\s*\[\s*(laugh|laughs|laughter|risos?|risada)\s*\]?/gi, ' (risos)').replace(/^\s*\]\s*/, '').replace(/\s+/g, ' ').trim();
 
 const palavras = (s: string) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 const terminaEmPergunta = (s: string) => /\?\s*$/.test(s.trim());
@@ -40,9 +44,11 @@ export class Conversa {
     const atual = i !== undefined ? this.trechos[i] : undefined;
     // O outro lado falou depois deste trecho e já terminou antes deste pedaço: a vez mudou, então fecha.
     // Uma fala curta do outro lado ("aham") não muda a vez: o trecho continua.
+    // Os pedaços chegam ao vivo: o trecho do outro lado ainda pode estar crescendo, então ele só conta
+    // como "terminado" se já está em silêncio há um tempo (VEZ_MS) quando este pedaço chega.
     const j = this.abertos[p.quem === 'ia' ? 'pessoa' : 'ia'];
     const outro = j !== undefined ? this.trechos[j] : undefined;
-    const virouAVez = atual && outro && !ehCurta(outro) && outro.fim_ms > atual.fim_ms && inicio >= outro.fim_ms;
+    const virouAVez = atual && outro && !ehCurta(outro) && outro.fim_ms > atual.fim_ms && inicio - outro.fim_ms >= VEZ_MS;
     if (atual && !virouAVez && inicio - atual.fim_ms <= JUNTAR_MS[p.quem]) {
       atual.texto += texto;
       atual.fim_ms = Math.max(atual.fim_ms, fim);
@@ -58,7 +64,7 @@ export class Conversa {
   }
 
   turnos(): Turno[] {
-    const ordenados: Trecho[] = [...this.trechos].map((t) => ({ ...t, texto: t.texto.replace(/\s+/g, ' ').trim() })).filter((t) => t.texto).sort((a, b) => a.inicio_ms - b.inicio_ms);
+    const ordenados: Trecho[] = [...this.trechos].map((t) => ({ ...t, texto: limparTexto(t.texto) })).filter((t) => t.texto).sort((a, b) => a.inicio_ms - b.inicio_ms);
     const falasIa = ordenados.filter((t) => t.quem === 'ia' && !ehApoio(t));
     return ordenados.map((t) => {
       if (t.quem === 'ia') return { quem: 'ia', texto: t.texto, inicio_ms: t.inicio_ms, fim_ms: t.fim_ms, ...(ehApoio(t) ? { apoio: true } : {}) };
@@ -76,8 +82,16 @@ export class Conversa {
  * Reação: do fim de cada fala da pessoa ao início da resposta seguinte da IA (os "aham" não contam, e só
  * quando a pessoa não continuou falando antes). Falas da IA: só as respostas; os apoios ficam à parte.
  */
-export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' | 'sobreposicoes' | 'falas_pessoa' | 'falas_ia' | 'apoios'> {
+export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' | 'sobreposicoes' | 'falas_pessoa' | 'falas_ia' | 'apoios' | 'tempo_pessoa_s' | 'tempo_ia_s' | 'silencio_max_ms'> {
   const reais = turnos.filter((t) => !t.apoio);
+  const dur = (t: Turno) => Math.max(0, (t.fim_ms ?? 0) - (t.inicio_ms ?? 0));
+  // Maior silêncio: o maior intervalo em que ninguém estava falando.
+  let fimOcupado = 0, silencio_max_ms = 0;
+  for (const t of [...turnos].sort((a, b) => (a.inicio_ms ?? 0) - (b.inicio_ms ?? 0))) {
+    const ini = t.inicio_ms ?? 0;
+    if (fimOcupado > 0 && ini > fimOcupado) silencio_max_ms = Math.max(silencio_max_ms, ini - fimOcupado);
+    fimOcupado = Math.max(fimOcupado, t.fim_ms ?? ini);
+  }
   const reacao_ms: number[] = [];
   for (let i = 0; i < reais.length; i++) {
     const t = reais[i];
@@ -95,5 +109,8 @@ export function metricasDaConversa(turnos: Turno[]): Pick<Metricas, 'reacao_ms' 
     falas_pessoa: turnos.filter((t) => t.quem === 'pessoa').length,
     falas_ia: reais.filter((t) => t.quem === 'ia').length,
     apoios: turnos.filter((t) => t.quem === 'ia' && t.apoio).length,
+    tempo_pessoa_s: Math.round(turnos.filter((t) => t.quem === 'pessoa').reduce((a, t) => a + dur(t), 0) / 1000),
+    tempo_ia_s: Math.round(reais.filter((t) => t.quem === 'ia').reduce((a, t) => a + dur(t), 0) / 1000),
+    silencio_max_ms,
   };
 }

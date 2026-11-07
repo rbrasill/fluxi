@@ -46,7 +46,10 @@ export type OpcoesIa = {
   /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido, como a entrevista por voz). */
   pensar?: boolean;
   limiteMs?: number;
+  /** Recebe o uso de tokens da chamada (para medir custo). */
+  aoUsar?: (uso: UsoIa) => void;
 };
+export type UsoIa = { modelo: string; entrada: number; saida: number; cache_leitura: number; cache_escrita: number };
 
 /** Chama o Claude pedindo a resposta no formato do schema (Structured Outputs). */
 export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, opcoes: OpcoesIa = {}): Promise<z.infer<T>> {
@@ -65,6 +68,7 @@ export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, siste
     if (resposta.stop_reason === 'refusal') throw new ErroApi(422, 'A IA não conseguiu processar este conteúdo.');
     if (resposta.stop_reason === 'max_tokens') throw new ErroApi(422, 'O processo ficou grande demais para gerar de uma vez. Tente uma gravação menor.');
     if (!resposta.parsed_output) throw new ErroApi(502, 'A IA devolveu uma resposta inválida. Tente novamente.');
+    opcoes.aoUsar?.({ modelo: resposta.model, entrada: resposta.usage.input_tokens, saida: resposta.usage.output_tokens, cache_leitura: resposta.usage.cache_read_input_tokens ?? 0, cache_escrita: resposta.usage.cache_creation_input_tokens ?? 0 });
     return resposta.parsed_output as z.infer<T>;
   } catch (e) {
     if (e instanceof ErroApi) throw e;

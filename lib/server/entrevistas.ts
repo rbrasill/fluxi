@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { TOPICOS, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { ErroApi } from './http';
-import { chamarEstruturado } from './ia';
+import { chamarEstruturado, type UsoIa } from './ia';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Entrevista por voz com a IA, só com o GPT-Live da OpenAI (decisão 41), fora do processo, para testar.
@@ -58,7 +58,8 @@ export async function listar() {
   if (error) throw error;
   return (data ?? []).map(({ turnos, metricas, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
-    return { ...e, falas: t.length, duracao_s: (metricas as Metricas | null)?.duracao_s ?? 0 };
+    const m = (metricas as Metricas | null) ?? {};
+    return { ...e, falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0 };
   });
 }
 
@@ -88,8 +89,22 @@ const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
 
 /** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
 export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean) {
+  // Segue o esqueleto do guia de prompt do GPT-Live: papel, jeito de falar e as três políticas com os
+  // rótulos originais (Backchannel policy, Interruption policy, Delegation policy), que o modelo reconhece.
   return `# Papel
 Você é uma consultora de mapeamento de processos fazendo uma entrevista por voz, ao vivo, com uma pessoa que executa ou conhece bem um processo de trabalho. Você trabalha para o INCFlow, a plataforma de processos da INC. Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você".
+
+# Jeito de falar
+- Ritmo de conversa: frases completas e fluidas, com pausas só entre frases, nunca longas no meio de uma frase. Sem muletas ("eh", "é...", "né") e sem repetir palavras.
+- Curto e direto: uma ideia por vez, uma pergunta por vez. Números pequenos por extenso. Nada de listas faladas.
+- Assim que a pessoa terminar a frase, responda sem demora. Se ela pausar para pensar e continuar, você só ouve. Nunca fique só no "aham" esperando: terminou, a vez é sua.
+- Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
+
+Backchannel policy: Use sons curtos de escuta ("aham", "uhum", "sei") com moderação enquanto a pessoa explica, sem competir com a fala dela. Um som de escuta nunca substitui uma resposta.
+
+Interruption policy: Quando a pessoa começar a falar por cima de você, pare de falar imediatamente, mesmo no meio da frase, e ouça até ela terminar; depois responda ao que ela disse. Se ela pedir para parar ou esperar, corrigir algo, fazer uma pergunta ou pedir para encerrar, pare na hora, sem terminar a frase e sem acrescentar nada. Não retome o que foi cortado, a não ser que ela peça. Só um "aham", "uhum", "sei" ou "tá" breve dela não é interrupção: aí continue.
+
+Delegation policy: Não há trabalho de apoio nesta conversa. Nunca gere <|SpawnThinking|>; responda sempre a partir da conversa.
 
 # O que vamos mapear
 Processo: ${l.tema}
@@ -100,16 +115,11 @@ ${TOPICOS_TEXTO}
 
 # Como conduzir
 - ${continuando ? 'A conversa já começou antes e foi interrompida: retome em uma frase de onde parou (veja o histórico) e siga.' : 'Abra se apresentando em uma frase, diga que a conversa fica gravada, que a pessoa pode responder com calma e interromper quando quiser, e faça a primeira pergunta.'}
-- Uma pergunta por vez, curta e direta. Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
+- Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
-- Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar.
-
-# Conversa ao vivo
-- Você ouve enquanto fala. Se a pessoa falar por cima com uma correção, um "espera", uma informação nova ou uma dúvida, pare a frase, incorpore o que ela disse e siga a partir daí. Não repita o que foi cortado, a não ser que ela peça.
-- Sons curtos de quem está ouvindo ("aham", "sei", "certo") não são interrupção: continue.
-- Enquanto a pessoa explica, não a interrompa; um "aham" breve numa pausa é o máximo. Mas, quando ela termina (uma pausa de uns dois segundos sem continuar), a vez é sua: reaja em poucas palavras, se couber, e faça a próxima pergunta. Nunca fique só no "aham" esperando. Se ela perguntar o que você quer saber ou parecer perdida, responda com uma pergunta concreta.
-- Números pequenos por extenso. Nada de listas faladas longas.
+- Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar. Se ela perguntar o que você quer saber, ou parecer perdida, responda com uma pergunta concreta.
+- Enquanto a pessoa explica, não a interrompa; interrompa só para evitar um mal-entendido grande.
 
 # Ritmo e encerramento
 - Uma boa entrevista tem de quinze a trinta minutos. Não prolongue sem necessidade.
@@ -183,6 +193,9 @@ export const ConversaSchema = z.object({
     falas_pessoa: z.number().optional(),
     falas_ia: z.number().optional(),
     apoios: z.number().optional(),
+    tempo_pessoa_s: z.number().optional(),
+    tempo_ia_s: z.number().optional(),
+    silencio_max_ms: z.number().optional(),
     sessoes: z.number().optional(),
     eventos: z.record(z.string(), z.number()).optional(),
     desconhecidos: z.array(z.string().max(200)).max(50).optional(),
@@ -193,8 +206,22 @@ export const ConversaSchema = z.object({
 export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchema>) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
-  await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas } } : {}) });
+  // Os erros somam (os do navegador e os já guardados); o resto é o valor mais novo.
+  const erros = [...new Set([...(linha.metricas?.erros ?? []), ...(c.metricas?.erros ?? [])])].slice(-30);
+  await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas, erros } } : {}) });
   return { ok: true };
+}
+
+// Preços da Anthropic por milhão de tokens (tabela de 06/10/2026): entrada, saída, leitura de cache.
+// A escrita no cache custa 1,25× a entrada. Modelo desconhecido: assume o do Sonnet.
+const PRECOS_USD_MTOK: Record<string, { entrada: number; saida: number; cache: number }> = {
+  'claude-sonnet-5-5': { entrada: 2, saida: 10, cache: 0.2 },
+  'claude-haiku-5-5': { entrada: 0.1, saida: 0.5, cache: 0.01 },
+  'claude-opus-5-5': { entrada: 4, saida: 20, cache: 0.2 },
+};
+export function custoAnalise(uso: UsoIa) {
+  const preco = PRECOS_USD_MTOK[Object.keys(PRECOS_USD_MTOK).find((k) => uso.modelo.startsWith(k)) ?? 'claude-sonnet-5-5'];
+  return (uso.entrada * preco.entrada + uso.saida * preco.saida + uso.cache_leitura * preco.cache + uso.cache_escrita * preco.entrada * 1.25) / 1_000_000;
 }
 
 // --- Depois da chamada: a conversa inteira vira a descrição, a ficha e as pendências ---
@@ -262,9 +289,14 @@ export async function encerrar(id: string) {
   }
   await salvar(id, { status: 'processando', encerrado_em, erro: null });
   try {
-    const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(linha), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium' });
+    const inicio = Date.now();
+    let uso: UsoIa | undefined;
+    const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(linha), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium', aoUsar: (u) => { uso = u; } });
     const resultado: ResultadoEntrevista = { descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias };
-    await salvar(id, { status: 'concluida', resultado });
+    // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
+    const metricas = (await carregar(id)).metricas ?? {};
+    if (uso) metricas.analise = { modelo: uso.modelo, entrada_tokens: uso.entrada, saida_tokens: uso.saida, cache_tokens: uso.cache_leitura, custo_usd: custoAnalise(uso), demora_ms: Date.now() - inicio };
+    await salvar(id, { status: 'concluida', resultado, metricas });
     return { status: 'concluida' as const };
   } catch (e) {
     await salvar(id, { status: 'erro', erro: e instanceof Error ? e.message : 'erro inesperado' });

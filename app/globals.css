@@ -844,3 +844,7 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .entrevista-vivo.escuro .entrevista-erro .btn, .entrevista-vivo.escuro .btn:not(.btn-parar) { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .22); color: #eef0fa; }
 .conversa-lida p.apoio { font-size: 12px; color: var(--muted); }
 .conversa-lida p.apoio b { color: var(--muted); font-weight: 600; }
+.metricas-entrevista dd small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.entrevista-legenda { max-width: 520px; }
+.entrevista-tempo { margin: 0; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: #fff; }
+.totais-entrevistas { max-width: none; }

@@ -26,11 +26,15 @@ export const ROTULO_STATUS: Record<StatusEntrevista, string> = { em_andamento: '
 /** Medidas da conversa (as da especificação de voz full duplex do Rafael). */
 export type Metricas = {
   duracao_s?: number; // tempo de sessão de voz cobrado (soma das sessões)
-  reacao_ms?: number[]; // do fim de uma fala da pessoa ao início da fala seguinte da IA
+  reacao_ms?: number[]; // do fim de uma fala da pessoa ao início da resposta seguinte da IA
   sobreposicoes?: number; // falas da pessoa feitas enquanto a IA falava
   falas_pessoa?: number;
   falas_ia?: number; // respostas da IA (sem os apoios)
   apoios?: number; // "aham", "sei", "uhum" da IA
+  tempo_pessoa_s?: number; // quanto tempo cada lado passou falando
+  tempo_ia_s?: number;
+  silencio_max_ms?: number; // maior intervalo sem ninguém falar
+  analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number }; // a análise no fim (Claude)
   sessoes?: number;
   eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
   desconhecidos?: string[]; // tipos de evento que o app não trata (diagnóstico)
@@ -70,14 +74,26 @@ const mediana = (xs: number[]) => {
   return o.length % 2 ? o[(o.length - 1) / 2] : (o[o.length / 2 - 1] + o[o.length / 2]) / 2;
 };
 
-/** Resumo das métricas para a tela. Custo: US$ 0,05 por minuto de sessão (gpt-live-1, cobrado por segundo). */
+export const PRECO_VOZ_USD_MIN = 0.05; // gpt-live-1: US$ 0,05 por minuto de sessão, cobrado por segundo
+
+/** Resumo das métricas para a tela (indicadores e custos da entrevista). */
 export function resumoMetricas(m: Metricas) {
   const reacoes = m.reacao_ms ?? [];
+  const tp = m.tempo_pessoa_s ?? 0, ti = m.tempo_ia_s ?? 0;
+  const custo_voz_usd = ((m.duracao_s ?? 0) / 60) * PRECO_VOZ_USD_MIN;
+  const custo_analise_usd = m.analise?.custo_usd ?? 0;
   return {
     reacao_mediana_ms: mediana(reacoes),
     reacao_media_ms: reacoes.length ? reacoes.reduce((a, b) => a + b, 0) / reacoes.length : undefined,
+    reacao_max_ms: reacoes.length ? Math.max(...reacoes) : undefined,
     sobreposicoes: m.sobreposicoes ?? 0,
     falas_pessoa: m.falas_pessoa ?? 0,
-    custo_voz_usd: ((m.duracao_s ?? 0) / 60) * 0.05,
+    falas_ia: m.falas_ia ?? 0,
+    apoios: m.apoios ?? 0,
+    participacao_pessoa: tp + ti > 0 ? tp / (tp + ti) : undefined, // fração do tempo de fala que foi da pessoa
+    silencio_max_ms: m.silencio_max_ms,
+    custo_voz_usd,
+    custo_analise_usd,
+    custo_total_usd: custo_voz_usd + custo_analise_usd,
   };
 }
