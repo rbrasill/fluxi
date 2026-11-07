@@ -21,6 +21,8 @@ export const criarEntrevista = (dados: { tema: string; contexto?: string }) => a
 export const listarEntrevistas = () => api<EntrevistaResumo[]>('/api/entrevistas');
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
+/** Aquece no servidor a rota que abre a sessão (sem custo: não chama a OpenAI). */
+export const aquecerSessaoDeVoz = (id: string) => { void fetch(`/api/entrevistas/${id}/sessao`).catch(() => {}); };
 /** Abre a sessão de voz no GPT-Live: manda a oferta WebRTC e recebe a resposta. */
 export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean; openai_ms?: number }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */

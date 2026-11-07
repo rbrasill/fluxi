@@ -135,7 +135,9 @@ export class MotorEntrevista {
       if (pc.iceGatheringState === 'complete') return r();
       const fim = () => { if (pc.iceGatheringState === 'complete') r(); };
       pc.addEventListener('icegatheringstatechange', fim);
-      setTimeout(r, 3000); // os candidatos que já houver bastam
+      // Os candidatos locais saem em milissegundos; esperar a coleta inteira chegava a 3 s. O servidor da
+      // OpenAI tem endereço público e acha o navegador pelas próprias verificações de conexão.
+      setTimeout(r, 800);
     });
     this.conexaoEtapas.oferta_ms = etapa();
     const { sdp, openai_ms } = await abrirSessaoDeVoz(this.id, pc.localDescription!.sdp);

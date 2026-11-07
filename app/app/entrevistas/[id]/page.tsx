@@ -7,7 +7,7 @@ import { confirmar } from '@/components/Dialogos';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ROTULO_STATUS, resumoMetricas, type Consulta, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
-import { encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
+import { aquecerSessaoDeVoz, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a IA, só com o GPT-Live (decisão 41), fora do processo. Três telas: a abertura
 // (o que vai acontecer e o microfone), a conversa (a esfera da IA reagindo às vozes e o estado: a IA fala,
@@ -44,6 +44,7 @@ function EntrevistaPage() {
     setE(d);
     setMetricas(d.metricas ?? {});
     if (d.status !== 'em_andamento') setTela('resultado');
+    else aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
     return d;
   }).catch(() => { setE(null); return null; });
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
