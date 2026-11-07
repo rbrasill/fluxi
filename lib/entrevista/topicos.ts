@@ -17,7 +17,8 @@ export const TOPICOS = [
 export type TopicoId = (typeof TOPICOS)[number]['id'];
 export const IDS_TOPICOS: readonly string[] = TOPICOS.map((t) => t.id);
 
-export type Turno = { quem: 'ia' | 'pessoa'; texto: string; em: string };
+/** `interrompeu`: a pessoa falou por cima da IA; `ouviu` é a fração (0 a 1) da fala da IA que chegou a tocar. */
+export type Turno = { quem: 'ia' | 'pessoa'; texto: string; em: string; interrompeu?: boolean; ouviu?: number };
 
 export type StatusEntrevista = 'em_andamento' | 'processando' | 'concluida' | 'erro';
 export const ROTULO_STATUS: Record<StatusEntrevista, string> = { em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
@@ -41,4 +42,8 @@ export type ResultadoEntrevista = {
 
 /** A conversa em texto (para o fluxograma e para a leitura). */
 export const transcricaoDaConversa = (turnos: Turno[]) =>
-  turnos.map((t) => `${t.quem === 'ia' ? 'Entrevistador' : 'Entrevistado'}: ${t.texto}`).join('\n');
+  turnos.map((t) => {
+    if (t.quem === 'ia') return `Entrevistador: ${t.texto}`;
+    const corte = t.interrompeu ? ` (interrompeu o entrevistador${t.ouviu !== undefined ? `, que tinha falado cerca de ${Math.round(t.ouviu * 100)}% da fala anterior` : ''})` : '';
+    return `Entrevistado${corte}: ${t.texto}`;
+  }).join('\n');

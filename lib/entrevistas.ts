@@ -22,9 +22,9 @@ export const criarEntrevista = (processo_id: string) => api<{ id: string; fala: 
 export const listarEntrevistas = (processo_id: string) => api<EntrevistaResumo[]>(`/api/entrevistas?processo_id=${processo_id}`);
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
-/** A pessoa falou: a IA responde com a próxima fala (e avisa quando é a despedida). */
-export const responderTurno = (id: string, texto: string) =>
-  api<{ fala: string; encerrar: boolean; cobertos: string[]; perguntas: number }>(`/api/entrevistas/${id}/turno`, { method: 'POST', body: JSON.stringify({ texto }) });
+/** A pessoa falou: a IA responde com a próxima fala (e avisa quando é a despedida). `corte`: ela falou por cima da IA. */
+export const responderTurno = (id: string, texto: string, corte?: { interrompeu: true; ouviu: number }) =>
+  api<{ fala: string; encerrar: boolean; cobertos: string[]; perguntas: number }>(`/api/entrevistas/${id}/turno`, { method: 'POST', body: JSON.stringify({ texto, ...corte }) });
 /** Encerra e gera o resultado (demora: a conversa inteira é analisada). */
 export const encerrarEntrevista = (id: string) => api<{ status: StatusEntrevista }>(`/api/entrevistas/${id}/encerrar`, { method: 'POST' });
 /** Endereço da escuta ao vivo (token temporário) e os termos a reforçar no reconhecimento. */

@@ -98,6 +98,7 @@ Como conduzir:
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
 - Se não entender uma palavra ou um nome, peça para repetir ou soletrar. Se a pessoa fugir do assunto, acolha em uma frase e volte ao processo. Se ela pedir para parar, vá direto para o encerramento.
+- A pessoa pode falar por cima de você (a transcrição marca "interrompeu o entrevistador" e quanto da sua fala chegou a tocar). Aí responda ao que ela disse e siga dali; não repita o que foi cortado, a não ser que ela peça.
 - Encerramento: quando todos os tópicos estiverem cobertos (ou a conversa já estiver longa), faça um resumo curto do processo e pergunte se está certo. Depois da confirmação ou das correções, agradeça, avise que a descrição e o fluxograma serão gerados a partir da conversa e marque "encerrar": true nessa última fala.
 - Ritmo: uma boa entrevista tem de quinze a trinta perguntas. Não prolongue sem necessidade.
 
@@ -140,9 +141,13 @@ export const juntarCobertos = (antes: string[], novos: string[]) => {
   return IDS_TOPICOS.filter((id) => todos.has(id));
 };
 
+export type Interrupcao = { interrompeu: true; ouviu: number };
+
 /** Pede a próxima fala da IA e guarda a conversa; `textoPessoa` vazio é a abertura. */
-async function proximaFala(linha: Linha, ctx: Contexto, textoPessoa?: string) {
-  const turnos = textoPessoa ? [...linha.turnos, { quem: 'pessoa' as const, texto: textoPessoa, em: agora() }] : [...linha.turnos];
+async function proximaFala(linha: Linha, ctx: Contexto, textoPessoa?: string, corte?: Interrupcao) {
+  const turnos: Turno[] = textoPessoa
+    ? [...linha.turnos, { quem: 'pessoa', texto: textoPessoa, em: agora(), ...(corte ? { interrompeu: true, ouviu: Math.max(0, Math.min(1, corte.ouviu)) } : {}) }]
+    : [...linha.turnos];
   const r = await chamarEstruturado(RespostaTurno, SISTEMA_ENTREVISTA, montarPedidoTurno(ctx, { ...linha, turnos }), {
     modelo: MODELO_CONVERSA, pensar: false, esforco: 'low', maxTokens: 700, limiteMs: 50_000,
   });
@@ -167,10 +172,10 @@ export async function criar(processoId: string) {
   return { id: linha.id, fala: r.fala };
 }
 
-export async function responderTurno(id: string, texto: string) {
+export async function responderTurno(id: string, texto: string, corte?: Interrupcao) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
-  return proximaFala(linha, await contextoDoProcesso(linha.processo_id), texto.trim());
+  return proximaFala(linha, await contextoDoProcesso(linha.processo_id), texto.trim(), corte);
 }
 
 // --- Depois da chamada: a conversa inteira vira a descrição, a ficha e as pendências ---

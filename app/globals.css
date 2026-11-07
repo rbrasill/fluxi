@@ -834,3 +834,5 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .conversa-lida { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; }
 .conversa-lida p { margin: 0; }
 .conversa-lida .ia b { color: var(--primary-dark); }
+.entrevista-interrompeu { color: #0b6b50; font-weight: 600; }
+.entrevista-metricas { font-size: 12px; }

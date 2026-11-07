@@ -20,7 +20,7 @@ const ESTADO: Record<Fase, { titulo: string; sub: string; icone: string }> = {
   parado: { titulo: 'Pronto', sub: '', icone: 'microfone' },
   conectando: { titulo: 'Ligando o microfone e a escuta…', sub: 'Permita o uso do microfone se o navegador perguntar.', icone: 'microfone' },
   falando: { titulo: 'A IA está falando', sub: 'Ouça a pergunta; depois é a sua vez.', icone: 'alto-falante' },
-  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar.', icone: 'microfone' },
+  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar. Se quiser, fale por cima dela: ela para e ouve.', icone: 'microfone' },
   pensando: { titulo: 'Pensando na próxima pergunta…', sub: '', icone: 'ia' },
   encerrando: { titulo: 'Encerrando a conversa…', sub: '', icone: 'parar' },
 };
@@ -34,6 +34,10 @@ function EntrevistaPage() {
   const [perguntas, setPerguntas] = useState(0);
   const [cobertos, setCobertos] = useState<string[]>([]);
   const [aviso, setAviso] = useState('');
+  const [interrompeu, setInterrompeu] = useState(false); // a pessoa falou por cima da IA nesta vez
+  const [interrupcoes, setInterrupcoes] = useState(0);
+  const [respostas, setRespostas] = useState<number[]>([]); // ms do fim da fala da pessoa ao início da voz da IA
+  const faseAnterior = useRef<Fase>('parado');
   const [falaNaTela, setFalaNaTela] = useState('');
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [segundos, setSegundos] = useState(0);
@@ -63,7 +67,13 @@ function EntrevistaPage() {
   }, [tela, e]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function aoEvento(ev: Evento) {
-    if (ev.tipo === 'fase') setFase(ev.fase);
+    if (ev.tipo === 'fase') {
+      setFase(ev.fase);
+      setInterrompeu(!!ev.interrompeu);
+      if (ev.fase === 'ouvindo' && ev.interrompeu && faseAnterior.current === 'falando') setInterrupcoes((n) => n + 1);
+      faseAnterior.current = ev.fase;
+    }
+    else if (ev.tipo === 'metrica') setRespostas((r) => [...r, ev.respostaMs]);
     else if (ev.tipo === 'pergunta') { setPerguntas(ev.perguntas); setCobertos(ev.cobertos); setErro(null); }
     else if (ev.tipo === 'aviso') setAviso(ev.texto);
     else if (ev.tipo === 'fala') setFalaNaTela(ev.texto);
@@ -137,7 +147,7 @@ function EntrevistaPage() {
           <h3 className="sem-margem">{retomando ? 'Continuar a entrevista' : 'Como funciona'}</h3>
           <ul className="dicas">
             <li>A IA faz perguntas por voz sobre o processo <b>{e.processo.nome}</b> e você responde falando, como numa conversa com um consultor.</li>
-            <li>Durante a conversa nada aparece na tela: só um sinal de quando a IA está falando, ouvindo ou pensando.</li>
+            <li>Durante a conversa nada aparece na tela: só um sinal de quando a IA está falando, ouvindo ou pensando. O microfone fica aberto o tempo todo: você pode falar por cima da IA, que para e ouve.</li>
             <li>A conversa fica gravada e é transcrita. No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto.</li>
             <li>Dura de quinze a trinta minutos. Você pode encerrar quando quiser; o que já foi conversado é aproveitado.</li>
             <li>Use fones de ouvido e um lugar silencioso. Fale com calma: a IA espera você terminar a frase.</li>
@@ -162,8 +172,14 @@ function EntrevistaPage() {
         <div className="cartao entrevista-vivo" data-fase={processando ? 'processando' : fase}>
           <div className={`orb ${processando ? 'pensando' : fase}`} aria-hidden="true"><Icone nome={processando ? 'ia' : est.icone} tamanho={56} /></div>
           <h2 className="entrevista-estado" aria-live="polite">{processando ? etapaFim : est.titulo}</h2>
-          {!processando && est.sub && <p className="entrevista-sub">{est.sub}</p>}
+          {!processando && (fase === 'ouvindo' && interrompeu ? <p className="entrevista-sub entrevista-interrompeu">Você interrompeu a IA: pode continuar, ela está ouvindo.</p> : est.sub && <p className="entrevista-sub">{est.sub}</p>)}
           {!processando && <p className="entrevista-sub"><b>{perguntas}</b> {perguntas === 1 ? 'pergunta' : 'perguntas'} · {mmss(segundos)}</p>}
+          {!processando && respostas.length > 0 && (
+            <p className="entrevista-sub entrevista-metricas" title="Do fim da sua fala ao início da voz da IA">
+              Resposta da IA: {(respostas[respostas.length - 1] / 1000).toFixed(1).replace('.', ',')} s (média {(respostas.reduce((a, b) => a + b, 0) / respostas.length / 1000).toFixed(1).replace('.', ',')} s)
+              {interrupcoes > 0 && ` · ${interrupcoes} ${interrupcoes === 1 ? 'interrupção' : 'interrupções'}`}
+            </p>
+          )}
           <div className="entrevista-topicos" title={`Tópicos cobertos: ${cobertos.length} de ${TOPICOS.length}`}>
             {TOPICOS.map((t) => <span key={t.id} className={cobertos.includes(t.id) ? 'coberto' : ''} title={`${t.nome}${cobertos.includes(t.id) ? ' · coberto' : ''}`} />)}
             <small>{cobertos.length} de {TOPICOS.length} tópicos</small>
