@@ -4,25 +4,26 @@ import { useParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
+import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ROTULO_STATUS, resumoMetricas, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a IA, só com o GPT-Live (decisão 41), fora do processo. Três telas: a abertura
-// (o que vai acontecer e o microfone), a conversa (só o estado: a IA fala, ouve, ou os dois falam juntos;
-// nada de texto) e o resultado (a informação gerada, as métricas e a conversa transcrita).
+// (o que vai acontecer e o microfone), a conversa (a esfera da IA reagindo às vozes e o estado: a IA fala,
+// ouve, ou os dois falam juntos; nada de texto) e o resultado (a informação gerada, as métricas e a conversa).
 
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const seg = (ms?: number) => (ms === undefined ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
 const usd = (v: number) => `US$ ${v.toFixed(2).replace('.', ',')}`;
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
-const ESTADO: Record<Fase, { titulo: string; sub: string; icone: string }> = {
-  parado: { titulo: 'Pronto', sub: '', icone: 'microfone' },
-  conectando: { titulo: 'Ligando o microfone e a voz…', sub: 'Permita o uso do microfone se o navegador perguntar.', icone: 'microfone' },
-  falando: { titulo: 'A IA está falando', sub: 'Pode falar por cima a qualquer momento: ela continua ouvindo.', icone: 'alto-falante' },
-  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar.', icone: 'microfone' },
-  juntos: { titulo: 'Vocês dois estão falando', sub: 'A IA ouve o que você diz enquanto fala.', icone: 'conversa' },
-  encerrando: { titulo: 'Encerrando a conversa…', sub: '', icone: 'parar' },
+const ESTADO: Record<Fase, { titulo: string; sub: string }> = {
+  parado: { titulo: 'Pronto', sub: '' },
+  conectando: { titulo: 'Ligando o microfone e a voz…', sub: 'Permita o uso do microfone se o navegador perguntar.' },
+  falando: { titulo: 'A IA está falando', sub: 'Pode falar por cima a qualquer momento: ela continua ouvindo.' },
+  ouvindo: { titulo: 'Pode falar, estou ouvindo', sub: 'Responda com calma; a IA espera você terminar.' },
+  juntos: { titulo: 'Vocês dois estão falando', sub: 'A IA ouve o que você diz enquanto fala.' },
+  encerrando: { titulo: 'Encerrando a conversa…', sub: '' },
 };
 
 function EntrevistaPage() {
@@ -38,6 +39,7 @@ function EntrevistaPage() {
   const [ciente, setCiente] = useState(false);
   const motor = useRef<MotorEntrevista | null>(null);
   const encerrando = useRef(false);
+  const niveis = useRef<Niveis>({ ia: 0, pessoa: 0 }); // volume das duas vozes, para a esfera (fora do estado do React)
 
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
@@ -61,6 +63,7 @@ function EntrevistaPage() {
 
   function aoEvento(ev: Evento) {
     if (ev.tipo === 'fase') setFase(ev.fase);
+    else if (ev.tipo === 'nivel') niveis.current = { ia: ev.ia, pessoa: ev.pessoa };
     else if (ev.tipo === 'metricas') setMetricas(ev.metricas);
     else if (ev.tipo === 'aviso') setAviso(ev.texto);
     else if (ev.tipo === 'erro') setErro({ texto: ev.texto, repetir: ev.repetir });
@@ -127,7 +130,7 @@ function EntrevistaPage() {
   const painelMetricas = (
     <dl className="metricas-entrevista">
       <div><dt>Reação da IA</dt><dd title="Do fim da sua fala ao início da fala da IA (mediana)">{seg(r.reacao_mediana_ms)}</dd></div>
-      <div><dt>Falas sobrepostas</dt><dd title="Vezes em que você falou enquanto a IA falava">{r.sobreposicoes} de {r.falas_pessoa}</dd></div>
+      <div><dt>Falas por cima da IA</dt><dd title="Vezes em que você falou enquanto a IA falava (ou numa pausa curta dela)">{r.sobreposicoes} de {r.falas_pessoa}</dd></div>
       <div><dt>Duração</dt><dd>{mmss(metricas.duracao_s ?? 0)}</dd></div>
       <div><dt>Custo da voz</dt><dd title="US$ 0,05 por minuto de sessão do GPT-Live (a análise no fim é à parte)">{usd(r.custo_voz_usd)}</dd></div>
     </dl>
@@ -166,8 +169,8 @@ function EntrevistaPage() {
     return (
       <div className="page page-estreita">
         {cabecalho}
-        <div className="cartao entrevista-vivo" data-fase={processando ? 'processando' : fase}>
-          <div className={`orb ${processando ? 'pensando' : fase}`} aria-hidden="true"><Icone nome={processando ? 'ia' : est.icone} tamanho={56} /></div>
+        <div className="cartao entrevista-vivo escuro" data-fase={processando ? 'processando' : fase}>
+          <Orbe modo={processando ? 'processando' : fase === 'conectando' ? 'conectando' : 'conversa'} niveis={niveis} />
           <h2 className="entrevista-estado" aria-live="polite">{processando ? etapaFim : est.titulo}</h2>
           {!processando && est.sub && <p className="entrevista-sub">{est.sub}</p>}
           {!processando && <p className="entrevista-sub">{mmss(segundos)}</p>}
@@ -206,7 +209,7 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
       {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span>{erro.repetir && <button className="btn" onClick={erro.repetir}>Tentar de novo</button>}</div>}
 
       {e.status === 'processando' && !parado && (
-        <div className="cartao entrevista-vivo"><div className="orb pensando" aria-hidden="true"><Icone nome="ia" tamanho={56} /></div><h2 className="entrevista-estado">Gerando a descrição e a ficha do processo…</h2><p className="entrevista-sub">Pode levar um minuto. A página atualiza sozinha.</p></div>
+        <div className="cartao entrevista-vivo escuro"><Orbe modo="processando" /><h2 className="entrevista-estado">Gerando a descrição e a ficha do processo…</h2><p className="entrevista-sub">Pode levar um minuto. A página atualiza sozinha.</p></div>
       )}
       {(e.status === 'erro' || parado) && (
         <div className="cartao">
@@ -222,6 +225,7 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
       <div className="cartao">
         <h3 className="sem-margem">Como foi a conversa</h3>
         {painelMetricas}
+        {(e.metricas?.apoios ?? 0) > 0 && <p className="notice">A IA fez {e.metricas.apoios} {e.metricas.apoios === 1 ? 'sinal' : 'sinais'} de escuta ("aham", "sei") enquanto você explicava.</p>}
         {diagnostico ? (
           <details className="diagnostico"><summary>Diagnóstico da sessão de voz</summary>
             {e.metricas.erros?.length ? <><span className="ficha-rotulo">Erros</span><ul className="ficha-lista">{e.metricas.erros.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
@@ -270,7 +274,7 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
           {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
           <div className="conversa-lida">
             {e.turnos.map((t, i) => (
-              <p key={i} className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}`}>
+              <p key={i} className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
                 {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
                 <b>{t.quem === 'ia' ? 'IA' : 'Você'}{t.sobreposta ? ' (por cima da IA)' : ''}:</b> {t.texto}
               </p>

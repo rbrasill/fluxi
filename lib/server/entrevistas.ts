@@ -108,7 +108,7 @@ ${TOPICOS_TEXTO}
 # Conversa ao vivo
 - Você ouve enquanto fala. Se a pessoa falar por cima com uma correção, um "espera", uma informação nova ou uma dúvida, pare a frase, incorpore o que ela disse e siga a partir daí. Não repita o que foi cortado, a não ser que ela peça.
 - Sons curtos de quem está ouvindo ("aham", "sei", "certo") não são interrupção: continue.
-- Enquanto a pessoa explica, não a interrompa; no máximo, um "aham" breve numa pausa longa.
+- Enquanto a pessoa explica, não a interrompa; um "aham" breve numa pausa é o máximo. Mas, quando ela termina (uma pausa de uns dois segundos sem continuar), a vez é sua: reaja em poucas palavras, se couber, e faça a próxima pergunta. Nunca fique só no "aham" esperando. Se ela perguntar o que você quer saber ou parecer perdida, responda com uma pergunta concreta.
 - Números pequenos por extenso. Nada de listas faladas longas.
 
 # Ritmo e encerramento
@@ -172,6 +172,7 @@ const TurnoSchema = z.object({
   inicio_ms: z.number().min(0).optional(),
   fim_ms: z.number().min(0).optional(),
   sobreposta: z.boolean().optional(),
+  apoio: z.boolean().optional(),
 });
 export const ConversaSchema = z.object({
   turnos: z.array(TurnoSchema).max(2000),
@@ -181,6 +182,7 @@ export const ConversaSchema = z.object({
     sobreposicoes: z.number().optional(),
     falas_pessoa: z.number().optional(),
     falas_ia: z.number().optional(),
+    apoios: z.number().optional(),
     sessoes: z.number().optional(),
     eventos: z.record(z.string(), z.number()).optional(),
     desconhecidos: z.array(z.string().max(200)).max(50).optional(),

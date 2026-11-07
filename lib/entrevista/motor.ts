@@ -11,6 +11,7 @@ export type Fase = 'parado' | 'conectando' | 'falando' | 'ouvindo' | 'juntos' | 
 export type Evento =
   | { tipo: 'fase'; fase: Fase }
   | { tipo: 'metricas'; metricas: Metricas; duracao_s: number }
+  | { tipo: 'nivel'; ia: number; pessoa: number } // volume de cada lado (0 a 1), várias vezes por segundo, para a esfera
   | { tipo: 'aviso'; texto: string }
   | { tipo: 'erro'; texto: string; repetir?: () => void }
   | { tipo: 'fim' }; // a IA se despediu: hora de encerrar e processar
@@ -112,7 +113,7 @@ export class MotorEntrevista {
     this.gravar(gravacao.stream);
     await this.ctx.resume();
     window.addEventListener('beforeunload', this.aoSair);
-    this.timers.push(setInterval(() => this.medir(), 120));
+    this.timers.push(setInterval(() => this.medir(), 50));
     this.timers.push(setInterval(() => { const metricas = this.metricas(); this.aoEvento({ tipo: 'metricas', metricas, duracao_s: metricas.duracao_s ?? 0 }); }, 1000));
     this.timers.push(setInterval(() => void this.salvar(), SALVAR_MS));
     this.timers.push(setInterval(() => { if (this.ativo && performance.now() - this.inicioSessao > LIMITE_MS) { this.aoEvento({ tipo: 'aviso', texto: 'A entrevista chegou ao limite de 45 minutos e foi encerrada.' }); this.aoEvento({ tipo: 'fim' }); } }, 5000));
@@ -210,8 +211,11 @@ export class MotorEntrevista {
 
   private medir() {
     if (!this.ativo) return;
-    const ia = this.nivel(this.analisadorIa) > NIVEL_VOZ;
-    const pessoa = this.nivel(this.analisadorPessoa) > NIVEL_VOZ;
+    const nIa = this.nivel(this.analisadorIa);
+    const nPessoa = this.nivel(this.analisadorPessoa);
+    this.aoEvento({ tipo: 'nivel', ia: Math.min(1, nIa / 0.12), pessoa: Math.min(1, nPessoa / 0.12) });
+    const ia = nIa > NIVEL_VOZ;
+    const pessoa = nPessoa > NIVEL_VOZ;
     this.alguemFalando = ia || pessoa;
     const fase: Fase = ia && pessoa ? 'juntos' : ia ? 'falando' : 'ouvindo';
     if (fase !== this.fase) this.mudar(fase);

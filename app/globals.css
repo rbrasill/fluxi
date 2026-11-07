@@ -797,14 +797,6 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .sem-margem { margin: 0; }
 .pop-icone.icone-entrevista { background: #e6f1f3; color: var(--primary); }
 .entrevista-vivo { align-items: center; gap: 14px; padding: 40px 24px; text-align: center; }
-.orb { width: 160px; height: 160px; border-radius: 999px; display: grid; place-items: center; color: #fff; background: var(--muted); transition: background .3s; }
-.orb.falando { background: var(--primary); animation: orb-fala 1.6s ease-in-out infinite; }
-.orb.ouvindo { background: #0b6b50; animation: orb-ouve 1.3s ease-in-out infinite; }
-.orb.pensando { background: #544c88; }
-.orb.juntos { background: #b45309; animation: orb-ouve 0.9s ease-in-out infinite; }
-.orb.pensando svg { animation: gira 1.4s linear infinite; }
-@keyframes orb-fala { 0%, 100% { box-shadow: 0 0 0 0 rgba(0, 95, 115, .35); } 50% { box-shadow: 0 0 0 22px rgba(0, 95, 115, 0); } }
-@keyframes orb-ouve { 0%, 100% { box-shadow: 0 0 0 0 rgba(11, 107, 80, .4); transform: scale(1); } 50% { box-shadow: 0 0 0 26px rgba(11, 107, 80, 0); transform: scale(1.04); } }
 .entrevista-estado { margin: 8px 0 0; font-size: 22px; font-weight: 600; }
 .entrevista-sub { margin: 0; color: var(--muted); font-size: 14px; }
 .entrevista-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
@@ -839,3 +831,16 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .conversa-lida .sobreposta { padding-left: 10px; border-left: 3px solid #b45309; }
 .conversa-tempo { display: inline-block; min-width: 44px; margin-right: 6px; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
 .diagnostico summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+
+/* A esfera da IA e o cartão escuro da conversa (decisão 42) */
+.orbe { display: block; max-width: 100%; }
+.entrevista-vivo.escuro { background: radial-gradient(120% 90% at 50% 0%, #1b1550 0%, #0c0d2e 55%, #07081d 100%); border-color: #1f2152; color: #eef0fa; }
+.entrevista-vivo.escuro .entrevista-estado { color: #fff; }
+.entrevista-vivo.escuro .entrevista-sub, .entrevista-vivo.escuro .notice { color: #aab1d8; }
+.entrevista-vivo.escuro .metricas-entrevista > div { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); }
+.entrevista-vivo.escuro .metricas-entrevista dt { color: #aab1d8; }
+.entrevista-vivo.escuro .metricas-entrevista dd { color: #fff; }
+.entrevista-vivo.escuro .entrevista-erro { background: rgba(180, 35, 24, .25); border-color: rgba(245, 181, 176, .35); color: #ffd6d2; }
+.entrevista-vivo.escuro .entrevista-erro .btn, .entrevista-vivo.escuro .btn:not(.btn-parar) { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .22); color: #eef0fa; }
+.conversa-lida p.apoio { font-size: 12px; color: var(--muted); }
+.conversa-lida p.apoio b { color: var(--muted); font-weight: 600; }

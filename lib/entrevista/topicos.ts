@@ -15,9 +15,10 @@ export const TOPICOS = [
 
 /**
  * Um trecho de fala. `inicio_ms`/`fim_ms`: posição na linha do tempo da conversa (desde o começo da
- * primeira sessão de voz). `sobreposta`: a pessoa falou enquanto a IA ainda falava.
+ * primeira sessão de voz). `sobreposta`: a pessoa falou enquanto a IA ainda falava (ou numa pausa curta
+ * de uma fala dela). `apoio`: "aham", "sei", "uhum" da IA enquanto a pessoa explica.
  */
-export type Turno = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms?: number; fim_ms?: number; sobreposta?: boolean; em?: string };
+export type Turno = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms?: number; fim_ms?: number; sobreposta?: boolean; apoio?: boolean; em?: string };
 
 export type StatusEntrevista = 'em_andamento' | 'processando' | 'concluida' | 'erro';
 export const ROTULO_STATUS: Record<StatusEntrevista, string> = { em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
@@ -28,7 +29,8 @@ export type Metricas = {
   reacao_ms?: number[]; // do fim de uma fala da pessoa ao início da fala seguinte da IA
   sobreposicoes?: number; // falas da pessoa feitas enquanto a IA falava
   falas_pessoa?: number;
-  falas_ia?: number;
+  falas_ia?: number; // respostas da IA (sem os apoios)
+  apoios?: number; // "aham", "sei", "uhum" da IA
   sessoes?: number;
   eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
   desconhecidos?: string[]; // tipos de evento que o app não trata (diagnóstico)
@@ -54,9 +56,9 @@ export type ResultadoEntrevista = {
 
 const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
 
-/** A conversa em texto (para a análise e para a leitura), com o tempo e a marca de fala sobreposta. */
+/** A conversa em texto (para a análise e para a leitura), com o tempo e a marca de fala sobreposta; sem os apoios da IA. */
 export const transcricaoDaConversa = (turnos: Turno[]) =>
-  turnos.map((t) => {
+  turnos.filter((t) => !t.apoio).map((t) => {
     const tempo = t.inicio_ms !== undefined ? `[${mmss(t.inicio_ms)}] ` : '';
     if (t.quem === 'ia') return `${tempo}Entrevistador: ${t.texto}`;
     return `${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${t.texto}`;
