@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
-import { Sora, Manrope } from 'next/font/google';
+import localFont from 'next/font/local';
 import { Dialogos } from '@/components/Dialogos';
 import './globals.css';
 
-const sora = Sora({ subsets: ['latin'], variable: '--font-display', weight: ['500', '600', '700'] });
-const manrope = Manrope({ subsets: ['latin'], variable: '--font-body' });
+// Fontes guardadas no projeto (app/fontes, licença OFL): antes vinham do Google na hora do build, e o
+// Turbopack às vezes não conseguia ler o endereço devolvido, o que derrubava o deploy na Vercel.
+const sora = localFont({ src: './fontes/sora-latin-wght-normal.woff2', variable: '--font-display', weight: '100 800', display: 'swap' });
+const manrope = localFont({ src: './fontes/manrope-latin-wght-normal.woff2', variable: '--font-body', weight: '200 800', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Fluxi',
+  title: 'INCFlow',
   description: 'Mapeamento de processos com fluxogramas BPMN e POPs.',
 };
 

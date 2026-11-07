@@ -1,4 +1,4 @@
-// Document Picture-in-Picture: janela do Fluxi sempre por cima das outras,
+// Document Picture-in-Picture: janela do INCFlow sempre por cima das outras,
 // para controlar a gravação sem sair do sistema que está sendo gravado.
 // Chrome/Edge 116+, Firefox 151+. Sem suporte (Safari), os controles ficam na página.
 type DocumentPiP = {
@@ -18,7 +18,7 @@ export async function abrirPip(largura = 480, altura = 520): Promise<Window | nu
   if (pip.window) return pip.window;
   const janela = await pip.requestWindow({ width: largura, height: altura });
   const doc = janela.document;
-  // Copia os estilos do Fluxi para a janela flutuante.
+  // Copia os estilos do INCFlow para a janela flutuante.
   for (const folha of Array.from(document.styleSheets)) {
     try {
       const estilo = doc.createElement('style');
@@ -35,7 +35,7 @@ export async function abrirPip(largura = 480, altura = 520): Promise<Window | nu
   }
   doc.documentElement.className = document.documentElement.className;
   doc.documentElement.lang = 'pt-BR';
-  doc.title = 'Fluxi · Gravação';
+  doc.title = 'INCFlow · Gravação';
   doc.body.className = 'pip-body';
   return janela;
 }

@@ -8,7 +8,7 @@ export function CabecalhoPublico({ onde, processoHref }: { onde?: { organizacao:
   const processo = onde?.processo ?? null;
   return (
     <header className="pub-topo">
-      <Image src="/logo-fluxi.png" alt="Fluxi" width={126} height={32} className="pub-logo" priority />
+      <Image src="/logo-incflow.png" alt="INCFlow" width={199} height={32} className="pub-logo" priority />
       {(antes.length > 0 || processo) && (
         <span className="pub-caminho">
           {antes.join(' › ')}

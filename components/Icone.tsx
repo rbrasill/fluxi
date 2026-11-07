@@ -53,6 +53,9 @@ const caminhos: Record<string, string> = {
   'lista-numerada': 'M10 6h10M10 12h10M10 18h10M4 4.5h1.5V9M4 9h3M4 14.6c.6-.9 3-.9 3 .7 0 1.2-3 2-3 3.7h3',
   'marca-texto': 'M9 11l-5 5v3h3l5-5M9 11l6-6 4 4-6 6zM14 20h6',
   'limpar-formato': 'M6 5h12M12 5l-3 14M4 4l16 16',
+  microfone: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
+  conversa: 'M4 5h16v11h-9l-5 4v-4H4zM8 9h8M8 12h5',
+  'alto-falante': 'M4 10v4h3l5 4V6l-5 4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10',
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {
