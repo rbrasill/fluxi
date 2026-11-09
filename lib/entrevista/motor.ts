@@ -21,6 +21,8 @@ export type Evento =
 
 type Mensagem = { type: string; delta?: string; start_ms?: number; end_ms?: number; usage?: { seconds?: number }; error?: { message?: string }; reason?: string; [k: string]: unknown };
 
+/** O microfone como a ligação precisa: mono, com cancelamento de eco (a voz da Maia sai pela caixa de som). */
+export const RESTRICOES_MICROFONE: MediaTrackConstraints = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar)
 const LIMITE_MS = LIMITES_ENTREVISTA.sessao_min * 60_000; // teto de uma sessão (custo): pausa sozinha
 const INATIVIDADE_MS = LIMITES_ENTREVISTA.inatividade_min * 60_000; // ninguém falou nesse tempo: pausa sozinha (a sessão parada também é cobrada)
@@ -80,12 +82,14 @@ export class MotorEntrevista {
     this.duracaoAnterior_s = metricasAnteriores.duracao_s ?? 0;
   }
 
-  async iniciar() {
+  /** Liga. O microfone pode vir pronto da tela (pedido quando a pessoa marcou a ciência, decisão 55): aí a ligação não espera a permissão. */
+  async iniciar(microfone?: MediaStream | null) {
     const clique = performance.now();
     this.ativo = true;
     this.mudar('conectando');
     this.ctx = new AudioContext(); // nasce dentro do clique (política de autoplay)
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const pronto = !!microfone && microfone.getAudioTracks().some((t) => t.readyState === 'live');
+    this.stream = pronto ? microfone! : await navigator.mediaDevices.getUserMedia({ audio: RESTRICOES_MICROFONE });
     // Cada etapa da conexão fica medida (para achar onde está a demora: navegador, Vercel ou OpenAI).
     let marca = performance.now();
     const etapa = () => { const agora = performance.now(), ms = Math.round(agora - marca); marca = agora; return ms; };

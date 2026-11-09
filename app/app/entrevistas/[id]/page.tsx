@@ -8,7 +8,7 @@ import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ehAdmin, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, type Etapa } from '@/lib/entrevista/topicos';
-import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
+import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { aquecerSessaoDeVoz, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
@@ -35,6 +35,10 @@ function EntrevistaPage() {
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [etapaFim, setEtapaFim] = useState('');
   const [ciente, setCiente] = useState(false);
+  // O microfone é pedido quando a pessoa marca a ciência (decisão 55): a permissão do navegador, que na primeira
+  // vez pode levar dezenas de segundos, sai do caminho do "Ligar para a Maia".
+  const [mic, setMic] = useState<'' | 'pedindo' | 'pronto' | 'negado'>('');
+  const microfone = useRef<MediaStream | null>(null);
   const motor = useRef<MotorEntrevista | null>(null);
   const encerrando = useRef(false);
   const niveis = useRef<Niveis>({ ia: 0, pessoa: 0 }); // volume das duas vozes, para a esfera (fora do estado do React)
@@ -46,7 +50,20 @@ function EntrevistaPage() {
     return d;
   }).catch(() => { setE(null); return null; });
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { void motor.current?.encerrar(); }, []);
+  useEffect(() => () => { void motor.current?.encerrar(); microfone.current?.getTracks().forEach((t) => t.stop()); }, []);
+
+  async function marcarCiente(marcado: boolean) {
+    setCiente(marcado);
+    if (!marcado) { setMic(''); return; }
+    if (microfone.current || !navigator.mediaDevices?.getUserMedia) return;
+    setMic('pedindo');
+    try {
+      microfone.current = await navigator.mediaDevices.getUserMedia({ audio: RESTRICOES_MICROFONE });
+      setMic('pronto');
+    } catch {
+      setMic('negado');
+    }
+  }
   useEffect(() => {
     if (tela !== 'conversa') return;
     const t = setInterval(() => setSegundos((s) => s + 1), 1000);
@@ -78,8 +95,11 @@ function EntrevistaPage() {
     encerrando.current = false;
     const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final, e.frase_pausa);
     motor.current = m;
+    const pronto = microfone.current; // o motor passa a cuidar do microfone (e o desliga ao encerrar)
+    microfone.current = null;
+    setMic('');
     try {
-      await m.iniciar();
+      await m.iniciar(pronto);
     } catch (err) {
       m.registrarErro(`Ao começar: ${msg(err)}`);
       await m.encerrar().catch(() => {});
@@ -184,11 +204,14 @@ function EntrevistaPage() {
           {e.nota_convite && <p className="notice">Pedido de {e.convidador ?? 'quem convidou'}: “{e.nota_convite}”. A Maia já sabe disso.</p>}
           {aviso && <p className="notice">{aviso}</p>}
           {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
-          <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
+          <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => void marcarCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
+          {mic === 'pedindo' && <p className="notice mic-estado">Permita o uso do microfone, para a Maia ouvir você.</p>}
+          {mic === 'pronto' && <p className="notice mic-estado">Microfone pronto.</p>}
+          {mic === 'negado' && <p className="notice mic-estado">O navegador não liberou o microfone. Permita o acesso (o cadeado na barra de endereço) e marque de novo, ou tente ligar mesmo assim.</p>}
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
             <Link href="/app/entrevistas" className="btn">Voltar</Link>
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
+            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null || mic === 'pedindo'}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
           </div>
         </div>
       </div>

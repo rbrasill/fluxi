@@ -417,6 +417,15 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Gestor:** convida, reenvia e cancela convites pendentes; não exclui entrevista que já começou (403).
 - **Ninguém edita o conteúdo:** a conversa (falas, áudio) só é gravada pela própria pessoa entrevistada, durante a ligação; o resultado é da Maia e, concluída a entrevista, não muda. Não há tela nem rota para editar transcrição ou resultado. Administradores e gestores só **geram de novo um resultado que falhou** (erro ou processamento parado); não encerram a conversa de outra pessoa nem refazem um resultado pronto.
 
+## 55. Ajustes depois da primeira entrevista real (Matheus, 09/11/2026)
+
+- **O que o teste mostrou:** o ciclo cadastro → login → convite → ligação → resultado funcionou em 10 minutos, sem erro. A Maia encerrou aos 5 minutos sem perguntar dificuldades, prazos, quem faz cada etapa nem o que acontece quando algo não é resolvido (viraram seis pendências); respondeu "ficou bem claro" quando o entrevistado perguntou "alguma dúvida?"; recomeçou frases por falar enquanto ele ainda pensava. A análise deduziu "dificuldades" que ele não relatou e um responsável tirado da área do cadastro. A conexão levou 43 s, dos quais 36 s foram a permissão do microfone na primeira vez.
+- **Ajustes do Rafael (os "uhum" ficam como estão):**
+  - **Lista de conferência obrigatória antes da despedida:** quem faz cada etapa (cargo e quantas pessoas), prazos, o que acontece quando algo dá errado ou não é resolvido, e o que costuma dar problema. "Alguma dúvida?" é convite para perguntar o que falta, não para dizer que ficou claro.
+  - **Esperar a ideia concluir:** pausa no meio de um raciocínio não é a vez dela; se começou e a pessoa continuou, para e não retoma a frase cortada.
+  - **Análise fiel:** "dificuldades" só com o que a pessoa relatou como problema (vazio e pendência quando não relatou); responsável só com o que ela disse; o contexto do processo serve para entender, não vira fato.
+  - **Microfone antes de ligar:** a tela pede a permissão quando a pessoa marca "Estou ciente" ("Microfone pronto"); o motor recebe o microfone já liberado e a ligação não espera a permissão.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
