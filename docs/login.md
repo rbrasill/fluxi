@@ -8,7 +8,7 @@ Sem senha: a pessoa digita o e-mail corporativo (`@meuinc.com.br`), recebe um c�
 |---|---|
 | Servidor (`lib/server/login.ts`) | gera o código, guarda só o hash (sha256 de e-mail + código + segredo), valida, controla validade (10 min), tentativas (5), carência (60 s), uso único e limites por IP e por e-mail, e emite a sessão |
 | Banco (`supabase/migrations/0018_login.sql`) | `pessoas`, `login_codigos`, `login_limites` e as funções atômicas `login_gravar_codigo`, `login_consumir_tentativa`, `login_usar_codigo` e `login_contar` (só o servidor pode chamá-las) |
-| Carteiro (Pipedream ou outro) | recebe `{ email, nome, codigo }` e entrega o e-mail; não gera, não valida, não guarda nada |
+| Carteiro (Pipedream ou outro) | recebe `{ tipo, email, nome, … }` e entrega o e-mail (`codigo`: o código de login; `convite`: o convite para entrevista com a Maia, decisão 53); não gera, não valida, não guarda nada |
 | Porteiro (`proxy.ts`) | antes de toda página e rota: sem cookie válido, página vai para `/login?next=…` e API responde 401; escrita na API só vinda do próprio site (senão 403); sem `INC_AUTH_SECRET` em produção, 503 em tudo |
 | Rotas | toda rota de dados confere a sessão de novo, agora com o banco (a pessoa ainda existe? a sessão não foi revogada?) |
 | Sessão (`lib/auth/sessao.ts`) | cookie `inc_sessao` (HttpOnly, Secure em produção, SameSite=Lax, 6 h) com o token `payload.assinatura` (HMAC-SHA256) |
@@ -35,7 +35,7 @@ Sem isso, em produção o app inteiro responde 503 e ninguém consegue entrar.
 2. **Montar o carteiro no Pipedream** (um workflow novo, só do INCFlow):
    1. `trigger`: HTTP / Webhook. Em *HTTP Response*, marque **"Return a custom response from your workflow"**. A URL do trigger é o `AUTH_MAILER_URL`.
    2. `validar_envio`: Node.js, com o código abaixo.
-   3. `enviar_email`: Node.js, com o código de `docs/pipedream-enviar-codigo.js` (mesmo formato do lembrete de tarefas do Atylux). Em *Connect*, conecte a conta do Outlook que vai enviar (de preferência uma caixa de serviço, como `nao-responda@…`); o envio é pelo Graph API, com o e-mail no modelo do Atylux (gradiente da INC, código em destaque, à prova do Outlook desktop) e **sem cópia nos Itens Enviados** (o código não pode ficar guardado). Quem preferir a ação pronta "Send Email" do Outlook pode colar o HTML de `docs/login-email-codigo.html` (com a opção HTML ativada) e desligar a cópia nos enviados, se a ação permitir.
+   3. `enviar_email`: Node.js, com o código de `docs/pipedream-enviar-email.js` (mesmo formato do lembrete de tarefas do Atylux; o mesmo passo entrega o código de login e o convite para entrevista, pelo `tipo`). Em *Connect*, conecte a conta do Outlook que vai enviar (de preferência uma caixa de serviço, como `nao-responda@…`); o envio é pelo Graph API, com o e-mail no modelo do Atylux (gradiente da INC, código em destaque, à prova do Outlook desktop) e **sem cópia nos Itens Enviados** (o código não pode ficar guardado). Quem preferir a ação pronta "Send Email" do Outlook pode colar o HTML de `docs/login-email-codigo.html` ou `docs/convite-email.html` (com a opção HTML ativada) e desligar a cópia nos enviados, se a ação permitir; aí são dois caminhos no workflow, um por tipo.
    4. `return_response`: Node.js com `await $.respond({ status: 200, body: { ok: true } })`.
    - Em *Project → Variables*, crie `AUTH_MAILER_SECRET` (marcada como *Secret*) com o mesmo valor do servidor.
    - Em *Settings → Data Retention*, reduza a retenção ao mínimo (o histórico guarda o corpo, com o código).
@@ -46,12 +46,13 @@ Sem isso, em produção o app inteiro responde 503 e ninguém consegue entrar.
    values ('00000000-0000-4000-8000-000000000001', 'Nome Sobrenome', 'nome.sobrenome@meuinc.com.br', 'admin');
    ```
 
-Step `validar_envio`:
+Step `validar_envio` (versão 2, com os convites da decisão 53):
 
 ```js
 import crypto from "node:crypto";
 
 const DOMINIO = "@meuinc.com.br";
+const HOSTS_DO_APP = ["incflow.vercel.app"]; // para onde o link de um convite pode apontar
 
 export default defineComponent({
   async run({ steps, $ }) {
@@ -64,16 +65,30 @@ export default defineComponent({
     const a = Buffer.from(recebido), b = Buffer.from(esperado);
     if (!esperado || a.length !== b.length || !crypto.timingSafeEqual(a, b)) return recusar(401, "Segredo inválido.");
     const corpo = steps.trigger.event.body || {};
+    const tipo = corpo.tipo === "convite" ? "convite" : "codigo";
     const email = String(corpo.email || "").trim().toLowerCase();
-    const codigo = String(corpo.codigo || "");
     const nome = String(corpo.nome || "").trim() || email.split("@")[0];
     if (!email.endsWith(DOMINIO) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return recusar(400, "E-mail fora do domínio.");
-    if (!/^\d{6}$/.test(codigo)) return recusar(400, "Código malformado.");
-    // Não registre o código: $.export e console.log ficam visíveis no histórico.
-    return { email, nome, codigo };
+    if (tipo === "codigo") {
+      const codigo = String(corpo.codigo || "");
+      if (!/^\d{6}$/.test(codigo)) return recusar(400, "Código malformado.");
+      // Não registre o código: $.export e console.log ficam visíveis no histórico.
+      return { tipo, email, nome, codigo };
+    }
+    // Convite para entrevista com a Maia: o link só pode apontar para o próprio app.
+    const processo = String(corpo.processo || "").trim().slice(0, 200);
+    const convidado_por = String(corpo.convidado_por || "").trim().slice(0, 120) || "A equipe de processos";
+    const nota = String(corpo.nota || "").trim().slice(0, 500);
+    let link;
+    try { link = new URL(String(corpo.link || "")); } catch { return recusar(400, "Link inválido."); }
+    if (link.protocol !== "https:" || !HOSTS_DO_APP.includes(link.hostname) || !link.pathname.startsWith("/app/entrevistas/")) return recusar(400, "Link fora do app.");
+    if (!processo) return recusar(400, "Convite sem processo.");
+    return { tipo, email, nome, processo, convidado_por, nota, link: link.href };
   },
 });
 ```
+
+> **Atualização de 09/11/2026 (convites):** quem montou o workflow antes dos convites troca o código dos dois passos `validar_envio` e `enviar_email` pelos de cima (o servidor passou a mandar `tipo`). Enquanto não trocar, os códigos de login continuam saindo normalmente; os convites são recusados pelo `validar_envio` e o INCFlow mostra "Convite sem e-mail", com o botão "Reenviar convite" para depois da troca.
 
 ## Desenvolvimento
 

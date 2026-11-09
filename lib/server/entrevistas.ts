@@ -1,12 +1,15 @@
 import 'server-only';
 import { z } from 'zod';
-import { LIMITES_ENTREVISTA, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
+import { enviarEmail } from './carteiro';
 import { ErroApi } from './http';
 import { chamarEstruturado, type UsoIa } from './ia';
+import type { Pessoa } from './login';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-// Entrevista por voz com a IA, só com o GPT-Live da OpenAI (decisão 41), fora do processo, para testar.
+// Entrevista por voz com a Maia, só com o GPT-Live da OpenAI (decisão 41). Nasce dentro do processo, por
+// convite, uma por pessoa, e só a pessoa convidada conversa com ela (decisões 49 e 53).
 // O navegador fala direto com o GPT-Live por WebRTC (áudio nos dois sentidos ao mesmo tempo: full duplex);
 // o servidor só abre a sessão (com a chave da OpenAI, que não vai para o navegador) e guarda o que volta:
 // a conversa transcrita, as métricas e a gravação. A condução da entrevista está nas instruções da sessão.
@@ -33,10 +36,11 @@ export type Linha = {
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
-  entrevistado_id: string | null; // quem foi entrevistado (a pessoa logada que abriu a primeira sessão)
+  entrevistado_id: string | null; // a pessoa convidada (sem convite, em desenvolvimento: quem abriu a primeira sessão)
+  convidado_por: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, criado_em, encerrado_em, atualizado_em';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const agora = () => new Date().toISOString();
 
@@ -53,15 +57,110 @@ async function salvar(id: string, dados: Partial<Linha>) {
   if (error) throw error;
 }
 
-// --- Criar e listar ---
+// --- Convites (decisão 53): a entrevista nasce dentro do processo, uma por pessoa, até três por vez ---
 
-export async function criar(d: { tema: string; contexto?: string }) {
-  const { data, error } = await supabase().from('entrevistas')
-    .insert({ tenant_id: TENANT_PADRAO, processo_id: null, tema: d.tema.trim(), contexto: (d.contexto ?? '').trim(), motor: 'gpt-live', status: 'em_andamento', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {} })
-    .select('id').single();
+export const ConviteSchema = z.object({
+  pessoas: z.array(z.string().regex(UUID, 'Pessoa inválida.')).min(1, 'Escolha ao menos uma pessoa.').max(MAX_CONVITES, `Convide até ${MAX_CONVITES} pessoas por vez.`),
+  nota: z.string().trim().max(500, 'A nota pode ter até 500 caracteres.').optional(),
+});
+
+type ProcessoDoConvite = { id: string; nome: string; descricao: string | null; arquivado_em: string | null; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null };
+const CAMPOS_PROCESSO = 'id, nome, descricao, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+
+async function processoDoConvite(id: string) {
+  if (!UUID.test(id)) throw new ErroApi(404, 'Processo não encontrado');
+  const { data, error } = await supabase().from('processos').select(CAMPOS_PROCESSO).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
-  return { id: (data as { id: string }).id };
+  if (!data) throw new ErroApi(404, 'Processo não encontrado');
+  return data as unknown as ProcessoDoConvite;
 }
+
+/** O contexto que a Maia lê antes de falar: organização e área, a descrição do processo e o pedido de quem convidou. */
+export function contextoDoConvite(p: ProcessoDoConvite, nota: string) {
+  const partes: string[] = [];
+  const onde = [p.area?.organizacao?.nome, p.area?.nome].filter(Boolean).join(', área ');
+  if (onde) partes.push(`Organização e área: ${onde}.`);
+  const descricao = textoPuro(p.descricao ?? '').replace(/\s+/g, ' ').trim();
+  if (descricao) partes.push(`Descrição do processo no cadastro: ${descricao.slice(0, 1500)}`);
+  if (nota.trim()) partes.push(`Pedido de quem convidou: ${nota.trim()}`);
+  return partes.join('\n');
+}
+
+const linkDaEntrevista = (origem: string, id: string) => `${origem.replace(/\/$/, '')}/app/entrevistas/${id}`;
+
+/** Manda o e-mail do convite. Se o carteiro falhar, o convite fica sem `convite_enviado_em` (dá para reenviar). */
+async function enviarConvite(linha: Pick<Linha, 'id' | 'tema' | 'nota_convite'>, pessoa: { nome: string; email: string }, convidadoPor: string, origem: string) {
+  try {
+    await enviarEmail({ tipo: 'convite', email: pessoa.email, nome: pessoa.nome, processo: linha.tema, convidado_por: convidadoPor, link: linkDaEntrevista(origem, linha.id), nota: linha.nota_convite });
+    await salvar(linha.id, { convite_enviado_em: agora() });
+    return true;
+  } catch (e) {
+    console.error(`[convite] e-mail para ${pessoa.email} não enviado: ${e instanceof Error ? e.message : e}`);
+    return false;
+  }
+}
+
+const NOME_EQUIPE = 'A equipe de processos';
+
+/**
+ * Convida até três pessoas para entrevistas sobre um processo: uma entrevista por pessoa, com o tema e o
+ * contexto montados do próprio processo. Quem convida é gestor ou administrador (a rota confere). Quem já
+ * tem uma entrevista aberta neste processo não recebe outra. O e-mail sai pelo carteiro.
+ */
+export async function convidar(processoId: string, d: z.infer<typeof ConviteSchema>, quem: Pessoa | null, origem: string) {
+  const processo = await processoDoConvite(processoId);
+  if (processo.arquivado_em) throw new ErroApi(409, 'Este processo está arquivado.');
+  const db = supabase();
+  const ids = [...new Set(d.pessoas)];
+  const { data: ps, error } = await db.from('pessoas').select('id, nome, email').in('id', ids);
+  if (error) throw error;
+  const pessoas = (ps ?? []) as { id: string; nome: string; email: string }[];
+  if (pessoas.length !== ids.length) throw new ErroApi(404, 'Alguma das pessoas escolhidas não está mais cadastrada.');
+  const { data: abertas, error: e2 } = await db.from('entrevistas').select('id, entrevistado_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).in('status', ['convidada', 'em_andamento']).in('entrevistado_id', ids);
+  if (e2) throw e2;
+  const jaTem = new Set(((abertas ?? []) as { entrevistado_id: string }[]).map((x) => x.entrevistado_id));
+  const nota = (d.nota ?? '').trim();
+  const contexto = contextoDoConvite(processo, nota);
+  const convidadoPor = quem?.nome ?? NOME_EQUIPE;
+  const criadas: { id: string; pessoa: string; email_enviado: boolean }[] = [];
+  const repetidas: string[] = [];
+  for (const pessoa of pessoas) {
+    if (jaTem.has(pessoa.id)) { repetidas.push(pessoa.nome); continue; }
+    const { data, error: e3 } = await db.from('entrevistas')
+      .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto, motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: pessoa.id, convidado_por: quem?.id ?? null, convidado_em: agora(), nota_convite: nota })
+      .select('id').single();
+    if (e3) throw e3;
+    const id = (data as { id: string }).id;
+    const email_enviado = await enviarConvite({ id, tema: processo.nome, nota_convite: nota }, pessoa, convidadoPor, origem);
+    criadas.push({ id, pessoa: pessoa.nome, email_enviado });
+  }
+  return { criadas, repetidas };
+}
+
+/** Manda o e-mail do convite de novo (só enquanto a pessoa não começou). */
+export async function reenviarConvite(id: string, quem: Pessoa | null, origem: string) {
+  const linha = await carregar(id);
+  if (linha.status !== 'convidada') throw new ErroApi(409, 'Esta entrevista já começou.');
+  const { data, error } = await supabase().from('pessoas').select('id, nome, email').eq('id', linha.entrevistado_id ?? '').maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'A pessoa convidada não está mais cadastrada.');
+  const convidadoPor = (await nomesDasPessoas([linha.convidado_por])).get(linha.convidado_por ?? '') ?? quem?.nome ?? NOME_EQUIPE;
+  if (!(await enviarConvite(linha, data as { nome: string; email: string }, convidadoPor, origem))) throw new ErroApi(502, 'O e-mail não pôde ser enviado. Tente de novo em instantes.');
+  return { ok: true };
+}
+
+// --- Acesso (decisão 49): só a pessoa convidada conversa com a Maia; gestores e administradores gerem ---
+
+/** Sem login (desenvolvimento), tudo liberado. */
+export const ehGestor = (p: Pessoa | null | undefined) => !p || p.nivel !== 'comum';
+
+/** Só a pessoa convidada liga, fala, consulta e grava nesta entrevista. */
+export function exigirEntrevistado(linha: Pick<Linha, 'entrevistado_id'>, pessoa: Pessoa | null | undefined) {
+  if (!pessoa) return;
+  if (linha.entrevistado_id && linha.entrevistado_id !== pessoa.id) throw new ErroApi(403, 'Esta entrevista é de outra pessoa: só quem foi convidado conversa com a Maia.', 'outra_pessoa');
+}
+
+// --- Listas ---
 
 /** Os nomes das pessoas entrevistadas, por id. */
 async function nomesDasPessoas(ids: (string | null | undefined)[]) {
@@ -72,25 +171,47 @@ async function nomesDasPessoas(ids: (string | null | undefined)[]) {
   return new Map(((data ?? []) as { id: string; nome: string }[]).map((p) => [p.id, p.nome]));
 }
 
+type ProcessoEmbutido = { id: string; nome: string } | null;
+
+/** Todas as entrevistas, da mais recente para a mais antiga, com o processo e a pessoa de cada uma. */
 export async function listar() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_em, convite_enviado_em, criado_em, encerrado_em, processo:processos(id, nome)')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
   const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
-  return linhas.map(({ turnos, metricas, entrevistado_id, ...e }) => {
+  return linhas.map(({ turnos, metricas, entrevistado_id, processo, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
-      ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null,
+      ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
+      processo: (processo as unknown as ProcessoEmbutido) ?? null,
       falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
+    };
+  });
+}
+
+/** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
+export async function listarDoProcesso(processoId: string) {
+  if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');
+  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, criado_em, encerrado_em')
+    .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
+  if (error) throw error;
+  const linhas = data ?? [];
+  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
+  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, ...e }) => {
+    const r = (resultado as ResultadoEntrevista | null) ?? null;
+    return {
+      ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
+      falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
+      tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
     };
   });
 }
 
 /** Painel da Maia (decisão 52, só administradores): como ela está configurada e cada entrevista com tempos, métricas e custos. */
 export async function painel() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em, processo:processos(id, nome)')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
@@ -100,11 +221,11 @@ export async function painel() {
       nome: NOME_IA, apresentacao: `Eu sou a ${NOME_IA}, trabalho ${COM_QUEM}`, modelo_voz: MODELO_VOZ, voz: VOZ, preco_voz_usd_min: PRECO_VOZ_USD_MIN,
       modelo_consulta: MODELO_CONSULTA, modelo_analise: MODELO_ANALISE, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA, ...LIMITES_ENTREVISTA,
     },
-    entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, ...e }) => {
+    entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, processo, ...e }) => {
       const m = (metricas as Metricas | null) ?? {};
       const r = resumoMetricas(m);
       return {
-        ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
+        ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
         duracao_s: m.duracao_s ?? 0, sessoes: m.sessoes ?? (m.duracao_s ? 1 : 0), pausas: m.pausas ?? 0, consultas: r.consultas,
         reacao_mediana_ms: r.reacao_mediana_ms ?? null, conexao_ms: m.conexao_ms ?? null,
         custo_voz_usd: r.custo_voz_usd, custo_consultas_usd: r.custo_consultas_usd, custo_analise_usd: r.custo_analise_usd, custo_total_usd: r.custo_total_usd,
@@ -123,8 +244,13 @@ export async function obter(id: string) {
     const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
     audios = (data ?? []).map((x) => x.signedUrl).filter((u): u is string => !!u);
   }
-  const entrevistado = (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id ?? '') ?? null;
-  return { ...linha, entrevistado, audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA };
+  const nomes = await nomesDasPessoas([linha.entrevistado_id, linha.convidado_por]);
+  const processo = linha.processo_id ? await processoDoConvite(linha.processo_id).catch(() => null) : null;
+  return {
+    ...linha, entrevistado: nomes.get(linha.entrevistado_id ?? '') ?? null, convidador: nomes.get(linha.convidado_por ?? '') ?? null,
+    processo: processo ? { id: processo.id, nome: processo.nome, area: processo.area } : null,
+    audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA,
+  };
 }
 
 export async function excluir(id: string) {
@@ -200,15 +326,18 @@ export function historicoParaSessao(turnos: Turno[]) {
 }
 
 /** Abre uma sessão de voz: recebe a oferta WebRTC do navegador e devolve a resposta da OpenAI. */
-export async function abrirSessao(id: string, sdp: string, pessoa?: { id: string; nome: string } | null) {
+export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
-  if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  if (linha.status !== 'em_andamento' && linha.status !== 'convidada') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  exigirEntrevistado(linha, pessoa); // só a pessoa convidada abre a sessão (decisão 49)
   const chave = process.env.OPENAI_API_KEY;
   if (!chave) throw new ErroApi(503, 'A entrevista por voz ainda não está configurada (falta OPENAI_API_KEY).');
   const continuando = linha.turnos.length > 0;
+  // O nome que a Maia usa: a pessoa logada ou, sem login (desenvolvimento), a pessoa convidada.
+  const nome = pessoa?.nome ?? (linha.entrevistado_id ? (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id) ?? null : null);
   const session = {
     model: MODELO_VOZ,
-    instructions: instrucoesDaSessao(linha, continuando, pessoa?.nome),
+    instructions: instrucoesDaSessao(linha, continuando, nome),
     audio: { output: { voice: VOZ } },
     delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
@@ -232,10 +361,14 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: { id: string
   if (r.status === 401) throw new ErroApi(502, 'A OpenAI recusou a chave (OPENAI_API_KEY).');
   if (!r.ok || !j.transport?.sdp) throw new ErroApi(502, `A OpenAI não abriu a sessão de voz (${r.status}${j.error?.message ? `: ${j.error.message}` : ''}).`);
   const openai_ms = Date.now() - inicio; // quanto da abertura foi a OpenAI (o resto é a Vercel e a rede)
-  // Quem foi entrevistado: a pessoa logada que abriu a primeira sessão (com o convite, decisão 49, vem dele).
-  const entrevistado = pessoa && !linha.entrevistado_id ? { entrevistado_id: pessoa.id } : {};
-  if (j.session?.id) await salvar(id, { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50), ...entrevistado });
-  else if (entrevistado.entrevistado_id) await salvar(id, entrevistado);
+  // A sessão começou: a entrevista convidada passa a "em andamento"; sem convite (desenvolvimento), quem abriu
+  // a primeira sessão fica como entrevistado.
+  await salvar(id, {
+    ...(j.session?.id ? { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50) } : {}),
+    ...(pessoa && !linha.entrevistado_id ? { entrevistado_id: pessoa.id } : {}),
+    ...(linha.status === 'convidada' ? { status: 'em_andamento' as const } : {}),
+    iniciada_em: linha.iniciada_em ?? agora(),
+  });
   return { sdp: j.transport.sdp, continuando, openai_ms };
 }
 
@@ -262,9 +395,10 @@ export function montarPedidoConsulta(l: Pick<Linha, 'tema' | 'contexto'>, turnos
   return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<fim_da_conversa>\n${fim}\n</fim_da_conversa>`;
 }
 
-export async function consultar(id: string, turnos: Turno[]) {
+export async function consultar(id: string, turnos: Turno[], pessoa?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  exigirEntrevistado(linha, pessoa);
   const inicio = Date.now();
   let uso: UsoIa | undefined;
   const r = await chamarEstruturado(ConsultaSchema, SISTEMA_CONSULTA, montarPedidoConsulta(linha, turnos), { modelo: MODELO_CONSULTA, maxTokens: 800, pensar: false, esforco: 'low', limiteMs: 12_000, aoUsar: (u) => { uso = u; } });
@@ -320,9 +454,10 @@ export const ConversaSchema = z.object({
   }).optional(),
 });
 
-export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchema>) {
+export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchema>, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
+  exigirEntrevistado(linha, pessoa);
   // Os erros somam (os do navegador e os já guardados); o resto é o valor mais novo.
   const erros = [...new Set([...(linha.metricas?.erros ?? []), ...(c.metricas?.erros ?? [])])].slice(-30);
   await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas, erros } } : {}) });
@@ -395,8 +530,10 @@ export function limparHtml(html: string) {
  * Encerra a conversa e gera o resultado. Pode ser chamada de novo se deu erro ou se o processamento
  * ficou parado (a função da Vercel tem limite de tempo); concluída, não refaz.
  */
-export async function encerrar(id: string) {
+export async function encerrar(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  if (linha.status === 'convidada') throw new ErroApi(409, 'A entrevista ainda não começou.');
+  if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa); // a pessoa encerra a sua; gestores podem gerar o resultado de novo
   if (linha.status === 'concluida') return { status: 'concluida' as const };
   if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) return { status: 'processando' as const };
   const encerrado_em = linha.encerrado_em ?? agora();
@@ -433,17 +570,17 @@ async function gravacoes(id: string) {
   return (data ?? []).map((f) => f.name).filter((n) => /^conversa-\d+\.webm$/.test(n)).sort().map((n) => `${pasta}/${n}`);
 }
 
-export async function urlDeUploadAudio(id: string) {
-  await carregar(id);
+export async function urlDeUploadAudio(id: string, pessoa?: Pessoa | null) {
+  exigirEntrevistado(await carregar(id), pessoa);
   const caminho = `${pastaDoAudio(id)}/conversa-${Date.now()}.webm`;
   const { data, error } = await supabase().storage.from(BUCKET).createSignedUploadUrl(caminho);
   if (error) throw error;
   return { caminho, url: data.signedUrl };
 }
 
-export async function registrarAudio(id: string, caminho: string) {
+export async function registrarAudio(id: string, caminho: string, pessoa?: Pessoa | null) {
   if (!new RegExp(`^${pastaDoAudio(id)}/conversa-\\d+\\.webm$`).test(caminho)) throw new ErroApi(403, 'Arquivo inválido');
-  await carregar(id);
+  exigirEntrevistado(await carregar(id), pessoa);
   await salvar(id, { audio_caminho: caminho });
   return { ok: true };
 }

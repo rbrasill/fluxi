@@ -27,6 +27,13 @@ export async function exigirAdmin(): Promise<Pessoa | null> {
   return p;
 }
 
+/** Gestor ou administrador (convidar para entrevistas, por exemplo). */
+export async function exigirGestor(): Promise<Pessoa | null> {
+  const p = await pessoaLogada();
+  if (p && p.nivel === 'comum') throw new ErroApi(403, 'Só gestores e administradores podem fazer isso.');
+  return p;
+}
+
 const atributos = () => ({ httpOnly: true, secure: emProducao(), sameSite: 'lax' as const, path: '/' });
 
 export async function gravarCookieDeSessao(token: string) {

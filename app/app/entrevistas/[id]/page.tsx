@@ -6,7 +6,7 @@ import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
-import { ehAdmin, useEu } from '@/lib/auth/eu';
+import { ehAdmin, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { aquecerSessaoDeVoz, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
@@ -41,7 +41,7 @@ function EntrevistaPage() {
 
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
-    if (d.status !== 'em_andamento') setTela('resultado');
+    if (d.status !== 'em_andamento' && d.status !== 'convidada') setTela('resultado');
     else aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
     return d;
   }).catch(() => { setE(null); return null; });
@@ -138,16 +138,35 @@ function EntrevistaPage() {
   const cabecalho = (
     <div className="page-head">
       <div>
-        <nav className="migalha" aria-label="Caminho"><Link href="/app/entrevistas">Entrevista com IA</Link></nav>
+        <nav className="migalha" aria-label="Caminho">
+          {e.processo
+            ? <><Link href={`/app/processos/${e.processo.id}`}>{e.processo.nome}</Link><span>›</span><Link href="/app/entrevistas">Entrevista com a Maia</Link></>
+            : <Link href="/app/entrevistas">Entrevista com IA</Link>}
+        </nav>
         <h1>{e.tema || 'Entrevista'}</h1>
-        {e.contexto && <p>{e.contexto}</p>}
-        {e.entrevistado && <p>Entrevistado: <strong>{e.entrevistado}</strong></p>}
+        {!e.processo && e.contexto && <p>{e.contexto}</p>}
+        {e.entrevistado && <p>Entrevistado: <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
       </div>
     </div>
   );
 
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
+    const minha = souEu(eu, e.entrevistado_id); // só a pessoa convidada liga para a Maia (decisão 49)
+    if (eu !== null && !minha) {
+      return (
+        <div className="page page-estreita">
+          {cabecalho}
+          <div className="cartao">
+            <h3 className="sem-margem">Entrevista de {e.entrevistado ?? 'outra pessoa'}</h3>
+            <p className="notice">Só quem foi convidado conversa com a Maia nesta entrevista. {retomando ? `A conversa está pausada, com ${e.turnos.length} falas; quando ${e.entrevistado ?? 'a pessoa'} terminar, o resultado aparece aqui e no processo.` : 'Quando a pessoa fizer a entrevista, o resultado aparece aqui e no processo.'}</p>
+            <div className="fluxo-acoes">
+              <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="page page-estreita">
         {cabecalho}
@@ -162,13 +181,14 @@ function EntrevistaPage() {
             <li>Dura o necessário para cobrir o processo. A Maia se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
+          {e.nota_convite && <p className="notice">Pedido de {e.convidador ?? 'quem convidou'}: “{e.nota_convite}”. A Maia já sabe disso.</p>}
           {aviso && <p className="notice">{aviso}</p>}
           {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
           <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
             <Link href="/app/entrevistas" className="btn">Voltar</Link>
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
+            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
           </div>
         </div>
       </div>
@@ -286,7 +306,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, aoReprocessar }: {
       )}
 
       <div className="fluxo-acoes">
-        <Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar às entrevistas</Link>
+        <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar às entrevistas'}</Link>
         {admin && <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>}
       </div>
     </div>

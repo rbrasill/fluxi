@@ -81,7 +81,11 @@ No **Painel da Maia** (menu, só administradores; decisão 52), para cada entrev
 
 Depois da sessão começar, ela fala em 0,4 a 0,8 s. O servidor ficou em cerca de 1 s; **o microfone é a maior espera (2 a 6 s)**, provavelmente o navegador pedindo permissão ou um fone Bluetooth trocando de modo.
 
-## Próxima fase: entrevistas por convite, com login (decisão 49)
+## Entrevistas por convite, dentro do processo (decisões 49 e 53; fase 1 feita em 09/11/2026)
+
+A fase 1 está implementada: convite pelo processo (até três pessoas, uma entrevista por pessoa), e-mail pelo carteiro, só a pessoa convidada liga, seção "Entrevistas com a Maia" no processo, aviso no Início. A fase 2 é a síntese das entrevistas do processo. O texto abaixo é o registro da decisão original.
+
+### Registro original (decisão 49)
 
 Decidido em 09/11, a implementar depois do login:
 - A entrevista só acontece por **convite**: o administrador cria a entrevista (processo e contexto) e convida a pessoa; ela recebe um **e-mail** com o convite, entra na plataforma com **login** e inicia. Se não fizer, a entrevista fica **pendente**.

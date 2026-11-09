@@ -20,8 +20,10 @@ export const TOPICOS = [
  */
 export type Turno = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms?: number; fim_ms?: number; sobreposta?: boolean; apoio?: boolean; em?: string };
 
-export type StatusEntrevista = 'em_andamento' | 'processando' | 'concluida' | 'erro';
-export const ROTULO_STATUS: Record<StatusEntrevista, string> = { em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
+export type StatusEntrevista = 'convidada' | 'em_andamento' | 'processando' | 'concluida' | 'erro';
+export const ROTULO_STATUS: Record<StatusEntrevista, string> = { convidada: 'Convidada', em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
+/** Até quantas pessoas um convite pode chamar de uma vez (uma entrevista por pessoa; decisão 53). */
+export const MAX_CONVITES = 3;
 
 /** Medidas da conversa (as da especificação de voz full duplex do Rafael). */
 export type Metricas = {

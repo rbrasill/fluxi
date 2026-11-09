@@ -10,6 +10,10 @@ export type Eu = { enabled: false } | { enabled: true; name: string; email: stri
 
 /** Administrador de verdade, ou o modo aberto de desenvolvimento. Enquanto não carregou (null), não. */
 export const ehAdmin = (eu: Eu | null | undefined) => !!eu && (!eu.enabled || eu.nivel === 'admin');
+/** Gestor ou administrador (ou o modo aberto de desenvolvimento). */
+export const ehGestor = (eu: Eu | null | undefined) => !!eu && (!eu.enabled || eu.nivel !== 'comum');
+/** A pessoa logada é esta (ou não há login: desenvolvimento). Sem resposta ainda, não. */
+export const souEu = (eu: Eu | null | undefined, personId: string | null | undefined) => !!eu && (!eu.enabled || eu.personId === personId);
 
 let pedido: Promise<Eu | null> | null = null;
 export function carregarEu() {

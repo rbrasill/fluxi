@@ -905,3 +905,23 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
   .config-maia { grid-template-columns: 1fr; gap: 2px; }
   .config-maia dd { margin-bottom: 10px; }
 }
+
+/* Convites para entrevista com a Maia (decisão 53) */
+.lista-pessoas { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 12px; }
+.pessoa-opcao { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.pessoa-opcao:hover { background: #f7f8f8; }
+.pessoa-opcao.marcada { background: var(--primary-soft); }
+.pessoa-opcao.indisponivel { opacity: .6; cursor: default; }
+.pessoa-opcao input { width: 18px; height: 18px; accent-color: var(--primary); flex: none; margin: 0; }
+.pessoa-opcao-nome { display: flex; flex-direction: column; font-weight: 600; min-width: 0; }
+.pessoa-opcao-nome small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.pessoa-opcao-aviso { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.convite-contagem { margin-right: auto; align-self: center; font-size: 13px; color: var(--muted); }
+.dialog .field textarea { padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 10px; font-size: 14px; font-weight: 500; font-family: inherit; resize: vertical; }
+.entrevistas-pendentes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; background: #eef4ff; border: 1px solid #c9d8f5; color: #15325e; font-size: 14px; }
+.entrevistas-pendentes .btn { margin-left: auto; }
+.lista-entrevistas .linha-pop .pop-nome { min-width: 0; }
+.selo-convidada { background: #fff3e0; color: #8a4b00; }
+.selo-andamento, .selo-processando { background: #eef2ff; color: #3b3fa3; }
+.selo-concluida { background: #e7f5ec; color: #1f6b3a; }
+.selo-erro { background: #fdecec; color: #912018; }

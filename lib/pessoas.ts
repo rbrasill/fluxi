@@ -13,6 +13,9 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const listarPessoas = () => api<PessoaResumo[]>('/api/pessoas');
+export type PessoaConvidavel = { id: string; nome: string; email: string };
+/** Quem pode ser convidado para uma entrevista (gestores e administradores). */
+export const listarConvidaveis = () => api<PessoaConvidavel[]>('/api/pessoas/convidaveis');
 export const criarPessoa = (d: { nome: string; email: string; nivel: Nivel }) => api<{ id: string }>('/api/pessoas', { method: 'POST', body: JSON.stringify(d) });
 export const alterarPessoa = (id: string, d: { nome?: string; nivel?: Nivel }) => api(`/api/pessoas/${id}`, { method: 'PATCH', body: JSON.stringify(d) });
 export const excluirPessoa = (id: string) => api(`/api/pessoas/${id}`, { method: 'DELETE' });

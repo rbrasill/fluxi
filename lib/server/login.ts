@@ -1,6 +1,7 @@
 import 'server-only';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { assinarSessao, lerSessao } from '@/lib/auth/sessao';
+import { enviarEmail } from './carteiro';
 import { ErroApi } from './http';
 import { supabase } from './supabase';
 
@@ -67,22 +68,8 @@ export async function pessoaPorEmail(email: string): Promise<Pessoa | null> {
 export const nomeDoEmail = (email: string) =>
   email.split('@')[0].split(/[._-]+/).filter(Boolean).map((p) => p[0].toUpperCase() + p.slice(1)).join(' ');
 
-async function chamarCarteiro(email: string, nome: string, codigo: string) {
-  const url = process.env.AUTH_MAILER_URL;
-  if (!url) {
-    // Só em desenvolvimento (em produção, solicitarCodigo já recusou): o código vai para o log do servidor.
-    console.info(`[login] código de ${email}: ${codigo} (sem carteiro configurado; só em desenvolvimento)`);
-    return;
-  }
-  // O carteiro tem segredo próprio (AUTH_MAILER_SECRET); o segredo das sessões nunca sai do servidor.
-  const r = await fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-inc-secret': process.env.AUTH_MAILER_SECRET || '' },
-    body: JSON.stringify({ email, nome, codigo }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!r.ok) throw new Error(`o carteiro respondeu ${r.status}`);
-}
+// O código vai pelo carteiro (lib/server/carteiro.ts). Sem carteiro, só em desenvolvimento, fica no log do servidor.
+const chamarCarteiro = (email: string, nome: string, codigo: string) => enviarEmail({ tipo: 'codigo', email, nome, codigo });
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 

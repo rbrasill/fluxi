@@ -76,3 +76,10 @@ export async function excluir(id: string, quem: Pessoa | null) {
   if (error) throw error;
   return { ok: true };
 }
+
+/** Quem pode ser convidado para uma entrevista (gestores e administradores veem): só id, nome e e-mail. */
+export async function convidaveis() {
+  const { data, error } = await supabase().from('pessoas').select('id, nome, email').eq('tenant_id', TENANT_PADRAO).order('nome');
+  if (error) throw error;
+  return (data ?? []) as { id: string; nome: string; email: string }[];
+}

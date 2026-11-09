@@ -1,85 +1,82 @@
 'use client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
-import { ROTULO_STATUS } from '@/lib/entrevista/topicos';
-import { criarEntrevista, excluirEntrevista, listarEntrevistas, type EntrevistaResumo } from '@/lib/entrevistas';
+import { ehGestor, souEu, useEu } from '@/lib/auth/eu';
+import { excluirEntrevista, listarEntrevistas, situacaoDaEntrevista, type EntrevistaResumo } from '@/lib/entrevistas';
 
-// Entrevistas com a Maia (decisão 41): fora do processo; cada uma tem só um tema e um contexto.
-// Sem custos nem indicadores aqui (decisão 52): isso fica no Painel da Maia, para administradores.
+// Entrevistas com a Maia (decisões 41 e 53): nascem por convite, dentro do processo. Aqui, as da pessoa logada
+// primeiro (as que esperam por ela em destaque) e depois as demais. Sem custos nem indicadores (decisão 52).
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
+const CLASSE_SITUACAO: Record<string, string> = { convidada: 'selo-convidada', em_andamento: 'selo-andamento', processando: 'selo-processando', concluida: 'selo-concluida', erro: 'selo-erro' };
 
 export default function EntrevistasPage() {
-  const router = useRouter();
+  const eu = useEu();
+  const gestor = ehGestor(eu);
   const [lista, setLista] = useState<EntrevistaResumo[] | null>(null);
-  const [tema, setTema] = useState('');
-  const [contexto, setContexto] = useState('');
-  const [abrindo, setAbrindo] = useState(false);
 
   const carregar = () => listarEntrevistas().then(setLista).catch(() => setLista([]));
   useEffect(() => { void carregar(); }, []);
-
-  async function nova(e: React.FormEvent) {
-    e.preventDefault();
-    setAbrindo(true);
-    try {
-      const { id } = await criarEntrevista({ tema, contexto: contexto || undefined });
-      router.push(`/app/entrevistas/${id}`);
-    } catch (err) {
-      setAbrindo(false);
-      void avisar('Não foi possível abrir a entrevista.', err instanceof Error ? err.message : 'Tente de novo em instantes.');
-    }
-  }
 
   async function excluir(x: EntrevistaResumo) {
     if (!(await confirmar({ titulo: 'Excluir esta entrevista?', mensagem: 'A conversa, o áudio e o resultado são apagados.', acao: 'Excluir', perigo: true }))) return;
     try { await excluirEntrevista(x.id); await carregar(); } catch { void avisar('Não foi possível excluir a entrevista.', 'Tente de novo em instantes.'); }
   }
 
+  const aberta = (x: EntrevistaResumo) => x.status === 'convidada' || x.status === 'em_andamento';
+  const minhas = (lista ?? []).filter((x) => eu?.enabled && souEu(eu, x.entrevistado_id));
+  const outras = (lista ?? []).filter((x) => !minhas.includes(x));
+  const ordem = (a: EntrevistaResumo, b: EntrevistaResumo) => Number(aberta(b)) - Number(aberta(a));
+
+  const linha = (x: EntrevistaResumo) => {
+    const minha = souEu(eu, x.entrevistado_id);
+    return (
+      <article key={x.id} className="linha-pop" data-status={x.status}>
+        <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
+        <Link href={`/app/entrevistas/${x.id}`} className="pop-nome">
+          <strong>{x.processo?.nome ?? x.tema ?? 'Entrevista'}</strong>
+          <span>{x.entrevistado ? `${x.entrevistado} · ` : ''}{data(x.convidado_em ?? x.criado_em)}{x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}</span>
+        </Link>
+        <span className={`selo-status ${CLASSE_SITUACAO[x.status] ?? ''}`}>{situacaoDaEntrevista(x)}</span>
+        {gestor && !aberta(x) && <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title="Excluir a entrevista"><Icone nome="lixo" tamanho={16} />Excluir</button>}
+        {aberta(x) && minha
+          ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
+          : <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>Abrir</Link>}
+      </article>
+    );
+  };
+
   return (
     <div className="page page-estreita">
       <div className="page-head">
         <div>
           <h1>Entrevista com IA</h1>
-          <p>A Maia entrevista por voz quem executa um processo, como numa ligação, e no fim escreve a descrição, uma ficha e o que ficou em aberto. Ainda em teste: não cria nem altera processos.</p>
+          <p>A Maia entrevista por voz quem executa um processo, como numa ligação, e no fim escreve a descrição, uma ficha e o que ficou em aberto. As entrevistas são criadas por convite, dentro de cada processo. Ainda em teste: não cria nem altera processos.</p>
         </div>
       </div>
 
-      <form className="cartao" onSubmit={nova}>
-        <h3 className="sem-margem">Nova entrevista</h3>
-        <label className="field">
-          <span>Qual processo vai ser mapeado?</span>
-          <input value={tema} onChange={(e) => setTema(e.target.value)} placeholder="Ex.: Pedido de compra sem contrato" maxLength={200} required minLength={3} />
-        </label>
-        <label className="field">
-          <span>Contexto (opcional)</span>
-          <textarea value={contexto} onChange={(e) => setContexto(e.target.value)} rows={3} maxLength={2000} placeholder="Ex.: área de Suprimentos da INC; quem vai responder é a compradora; usam o Mega ERP." />
-        </label>
-        <div className="fluxo-acoes">
-          <button className="btn btn-primary" disabled={abrindo || tema.trim().length < 3}><Icone nome="microfone" tamanho={16} />{abrindo ? 'Abrindo…' : 'Preparar entrevista'}</button>
+      {lista === null && <p className="notice">Carregando…</p>}
+      {lista?.length === 0 && (
+        <div className="empty">
+          <h2>Nenhuma entrevista ainda</h2>
+          <p>{gestor ? 'Para entrevistar alguém, abra o processo e clique em "Convidar para entrevista".' : 'Quando alguém convidar você para uma entrevista com a Maia, ela aparece aqui e você recebe um e-mail.'}</p>
+          {gestor && <Link href="/app/areas" className="btn btn-primary">Ir para as áreas</Link>}
         </div>
-      </form>
+      )}
 
-      {lista && lista.length > 0 && (
+      {minhas.length > 0 && (
         <section className="secao-processo">
-          <div className="secao-head"><h2><Icone nome="conversa" tamanho={18} />Entrevistas</h2></div>
-          <div className="lista-pops">
-            {lista.map((x) => (
-              <article key={x.id} className="linha-pop">
-                <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
-                <Link href={`/app/entrevistas/${x.id}`} className="pop-nome">
-                  <strong>{x.tema || 'Entrevista'}</strong>
-                  <span>{x.entrevistado ? `${x.entrevistado} · ` : ''}{data(x.criado_em)} · {x.status === 'em_andamento' && x.falas > 0 ? 'Pausada' : ROTULO_STATUS[x.status]} · {x.falas} {x.falas === 1 ? 'fala' : 'falas'}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}</span>
-                </Link>
-                <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title="Excluir a entrevista"><Icone nome="lixo" tamanho={16} />Excluir</button>
-                <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>{x.status === 'em_andamento' ? 'Continuar' : 'Abrir'}</Link>
-              </article>
-            ))}
-          </div>
+          <div className="secao-head"><h2><Icone nome="microfone" tamanho={18} />Suas entrevistas</h2></div>
+          <div className="lista-pops lista-entrevistas">{[...minhas].sort(ordem).map(linha)}</div>
+        </section>
+      )}
+      {outras.length > 0 && (
+        <section className="secao-processo">
+          <div className="secao-head"><h2><Icone nome="conversa" tamanho={18} />{minhas.length ? 'Outras entrevistas' : 'Entrevistas'}</h2></div>
+          <div className="lista-pops lista-entrevistas">{[...outras].sort(ordem).map(linha)}</div>
         </section>
       )}
     </div>

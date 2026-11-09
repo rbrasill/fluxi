@@ -1,15 +1,28 @@
-// Cliente da API da entrevista por voz com a IA (decisões 39 e 41).
+// Cliente da API da entrevista por voz com a Maia (decisões 39, 41 e 53).
 import type { Metricas, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
 import { ErroCliente } from './fluxogramas';
 
 export type Entrevista = {
-  id: string; tema: string; contexto: string; motor: string; status: StatusEntrevista;
+  id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string; frase_pausa: string;
-  entrevistado: string | null;
+  entrevistado_id: string | null; entrevistado: string | null;
+  convidador: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
+  processo: { id: string; nome: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; entrevistado: string | null; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number };
+export type EntrevistaResumo = {
+  id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; processo: { id: string; nome: string } | null;
+  convidado_em: string | null; convite_enviado_em: string | null; criado_em: string; encerrado_em: string | null;
+  falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number;
+};
+/** Uma entrevista na página do processo. */
+export type EntrevistaDoProcesso = {
+  id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; convidado_por: string | null;
+  convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
+  falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
+};
+export type ResultadoConvite = { criadas: { id: string; pessoa: string; email_enviado: boolean }[]; repetidas: string[] };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
@@ -18,10 +31,16 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return j as T;
 }
 
-export const criarEntrevista = (dados: { tema: string; contexto?: string }) => api<{ id: string }>('/api/entrevistas', { method: 'POST', body: JSON.stringify(dados) });
 export const listarEntrevistas = () => api<EntrevistaResumo[]>('/api/entrevistas');
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
+/** As entrevistas de um processo. */
+export const listarEntrevistasDoProcesso = (processoId: string) => api<EntrevistaDoProcesso[]>(`/api/processos/${processoId}/entrevistas`);
+/** Convida até três pessoas para entrevistas sobre o processo (gestores e administradores). */
+export const convidarParaEntrevista = (processoId: string, dados: { pessoas: string[]; nota?: string }) =>
+  api<ResultadoConvite>(`/api/processos/${processoId}/entrevistas`, { method: 'POST', body: JSON.stringify(dados) });
+/** Manda o e-mail do convite de novo. */
+export const reenviarConvite = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/convite`, { method: 'POST' });
 /** Aquece no servidor a rota que abre a sessão (sem custo: não chama a OpenAI). */
 export const aquecerSessaoDeVoz = (id: string) => { void fetch(`/api/entrevistas/${id}/sessao`).catch(() => {}); };
 /** Abre a sessão de voz no GPT-Live: manda a oferta WebRTC e recebe a resposta. */
@@ -29,7 +48,7 @@ export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; 
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */
 export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas }) =>
   api<{ ok: true }>(`/api/entrevistas/${id}/conversa`, { method: 'PUT', body: JSON.stringify(dados), keepalive: JSON.stringify(dados).length < 60_000 });
-/** Uma consulta da IA no meio da conversa: manda o fim da conversa, recebe o que ela foi verificar e a resposta. */
+/** Uma consulta da Maia no meio da conversa: manda o fim da conversa, recebe o que ela foi verificar e a resposta. */
 export const consultarDuranteEntrevista = (id: string, turnos: Turno[]) =>
   api<{ pergunta: string; resposta: string; modelo: string; demora_ms: number; custo_usd: number }>(`/api/entrevistas/${id}/consulta`, { method: 'POST', body: JSON.stringify({ turnos }), signal: AbortSignal.timeout(15_000) });
 /** Encerra e gera o resultado (demora: a conversa inteira é analisada). */
@@ -41,4 +60,13 @@ export async function enviarAudioDaEntrevista(id: string, blob: Blob) {
   const r = await fetch(up.url, { method: 'PUT', body: blob, headers: { 'content-type': blob.type || 'audio/webm' } });
   if (!r.ok) throw new Error(`Não foi possível enviar o áudio (${r.status}).`);
   await api(`/api/entrevistas/${id}`, { method: 'PATCH', body: JSON.stringify({ audio_caminho: up.caminho }) });
+}
+
+/** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */
+export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; convite_enviado_em?: string | null }) {
+  if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';
+  if (e.status === 'em_andamento') return e.falas > 0 ? 'Pausada' : 'Em andamento';
+  if (e.status === 'processando') return 'Gerando o resultado';
+  if (e.status === 'concluida') return 'Concluída';
+  return 'Erro ao gerar o resultado';
 }

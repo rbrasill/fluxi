@@ -93,7 +93,7 @@ export default function PainelMaiaPage() {
               <tbody>
                 {entrevistas.map((x) => (
                   <tr key={x.id}>
-                    <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}</small></td>
+                    <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}{x.processo && x.processo !== x.tema ? ` · ${x.processo}` : ''}</small></td>
                     <td>{data(x.criado_em)}</td>
                     <td>{situacao(x)}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
                     <td className="col-num">{x.duracao_s ? mmss(x.duracao_s) : '—'}<small>{plural(x.sessoes, 'sessão', 'sessões')}{x.pausas ? ` · ${plural(x.pausas, 'pausa', 'pausas')}` : ''}</small></td>
