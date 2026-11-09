@@ -5,7 +5,7 @@ A Maia é a entrevistadora por voz do INCFlow: conversa ao vivo com quem executa
 ## O que ela faz hoje
 
 - **Conversa natural, nos dois sentidos ao mesmo tempo.** Ouve enquanto fala, para na hora quando a pessoa fala por cima, encaixa sinais de escuta ("aham", "certo", "faz sentido"), ri, responde rápido (mediana de 0 a 0,2 s nos últimos testes).
-- **Quem é:** "Oi, eu sou a Maia, trabalho com o Rafael Brasil, na área de processos da Ínqui. Essa conversa fica gravada, tá? Pra começar…". Se perguntarem, diz que é uma inteligência artificial.
+- **Quem é:** "Oi, Ana! Eu sou a Maia, trabalho com o Rafael Brasil, na área de processos da Ínqui. Essa conversa fica gravada, tá? Pra começar…". Chama a pessoa logada pelo primeiro nome (decisão 50). Se perguntarem, diz que é uma inteligência artificial.
 - **Como conduz:** começa pela visão geral e pelo início do processo, percorre as etapas na ordem e, em cada uma, descobre quem faz, com que sistema, o que entra e o que sai. Aprofunda respostas vagas, pergunta o que acontece em cada caminho de uma decisão, confirma o que entendeu com resumos curtos e não repete perguntas já respondidas. Quando a pessoa não sabe uma parte ("isso é com a outra área"), foca no que ela sabe e o resto vira pendência.
 - **Tópicos que procura cobrir:** objetivo, início (gatilho e frequência), etapas, responsáveis, ferramentas, entradas, saídas, regras (prazos, alçadas, aprovações), exceções e dificuldades.
 - **Pesquisa na hora:** quando a pessoa pergunta "você sabe o que é o RM da TOTVS?" (ou ela precisa entender um termo), diz "deixa eu ver aqui", o Claude Haiku responde em 2 a 3 s e ela explica em uma ou duas frases, voltando ao processo. Só conhecimento geral: sobre o processo da pessoa, quem sabe é a pessoa.
@@ -90,11 +90,11 @@ Decidido em 09/11, a implementar depois do login:
 - A Maia **chama a pessoa pelo nome** (e pode usar cargo e área, se vierem no convite).
 - O administrador acompanha os status: pendente, em andamento, pausada, concluída; o resultado mostra quem foi entrevistado.
 - A definir junto com o login: serviço e texto do e-mail, validade do convite, lembretes e se o convidado vê o resultado.
-- **Próximo passo: o login**, seguindo o modelo de outro projeto que o Rafael vai mandar.
+- **Login feito (decisão 50, `docs/login.md`):** código por e-mail, só para quem está em "Pessoas e acessos". A entrevista já guarda quem foi entrevistado e a Maia já chama pelo nome. Falta o convite em si.
 
 ## Pontos em aberto e próximos ajustes sugeridos
 
-1. **Acesso aberto (risco de custo):** o app ainda não tem login (decisão 17, em aberto) e as rotas da entrevista respondem a qualquer um com o endereço. O convite com login (decisão 49) resolve; até lá, evitar divulgar o link fora do time.
+1. **Acesso:** resolvido pelo login (decisão 50) quando for para produção: sem sessão, nenhuma rota abre sessão de voz. Falta o convite (decisão 49), para só o convidado iniciar a própria entrevista.
 2. **Microfone na abertura:** ligar o microfone quando a pessoa marca a ciência (antes de "Começar") tiraria de 2 a 6 s da espera; abrir a sessão enquanto o microfone liga tiraria até 1,5 s.
 3. **"Pode encerrar a entrevista":** no teste do Approvo, a pessoa disse isso com lacunas em aberto e ela encerrou na hora, sem oferecer as quatro perguntas (a instrução trata "quero encerrar de vez" como pedido para não insistir). Pela regra combinada (só não insistir se a pessoa repetir), a primeira vez deveria oferecer as perguntas.
 4. **A análise deduz cargos:** "Financeiro (Paula)" e "Analista de novos negócios (Ronaldo)" sem ninguém ter dito; o certo é registrar o que foi dito e pôr o resto em pendência.

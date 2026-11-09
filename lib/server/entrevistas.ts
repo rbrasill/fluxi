@@ -33,9 +33,10 @@ export type Linha = {
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
+  entrevistado_id: string | null; // quem foi entrevistado (a pessoa logada que abriu a primeira sessão)
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, criado_em, encerrado_em, atualizado_em';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const agora = () => new Date().toISOString();
 
@@ -62,14 +63,28 @@ export async function criar(d: { tema: string; contexto?: string }) {
   return { id: (data as { id: string }).id };
 }
 
+/** Os nomes das pessoas entrevistadas, por id. */
+async function nomesDasPessoas(ids: (string | null | undefined)[]) {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))];
+  if (!unicos.length) return new Map<string, string>();
+  const { data, error } = await supabase().from('pessoas').select('id, nome').in('id', unicos);
+  if (error) throw error;
+  return new Map(((data ?? []) as { id: string; nome: string }[]).map((p) => [p.id, p.nome]));
+}
+
 export async function listar() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(({ turnos, metricas, ...e }) => {
+  const linhas = data ?? [];
+  const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
+  return linhas.map(({ turnos, metricas, entrevistado_id, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
-    return { ...e, falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0) };
+    return {
+      ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null,
+      falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
+    };
   });
 }
 
@@ -82,7 +97,8 @@ export async function obter(id: string) {
     const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
     audios = (data ?? []).map((x) => x.signedUrl).filter((u): u is string => !!u);
   }
-  return { ...linha, audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA };
+  const entrevistado = (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id ?? '') ?? null;
+  return { ...linha, entrevistado, audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA };
 }
 
 export async function excluir(id: string) {
@@ -98,7 +114,8 @@ export async function excluir(id: string) {
 const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
 
 /** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
-export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean) {
+export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null) {
+  const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
   // Segue o esqueleto do guia de prompt do GPT-Live: papel, jeito de falar e as três políticas com os
   // rótulos originais (Backchannel policy, Interruption policy, Delegation policy), que o modelo reconhece.
   return `# Papel
@@ -119,13 +136,13 @@ Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou expl
 
 # O que vamos mapear
 Processo: ${comoSeFala(l.tema)}
-${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}
+${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}
 # Objetivo
 Entender o processo de ponta a ponta para, depois da conversa, escrever a descrição e desenhar o fluxograma. Tópicos a cobrir:
 ${TOPICOS_TEXTO}
 
 # Como conduzir
-- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "Oi, eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
+- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
 - Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
@@ -157,7 +174,7 @@ export function historicoParaSessao(turnos: Turno[]) {
 }
 
 /** Abre uma sessão de voz: recebe a oferta WebRTC do navegador e devolve a resposta da OpenAI. */
-export async function abrirSessao(id: string, sdp: string) {
+export async function abrirSessao(id: string, sdp: string, pessoa?: { id: string; nome: string } | null) {
   const linha = await carregar(id);
   if (linha.status !== 'em_andamento') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
   const chave = process.env.OPENAI_API_KEY;
@@ -165,7 +182,7 @@ export async function abrirSessao(id: string, sdp: string) {
   const continuando = linha.turnos.length > 0;
   const session = {
     model: MODELO_VOZ,
-    instructions: instrucoesDaSessao(linha, continuando),
+    instructions: instrucoesDaSessao(linha, continuando, pessoa?.nome),
     audio: { output: { voice: VOZ } },
     delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
@@ -189,7 +206,10 @@ export async function abrirSessao(id: string, sdp: string) {
   if (r.status === 401) throw new ErroApi(502, 'A OpenAI recusou a chave (OPENAI_API_KEY).');
   if (!r.ok || !j.transport?.sdp) throw new ErroApi(502, `A OpenAI não abriu a sessão de voz (${r.status}${j.error?.message ? `: ${j.error.message}` : ''}).`);
   const openai_ms = Date.now() - inicio; // quanto da abertura foi a OpenAI (o resto é a Vercel e a rede)
-  if (j.session?.id) await salvar(id, { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50) });
+  // Quem foi entrevistado: a pessoa logada que abriu a primeira sessão (com o convite, decisão 49, vem dele).
+  const entrevistado = pessoa && !linha.entrevistado_id ? { entrevistado_id: pessoa.id } : {};
+  if (j.session?.id) await salvar(id, { sessoes: [...(linha.sessoes ?? []), j.session.id].slice(-50), ...entrevistado });
+  else if (entrevistado.entrevistado_id) await salvar(id, entrevistado);
   return { sdp: j.transport.sdp, continuando, openai_ms };
 }
 

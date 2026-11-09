@@ -143,6 +143,7 @@ function EntrevistaPage() {
         <nav className="migalha" aria-label="Caminho"><Link href="/app/entrevistas">Entrevista com IA</Link></nav>
         <h1>{e.tema || 'Entrevista'}</h1>
         {e.contexto && <p>{e.contexto}</p>}
+        {e.entrevistado && <p>Entrevistado: <strong>{e.entrevistado}</strong></p>}
       </div>
     </div>
   );

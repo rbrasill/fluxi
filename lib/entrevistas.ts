@@ -6,9 +6,10 @@ export type Entrevista = {
   id: string; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string; frase_pausa: string;
+  entrevistado: string | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number };
+export type EntrevistaResumo = { id: string; tema: string; status: StatusEntrevista; entrevistado: string | null; criado_em: string; encerrado_em: string | null; falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });

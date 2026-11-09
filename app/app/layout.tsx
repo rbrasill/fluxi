@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { ContaMenu } from '@/components/ContaMenu';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
 import { RecolherMenu } from '@/components/RecolherMenu';
@@ -27,7 +28,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="nav-label">LABORATÓRIO</span>
           <NavLink href="/app/entrevistas" titulo="Entrevista com IA (em teste)"><Icone nome="microfone" /><span className="nav-texto">Entrevista com IA</span><span className="soon">TESTE</span></NavLink>
           <span className="nav-label">CONTA</span>
-          <a href="#" aria-disabled="true" title="Pessoas e acessos (em breve)"><Icone nome="areas" /><span className="nav-texto">Pessoas e acessos</span><span className="soon">EM BREVE</span></a>
+          <ContaMenu />
         </nav>
         <RecolherMenu />
       </aside>

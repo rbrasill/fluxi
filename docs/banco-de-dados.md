@@ -34,16 +34,21 @@ Regras (decisão 31): toda área tem organização e todo processo tem área (ob
 | `referencias` | índice das referências que estão no texto dos documentos (decisão 35): `origem_tipo`/`origem_id` (`pop` ou `processo`), `destino_tipo`/`destino_id`, `relacao` (`proxima`, `anterior`, `depende`, `consulta`) e `campo`. Derivado ao salvar; o texto é a fonte | 0015 |
 | `pops` | nome, código (o do processo), identificação, versão, status (`rascunho`/`publicado`), `arquivado_em`, `link_publico` (página `/p/<link>`) e `link_publico_ativo` (chave online/offline, decisão 34), `publicacao` (jsonb: a versão publicada, com os prints copiados para `publicacoes/`) e `publicado_em`, `autor` (elaborado por), `conteudo` (jsonb, ver `lib/pop/schema.ts`), `historico`, `posicao` (onde a pessoa parou no editor), `processo_id`; `fluxograma_id` e `gravacao_id` ficaram sem uso (a gravação aponta para o POP) | 0003, 0005, 0010, 0011, 0012, 0013, 0014 |
 | `processos` | código, nome, `descricao` (texto rico com referências, decisão 35), `area_id`, `arquivado_em`, `link_publico` (página `/pr/<link>`) e `link_publico_ativo` (chave online/offline) | 0005, 0006, 0012, 0015 |
-| `entrevistas` | entrevista por voz com a IA (decisões 39 e 41): `tema` e `contexto` (o processo a mapear, em texto; `processo_id` é opcional e fica vazio nos testes), `motor` (`gpt-live`), status (`em_andamento`, `processando`, `concluida`, `erro`), `turnos` (jsonb: quem falou, `ia` ou `pessoa`, o texto, `inicio_ms`/`fim_ms` na linha do tempo da conversa e `sobreposta` quando a pessoa falou por cima da IA), `sessoes` (ids das sessões de voz no GPT-Live), `metricas` (jsonb: reação, falas sobrepostas, duração, eventos), `resultado` (jsonb: descrição em HTML, ficha e pendências), `erro`, `audio_caminho` (última gravação), `encerrado_em`; `cobertos` e `anotacoes` ficaram sem uso | 0016, 0017 |
+| `entrevistas` | entrevista por voz com a IA (decisões 39 e 41): `tema` e `contexto` (o processo a mapear, em texto; `processo_id` é opcional e fica vazio nos testes), `motor` (`gpt-live`), status (`em_andamento`, `processando`, `concluida`, `erro`), `turnos` (jsonb: quem falou, `ia` ou `pessoa`, o texto, `inicio_ms`/`fim_ms` na linha do tempo da conversa e `sobreposta` quando a pessoa falou por cima da IA), `sessoes` (ids das sessões de voz no GPT-Live), `metricas` (jsonb: reação, falas sobrepostas, duração, eventos), `resultado` (jsonb: descrição em HTML, ficha e pendências), `erro`, `audio_caminho` (última gravação), `encerrado_em`; `cobertos` e `anotacoes` ficaram sem uso | 0016, 0017, 0018 |
 | `areas` | nome, descrição, `organizacao_id` | 0006, 0007 |
 | `organizacoes` | nome (único na conta) | 0007 |
-| `membros` | pessoa ↔ conta: papel `dono`/`admin`/`membro`, `todas_organizacoes` | 0008 |
+| `pessoas` | quem pode entrar (decisão 50): nome, `email` (único, minúsculo), `nivel` (`comum`/`gestor`/`admin`), `versao_sessao` (incrementa ao sair, remover ou mudar o nível: derruba as sessões abertas) | 0018 |
+| `login_codigos` | código pendente por e-mail: só o hash, validade, tentativas | 0018 |
+| `login_limites` | contagem de pedidos de login por chave (IP ou e-mail) e janela de tempo | 0018 |
+| `membros` | pessoa ↔ conta: papel `dono`/`admin`/`membro`, `todas_organizacoes`. Sem uso: era para o Supabase Auth, trocado pelo login da decisão 50 | 0008 |
 | `membro_organizacoes` | organizações que um membro comum vê/edita | 0008 |
 | `convites` | e-mail, papel, organizações liberadas, token, validade | 0008 |
+
+Funções do login (decisão 50, migração 0018; só o `service_role` executa): `login_gravar_codigo` (grava o código respeitando a carência), `login_consumir_tentativa` (consome a tentativa antes de comparar, num comando só), `login_usar_codigo` (uso único) e `login_contar` (limite por janela).
 
 Função: `debitar_creditos(tenant, qtd, tipo, detalhes)` debita de forma atômica e registra em `uso_ia`; devolve `null` se não há saldo. O app não usa créditos no momento (decisão 20); a função e as tabelas ficam para quando a cobrança voltar.
 
 ## Próximos passos (com o login)
-- `membros` passa a ser preenchido pelo Supabase Auth; a API troca a conta fixa pela conta escolhida pela pessoa logada.
+- O login da decisão 50 usa `pessoas`; a API ainda usa a conta fixa (todas as pessoas são da conta INC). Com mais de uma conta, a conta vem da pessoa logada.
 - RLS por membro: `tenant_id in (select tenant_id from membros where usuario_id = auth.uid())`, e para membro comum ainda filtrar `organizacao_id` por `membro_organizacoes`.
 - Cargos e envolvidos (área · cargo) do POP viram tabelas quando entrar "Pessoas e acessos".

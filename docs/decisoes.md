@@ -375,10 +375,18 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
   - Faltam definir com o login: o envio do e-mail (serviço e modelo da mensagem), a validade do convite, lembretes para convites pendentes e se o convidado vê o resultado.
 - **Depende do login**, que é o próximo passo (a decisão 17 recomenda Supabase Auth). O Rafael vai mandar como o login é feito em outro projeto, para seguir o mesmo modelo.
 
+## 50. Login por código de e-mail, sem senha (09/11/2026)
+- **Modelo:** o do Atylux, que o Rafael mandou como especificação (com as correções da auditoria de 06/11/2026). A pessoa digita o e-mail corporativo (`@meuinc.com.br`), recebe um código de 6 dígitos por e-mail e entra por 6 horas. Substitui a recomendação da decisão 17 (Supabase Auth): as tabelas `membros`, `membro_organizacoes` e `convites` da migração 0008, ligadas ao `auth.users` do Supabase, ficam sem uso.
+- **Quem entra:** só quem um administrador cadastrou em **Pessoas e acessos** (tabela `pessoas`, migração 0018), com nível `comum`, `gestor` ou `admin`. O item do menu, antes "em breve", aparece para administradores. Não dá para remover a si mesmo nem ficar sem administrador.
+- **Segurança:** o código nunca é guardado (só o hash, amarrado ao e-mail), vale 10 minutos, 5 tentativas, uso único, carência de 60 s, limites por IP e por e-mail; tentativas, uso único e limites são atômicos no banco (funções da migração 0018, que só o servidor chama). A resposta é a mesma para e-mail cadastrado ou não, inclusive na carência. A sessão é um token assinado (HMAC-SHA256) num cookie HttpOnly; sair, remover ou mudar o nível derruba as sessões abertas. O porteiro (`proxy.ts`, o "middleware" do Next 16) barra páginas e API sem sessão, aceita escrita na API só vinda do próprio site e, em produção sem `INC_AUTH_SECRET`, responde 503 em tudo; toda rota de dados confere a sessão de novo com o banco. Abertos sem login: a tela de login e as páginas públicas de POP, fluxograma e processo.
+- **E-mail:** um "carteiro" separado (workflow do Pipedream, como no Atylux) recebe e-mail, nome e código e entrega a mensagem; tem segredo próprio (`AUTH_MAILER_SECRET`) e o e-mail não leva link. Configuração e código do workflow em `docs/login.md`; modelo do e-mail em `docs/login-email-codigo.html`.
+- **Entrevista:** a entrevista guarda quem foi entrevistado (`entrevistas.entrevistado_id`: a pessoa logada que abriu a primeira sessão) e a Maia chama a pessoa pelo primeiro nome desde a abertura. O convite por e-mail (decisão 49) é o próximo passo e usa este login.
+- **Antes de promover para produção:** criar o workflow no Pipedream, cadastrar na Vercel `INC_AUTH_SECRET`, `AUTH_MAILER_URL` e `AUTH_MAILER_SECRET`, e cadastrar o primeiro administrador. Sem isso, o app responde 503 e ninguém entra.
+
 ## Em aberto
-- Login (próximo passo) e entrevistas por convite (decisão 49)
+- Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
-- Autenticação: implementar o login (decisão 17 recomenda Supabase Auth), com a regra "consultar: toda a organização; editar: só a área dona" (decisão 31)
+- Permissões por área e nível (decisão 31: "consultar: toda a organização; editar: só a área dona"), agora sobre o login da decisão 50
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion
 - Sugestão automática de marcação pela IA (decisão 18)
