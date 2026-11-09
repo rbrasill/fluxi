@@ -22,9 +22,12 @@ const URL_SESSOES = process.env.INCFLOW_LIVE_URL || 'https://api.openai.com/v1/l
 export const FRASE_FINAL = 'Vamos concluir por aqui';
 /** A expressão de pausa: a IA a diz quando a pessoa precisa sair; o app desliga a sessão e a entrevista fica aberta para continuar. */
 export const FRASE_PAUSA = 'A gente continua depois';
-// Quem é a entrevistadora (fase de teste, decisão 45): nome e com quem trabalha, ditos na abertura.
-const NOME_IA = 'JOI';
-const COM_QUEM = 'com o Rafael Brasil, na área de processos da INC';
+// Quem é a entrevistadora (fase de teste, decisões 45 e 48): nome e com quem trabalha, ditos na abertura.
+const NOME_IA = 'Maia';
+const COM_QUEM = 'com o Rafael Brasil, na área de processos da Ínqui';
+// A empresa se escreve INC e se fala "Ínqui". O modelo de voz fala do jeito que lê: nas instruções e no
+// histórico, o nome vai escrito como se fala (com "INC" escrito, ela soletrava ou lia em inglês).
+export const comoSeFala = (s: string) => s.replace(/\bINC\b/g, 'Ínqui');
 
 export type Linha = {
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
@@ -99,14 +102,14 @@ export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continua
   // Segue o esqueleto do guia de prompt do GPT-Live: papel, jeito de falar e as três políticas com os
   // rótulos originais (Backchannel policy, Interruption policy, Delegation policy), que o modelo reconhece.
   return `# Papel
-Você é a ${NOME_IA}, consultora de mapeamento de processos, fazendo uma entrevista por voz, ao vivo, com uma pessoa que executa ou conhece bem um processo de trabalho. Você trabalha ${COM_QUEM} (o INCFlow é a plataforma de processos da INC). Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você". Se perguntarem, diga que é uma inteligência artificial.
+Você é a ${NOME_IA}, consultora de mapeamento de processos, fazendo uma entrevista por voz, ao vivo, com uma pessoa que executa ou conhece bem um processo de trabalho. Você trabalha ${COM_QUEM}. Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você". Se perguntarem, diga que é uma inteligência artificial.
 
 # Jeito de falar
 - Ritmo de conversa: frases completas e fluidas, com pausas só entre frases, nunca longas no meio de uma frase. Sem muletas ("eh", "é...", "né") e sem repetir palavras.
 - Curto e direto: uma ideia por vez, uma pergunta por vez. Números pequenos por extenso. Nada de listas faladas.
 - Assim que a pessoa terminar a frase, responda sem demora. Se ela pausar para pensar e continuar, você só ouve. Nunca fique só no "aham" esperando: terminou, a vez é sua.
 - Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
-- Pronúncia: "INC" é uma palavra só e se fala "ínqui" (como "ink", em inglês); nunca soletre as letras. "INCFlow" se fala "ínqui flôu". O seu nome, "${NOME_IA}", se fala "djói" (como "joy", em inglês).
+- O nome da empresa é Ínqui. Diga sempre "Ínqui", uma palavra só; nunca soletre letras.
 
 Backchannel policy: Enquanto a pessoa explica, mostre que está ouvindo com sinais curtos e variados, sem vício: alterne "aham", "uhum", "sei", "certo", "entendi", "tá", "faz sentido", "ah, legal", e muitas vezes fique só em silêncio. Nunca repita o mesmo sinal duas vezes seguidas e use poucos: no máximo um a cada trecho longo da fala dela, sem competir com ela. Varie também o começo das respostas (não comece sempre com "Entendi" ou "Tá"). Um sinal de escuta nunca substitui uma resposta.
 
@@ -115,14 +118,14 @@ Interruption policy: Quando a pessoa começar a falar por cima de você, pare de
 Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou explicar algo de conhecimento geral (o que é um sistema, uma sigla, uma lei, uma prática de mercado), ou quando você precisar disso para entender o que ela disse, gere <|SpawnThinking|> e diga em poucas palavras que vai ver ("Deixa eu ver aqui."). Quando o resultado chegar, conte o essencial em uma ou duas frases e volte ao processo com uma pergunta que ligue o que você descobriu ao que a pessoa contou. Nunca gere <|SpawnThinking|> para saber como o processo dela funciona: isso só ela sabe, então pergunte a ela. Não prometa responder depois ("te respondo já"): consulte agora ou diga que não sabe e siga.
 
 # O que vamos mapear
-Processo: ${l.tema}
-${l.contexto ? `Contexto dado por quem abriu a entrevista: ${l.contexto}\n` : ''}
+Processo: ${comoSeFala(l.tema)}
+${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}
 # Objetivo
 Entender o processo de ponta a ponta para, depois da conversa, escrever a descrição e desenhar o fluxograma. Tópicos a cobrir:
 ${TOPICOS_TEXTO}
 
 # Como conduzir
-- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "Oi, eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da INC', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
+- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "Oi, eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
 - Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
@@ -145,7 +148,7 @@ export function historicoParaSessao(turnos: Turno[]) {
   let chars = 0;
   for (const t of [...turnos].reverse()) {
     if (t.apoio) continue; // os "aham" não ajudam a retomar e gastam o limite do histórico
-    const texto = t.texto.slice(0, 2000);
+    const texto = comoSeFala(t.texto.slice(0, 2000));
     if (msgs.length >= 120 || chars + texto.length > 24_000) break;
     chars += texto.length;
     msgs.unshift(t.quem === 'ia' ? { role: 'assistant', content: [{ type: 'output_text', text: texto }] } : { role: 'user', content: [{ type: 'input_text', text: texto }] });
@@ -321,7 +324,7 @@ Produza, em português do Brasil:
 1. "descricao": a descrição do processo para o cadastro, em HTML simples (só <p>, <ul>, <ol>, <li>, <strong> e <em>), com dois a cinco parágrafos: o que o processo é e para que serve; onde começa (o gatilho) e onde termina (o resultado); as áreas, os cargos e os sistemas envolvidos; as principais etapas em uma frase corrida (sem virar lista de passos: isso é o fluxograma); regras e prazos importantes. Frases completas, tom de documento, sem "o entrevistado disse".
 2. "ficha": a estrutura do processo: objetivo, gatilho, resultado e as etapas na ordem em que acontecem, cada uma com responsável (cargo ou área), descrição curta, ferramentas, entradas, saídas, regras e exceções citadas (listas vazias quando nada foi dito); e as dificuldades relatadas.
 3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório, escrito como perguntas para uma próxima conversa (vazio se nada).
-Ignore saudações, desvios de assunto e o que não descreve o processo. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
+Ignore saudações, desvios de assunto e o que não descreve o processo. O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala): escreva sempre INC. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
 
 export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
   return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<entrevista>\n${transcricaoDaConversa(l.turnos)}\n</entrevista>`;

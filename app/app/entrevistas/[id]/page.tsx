@@ -165,7 +165,7 @@ function EntrevistaPage() {
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
           {aviso && <p className="notice">{aviso}</p>}
-          {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a JOI retoma de onde vocês pararam.</p>}
+          {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
           <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => setCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
