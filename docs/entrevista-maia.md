@@ -50,11 +50,11 @@ Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consult
 
 Os testes custaram de US$ 0,13 a 0,42; uma entrevista de 20 minutos sai por volta de US$ 1,05.
 
-**Proteções para a sessão nunca ficar ligada sem uso** (a voz é cobrada pelo tempo aberto, falando ou não): pausar e encerrar fecham a sessão e esperam a confirmação da OpenAI; pausa sozinha se ninguém falar por 2 minutos, se a conexão cair (aconteceu em 07/11 e funcionou) e no teto de 45 minutos por sessão; sair da página fecha a sessão. O resultado mostra quantas sessões foram desligadas com confirmação.
+**Proteções para a sessão nunca ficar ligada sem uso** (a voz é cobrada pelo tempo aberto, falando ou não): pausar e encerrar fecham a sessão e esperam a confirmação da OpenAI; pausa sozinha se ninguém falar por 2 minutos, se a conexão cair (aconteceu em 07/11 e funcionou) e no teto de 45 minutos por sessão; sair da página fecha a sessão. O painel mostra quantas sessões foram desligadas com confirmação.
 
 ## Indicadores acompanhados
 
-Na tela e no resultado: reação da IA (mediana e máxima), falas por cima da IA, tempo de fala de cada lado, sinais de escuta (e quantas vezes cada um, para ver vício), maior silêncio, pesquisas (quantas, espera e custo), custo da voz, da análise e total; nos detalhes, as etapas da conexão (microfone, conexão, servidor e OpenAI, início da sessão) e o tempo até ela começar a falar. A lista mostra o acumulado de todas as entrevistas.
+No **Painel da Maia** (menu, só administradores; decisão 52), para cada entrevista: reação da IA (mediana e máxima), falas por cima da IA, tempo de fala de cada lado, sinais de escuta (e quantas vezes cada um, para ver vício), maior silêncio, pesquisas (quantas, espera e custo), custo da voz, da análise e total; nos detalhes, as etapas da conexão (microfone, conexão, servidor e OpenAI, início da sessão) e o tempo até ela começar a falar. O painel mostra o acumulado de todas as entrevistas, o resumo por mês e como a Maia está configurada. Quem é entrevistado vê só a ligação e o resultado, sem números.
 
 ## Testes reais
 

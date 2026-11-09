@@ -4,33 +4,32 @@ import { useParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
+import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
-import { ROTULO_STATUS, resumoMetricas, type Consulta, type Etapa, type Metricas } from '@/lib/entrevista/topicos';
+import { ehAdmin, useEu } from '@/lib/auth/eu';
+import { ROTULO_STATUS, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { aquecerSessaoDeVoz, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
-// Entrevista por voz com a IA, só com o GPT-Live (decisão 41), fora do processo. Três telas: a abertura
-// (o que vai acontecer e o microfone), a conversa (a esfera da IA reagindo às vozes e o estado: a IA fala,
-// ouve, ou os dois falam juntos; nada de texto) e o resultado (a informação gerada, as métricas e a conversa).
+// Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
+// é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera reagindo
+// às vozes; nada de texto nem de números) e o resultado (a descrição, a ficha e a conversa). Custos e
+// indicadores ficam no Painel da Maia, só para administradores.
 
-const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-const seg = (ms?: number) => (ms === undefined ? '—' : `${(ms / 1000).toFixed(1).replace('.', ',')} s`);
-// Centavos; abaixo de um centavo (as consultas custam frações), quatro casas.
-const usd = (v: number) => `US$ ${v.toFixed(v > 0 && v < 0.01 ? 4 : 2).replace('.', ',')}`;
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 // Durante a conversa a tela não muda de texto (a esfera mostra quem fala); só o antes e o depois têm aviso.
 const AVISO_FASE: Partial<Record<Fase, { titulo: string; sub: string }>> = {
-  conectando: { titulo: 'Ligando o microfone e a voz…', sub: 'Permita o uso do microfone se o navegador perguntar.' },
+  conectando: { titulo: 'Chamando a Maia…', sub: 'Permita o uso do microfone se o navegador perguntar.' },
   encerrando: { titulo: 'Encerrando a conversa…', sub: '' },
 };
-const LEGENDA_CONVERSA = 'Conversa ao vivo: fale com naturalidade e interrompa a IA quando quiser.';
+const LEGENDA_CONVERSA = 'Conversa ao vivo: fale com naturalidade e interrompa a Maia quando quiser.';
 
 function EntrevistaPage() {
   const { id } = useParams<{ id: string }>();
+  const eu = useEu();
   const [e, setE] = useState<Entrevista | null | undefined>(undefined);
   const [tela, setTela] = useState<'inicio' | 'conversa' | 'processando' | 'resultado'>('inicio');
   const [fase, setFase] = useState<Fase>('parado');
-  const [metricas, setMetricas] = useState<Metricas>({});
   const [segundos, setSegundos] = useState(0);
   const [aviso, setAviso] = useState('');
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
@@ -42,7 +41,6 @@ function EntrevistaPage() {
 
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
-    setMetricas(d.metricas ?? {});
     if (d.status !== 'em_andamento') setTela('resultado');
     else aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
     return d;
@@ -64,11 +62,11 @@ function EntrevistaPage() {
   function aoEvento(ev: Evento) {
     if (ev.tipo === 'fase') setFase(ev.fase);
     else if (ev.tipo === 'nivel') niveis.current = { ia: ev.ia, pessoa: ev.pessoa };
-    else if (ev.tipo === 'metricas') setMetricas(ev.metricas);
     else if (ev.tipo === 'aviso') setAviso(ev.texto);
     else if (ev.tipo === 'erro') setErro({ texto: ev.texto, repetir: ev.repetir });
     else if (ev.tipo === 'fim') void encerrar(false);
     else if (ev.tipo === 'pausa') void pausar();
+    // 'metricas': o motor segue medindo e guardando; a tela não mostra (fica no Painel da Maia).
   }
 
   async function comecar() {
@@ -86,13 +84,13 @@ function EntrevistaPage() {
       m.registrarErro(`Ao começar: ${msg(err)}`);
       await m.encerrar().catch(() => {});
       motor.current = null;
-      setErro({ texto: `Não foi possível começar (${msg(err)}).`, repetir: () => void comecar() });
+      setErro({ texto: `Não foi possível ligar para a Maia (${msg(err)}).`, repetir: () => void comecar() });
     }
   }
 
   async function encerrar(perguntar: boolean) {
     if (encerrando.current) return;
-    if (perguntar && !(await confirmar({ titulo: 'Encerrar a entrevista agora?', mensagem: 'A IA gera a descrição e a ficha do processo com o que já foi conversado.', acao: 'Encerrar' }))) return;
+    if (perguntar && !(await confirmar({ titulo: 'Encerrar a entrevista agora?', mensagem: 'A Maia escreve a descrição e a ficha do processo com o que já foi conversado.', acao: 'Encerrar' }))) return;
     encerrando.current = true;
     setTela('processando');
     setErro(null);
@@ -110,7 +108,7 @@ function EntrevistaPage() {
     setTela('resultado');
   }
 
-  /** Pausa para continuar depois: desliga a sessão (nada é cobrado), guarda a conversa e o áudio, e a entrevista fica aberta. */
+  /** Pausa para continuar depois: desliga a ligação (nada é cobrado), guarda a conversa e o áudio, e a entrevista fica aberta. */
   async function pausar() {
     if (encerrando.current) return;
     encerrando.current = true;
@@ -123,7 +121,7 @@ function EntrevistaPage() {
     const blob = await m?.encerrar().catch(() => null);
     if (blob && blob.size > 0) await enviarAudioDaEntrevista(id, blob).catch(() => setAviso('O áudio desta parte da conversa não pôde ser guardado.'));
     await carregar();
-    setAviso((a) => a || 'Entrevista pausada: a ligação com a IA foi desligada e nada é cobrado enquanto ela estiver pausada. Clique em Continuar quando quiser seguir.');
+    setAviso((a) => a || 'Entrevista pausada. A ligação com a Maia foi encerrada por agora; clique em Continuar quando quiser seguir.');
     setTela('inicio');
   }
 
@@ -147,7 +145,6 @@ function EntrevistaPage() {
       </div>
     </div>
   );
-  const painelMetricas = <PainelMetricas metricas={metricas} />;
 
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
@@ -157,12 +154,12 @@ function EntrevistaPage() {
         <div className="cartao">
           <h3 className="sem-margem">{retomando ? 'Continuar a entrevista' : 'Como funciona'}</h3>
           <ul className="dicas">
-            <li>A IA faz perguntas por voz sobre o processo e você responde falando, como numa conversa com um consultor.</li>
-            <li>É uma conversa ao vivo nos dois sentidos: a IA continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
-            <li>Durante a conversa nada aparece na tela: só um sinal de quem está falando.</li>
+            <li>A Maia, a entrevistadora por voz do INCFlow, faz perguntas sobre o processo e você responde falando, como numa ligação.</li>
+            <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
+            <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
             <li>Pode pedir para ela verificar algo de conhecimento geral (o que é um sistema, uma sigla): ela consulta e responde na hora.</li>
-            <li>No fim, a IA escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
-            <li>Dura o necessário para cobrir o processo (no máximo 45 minutos). A IA se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser.</li>
+            <li>No fim, ela escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
+            <li>Dura o necessário para cobrir o processo. A Maia se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>
           {aviso && <p className="notice">{aviso}</p>}
@@ -171,7 +168,7 @@ function EntrevistaPage() {
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
             <Link href="/app/entrevistas" className="btn">Voltar</Link>
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar' : 'Começar a entrevista'}</button>
+            <button className="btn btn-primary" onClick={comecar} disabled={!ciente}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
           </div>
         </div>
       </div>
@@ -192,7 +189,6 @@ function EntrevistaPage() {
               ? <><h2 className="entrevista-estado">{aviso_fase.titulo}</h2>{aviso_fase.sub && <p className="entrevista-sub">{aviso_fase.sub}</p>}</>
               : <p className="entrevista-sub entrevista-legenda">{LEGENDA_CONVERSA}</p>}
           {!processando && <p className="entrevista-tempo">{mmss(segundos)}</p>}
-          {!processando && painelMetricas}
           {aviso && <p className="notice">{aviso}</p>}
           {erro && (
             <div className="entrevista-erro" role="alert">
@@ -202,7 +198,7 @@ function EntrevistaPage() {
           )}
           {!processando && (
             <div className="entrevista-acoes">
-              <button className="btn" onClick={() => void pausar()} disabled={fase === 'conectando' || fase === 'encerrando'} title="Desliga a ligação com a IA (sem custo) e guarda a conversa para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar</button>
+              <button className="btn" onClick={() => void pausar()} disabled={fase === 'conectando' || fase === 'encerrando'} title="Encerra a ligação por agora e guarda a conversa para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar</button>
               <button className="btn btn-parar" onClick={() => encerrar(true)} disabled={fase === 'conectando' || fase === 'encerrando'}><Icone nome="parar" tamanho={16} />Encerrar entrevista</button>
             </div>
           )}
@@ -211,15 +207,14 @@ function EntrevistaPage() {
     );
   }
 
-  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} painelMetricas={painelMetricas} aoReprocessar={reprocessar} />;
+  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} admin={ehAdmin(eu)} aoReprocessar={reprocessar} />;
 }
 
-function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }: {
-  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; painelMetricas: React.ReactNode; aoReprocessar: () => Promise<void>;
+function Resultado({ e, aviso, erro, cabecalho, admin, aoReprocessar }: {
+  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; admin: boolean; aoReprocessar: () => Promise<void>;
 }) {
   const r = e.resultado;
   const parado = e.status === 'processando' && Date.now() - new Date(e.atualizado_em).getTime() > 3 * 60_000;
-  const diagnostico = e.metricas?.erros?.length || e.metricas?.desconhecidos?.length;
 
   return (
     <div className="page page-estreita">
@@ -240,19 +235,6 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
       {e.status === 'concluida' && !r && (
         <div className="cartao"><h3 className="sem-margem">Entrevista encerrada sem respostas</h3><p className="notice">Nada do que você falou chegou a ser transcrito, então não há o que gerar. Abra uma nova entrevista.</p></div>
       )}
-
-      <div className="cartao">
-        <h3 className="sem-margem">Como foi a conversa</h3>
-        {painelMetricas}
-        <DetalhesMetricas m={e.metricas ?? {}} />
-        {e.metricas?.consultas?.length ? <Consultas lista={e.metricas.consultas} /> : null}
-        {diagnostico ? (
-          <details className="diagnostico"><summary>Diagnóstico da sessão de voz</summary>
-            {e.metricas.erros?.length ? <><span className="ficha-rotulo">Erros</span><ul className="ficha-lista">{e.metricas.erros.map((x, i) => <li key={i}>{x}</li>)}</ul></> : null}
-            {e.metricas.desconhecidos?.length ? <><span className="ficha-rotulo">Eventos não tratados</span><p className="notice">{e.metricas.desconhecidos.join(', ')}</p></> : null}
-          </details>
-        ) : null}
-      </div>
 
       {r && (
         <>
@@ -296,64 +278,18 @@ function Resultado({ e, aviso, erro, cabecalho, painelMetricas, aoReprocessar }:
             {e.turnos.map((t, i) => (
               <p key={i} className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
                 {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
-                <b>{t.quem === 'ia' ? 'IA' : 'Você'}{t.sobreposta ? ' (por cima da IA)' : ''}:</b> {t.texto}
+                <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {t.texto}
               </p>
             ))}
           </div>
         </details>
       )}
 
-      <div className="fluxo-acoes"><Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar às entrevistas</Link></div>
+      <div className="fluxo-acoes">
+        <Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar às entrevistas</Link>
+        {admin && <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>}
+      </div>
     </div>
-  );
-}
-
-/** Indicadores e custos da entrevista (os da especificação do Rafael e os de custo), ao vivo e no resultado. */
-function PainelMetricas({ metricas }: { metricas: Metricas }) {
-  const r = resumoMetricas(metricas);
-  const pct = (x?: number) => (x === undefined ? '—' : `${Math.round(x * 100)}%`);
-  return (
-    <dl className="metricas-entrevista">
-      <div><dt>Reação da IA</dt><dd title="Do fim da sua fala ao início da resposta da IA: mediana (e a maior)">{seg(r.reacao_mediana_ms)}{r.reacao_max_ms !== undefined && <small>máx. {seg(r.reacao_max_ms)}</small>}</dd></div>
-      <div><dt>Falas por cima da IA</dt><dd title="Vezes em que você falou enquanto a IA falava (ou numa pausa curta dela)">{r.sobreposicoes} de {r.falas_pessoa}<small>{r.falas_ia} respostas da IA</small></dd></div>
-      <div><dt>Tempo de fala</dt><dd title="Quanto do tempo falado foi seu e quanto foi da IA">{pct(r.participacao_pessoa)} você<small>{mmss(metricas.tempo_pessoa_s ?? 0)} você · {mmss(metricas.tempo_ia_s ?? 0)} IA</small></dd></div>
-      <div><dt>Sinais de escuta</dt><dd title='"aham", "sei", "uhum" da IA enquanto você explicava'>{r.apoios}<small>maior silêncio {seg(r.silencio_max_ms)}</small></dd></div>
-      <div><dt>Consultas da IA</dt><dd title='Vezes em que a IA foi verificar algo ("deixa eu ver aqui"): quanto você esperou pela resposta (mediana) e o custo'>{r.consultas}{r.consultas > 0 && <small>{seg(r.consulta_mediana_ms)} · {usd(r.custo_consultas_usd)}</small>}</dd></div>
-      <div><dt>Custo da voz</dt><dd title="GPT-Live: US$ 0,05 por minuto de sessão, cobrado por segundo">{usd(r.custo_voz_usd)}<small>{mmss(metricas.duracao_s ?? 0)} · {metricas.sessoes ?? 1} {(metricas.sessoes ?? 1) === 1 ? 'sessão' : 'sessões'}</small></dd></div>
-      <div><dt>Custo da análise</dt><dd title="Claude, no fim: a descrição, a ficha e as pendências">{metricas.analise ? usd(r.custo_analise_usd) : '—'}{metricas.analise && <small>{(metricas.analise.entrada_tokens / 1000).toFixed(1).replace('.', ',')}k + {(metricas.analise.saida_tokens / 1000).toFixed(1).replace('.', ',')}k tokens</small>}</dd></div>
-      <div><dt>Custo total</dt><dd title="Voz + consultas + análise">{usd(r.custo_total_usd)}</dd></div>
-    </dl>
-  );
-}
-
-function DetalhesMetricas({ m }: { m: Metricas }) {
-  const a = m.analise;
-  const c = m.conexao_etapas;
-  const sinais = Object.entries(m.apoios_por_sinal ?? {}).sort((x, y) => y[1] - x[1]);
-  const sessoes = m.sessoes ?? 1;
-  const fechadas = m.eventos?.['session.closed'];
-  return (
-    <p className="notice">
-      {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
-      {sessoes > 1 ? `A conversa teve ${sessoes} sessões de voz${m.pausas ? ` (${m.pausas} ${m.pausas === 1 ? 'pausa' : 'pausas'})` : ''}. ` : ''}
-      {fechadas !== undefined ? `Sessões desligadas com confirmação da OpenAI: ${fechadas} de ${sessoes}. ` : ''}
-      {m.conexao_ms !== undefined ? `Abertura${sessoes > 1 ? ' (última sessão)' : ''}: a voz conectou ${seg(m.conexao_ms)} depois do clique${c ? ` (microfone ${seg(c.microfone_ms)}, conexão ${seg(c.oferta_ms)}, servidor ${seg(c.servidor_ms)}${c.openai_ms !== undefined ? `, dos quais OpenAI ${seg(c.openai_ms)}` : ''}, início da sessão ${seg(c.inicio_ms)})` : ''}${m.abertura_ms !== undefined ? ` e a IA começou a falar ${seg(m.abertura_ms)} depois` : ''}. ` : ''}
-      {sinais.length ? `Sinais de escuta: ${sinais.map(([k, n]) => `"${k}" ${n}`).join(', ')}. ` : ''}
-      Reação: do fim da sua fala ao início da resposta da IA, sem contar os sinais de escuta. Custos pelas tabelas da OpenAI (US$ 0,05/min) e da Anthropic.
-    </p>
-  );
-}
-
-/** O que a IA foi verificar durante a conversa, a resposta que ela recebeu e quanto a pessoa esperou. */
-function Consultas({ lista }: { lista: Consulta[] }) {
-  return (
-    <details className="diagnostico"><summary>Consultas da IA durante a conversa ({lista.length})</summary>
-      <ul className="ficha-lista">
-        {lista.map((c, i) => (
-          <li key={i}>{c.falhou ? <><strong>Não deu certo:</strong> {c.resposta}</> : <><strong>{c.pergunta}</strong> {c.resposta}</>} <small>({seg(c.demora_ms)}{c.falhou ? '' : ` · ${usd(c.custo_usd)}`})</small></li>
-        ))}
-      </ul>
-    </details>
   );
 }
 

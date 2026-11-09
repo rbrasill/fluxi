@@ -392,6 +392,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **A lista geral de POPs continua** em `/app/pops`, aberta pelos atalhos do Início (publicados, rascunhos, "Ver todos os POPs").
 - "Pessoas e acessos" ganhou ícone próprio (antes usava o mesmo das áreas).
 
+## 52. A entrevista como uma ligação para a Maia; custos e métricas só no Painel da Maia (09/11/2026)
+
+- **Para quem é entrevistado, a tela é uma ligação.** Ao começar, "Chamando a Maia…" (antes, "Ligando o microfone e a voz…"); os botões são "Ligar para a Maia" e "Continuar a ligação"; a legenda e os avisos falam da Maia pelo nome. Durante a conversa só a esfera, o tempo e os botões Pausar e Encerrar: **nenhum indicador nem custo**. No resultado, a descrição, a ficha, o que ficou em aberto e a conversa transcrita ("Maia:" e "Você:"); a seção "Como foi a conversa" saiu. Os avisos de pausa não falam mais em custo ("foi pausada para não gerar custo" virou só "foi pausada").
+- **Painel da Maia** (`/app/maia`, item do menu em "Conta", só administradores; a API `GET /api/maia` exige administrador): o acumulado (entrevistas, tempo de voz, custo da voz, consultas, análises, total e média por entrevista), o resumo por mês, a tabela das entrevistas (entrevistado, situação, duração com sessões e pausas, reação, conexão e os custos) e **como a Maia está configurada** (apresentação, modelo e voz, preço por minuto, modelos de consulta e de análise, limites e as frases que a tela reconhece). Cada entrevista tem a sua página no painel (`/app/maia/<id>`), com os oito indicadores, os detalhes, as consultas e o diagnóstico da sessão (erros, eventos, ids das sessões na OpenAI). No resultado da entrevista, o administrador tem o atalho "Custos e métricas".
+- **Por quê:** a entrevista está indo para o uso real; quem é entrevistado não precisa (nem deve) ver preço, reação em segundos e tokens. Os números continuam sendo medidos e guardados como antes; só mudou quem vê.
+- A lista de entrevistas deixou de mostrar custo e totais. Os limites da sessão (45 min, 2 min de silêncio, 20 consultas) ficam em `LIMITES_ENTREVISTA` (`lib/entrevista/topicos.ts`), usados pelo motor e mostrados no painel.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

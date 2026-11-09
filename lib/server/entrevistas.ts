@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import { TOPICOS, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { LIMITES_ENTREVISTA, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { ErroApi } from './http';
 import { chamarEstruturado, type UsoIa } from './ia';
@@ -86,6 +86,32 @@ export async function listar() {
       falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
     };
   });
+}
+
+/** Painel da Maia (decisão 52, só administradores): como ela está configurada e cada entrevista com tempos, métricas e custos. */
+export async function painel() {
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em')
+    .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
+  if (error) throw error;
+  const linhas = data ?? [];
+  const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
+  return {
+    configuracao: {
+      nome: NOME_IA, apresentacao: `Eu sou a ${NOME_IA}, trabalho ${COM_QUEM}`, modelo_voz: MODELO_VOZ, voz: VOZ, preco_voz_usd_min: PRECO_VOZ_USD_MIN,
+      modelo_consulta: MODELO_CONSULTA, modelo_analise: MODELO_ANALISE, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA, ...LIMITES_ENTREVISTA,
+    },
+    entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, ...e }) => {
+      const m = (metricas as Metricas | null) ?? {};
+      const r = resumoMetricas(m);
+      return {
+        ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
+        duracao_s: m.duracao_s ?? 0, sessoes: m.sessoes ?? (m.duracao_s ? 1 : 0), pausas: m.pausas ?? 0, consultas: r.consultas,
+        reacao_mediana_ms: r.reacao_mediana_ms ?? null, conexao_ms: m.conexao_ms ?? null,
+        custo_voz_usd: r.custo_voz_usd, custo_consultas_usd: r.custo_consultas_usd, custo_analise_usd: r.custo_analise_usd, custo_total_usd: r.custo_total_usd,
+        erros: m.erros?.length ?? 0,
+      };
+    }),
+  };
 }
 
 export async function obter(id: string) {

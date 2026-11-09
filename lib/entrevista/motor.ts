@@ -7,7 +7,7 @@
 // devolvendo a resposta para ela falar (decisão 44).
 import { abrirSessaoDeVoz, consultarDuranteEntrevista, salvarConversa } from '@/lib/entrevistas';
 import { Conversa, metricasDaConversa } from './conversa';
-import type { Consulta, Metricas, Turno } from './topicos';
+import { LIMITES_ENTREVISTA, type Consulta, type Metricas, type Turno } from './topicos';
 
 export type Fase = 'parado' | 'conectando' | 'falando' | 'ouvindo' | 'juntos' | 'encerrando';
 export type Evento =
@@ -22,10 +22,10 @@ export type Evento =
 type Mensagem = { type: string; delta?: string; start_ms?: number; end_ms?: number; usage?: { seconds?: number }; error?: { message?: string }; reason?: string; [k: string]: unknown };
 
 const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar)
-const LIMITE_MS = 45 * 60_000; // teto de uma sessão (custo): pausa sozinha
-const INATIVIDADE_MS = 2 * 60_000; // ninguém falou nesse tempo: pausa sozinha (a sessão parada também é cobrada)
+const LIMITE_MS = LIMITES_ENTREVISTA.sessao_min * 60_000; // teto de uma sessão (custo): pausa sozinha
+const INATIVIDADE_MS = LIMITES_ENTREVISTA.inatividade_min * 60_000; // ninguém falou nesse tempo: pausa sozinha (a sessão parada também é cobrada)
 const NIVEL_VOZ = 0.02; // volume (RMS) a partir do qual alguém está falando
-const MAX_CONSULTAS = 20; // por sessão (custo)
+const MAX_CONSULTAS = LIMITES_ENTREVISTA.max_consultas; // por sessão (custo)
 const CONHECIDOS = new Set(['session.started', 'session.input_transcript.delta', 'session.output_transcript.delta', 'session.usage.updated', 'session.closed', 'session.delegation.created', 'session.thinking.appended', 'session.commentary.appended', 'session.instructions.appended', 'session.updated', 'error']);
 
 /** Sem acento, pontuação nem maiúsculas, para achar a frase da despedida (ou da pausa) na transcrição. */
@@ -115,7 +115,7 @@ export class MotorEntrevista {
       // Sem conexão, a sessão não serve mais: pausa (desliga tudo; o que foi conversado está guardado).
       if (pc.connectionState === 'failed' && this.ativo) {
         this.registrarErro('A conexão de voz caiu.');
-        this.aoEvento({ tipo: 'aviso', texto: 'A conexão de voz caiu e a entrevista foi pausada. O que já foi conversado está guardado: clique em Continuar para seguir.' });
+        this.aoEvento({ tipo: 'aviso', texto: 'A ligação com a Maia caiu e a entrevista foi pausada. O que já foi conversado está guardado: clique em Continuar para seguir.' });
         this.aoEvento({ tipo: 'pausa' });
       }
     };
@@ -166,11 +166,11 @@ export class MotorEntrevista {
       const agora = performance.now();
       if (agora - this.inicioSessao > LIMITE_MS) {
         this.fimPedido = true;
-        this.aoEvento({ tipo: 'aviso', texto: 'Esta sessão chegou a 45 minutos e foi pausada para não gerar custo. A conversa está guardada: clique em Continuar para seguir.' });
+        this.aoEvento({ tipo: 'aviso', texto: `A ligação chegou a ${LIMITES_ENTREVISTA.sessao_min} minutos e foi pausada. O que já foi conversado está guardado: clique em Continuar para seguir.` });
         this.aoEvento({ tipo: 'pausa' });
       } else if (!this.consultando && agora - this.ultimaFala > this.inatividadeMs) { // pela transcrição: ruído de fundo não segura a sessão
         this.fimPedido = true;
-        this.aoEvento({ tipo: 'aviso', texto: 'Ninguém falou por 2 minutos e a entrevista foi pausada para não gerar custo. A conversa está guardada: clique em Continuar quando quiser.' });
+        this.aoEvento({ tipo: 'aviso', texto: `Ninguém falou por ${LIMITES_ENTREVISTA.inatividade_min} minutos e a entrevista foi pausada. O que já foi conversado está guardado: clique em Continuar quando quiser.` });
         this.aoEvento({ tipo: 'pausa' });
       }
     }, 5000));

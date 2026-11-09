@@ -85,6 +85,8 @@ const mediana = (xs: number[]) => {
 };
 
 export const PRECO_VOZ_USD_MIN = 0.05; // gpt-live-1: US$ 0,05 por minuto de sessão, cobrado por segundo
+/** Limites da sessão de voz (custo): teto por sessão, silêncio que pausa sozinho e consultas por sessão. */
+export const LIMITES_ENTREVISTA = { sessao_min: 45, inatividade_min: 2, max_consultas: 20 } as const;
 
 /** Resumo das métricas para a tela (indicadores e custos da entrevista). */
 export function resumoMetricas(m: Metricas) {

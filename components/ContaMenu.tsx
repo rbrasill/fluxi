@@ -1,13 +1,13 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
+import { ehAdmin, useEu } from '@/lib/auth/eu';
 
-// A parte do menu que depende de quem está logado (decisão 50): "Pessoas e acessos" para administradores,
-// e o nome com o botão Sair. Também leva de volta ao login quando a sessão acaba no meio do uso
-// (qualquer rota de dados respondendo 401).
+// A parte do menu que depende de quem está logado (decisão 50): "Pessoas e acessos" e o "Painel da Maia"
+// para administradores, e o nome com o botão Sair. Também leva de volta ao login quando a sessão acaba
+// no meio do uso (qualquer rota de dados respondendo 401).
 
-type Eu = { enabled: false } | { enabled: true; name: string; email: string; nivel: 'comum' | 'gestor' | 'admin' };
 const ROTULO_NIVEL = { comum: 'Comum', gestor: 'Gestor', admin: 'Administrador' };
 
 function voltarAoLoginQuandoASessaoAcabar() {
@@ -29,21 +29,19 @@ function voltarAoLoginQuandoASessaoAcabar() {
 }
 
 export function ContaMenu() {
-  const [eu, setEu] = useState<Eu | null>(null);
-  useEffect(() => {
-    voltarAoLoginQuandoASessaoAcabar();
-    fetch('/api/auth/eu').then((r) => (r.ok ? r.json() : null)).then(setEu).catch(() => setEu(null));
-  }, []);
+  useEffect(() => { voltarAoLoginQuandoASessaoAcabar(); }, []);
+  const eu = useEu();
 
   async function sair() {
     await fetch('/api/auth/sair', { method: 'POST' }).catch(() => {});
     window.location.href = '/login';
   }
 
-  const admin = eu && (!eu.enabled || eu.nivel === 'admin'); // sem login (desenvolvimento), tudo aberto
+  const admin = ehAdmin(eu); // sem login (desenvolvimento), tudo aberto
   return (
     <>
       {admin && <NavLink href="/app/pessoas" titulo="Pessoas e acessos"><Icone nome="pessoas" /><span className="nav-texto">Pessoas e acessos</span></NavLink>}
+      {admin && <NavLink href="/app/maia" titulo="Painel da Maia: custos, tempos e métricas das entrevistas"><Icone nome="ia" /><span className="nav-texto">Painel da Maia</span></NavLink>}
       {eu?.enabled && (
         <div className="conta" title={eu.email}>
           <span className="conta-nome nav-texto">{eu.name}<small>{ROTULO_NIVEL[eu.nivel]}</small></span>
