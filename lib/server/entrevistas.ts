@@ -2,10 +2,10 @@ import 'server-only';
 import { z } from 'zod';
 import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
-import { enviarEmail } from './carteiro';
+import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
 import { chamarEstruturado, type UsoIa } from './ia';
-import type { Pessoa } from './login';
+import { emProducao, type Pessoa } from './login';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Entrevista por voz com a Maia, só com o GPT-Live da OpenAI (decisão 41). Nasce dentro do processo, por
@@ -122,6 +122,8 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
   const nota = (d.nota ?? '').trim();
   const contexto = contextoDoConvite(processo, nota);
   const convidadoPor = quem?.nome ?? NOME_EQUIPE;
+  // Sem o carteiro dos convites em produção, os convites nascem sem e-mail (a tela avisa; dá para reenviar depois).
+  const carteiro = carteiroConfigurado('convite') || !emProducao();
   const criadas: { id: string; pessoa: string; email_enviado: boolean }[] = [];
   const repetidas: string[] = [];
   for (const pessoa of pessoas) {
@@ -131,16 +133,17 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
       .select('id').single();
     if (e3) throw e3;
     const id = (data as { id: string }).id;
-    const email_enviado = await enviarConvite({ id, tema: processo.nome, nota_convite: nota }, pessoa, convidadoPor, origem);
+    const email_enviado = carteiro ? await enviarConvite({ id, tema: processo.nome, nota_convite: nota }, pessoa, convidadoPor, origem) : false;
     criadas.push({ id, pessoa: pessoa.nome, email_enviado });
   }
-  return { criadas, repetidas };
+  return { criadas, repetidas, carteiro_configurado: carteiro };
 }
 
 /** Manda o e-mail do convite de novo (só enquanto a pessoa não começou). */
 export async function reenviarConvite(id: string, quem: Pessoa | null, origem: string) {
   const linha = await carregar(id);
   if (linha.status !== 'convidada') throw new ErroApi(409, 'Esta entrevista já começou.');
+  if (emProducao() && !carteiroConfigurado('convite')) throw new ErroApi(503, 'O envio de convites por e-mail ainda não está configurado (CONVITE_MAILER_URL e CONVITE_MAILER_SECRET).');
   const { data, error } = await supabase().from('pessoas').select('id, nome, email').eq('id', linha.entrevistado_id ?? '').maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'A pessoa convidada não está mais cadastrada.');

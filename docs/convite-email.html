@@ -2,12 +2,12 @@
   Corpo do e-mail do convite para entrevista com a Maia (decisão 53).
 
   Mesmo modelo do e-mail do código (cabeçalho com o gradiente da INC), com um botão para abrir a entrevista.
-  O step `enviar_email` (docs/pipedream-enviar-email.js) já traz este HTML dentro do código; este arquivo serve
+  O step `enviar_convite` (docs/pipedream-convite-enviar.js) já traz este HTML dentro do código; este arquivo serve
   para ver o e-mail e para quem preferir a ação "Send Email" do Outlook no Pipedream (cole com a opção HTML
-  ativada). As variáveis {{steps.validar_envio.$return_value.*}} são do step `validar_envio`: nome, processo,
-  convidado_por, nota e link.
+  ativada). As variáveis {{steps.validar_convite.$return_value.*}} são do step `validar_convite`: nome, processo,
+  convidado_por, nota e link. É um workflow separado do de login (docs/convites.md).
 
-  Diferente do e-mail do código, este tem um link: é o convite, e o `validar_envio` só aceita links https para
+  Diferente do e-mail do código, este tem um link: é o convite, e o `validar_convite` só aceita links https para
   o próprio app (incflow.vercel.app, caminho /app/entrevistas/…). À prova do Outlook desktop: tabelas, cores
   em HEX, botão em <td> com bgcolor, sem SVG.
 -->
@@ -31,16 +31,16 @@
       <tr>
         <td style="background-color: #FFFFFF; color: #334155; font-family: 'Helvetica Neue', Roboto, Arial, sans-serif; font-size: 15px; line-height: 155%; padding: 34px 35px 30px 35px;">
 
-          <div style="font-size: 16px; color: #0f172a;">Olá, {{steps.validar_envio.$return_value.nome}}!</div>
+          <div style="font-size: 16px; color: #0f172a;">Olá, {{steps.validar_convite.$return_value.nome}}!</div>
 
-          <p style="margin: 18px 0 0 0;"><strong style="color: #0f172a;">{{steps.validar_envio.$return_value.convidado_por}}</strong> convidou você para uma conversa com a <strong style="color: #0f172a;">Maia</strong>, a entrevistadora por voz do INCFlow, sobre o processo:</p>
+          <p style="margin: 18px 0 0 0;"><strong style="color: #0f172a;">{{steps.validar_convite.$return_value.convidado_por}}</strong> convidou você para uma conversa com a <strong style="color: #0f172a;">Maia</strong>, a entrevistadora por voz do INCFlow, sobre o processo:</p>
 
           <!-- O processo em destaque -->
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="margin: 22px 0;">
             <tr>
               <td align="center" bgcolor="#FFF2EC" style="background-color: #FFF2EC; border: 1px solid #FFD9C6; border-radius: 14px; padding: 22px 20px;">
                 <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #f94700;">Processo</div>
-                <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #1D2026; margin-top: 8px; line-height: 1.25;">{{steps.validar_envio.$return_value.processo}}</div>
+                <div style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 22px; font-weight: 700; color: #1D2026; margin-top: 8px; line-height: 1.25;">{{steps.validar_convite.$return_value.processo}}</div>
               </td>
             </tr>
           </table>
@@ -51,20 +51,20 @@
           </p>
 
           <!-- O pedido de quem convidou (fica vazio quando não há nota) -->
-          <p style="margin: 0 0 14px 0; font-size: 14px; color: #475569;">{{steps.validar_envio.$return_value.nota}}</p>
+          <p style="margin: 0 0 14px 0; font-size: 14px; color: #475569;">{{steps.validar_convite.$return_value.nota}}</p>
 
           <!-- Botão -->
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 24px auto 10px auto;">
             <tr>
               <td align="center" bgcolor="#0f5c63" style="background-color: #0f5c63; border-radius: 10px;">
-                <a href="{{steps.validar_envio.$return_value.link}}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; color: #FFFFFF; text-decoration: none;">Abrir a entrevista</a>
+                <a href="{{steps.validar_convite.$return_value.link}}" target="_blank" style="display: inline-block; padding: 14px 28px; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 15px; font-weight: 700; color: #FFFFFF; text-decoration: none;">Abrir a entrevista</a>
               </td>
             </tr>
           </table>
 
           <p style="margin: 10px 0 0 0; font-size: 13px; line-height: 150%; color: #64748b; text-align: center;">
             Para entrar, use seu e-mail corporativo: você recebe um código de 6 dígitos.<br>
-            Se o botão não abrir, copie este endereço: <span style="color: #0f5c63; word-break: break-all;">{{steps.validar_envio.$return_value.link}}</span>
+            Se o botão não abrir, copie este endereço: <span style="color: #0f5c63; word-break: break-all;">{{steps.validar_convite.$return_value.link}}</span>
           </p>
 
           <!-- Aviso -->

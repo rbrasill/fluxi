@@ -33,7 +33,8 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     const semEmail = r.criadas.filter((c) => !c.email_enviado).map((c) => c.pessoa);
     const partes: string[] = [];
     if (r.criadas.length) partes.push(`${r.criadas.length === 1 ? 'Convite enviado' : `${r.criadas.length} convites enviados`} para ${r.criadas.map((c) => c.pessoa).join(', ')}.`);
-    if (semEmail.length) partes.push(`O e-mail de ${semEmail.join(', ')} não pôde ser enviado: use "Reenviar convite".`);
+    if (!r.carteiro_configurado && r.criadas.length) partes.push('O envio de convites por e-mail ainda não está configurado (CONVITE_MAILER_URL e CONVITE_MAILER_SECRET na Vercel): avise as pessoas por outro meio ou configure e use "Reenviar convite".');
+    else if (semEmail.length) partes.push(`O e-mail de ${semEmail.join(', ')} não pôde ser enviado: use "Reenviar convite".`);
     if (r.repetidas.length) partes.push(`${r.repetidas.join(', ')} já ${r.repetidas.length === 1 ? 'tinha' : 'tinham'} entrevista aberta neste processo.`);
     setAviso(partes.join(' '));
   }

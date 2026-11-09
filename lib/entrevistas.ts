@@ -22,7 +22,7 @@ export type EntrevistaDoProcesso = {
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
 };
-export type ResultadoConvite = { criadas: { id: string; pessoa: string; email_enviado: boolean }[]; repetidas: string[] };
+export type ResultadoConvite = { criadas: { id: string; pessoa: string; email_enviado: boolean }[]; repetidas: string[]; carteiro_configurado: boolean };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...init?.headers } });
