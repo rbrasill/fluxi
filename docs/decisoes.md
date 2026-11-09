@@ -366,6 +366,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Motor:** a entrevista usa o GPT-Live (`gpt-live-1`, `POST /v1/live/sessions`), o modelo full duplex da OpenAI, e não a Realtime API (`/v1/realtime`), que funciona por turnos (decisão 41).
 
 ## Em aberto
+- Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth), com a regra "consultar: toda a organização; editar: só a área dona" (decisão 31)
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion
