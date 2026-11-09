@@ -62,6 +62,18 @@ export async function enviarAudioDaEntrevista(id: string, blob: Blob) {
   await api(`/api/entrevistas/${id}`, { method: 'PATCH', body: JSON.stringify({ audio_caminho: up.caminho }) });
 }
 
+/** A confirmação antes de cancelar um convite ou excluir uma entrevista (decisão 54). */
+export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: number; entrevistado: string | null }) {
+  const quem = e.entrevistado ?? 'esta pessoa';
+  if (e.status === 'convidada') return { titulo: `Cancelar o convite de ${quem}?`, mensagem: 'A pessoa não vai mais conseguir abrir esta entrevista. Dá para convidar de novo depois.', acao: 'Cancelar convite', perigo: true };
+  const pausada = e.status === 'em_andamento' && e.falas > 0;
+  return {
+    titulo: `Excluir a entrevista de ${quem}?`,
+    mensagem: `${pausada ? 'A entrevista está pausada e ainda pode ser retomada. ' : ''}A conversa, o áudio e o resultado são apagados de vez; não dá para desfazer.`,
+    acao: 'Excluir', perigo: true,
+  };
+}
+
 /** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */
 export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; convite_enviado_em?: string | null }) {
   if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';

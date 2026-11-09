@@ -410,6 +410,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Fase 2 (a fazer):** a **síntese das entrevistas** do processo, consolidada pela Maia (Claude): visão consolidada, convergências, divergências entre entrevistados, dificuldades mais citadas e pendências. Depois, se o Rafael quiser, aproveitar a síntese na descrição do processo e no POP.
 - As 16 entrevistas de teste de 07 a 09/11 saem do banco (decisão do Rafael, para o painel partir do zero com a chave nova da OpenAI).
 
+## 54. Quem controla as entrevistas: o administrador gere, ninguém edita a conversa (09/11/2026)
+
+- **Decisão do Rafael:** os administradores têm controle total das entrevistas, até excluir, mas não sobre o conteúdo gerado da conversa.
+- **Administrador:** convida, reenvia, cancela convites e **exclui qualquer entrevista**, em qualquer situação (convidada, pausada, concluída, com erro), no processo, na tela de entrevistas e no Painel da Maia. Excluir apaga tudo (conversa, áudio e resultado) e pede confirmação. Não exclui enquanto a pessoa está na ligação (a conversa foi salva há menos de um minuto) nem enquanto o resultado está sendo gerado (409, "tente de novo em alguns minutos").
+- **Gestor:** convida, reenvia e cancela convites pendentes; não exclui entrevista que já começou (403).
+- **Ninguém edita o conteúdo:** a conversa (falas, áudio) só é gravada pela própria pessoa entrevistada, durante a ligação; o resultado é da Maia e, concluída a entrevista, não muda. Não há tela nem rota para editar transcrição ou resultado. Administradores e gestores só **geram de novo um resultado que falhou** (erro ou processamento parado); não encerram a conversa de outra pessoa nem refazem um resultado pronto.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

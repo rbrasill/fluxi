@@ -32,7 +32,9 @@ Sem isso, em produção os convites são criados mas ficam como "Convite sem e-m
 
 - Até **3 pessoas por convite**, uma entrevista por pessoa. Quem já tem entrevista aberta (convidada ou em andamento) naquele processo não recebe outra.
 - Quem convida: **administrador ou gestor**. Quem liga para a Maia: **só a pessoa convidada** (o servidor confere a pessoa logada antes de abrir a sessão de voz; outra pessoa recebe 403). Administrador não liga no lugar dela.
-- Enquanto a pessoa não começa, o convite pode ser **reenviado** ou **cancelado** (a entrevista é apagada). Depois de concluída, gestores podem excluir.
+- Enquanto a pessoa não começa, o convite pode ser **reenviado** ou **cancelado** (gestores e administradores).
+- Entrevista que já começou (pausada, concluída ou com erro): só **administradores** excluem, e a exclusão leva tudo (conversa, áudio e resultado). Não dá para excluir com a pessoa na ligação nem com o resultado sendo gerado.
+- **Ninguém edita a conversa nem o resultado** (decisão 54): a conversa é gravada só pela pessoa, durante a ligação; o resultado é da Maia. Administradores e gestores só geram de novo um resultado que falhou.
 - O convite não tem validade. Lembretes automáticos ficam para depois, se forem necessários.
 
 ## Desenvolvimento

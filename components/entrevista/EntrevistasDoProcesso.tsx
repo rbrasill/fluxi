@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Convidar } from '@/components/entrevista/Convidar';
-import { ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { excluirEntrevista, listarEntrevistasDoProcesso, reenviarConvite, situacaoDaEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
+import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, reenviarConvite, situacaoDaEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
 // conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites;
-// a pessoa convidada liga para a Maia a partir daqui.
+// administradores também excluem entrevistas que já começaram (decisão 54); a pessoa convidada liga daqui.
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
@@ -19,6 +19,7 @@ const CLASSE_SITUACAO: Record<string, string> = { convidada: 'selo-convidada', e
 export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
   const eu = useEu();
   const gestor = ehGestor(eu);
+  const admin = ehAdmin(eu);
   const [lista, setLista] = useState<EntrevistaDoProcesso[] | null>(null);
   const [convidando, setConvidando] = useState(false);
   const [aviso, setAviso] = useState('');
@@ -45,12 +46,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   }
 
   async function cancelar(x: EntrevistaDoProcesso) {
-    const pendente = x.status === 'convidada';
-    if (!(await confirmar({
-      titulo: pendente ? `Cancelar o convite de ${x.entrevistado ?? 'esta pessoa'}?` : `Excluir a entrevista de ${x.entrevistado ?? 'esta pessoa'}?`,
-      mensagem: pendente ? 'A pessoa não vai mais conseguir abrir esta entrevista. Dá para convidar de novo depois.' : 'A conversa, o áudio e o resultado são apagados.',
-      acao: pendente ? 'Cancelar convite' : 'Excluir', perigo: true,
-    }))) return;
+    if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
     setOcupado(x.id);
     try { await excluirEntrevista(x.id); await carregar(); } catch (e) { void avisar('Não foi possível excluir.', msg(e)); } finally { setOcupado(''); }
   }
@@ -89,8 +85,8 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                 </div>
                 <span className={`selo-status ${CLASSE_SITUACAO[x.status] ?? ''}`}>{situacaoDaEntrevista(x)}</span>
                 {gestor && pendente && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void reenviar(x)} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
-                {gestor && (pendente || x.status === 'concluida' || x.status === 'erro') && !arquivado && (
-                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar' : 'Excluir'}</button>
+                {((gestor && pendente) || (admin && !pendente)) && (
+                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title={pendente ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar' : 'Excluir'}</button>
                 )}
                 {aberta && minha
                   ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>

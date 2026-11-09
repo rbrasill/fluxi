@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
-import { ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { excluirEntrevista, listarEntrevistas, situacaoDaEntrevista, type EntrevistaResumo } from '@/lib/entrevistas';
+import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistas, situacaoDaEntrevista, type EntrevistaResumo } from '@/lib/entrevistas';
 
 // Entrevistas com a Maia (decisões 41 e 53): nascem por convite, dentro do processo. Aqui, as da pessoa logada
 // primeiro (as que esperam por ela em destaque) e depois as demais. Sem custos nem indicadores (decisão 52).
@@ -16,14 +16,15 @@ const CLASSE_SITUACAO: Record<string, string> = { convidada: 'selo-convidada', e
 export default function EntrevistasPage() {
   const eu = useEu();
   const gestor = ehGestor(eu);
+  const admin = ehAdmin(eu);
   const [lista, setLista] = useState<EntrevistaResumo[] | null>(null);
 
   const carregar = () => listarEntrevistas().then(setLista).catch(() => setLista([]));
   useEffect(() => { void carregar(); }, []);
 
   async function excluir(x: EntrevistaResumo) {
-    if (!(await confirmar({ titulo: 'Excluir esta entrevista?', mensagem: 'A conversa, o áudio e o resultado são apagados.', acao: 'Excluir', perigo: true }))) return;
-    try { await excluirEntrevista(x.id); await carregar(); } catch { void avisar('Não foi possível excluir a entrevista.', 'Tente de novo em instantes.'); }
+    if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
+    try { await excluirEntrevista(x.id); await carregar(); } catch (e) { void avisar('Não foi possível excluir a entrevista.', e instanceof Error ? e.message : 'Tente de novo em instantes.'); }
   }
 
   const aberta = (x: EntrevistaResumo) => x.status === 'convidada' || x.status === 'em_andamento';
@@ -41,7 +42,9 @@ export default function EntrevistasPage() {
           <span>{x.entrevistado ? `${x.entrevistado} · ` : ''}{data(x.convidado_em ?? x.criado_em)}{x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}</span>
         </Link>
         <span className={`selo-status ${CLASSE_SITUACAO[x.status] ?? ''}`}>{situacaoDaEntrevista(x)}</span>
-        {gestor && !aberta(x) && <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title="Excluir a entrevista"><Icone nome="lixo" tamanho={16} />Excluir</button>}
+        {((gestor && x.status === 'convidada') || (admin && x.status !== 'convidada')) && (
+          <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title={x.status === 'convidada' ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{x.status === 'convidada' ? 'Cancelar' : 'Excluir'}</button>
+        )}
         {aberta(x) && minha
           ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
           : <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>Abrir</Link>}

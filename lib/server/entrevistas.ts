@@ -101,6 +101,8 @@ async function enviarConvite(linha: Pick<Linha, 'id' | 'tema' | 'nota_convite'>,
 }
 
 const NOME_EQUIPE = 'A equipe de processos';
+/** Durante a ligação o navegador salva a conversa a cada 15 s: atualizada há menos que isto, a pessoa está falando com a Maia. */
+const EM_LIGACAO_MS = 60_000;
 
 /**
  * Convida até três pessoas para entrevistas sobre um processo: uma entrevista por pessoa, com o tema e o
@@ -256,8 +258,18 @@ export async function obter(id: string) {
   };
 }
 
-export async function excluir(id: string) {
-  await carregar(id);
+/**
+ * Exclui a entrevista inteira (a conversa, o áudio e o resultado). Convite pendente: gestores e administradores
+ * cancelam. Entrevista que já começou: só administradores (decisão 54), em qualquer situação, menos enquanto a
+ * pessoa está na ligação ou o resultado está sendo gerado. Ninguém edita o que veio da conversa: ou fica como
+ * está, ou sai inteira.
+ */
+export async function excluir(id: string, quem?: Pessoa | null) {
+  const linha = await carregar(id);
+  if (linha.status !== 'convidada' && quem && quem.nivel !== 'admin') throw new ErroApi(403, 'Só administradores excluem entrevistas que já começaram. Gestores cancelam convites pendentes.');
+  const desde = Date.now() - new Date(linha.atualizado_em).getTime();
+  if (linha.status === 'em_andamento' && desde < EM_LIGACAO_MS) throw new ErroApi(409, 'A pessoa está conversando com a Maia agora. Tente de novo em alguns minutos.', 'em_ligacao');
+  if (linha.status === 'processando' && desde < 3 * 60_000) throw new ErroApi(409, 'O resultado desta entrevista está sendo gerado. Tente de novo em alguns minutos.', 'processando');
   const arquivos = await gravacoes(id);
   if (arquivos.length) await supabase().storage.from(BUCKET).remove(arquivos);
   const { error } = await supabase().from('entrevistas').delete().eq('tenant_id', TENANT_PADRAO).eq('id', id);
@@ -536,7 +548,13 @@ export function limparHtml(html: string) {
 export async function encerrar(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status === 'convidada') throw new ErroApi(409, 'A entrevista ainda não começou.');
-  if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa); // a pessoa encerra a sua; gestores podem gerar o resultado de novo
+  // A pessoa encerra a sua conversa. Gestores e administradores só geram de novo um resultado que falhou
+  // (erro ou processamento parado): não encerram a conversa de outra pessoa (decisão 54).
+  const dono = !pessoa || !linha.entrevistado_id || linha.entrevistado_id === pessoa.id;
+  if (!dono) {
+    if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
+    if (linha.status === 'em_andamento') throw new ErroApi(403, 'Só a pessoa entrevistada encerra a conversa.', 'outra_pessoa');
+  }
   if (linha.status === 'concluida') return { status: 'concluida' as const };
   if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) return { status: 'processando' as const };
   const encerrado_em = linha.encerrado_em ?? agora();
