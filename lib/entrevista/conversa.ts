@@ -5,6 +5,7 @@
 // (ou numa pausa curta de uma fala dela que não era pergunta) fica marcada como sobreposta. Os "aham",
 // "sei" e "uhum" da IA são falas de apoio (decisão 42): não cortam a fala da pessoa nem contam como resposta.
 // Daqui saem também as métricas de reação e de sobreposição.
+import { limparMarcasDeSom } from './topicos';
 import type { Metricas, Turno } from './topicos';
 
 export type Pedaco = { quem: 'ia' | 'pessoa'; texto: string; inicio_ms: number; fim_ms: number };
@@ -20,7 +21,7 @@ const VEZ_MS = 600; // silêncio do outro lado a partir do qual a fala dele cont
 const REACAO_EMENDOU_MS = 1000;
 
 /** Marcas da transcrição ("[laugh]") em texto; um "]" solto no começo (resto de uma marca cortada) sai. */
-const limparTexto = (s: string) => s.replace(/\s*\[\s*(laugh|laughs|laughter|risos?|risada)\s*\]?/gi, ' (risos)').replace(/^\s*\]\s*/, '').replace(/\s+/g, ' ').trim();
+const limparTexto = limparMarcasDeSom; // marcas de som e espaços (decisão 57)
 
 const palavras = (s: string) => (s.match(/[\p{L}\p{N}]+/gu) ?? []).length;
 const terminaEmPergunta = (s: string) => /\?\s*$/.test(s.trim());

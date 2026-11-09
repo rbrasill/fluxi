@@ -433,6 +433,11 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **A Maia na volta:** recebe o histórico e a lista; abre com "Oi de novo, Matheus! Que bom que você voltou", diz que vão fechar os pontos e faz a primeira pergunta da lista; percorre só esses pontos, não refaz a entrevista nem a lista de conferência; despede-se com a frase final. Ao encerrar, o **resultado é refeito com a conversa inteira** (a análise integra as respostas e retira das pendências o que foi respondido); a transcrição marca onde a continuação começou.
 - **Regras:** só entrevista concluída com resultado pode ser completada; só a pessoa entrevistada liga (como sempre); a situação aparece como "Completar: N pontos" nas listas, e o Início avisa "A Maia está esperando você para fechar N pontos…". Custa só a ligação do complemento e uma análise nova.
 
+## 57. Custo de todas as análises e texto sem marcas de som (09/11/2026)
+
+- **Custo:** completar a entrevista refaz o resultado, e cada análise é cobrada. Antes, a análise nova substituía o custo da anterior (o Painel da Maia mostrava só a última; no Matheus, US$ 0,04 em vez de cerca de US$ 0,17). Agora tokens e custo **somam** todas as análises, e o painel mostra quantas foram ("5 análises"). As análises antigas que já tinham sido substituídas não dão para recuperar; a soma vale dali em diante.
+- **Marcas de som:** o reconhecimento de voz às vezes escreve "[sigh]", "(sigh)", "[cough]" e parecidos. Saem do texto ao montar a conversa nova, ao mostrar a conversa e no que a análise e a Maia leem; a risada continua como "(risos)". O que já está gravado não é alterado (decisão 54): a limpeza é feita na hora de mostrar e de ler.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

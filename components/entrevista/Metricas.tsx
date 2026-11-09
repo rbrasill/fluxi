@@ -20,7 +20,7 @@ export function PainelMetricas({ metricas }: { metricas: Metricas }) {
       <div><dt>Sinais de escuta</dt><dd title='"aham", "sei", "uhum" da Maia enquanto a pessoa explicava'>{r.apoios}<small>maior silêncio {seg(r.silencio_max_ms)}</small></dd></div>
       <div><dt>Consultas da Maia</dt><dd title='Vezes em que a Maia foi verificar algo ("deixa eu ver aqui"): quanto a pessoa esperou pela resposta (mediana) e o custo'>{r.consultas}{r.consultas > 0 && <small>{seg(r.consulta_mediana_ms)} · {usd(r.custo_consultas_usd)}</small>}</dd></div>
       <div><dt>Custo da voz</dt><dd title="GPT-Live: US$ 0,05 por minuto de sessão, cobrado por segundo">{usd(r.custo_voz_usd)}<small>{mmss(metricas.duracao_s ?? 0)} · {metricas.sessoes ?? 1} {(metricas.sessoes ?? 1) === 1 ? 'sessão' : 'sessões'}</small></dd></div>
-      <div><dt>Custo da análise</dt><dd title="Claude, no fim: a descrição, a ficha e as pendências">{metricas.analise ? usd(r.custo_analise_usd) : '—'}{metricas.analise && <small>{(metricas.analise.entrada_tokens / 1000).toFixed(1).replace('.', ',')}k + {(metricas.analise.saida_tokens / 1000).toFixed(1).replace('.', ',')}k tokens</small>}</dd></div>
+      <div><dt>Custo da análise</dt><dd title="Claude, no fim: a descrição, a ficha e as pendências">{metricas.analise ? usd(r.custo_analise_usd) : '—'}{metricas.analise && <small>{(metricas.analise.vezes ?? 1) > 1 ? `${metricas.analise.vezes} análises · ` : ''}{(metricas.analise.entrada_tokens / 1000).toFixed(1).replace('.', ',')}k + {(metricas.analise.saida_tokens / 1000).toFixed(1).replace('.', ',')}k tokens</small>}</dd></div>
       <div><dt>Custo total</dt><dd title="Voz + consultas + análise">{usd(r.custo_total_usd)}</dd></div>
     </dl>
   );
@@ -35,7 +35,7 @@ export function DetalhesMetricas({ m }: { m: Metricas }) {
   const fechadas = m.eventos?.['session.closed'];
   return (
     <p className="notice">
-      {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
+      {a ? `Análise com ${a.modelo}: ${a.entrada_tokens.toLocaleString('pt-BR')} tokens de entrada, ${a.saida_tokens.toLocaleString('pt-BR')} de saída${(a.vezes ?? 1) > 1 ? `, somando ${a.vezes} análises (o resultado foi refeito ao completar a entrevista; a última levou ${Math.round((a.demora_ms ?? 0) / 1000)} s)` : a.demora_ms ? `, em ${Math.round(a.demora_ms / 1000)} s` : ''}. ` : ''}
       {sessoes > 1 ? `A conversa teve ${sessoes} sessões de voz${m.pausas ? ` (${m.pausas} ${m.pausas === 1 ? 'pausa' : 'pausas'})` : ''}. ` : ''}
       {fechadas !== undefined ? `Sessões desligadas com confirmação da OpenAI: ${fechadas} de ${sessoes}. ` : ''}
       {m.conexao_ms !== undefined ? `Abertura${sessoes > 1 ? ' (última sessão)' : ''}: a voz conectou ${seg(m.conexao_ms)} depois do clique${c ? ` (microfone ${seg(c.microfone_ms)}, conexão ${seg(c.oferta_ms)}, servidor ${seg(c.servidor_ms)}${c.openai_ms !== undefined ? `, dos quais OpenAI ${seg(c.openai_ms)}` : ''}, início da sessão ${seg(c.inicio_ms)})` : ''}${m.abertura_ms !== undefined ? ` e a Maia começou a falar ${seg(m.abertura_ms)} depois` : ''}. ` : ''}

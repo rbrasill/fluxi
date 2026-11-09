@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, limparMarcasDeSom, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
@@ -375,7 +375,7 @@ export function historicoParaSessao(turnos: Turno[]) {
   let chars = 0;
   for (const t of [...turnos].reverse()) {
     if (t.apoio) continue; // os "aham" não ajudam a retomar e gastam o limite do histórico
-    const texto = comoSeFala(t.texto.slice(0, 2000));
+    const texto = comoSeFala(limparMarcasDeSom(t.texto).slice(0, 2000));
     if (msgs.length >= 120 || chars + texto.length > 24_000) break;
     chars += texto.length;
     msgs.unshift(t.quem === 'ia' ? { role: 'assistant', content: [{ type: 'output_text', text: texto }] } : { role: 'user', content: [{ type: 'input_text', text: texto }] });
@@ -616,7 +616,16 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
     const resultado: ResultadoEntrevista = { descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias };
     // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
     const metricas = (await carregar(id)).metricas ?? {};
-    if (uso) metricas.analise = { modelo: uso.modelo, entrada_tokens: uso.entrada, saida_tokens: uso.saida, cache_tokens: uso.cache_leitura, custo_usd: custoAnalise(uso), demora_ms: Date.now() - inicio };
+    // Soma às análises anteriores (completar a entrevista refaz o resultado; cada vez é cobrada; decisão 57).
+    if (uso) {
+      const ant = metricas.analise;
+      metricas.analise = {
+        modelo: uso.modelo, demora_ms: Date.now() - inicio,
+        entrada_tokens: (ant?.entrada_tokens ?? 0) + uso.entrada, saida_tokens: (ant?.saida_tokens ?? 0) + uso.saida,
+        cache_tokens: (ant?.cache_tokens ?? 0) + uso.cache_leitura, custo_usd: (ant?.custo_usd ?? 0) + custoAnalise(uso),
+        vezes: (ant ? ant.vezes ?? 1 : 0) + 1,
+      };
+    }
     const c = complementoAberto(linha);
     await salvar(id, { status: 'concluida', resultado, metricas, ...(c ? { complemento: { ...c, concluido_em: agora() } } : {}) });
     return { status: 'concluida' as const };

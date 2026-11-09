@@ -42,7 +42,9 @@ export type Metricas = {
   conexao_etapas?: { microfone_ms?: number; oferta_ms?: number; servidor_ms?: number; openai_ms?: number; inicio_ms?: number };
   apoios_por_sinal?: Record<string, number>; // quantas vezes cada sinal de escuta ("aham", "sei"...), para ver se virou vício
   pausas?: number; // vezes em que a entrevista foi pausada para continuar depois
-  analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number }; // a análise no fim (Claude)
+  // A análise no fim (Claude). Tokens e custo somam todas as vezes em que o resultado foi gerado (completar a
+  // entrevista refaz o resultado; decisão 57); `vezes` conta quantas foram; modelo e demora são os da última.
+  analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number; vezes?: number };
   consultas?: Consulta[]; // o que a IA foi verificar durante a conversa (Claude), com demora e custo
   sessoes?: number;
   eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
@@ -76,11 +78,20 @@ export type ResultadoEntrevista = {
 const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
 
 /** A conversa em texto (para a análise e para a leitura), com o tempo e a marca de fala sobreposta; sem os apoios da IA. */
+// Marcas de som que o reconhecimento de voz às vezes escreve ("[sigh]", "(cough)"): saem do texto. Risada vira "(risos)".
+const MARCAS_DE_SOM = 'sighs?|sighing|suspiros?|coughs?|coughing|tosse|breath(?:es|ing)?|inhales?|exhales?|clears? throat|throat clearing|sniff(?:s|les)?|gasps?|yawns?|bocejo|pause|pausa|silence|silêncio|noise|background noise|ruído|music|música|crosstalk|inaudible|inaudível';
+const RE_RISOS = /\s*[[(]\s*(?:laughter|laughing|laughs|laugh|chuckles?|risada|risos?)\b\s*[\])]?/gi;
+const RE_MARCAS = new RegExp(`\\s*[[(]\\s*(?:${MARCAS_DE_SOM})\\b\\s*[\\])]`, 'giu');
+/** O texto falado sem as marcas de som do reconhecimento de voz (decisão 57). */
+export const limparMarcasDeSom = (s: string) =>
+  s.replace(RE_RISOS, ' (risos)').replace(RE_MARCAS, ' ').replace(/^\s*\]\s*/, '').replace(/\s+/g, ' ').trim();
+
 export const transcricaoDaConversa = (turnos: Turno[]) =>
   turnos.filter((t) => !t.apoio).map((t) => {
     const tempo = t.inicio_ms !== undefined ? `[${mmss(t.inicio_ms)}] ` : '';
-    if (t.quem === 'ia') return `${tempo}Entrevistador: ${t.texto}`;
-    return `${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${t.texto}`;
+    const texto = limparMarcasDeSom(t.texto);
+    if (t.quem === 'ia') return `${tempo}Entrevistador: ${texto}`;
+    return `${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${texto}`;
   }).join('\n');
 
 const mediana = (xs: number[]) => {

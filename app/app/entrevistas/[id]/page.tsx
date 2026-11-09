@@ -7,7 +7,7 @@ import { confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { ROTULO_STATUS, type Etapa } from '@/lib/entrevista/topicos';
+import { ROTULO_STATUS, limparMarcasDeSom, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { aquecerSessaoDeVoz, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
 
@@ -383,7 +383,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
                 )}
                 <p className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
                   {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
-                  <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {t.texto}
+                  <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {limparMarcasDeSom(t.texto)}
                 </p>
               </Fragment>
             ))}
