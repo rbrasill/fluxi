@@ -50,6 +50,9 @@ export type Metricas = {
   erros?: string[];
 };
 
+/** Voltar para fechar pontos em aberto (decisão 56): os escolhidos, quem escolheu, a partir de que fala a conversa continuou e quando fechou. */
+export type Complemento = { pendencias: string[]; escolhidas_em: string; escolhidas_por: string | null; a_partir_do_turno: number; concluido_em?: string | null };
+
 /** Uma consulta da IA durante a conversa ("deixa eu ver aqui"): o Claude responde e ela fala a resposta. */
 export type Consulta = { pergunta: string; resposta: string; demora_ms: number; custo_usd: number; falhou?: boolean };
 

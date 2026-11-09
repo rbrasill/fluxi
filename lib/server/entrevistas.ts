@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
@@ -38,9 +38,12 @@ export type Linha = {
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
   entrevistado_id: string | null; // a pessoa convidada (sem convite, em desenvolvimento: quem abriu a primeira sessão)
   convidado_por: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
+  complemento: Complemento | null; // voltar para fechar pontos em aberto (decisão 56)
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em, atualizado_em';
+/** O complemento ainda por fazer (escolhido e não concluído). */
+const complementoAberto = (l: Pick<Linha, 'complemento'>) => (l.complemento && !l.complemento.concluido_em ? l.complemento : null);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const agora = () => new Date().toISOString();
 
@@ -165,6 +168,38 @@ export function exigirEntrevistado(linha: Pick<Linha, 'entrevistado_id'>, pessoa
   if (linha.entrevistado_id && linha.entrevistado_id !== pessoa.id) throw new ErroApi(403, 'Esta entrevista é de outra pessoa: só quem foi convidado conversa com a Maia.', 'outra_pessoa');
 }
 
+// --- Voltar para fechar pontos em aberto (decisão 56) ---
+
+export const RetomarSchema = z.object({ pendencias: z.array(z.string().trim().min(1).max(500)).min(1, 'Escolha ao menos um ponto.').max(20) });
+
+/**
+ * A entrevista concluída volta a "em andamento" para a pessoa responder os pontos escolhidos entre as pendências do
+ * resultado. A pessoa entrevistada escolhe; gestores e administradores podem marcar para ela. Ao encerrar de novo,
+ * o resultado é refeito com a conversa inteira.
+ */
+export async function retomar(id: string, d: z.infer<typeof RetomarSchema>, pessoa?: Pessoa | null) {
+  const linha = await carregar(id);
+  if (linha.status !== 'concluida' || !linha.resultado) throw new ErroApi(409, 'Só uma entrevista concluída, com resultado, pode ser completada.');
+  if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
+  const abertas = new Set(linha.resultado.pendencias);
+  const escolhidas = [...new Set(d.pendencias)].filter((p) => abertas.has(p));
+  if (!escolhidas.length) throw new ErroApi(400, 'Escolha ao menos um ponto que ficou em aberto nesta entrevista.');
+  const complemento: Complemento = { pendencias: escolhidas, escolhidas_em: agora(), escolhidas_por: pessoa?.id ?? null, a_partir_do_turno: linha.turnos.length };
+  await salvar(id, { status: 'em_andamento', complemento });
+  return { ok: true as const, pendencias: escolhidas.length };
+}
+
+/** Desiste do complemento antes de a conversa continuar: volta a concluída, com o resultado que já tinha. */
+export async function desistirComplemento(id: string, pessoa?: Pessoa | null) {
+  const linha = await carregar(id);
+  const c = complementoAberto(linha);
+  if (linha.status !== 'em_andamento' || !c) throw new ErroApi(409, 'Esta entrevista não está esperando um complemento.');
+  if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
+  if (linha.turnos.length > c.a_partir_do_turno) throw new ErroApi(409, 'A conversa já continuou: encerre a entrevista para gerar o resultado novo.');
+  await salvar(id, { status: 'concluida', complemento: null });
+  return { ok: true as const };
+}
+
 // --- Listas ---
 
 /** Os nomes das pessoas entrevistadas, por id. */
@@ -180,17 +215,18 @@ type ProcessoEmbutido = { id: string; nome: string } | null;
 
 /** Todas as entrevistas, da mais recente para a mais antiga, com o processo e a pessoa de cada uma. */
 export async function listar() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_em, convite_enviado_em, criado_em, encerrado_em, processo:processos(id, nome)')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_em, convite_enviado_em, complemento, criado_em, encerrado_em, processo:processos(id, nome)')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
   const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
-  return linhas.map(({ turnos, metricas, entrevistado_id, processo, ...e }) => {
+  return linhas.map(({ turnos, metricas, entrevistado_id, processo, complemento, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
       ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
       processo: (processo as unknown as ProcessoEmbutido) ?? null,
+      complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
     };
   });
@@ -199,15 +235,16 @@ export async function listar() {
 /** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
 export async function listarDoProcesso(processoId: string) {
   if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');
-  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em')
     .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
   const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
-  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, ...e }) => {
+  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, complemento, ...e }) => {
     const r = (resultado as ResultadoEntrevista | null) ?? null;
     return {
       ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
+      complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
       tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
     };
@@ -281,8 +318,12 @@ export async function excluir(id: string, quem?: Pessoa | null) {
 const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
 
 /** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
-export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null) {
+export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null) {
   const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
+  // Voltou para fechar pontos em aberto (decisão 56): cumprimenta de volta e vai direto aos pontos escolhidos.
+  const retomada = complemento
+    ? `A pessoa voltou para completar a entrevista (o histórico está acima). Ela escolheu responder a estes pontos que ficaram em aberto:\n${complemento.pendencias.map((p, i) => `${i + 1}. ${comoSeFala(p)}`).join('\n')}\nAo abrir, cumprimente de volta em uma frase ("Oi de novo${primeiro ? `, ${primeiro}` : ''}! Que bom que você voltou."), diga que vocês vão fechar os pontos que ficaram em aberto e já faça a primeira pergunta da lista. Percorra só esses pontos, um por vez, aprofundando quando a resposta for vaga; não refaça a entrevista, não repita o resumo anterior nem a lista de conferência do fim. Ao terminar a lista, resuma em uma frase o que foi acrescentado e despeça-se com "${FRASE_FINAL.toLowerCase()}". Não repita a apresentação nem o aviso da gravação.`
+    : 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.';
   // Segue o esqueleto do guia de prompt do GPT-Live: papel, jeito de falar e as três políticas com os
   // rótulos originais (Backchannel policy, Interruption policy, Delegation policy), que o modelo reconhece.
   return `# Papel
@@ -309,7 +350,7 @@ Entender o processo de ponta a ponta para, depois da conversa, escrever a descri
 ${TOPICOS_TEXTO}
 
 # Como conduzir
-- ${continuando ? 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.' : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
+- ${continuando ? retomada : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
 - Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
@@ -352,9 +393,10 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | nul
   const continuando = linha.turnos.length > 0;
   // O nome que a Maia usa: a pessoa logada ou, sem login (desenvolvimento), a pessoa convidada.
   const nome = pessoa?.nome ?? (linha.entrevistado_id ? (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id) ?? null : null);
+  const complemento = complementoAberto(linha);
   const session = {
     model: MODELO_VOZ,
-    instructions: instrucoesDaSessao(linha, continuando, nome),
+    instructions: instrucoesDaSessao(linha, continuando, nome, complemento),
     audio: { output: { voice: VOZ } },
     delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
@@ -386,7 +428,7 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | nul
     ...(linha.status === 'convidada' ? { status: 'em_andamento' as const } : {}),
     iniciada_em: linha.iniciada_em ?? agora(),
   });
-  return { sdp: j.transport.sdp, continuando, openai_ms };
+  return { sdp: j.transport.sdp, continuando, openai_ms, complemento: !!complemento };
 }
 
 // --- Consulta durante a conversa: a IA pede ("deixa eu ver aqui"), o Claude responde, ela fala (decisão 44) ---
@@ -523,6 +565,7 @@ Produza, em português do Brasil:
 2. "ficha": a estrutura do processo: objetivo, gatilho, resultado e as etapas na ordem em que acontecem, cada uma com responsável (cargo ou área), descrição curta, ferramentas, entradas, saídas, regras e exceções citadas (listas vazias quando nada foi dito); e as dificuldades relatadas.
 3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório, escrito como perguntas para uma próxima conversa (vazio se nada).
 4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia e a pergunta ("o que costuma dar problema?") vai para as pendências. "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e o pedido de quem convidou) serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
+A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais e retire das pendências o que foi respondido.
 Ignore saudações, desvios de assunto e o que não descreve o processo. O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala): escreva sempre INC. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
 
 export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
@@ -574,7 +617,8 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
     // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
     const metricas = (await carregar(id)).metricas ?? {};
     if (uso) metricas.analise = { modelo: uso.modelo, entrada_tokens: uso.entrada, saida_tokens: uso.saida, cache_tokens: uso.cache_leitura, custo_usd: custoAnalise(uso), demora_ms: Date.now() - inicio };
-    await salvar(id, { status: 'concluida', resultado, metricas });
+    const c = complementoAberto(linha);
+    await salvar(id, { status: 'concluida', resultado, metricas, ...(c ? { complemento: { ...c, concluido_em: agora() } } : {}) });
     return { status: 'concluida' as const };
   } catch (e) {
     await salvar(id, { status: 'erro', erro: e instanceof Error ? e.message : 'erro inesperado' });

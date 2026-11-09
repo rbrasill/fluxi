@@ -426,6 +426,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
   - **Análise fiel:** "dificuldades" só com o que a pessoa relatou como problema (vazio e pendência quando não relatou); responsável só com o que ela disse; o contexto do processo serve para entender, não vira fato.
   - **Microfone antes de ligar:** a tela pede a permissão quando a pessoa marca "Estou ciente" ("Microfone pronto"); o motor recebe o microfone já liberado e a ligação não espera a permissão.
 
+## 56. Voltar à ligação para fechar os pontos em aberto (09/11/2026)
+
+- **Ideia do Rafael:** lacunas acontecem naturalmente. Em vez de uma nova entrevista, a pessoa volta na entrevista concluída, marca as pendências que quer responder e volta à ligação; a Maia já sabe o que vai acontecer, cumprimenta de volta e vai direto aos pontos.
+- **Como ficou:** no resultado, a seção "Ficou em aberto" ganhou caixas de marcar e o botão **"Voltar à ligação para responder"** (para a própria pessoa) ou **"Pedir para Fulano responder"** (gestores e administradores marcam para ela). A entrevista volta a "em andamento" com o **complemento** registrado (migração 0020: `complemento` jsonb com os pontos, quem escolheu, quando e a partir de que fala a conversa continuou). A tela de ligar vira "Completar a entrevista", com a lista dos pontos e o botão "Voltar à ligação"; "Deixar como está" desfaz enquanto a conversa não continuou.
+- **A Maia na volta:** recebe o histórico e a lista; abre com "Oi de novo, Matheus! Que bom que você voltou", diz que vão fechar os pontos e faz a primeira pergunta da lista; percorre só esses pontos, não refaz a entrevista nem a lista de conferência; despede-se com a frase final. Ao encerrar, o **resultado é refeito com a conversa inteira** (a análise integra as respostas e retira das pendências o que foi respondido); a transcrição marca onde a continuação começou.
+- **Regras:** só entrevista concluída com resultado pode ser completada; só a pessoa entrevistada liga (como sempre); a situação aparece como "Completar: N pontos" nas listas, e o Início avisa "A Maia está esperando você para fechar N pontos…". Custa só a ligação do complemento e uma análise nova.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

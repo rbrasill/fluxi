@@ -1,5 +1,5 @@
 // Cliente da API da entrevista por voz com a Maia (decisões 39, 41 e 53).
-import type { Metricas, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
+import type { Complemento, Metricas, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
 import { ErroCliente } from './fluxogramas';
 
 export type Entrevista = {
@@ -8,18 +8,21 @@ export type Entrevista = {
   resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string; frase_pausa: string;
   entrevistado_id: string | null; entrevistado: string | null;
   convidador: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
+  complemento: Complemento | null;
   processo: { id: string; nome: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
 export type EntrevistaResumo = {
   id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; processo: { id: string; nome: string } | null;
   convidado_em: string | null; convite_enviado_em: string | null; criado_em: string; encerrado_em: string | null;
+  complemento_pendencias: number | null;
   falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number;
 };
 /** Uma entrevista na página do processo. */
 export type EntrevistaDoProcesso = {
   id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; convidado_por: string | null;
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
+  complemento_pendencias: number | null;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
 };
 export type ResultadoConvite = { criadas: { id: string; pessoa: string; email_enviado: boolean }[]; repetidas: string[]; carteiro_configurado: boolean };
@@ -44,13 +47,17 @@ export const reenviarConvite = (id: string) => api<{ ok: true }>(`/api/entrevist
 /** Aquece no servidor a rota que abre a sessão (sem custo: não chama a OpenAI). */
 export const aquecerSessaoDeVoz = (id: string) => { void fetch(`/api/entrevistas/${id}/sessao`).catch(() => {}); };
 /** Abre a sessão de voz no GPT-Live: manda a oferta WebRTC e recebe a resposta. */
-export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean; openai_ms?: number }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
+export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean; openai_ms?: number; complemento?: boolean }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */
 export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas }) =>
   api<{ ok: true }>(`/api/entrevistas/${id}/conversa`, { method: 'PUT', body: JSON.stringify(dados), keepalive: JSON.stringify(dados).length < 60_000 });
 /** Uma consulta da Maia no meio da conversa: manda o fim da conversa, recebe o que ela foi verificar e a resposta. */
 export const consultarDuranteEntrevista = (id: string, turnos: Turno[]) =>
   api<{ pergunta: string; resposta: string; modelo: string; demora_ms: number; custo_usd: number }>(`/api/entrevistas/${id}/consulta`, { method: 'POST', body: JSON.stringify({ turnos }), signal: AbortSignal.timeout(15_000) });
+/** Volta à ligação para responder pontos em aberto (decisão 56): a pessoa entrevistada escolhe; gestores marcam para ela. */
+export const retomarEntrevista = (id: string, pendencias: string[]) => api<{ ok: true; pendencias: number }>(`/api/entrevistas/${id}/retomar`, { method: 'POST', body: JSON.stringify({ pendencias }) });
+/** Desiste do complemento antes de a conversa continuar. */
+export const desistirComplemento = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/retomar`, { method: 'DELETE' });
 /** Encerra e gera o resultado (demora: a conversa inteira é analisada). */
 export const encerrarEntrevista = (id: string) => api<{ status: StatusEntrevista }>(`/api/entrevistas/${id}/encerrar`, { method: 'POST' });
 
@@ -75,8 +82,9 @@ export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: numb
 }
 
 /** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */
-export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; convite_enviado_em?: string | null }) {
+export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
   if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';
+  if (e.status === 'em_andamento' && e.complemento_pendencias) return `Completar: ${e.complemento_pendencias} ${e.complemento_pendencias === 1 ? 'ponto' : 'pontos'}`;
   if (e.status === 'em_andamento') return e.falas > 0 ? 'Pausada' : 'Em andamento';
   if (e.status === 'processando') return 'Gerando o resultado';
   if (e.status === 'concluida') return 'Concluída';

@@ -1,15 +1,15 @@
 'use client';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
-import { ehAdmin, souEu, useEu } from '@/lib/auth/eu';
+import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
-import { aquecerSessaoDeVoz, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
+import { aquecerSessaoDeVoz, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
 // é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera reagindo
@@ -145,6 +145,20 @@ function EntrevistaPage() {
     setTela('inicio');
   }
 
+  /** Voltar para fechar pontos em aberto (decisão 56): marca os pontos; a própria pessoa vai para a tela de ligar. */
+  async function retomar(pendencias: string[]) {
+    setErro(null);
+    const { pendencias: n } = await retomarEntrevista(id, pendencias);
+    const d = await carregar();
+    if (d && souEu(eu, d.entrevistado_id)) { setAviso(''); setTela('inicio'); }
+    else setAviso(`Marcado: quando ${d?.entrevistado ?? 'a pessoa'} abrir a entrevista, a Maia pergunta ${n === 1 ? 'esse ponto' : `esses ${n} pontos`}.`);
+  }
+
+  async function desistir() {
+    setErro(null);
+    try { await desistirComplemento(id); await carregar(); setAviso(''); setTela('resultado'); } catch (err) { setErro({ texto: msg(err) }); }
+  }
+
   async function reprocessar() {
     setErro(null);
     setE((x) => x && { ...x, status: 'processando' });
@@ -173,15 +187,19 @@ function EntrevistaPage() {
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
     const minha = souEu(eu, e.entrevistado_id); // só a pessoa convidada liga para a Maia (decisão 49)
+    const complemento = e.complemento && !e.complemento.concluido_em ? e.complemento : null; // voltou para fechar pontos em aberto (decisão 56)
     if (eu !== null && !minha) {
       return (
         <div className="page page-estreita">
           {cabecalho}
           <div className="cartao">
             <h3 className="sem-margem">Entrevista de {e.entrevistado ?? 'outra pessoa'}</h3>
-            <p className="notice">Só quem foi convidado conversa com a Maia nesta entrevista. {retomando ? `A conversa está pausada, com ${e.turnos.length} falas; quando ${e.entrevistado ?? 'a pessoa'} terminar, o resultado aparece aqui e no processo.` : 'Quando a pessoa fizer a entrevista, o resultado aparece aqui e no processo.'}</p>
+            <p className="notice">Só quem foi convidado conversa com a Maia nesta entrevista. {complemento ? `Está marcado para ${e.entrevistado ?? 'a pessoa'} responder ${complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto; quando voltar, a Maia pergunta só isso e o resultado é refeito.` : retomando ? `A conversa está pausada, com ${e.turnos.length} falas; quando ${e.entrevistado ?? 'a pessoa'} terminar, o resultado aparece aqui e no processo.` : 'Quando a pessoa fizer a entrevista, o resultado aparece aqui e no processo.'}</p>
+            {complemento && <ul className="ficha-lista">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+            {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
             <div className="fluxo-acoes">
               <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
+              {complemento && ehGestor(eu) && e.turnos.length === complemento.a_partir_do_turno && <button className="btn btn-ghost" onClick={() => void desistir()}>Deixar como está</button>}
             </div>
           </div>
         </div>
@@ -191,8 +209,14 @@ function EntrevistaPage() {
       <div className="page page-estreita">
         {cabecalho}
         <div className="cartao">
-          <h3 className="sem-margem">{retomando ? 'Continuar a entrevista' : 'Como funciona'}</h3>
-          <ul className="dicas">
+          <h3 className="sem-margem">{complemento ? 'Completar a entrevista' : retomando ? 'Continuar a entrevista' : 'Como funciona'}</h3>
+          {complemento && (
+            <>
+              <p className="notice">Ficaram pontos em aberto. Nesta ligação a Maia cumprimenta você e pergunta só sobre eles; no fim, o resultado é refeito com a conversa inteira.</p>
+              <ul className="ficha-lista lista-pendencias-escolhidas">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>
+            </>
+          )}
+          {!complemento && <ul className="dicas">
             <li>A Maia, a entrevistadora por voz do INCFlow, faz perguntas sobre o processo e você responde falando, como numa ligação.</li>
             <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
             <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
@@ -200,10 +224,10 @@ function EntrevistaPage() {
             <li>No fim, ela escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
             <li>Dura o necessário para cobrir o processo. A Maia se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
-          </ul>
-          {e.nota_convite && <p className="notice">Pedido de {e.convidador ?? 'quem convidou'}: “{e.nota_convite}”. A Maia já sabe disso.</p>}
+          </ul>}
+          {e.nota_convite && !complemento && <p className="notice">Pedido de {e.convidador ?? 'quem convidou'}: “{e.nota_convite}”. A Maia já sabe disso.</p>}
           {aviso && <p className="notice">{aviso}</p>}
-          {retomando && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
+          {retomando && !complemento && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
           <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => void marcarCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
           {mic === 'pedindo' && <p className="notice mic-estado">Permita o uso do microfone, para a Maia ouvir você.</p>}
           {mic === 'pronto' && <p className="notice mic-estado">Microfone pronto.</p>}
@@ -211,7 +235,8 @@ function EntrevistaPage() {
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
             <Link href="/app/entrevistas" className="btn">Voltar</Link>
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null || mic === 'pedindo'}><Icone nome="microfone" tamanho={16} />{retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
+            {complemento && e.turnos.length === complemento.a_partir_do_turno && <button className="btn btn-ghost" onClick={() => void desistir()} title="Fica com o resultado que já existe">Deixar como está</button>}
+            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null || mic === 'pedindo'}><Icone nome="microfone" tamanho={16} />{complemento ? 'Voltar à ligação' : retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
           </div>
         </div>
       </div>
@@ -250,14 +275,26 @@ function EntrevistaPage() {
     );
   }
 
-  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} admin={ehAdmin(eu)} aoReprocessar={reprocessar} />;
+  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} admin={ehAdmin(eu)} minha={souEu(eu, e.entrevistado_id)} gestor={ehGestor(eu)} aoReprocessar={reprocessar} aoRetomar={retomar} />;
 }
 
-function Resultado({ e, aviso, erro, cabecalho, admin, aoReprocessar }: {
-  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; admin: boolean; aoReprocessar: () => Promise<void>;
+function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReprocessar, aoRetomar }: {
+  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; admin: boolean; minha: boolean; gestor: boolean;
+  aoReprocessar: () => Promise<void>; aoRetomar: (pendencias: string[]) => Promise<void>;
 }) {
   const r = e.resultado;
   const parado = e.status === 'processando' && Date.now() - new Date(e.atualizado_em).getTime() > 3 * 60_000;
+  // Voltar para fechar pontos em aberto (decisão 56): a própria pessoa escolhe e liga; gestores marcam para ela.
+  const [escolhidas, setEscolhidas] = useState<string[]>([]);
+  const [marcando, setMarcando] = useState(false);
+  const [erroRetomar, setErroRetomar] = useState('');
+  const podeEscolher = e.status === 'concluida' && (minha || gestor);
+  const primeiroNome = e.entrevistado?.trim().split(/\s+/)[0] ?? 'a pessoa';
+  async function retomar() {
+    setMarcando(true);
+    setErroRetomar('');
+    try { await aoRetomar(escolhidas); } catch (err) { setErroRetomar(msg(err)); } finally { setMarcando(false); }
+  }
 
   return (
     <div className="page page-estreita">
@@ -304,10 +341,31 @@ function Resultado({ e, aviso, erro, cabecalho, admin, aoReprocessar }: {
           </div>
 
           {r.pendencias.length > 0 && (
-            <div className="cartao">
+            <div className="cartao" id="em-aberto">
               <h3 className="sem-margem">Ficou em aberto</h3>
-              <p className="notice">Perguntas para uma próxima conversa.</p>
-              <ul className="ficha-lista">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
+              {podeEscolher ? (
+                <>
+                  <p className="notice">{minha
+                    ? 'Marque o que você quer responder e volte à ligação: a Maia pergunta só esses pontos e o resultado é refeito com a conversa inteira.'
+                    : `Marque o que ${primeiroNome} deve responder: quando abrir a entrevista, a Maia pergunta só esses pontos e o resultado é refeito.`}</p>
+                  <ul className="ficha-lista lista-pendencias">
+                    {r.pendencias.map((p, i) => (
+                      <li key={i}><label className="check"><input type="checkbox" checked={escolhidas.includes(p)} onChange={() => setEscolhidas((x) => (x.includes(p) ? x.filter((y) => y !== p) : [...x, p]))} />{p}</label></li>
+                    ))}
+                  </ul>
+                  {erroRetomar && <div className="entrevista-erro" role="alert"><span>{erroRetomar}</span></div>}
+                  <div className="fluxo-acoes">
+                    <button className="btn btn-primary" disabled={!escolhidas.length || marcando} onClick={() => void retomar()}>
+                      <Icone nome="microfone" tamanho={16} />{marcando ? 'Marcando…' : minha ? 'Voltar à ligação para responder' : `Pedir para ${primeiroNome} responder`}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="notice">Perguntas para uma próxima conversa.</p>
+                  <ul className="ficha-lista">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                </>
+              )}
             </div>
           )}
         </>
@@ -319,10 +377,15 @@ function Resultado({ e, aviso, erro, cabecalho, admin, aoReprocessar }: {
           {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
           <div className="conversa-lida">
             {e.turnos.map((t, i) => (
-              <p key={i} className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
-                {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
-                <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {t.texto}
-              </p>
+              <Fragment key={i}>
+                {e.complemento && i === e.complemento.a_partir_do_turno && i > 0 && (
+                  <p className="conversa-divisor">Continuação para fechar {e.complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${e.complemento.pendencias.length} pontos que ficaram`} em aberto · {new Date(e.complemento.escolhidas_em).toLocaleDateString('pt-BR')}</p>
+                )}
+                <p className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
+                  {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
+                  <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {t.texto}
+                </p>
+              </Fragment>
             ))}
           </div>
         </details>

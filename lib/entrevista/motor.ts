@@ -144,7 +144,7 @@ export class MotorEntrevista {
       setTimeout(r, 800);
     });
     this.conexaoEtapas.oferta_ms = etapa();
-    const { sdp, openai_ms } = await abrirSessaoDeVoz(this.id, pc.localDescription!.sdp);
+    const { sdp, openai_ms, complemento } = await abrirSessaoDeVoz(this.id, pc.localDescription!.sdp);
     this.conexaoEtapas.servidor_ms = etapa();
     if (typeof openai_ms === 'number') this.conexaoEtapas.openai_ms = openai_ms;
     if (!this.ativo) return;
@@ -156,7 +156,7 @@ export class MotorEntrevista {
     this.conexaoMs = Math.round(this.inicioSessao - clique);
     // O GPT-Live não abre a conversa sozinho (nos quatro primeiros testes, só falou depois do pedido):
     // pede a abertura assim que a sessão começa, sem esperar.
-    if (!this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: this.anteriores.length ? 'A pessoa voltou para continuar a entrevista: diga que bom que ela voltou, lembre em uma frase onde vocês pararam e siga com a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
+    if (!this.iaFalou) this.enviar({ type: 'session.commentary.append', delegation_id: null, content: complemento ? 'A pessoa voltou para completar a entrevista: cumprimente de volta em uma frase, diga que vocês vão fechar os pontos que ficaram em aberto e faça a primeira pergunta da lista.' : this.anteriores.length ? 'A pessoa voltou para continuar a entrevista: diga que bom que ela voltou, lembre em uma frase onde vocês pararam e siga com a próxima pergunta.' : 'Apresente-se e faça a primeira pergunta da entrevista.' });
     this.gravar(gravacao.stream);
     await this.ctx.resume();
     window.addEventListener('beforeunload', this.aoSair);
