@@ -43,7 +43,7 @@ export function ContaMenu() {
   const admin = eu && (!eu.enabled || eu.nivel === 'admin'); // sem login (desenvolvimento), tudo aberto
   return (
     <>
-      {admin && <NavLink href="/app/pessoas" titulo="Pessoas e acessos"><Icone nome="areas" /><span className="nav-texto">Pessoas e acessos</span></NavLink>}
+      {admin && <NavLink href="/app/pessoas" titulo="Pessoas e acessos"><Icone nome="pessoas" /><span className="nav-texto">Pessoas e acessos</span></NavLink>}
       {eu?.enabled && (
         <div className="conta" title={eu.email}>
           <span className="conta-nome nav-texto">{eu.name}<small>{ROTULO_NIVEL[eu.nivel]}</small></span>

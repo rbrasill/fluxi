@@ -84,7 +84,7 @@ export default function PessoasPage() {
         <div className="lista-pops lista-pessoas">
           {lista.map((p) => (
             <article key={p.id} className="linha-pop">
-              <span className="pop-icone"><Icone nome="areas" tamanho={20} /></span>
+              <span className="pop-icone"><Icone nome="pessoas" tamanho={20} /></span>
               <div className="pop-nome"><strong>{p.nome}{p.id === eu ? ' (você)' : ''}</strong><span>{p.email}</span></div>
               <label className="pessoa-nivel">
                 <span className="sr-only">Acesso de {p.nome}</span>

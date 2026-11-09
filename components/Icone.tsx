@@ -28,6 +28,7 @@ const caminhos: Record<string, string> = {
   refazer: 'M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3',
   marcar: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
   areas: 'M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6',
+  pessoas: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   baixar: 'M12 4v12M7 11l5 5 5-5M5 20h14',
   expandir: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   ajustar: 'M4 4h6M4 4v6M20 4h-6M20 4v6M4 20h6M4 20v-6M20 20h-6M20 20v-6M9 9h6v6H9z',

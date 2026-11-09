@@ -30,7 +30,7 @@ export default function AreaPage() {
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (a === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/organizacoes" className="btn btn-primary">Voltar</Link></div></div>;
+  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/areas" className="btn btn-primary">Voltar</Link></div></div>;
 
   const ativos = a.processos.filter((p) => !p.arquivado_em);
   const arquivados = a.processos.filter((p) => p.arquivado_em);

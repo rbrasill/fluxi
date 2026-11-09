@@ -384,6 +384,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Antes de promover para produção:** criar o workflow no Pipedream, cadastrar na Vercel `INC_AUTH_SECRET`, `AUTH_MAILER_URL` e `AUTH_MAILER_SECRET`, e cadastrar o primeiro administrador. Sem isso, o app responde 503 e ninguém entra.
 - **Em produção desde 09/11/2026:** workflow do Pipedream montado (recusas e envio testados), as três variáveis na Vercel (Production e Preview), primeiro administrador cadastrado e primeiro login feito com sucesso; o código chegou em segundos.
 
+## 51. Menu: Áreas no lugar de POPs (09/11/2026)
+
+- **Menu:** Início, **Áreas**, "Estrutura" (Organizações), "Laboratório" (Entrevista com IA) e "Conta". A porta de entrada passa a ser a área (o setor), não a lista de POPs: os POPs vivem dentro do processo, e o processo dentro da área.
+- **Página `/app/areas`** (antes redirecionava para Organizações): todas as áreas, com o número de processos; com mais de uma organização, agrupadas por ela (o título do grupo leva à organização). "Nova área" cria direto na organização quando só há uma; com mais, o diálogo pede a organização. Sem organização cadastrada, a página leva a Organizações.
+- **Marcação no menu:** "Áreas" fica marcado também dentro de processo, POP, fluxograma e gravação; "Organizações", só nas telas de organização.
+- **A lista geral de POPs continua** em `/app/pops`, aberta pelos atalhos do Início (publicados, rascunhos, "Ver todos os POPs").
+- "Pessoas e acessos" ganhou ícone próprio (antes usava o mesmo das áreas).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
