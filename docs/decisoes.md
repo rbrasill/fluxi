@@ -365,8 +365,19 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Conexão (teste de 08/11, com as funções em São Paulo):** 5,9 s do clique até a sessão começar (eram 7,5 e 15,2 s) e mais 0,4 s até ela falar. Por etapa: microfone 3,2 s, preparação da conexão 0,2 s, servidor 1,5 s (OpenAI 1,0 s) e início da sessão 1,0 s. O microfone virou a maior parte: pode ser a permissão do navegador ou um fone Bluetooth trocando de modo; abrir a sessão enquanto o microfone liga (adiado na decisão 47) tiraria até 1,5 s dessa espera.
 - **Motor:** a entrevista usa o GPT-Live (`gpt-live-1`, `POST /v1/live/sessions`), o modelo full duplex da OpenAI, e não a Realtime API (`/v1/realtime`), que funciona por turnos (decisão 41).
 
+## 49. Entrevista só por convite, com login (09/11/2026; decidido, a implementar)
+- **Decisão do Rafael:** as entrevistas só acontecem por convite. Um administrador cria a entrevista (o processo a mapear e o contexto) e convida a pessoa que vai ser entrevistada; ela recebe um e-mail com o convite, entra na plataforma com login e inicia a entrevista. Se ela não fizer, a entrevista fica **pendente**.
+- **Por quê:** controle de custo (só quem foi convidado abre sessão de voz, que é cobrada por minuto) e saber exatamente quem foi entrevistado.
+- **Consequências:**
+  - Só a pessoa convidada, logada, pode abrir a sessão de voz da sua entrevista (o servidor confere antes de chamar a OpenAI). Fecha o risco de hoje, em que qualquer um com o endereço pode abrir entrevistas.
+  - A Maia passa a chamar a pessoa pelo nome ("Oi, Fulano! Eu sou a Maia…"), com o nome (e, se houver, cargo e área) vindo do convite.
+  - O resultado e a lista mostram quem foi entrevistado; a lista do administrador mostra os status: pendente (convite enviado, não iniciada), em andamento, pausada, concluída.
+  - Faltam definir com o login: o envio do e-mail (serviço e modelo da mensagem), a validade do convite, lembretes para convites pendentes e se o convidado vê o resultado.
+- **Depende do login**, que é o próximo passo (a decisão 17 recomenda Supabase Auth). O Rafael vai mandar como o login é feito em outro projeto, para seguir o mesmo modelo.
+
 ## Em aberto
-- Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
+- Login (próximo passo) e entrevistas por convite (decisão 49)
+- Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
 - Autenticação: implementar o login (decisão 17 recomenda Supabase Auth), com a regra "consultar: toda a organização; editar: só a área dona" (decisão 31)
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion

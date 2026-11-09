@@ -81,9 +81,20 @@ Na tela e no resultado: reação da IA (mediana e máxima), falas por cima da IA
 
 Depois da sessão começar, ela fala em 0,4 a 0,8 s. O servidor ficou em cerca de 1 s; **o microfone é a maior espera (2 a 6 s)**, provavelmente o navegador pedindo permissão ou um fone Bluetooth trocando de modo.
 
+## Próxima fase: entrevistas por convite, com login (decisão 49)
+
+Decidido em 09/11, a implementar depois do login:
+- A entrevista só acontece por **convite**: o administrador cria a entrevista (processo e contexto) e convida a pessoa; ela recebe um **e-mail** com o convite, entra na plataforma com **login** e inicia. Se não fizer, a entrevista fica **pendente**.
+- Motivos: **custo** (só o convidado abre sessão de voz) e **saber exatamente quem** foi entrevistado.
+- Só o convidado, logado, abre a sessão da sua entrevista; o servidor confere antes de chamar a OpenAI.
+- A Maia **chama a pessoa pelo nome** (e pode usar cargo e área, se vierem no convite).
+- O administrador acompanha os status: pendente, em andamento, pausada, concluída; o resultado mostra quem foi entrevistado.
+- A definir junto com o login: serviço e texto do e-mail, validade do convite, lembretes e se o convidado vê o resultado.
+- **Próximo passo: o login**, seguindo o modelo de outro projeto que o Rafael vai mandar.
+
 ## Pontos em aberto e próximos ajustes sugeridos
 
-1. **Acesso aberto (risco de custo):** o app ainda não tem login (decisão 17, em aberto) e as rotas da entrevista respondem a qualquer um com o endereço. Antes de divulgar o link fora do time, vale pôr pelo menos um código de acesso ou um teto de uso por dia.
+1. **Acesso aberto (risco de custo):** o app ainda não tem login (decisão 17, em aberto) e as rotas da entrevista respondem a qualquer um com o endereço. O convite com login (decisão 49) resolve; até lá, evitar divulgar o link fora do time.
 2. **Microfone na abertura:** ligar o microfone quando a pessoa marca a ciência (antes de "Começar") tiraria de 2 a 6 s da espera; abrir a sessão enquanto o microfone liga tiraria até 1,5 s.
 3. **"Pode encerrar a entrevista":** no teste do Approvo, a pessoa disse isso com lacunas em aberto e ela encerrou na hora, sem oferecer as quatro perguntas (a instrução trata "quero encerrar de vez" como pedido para não insistir). Pela regra combinada (só não insistir se a pessoa repetir), a primeira vez deveria oferecer as perguntas.
 4. **A análise deduz cargos:** "Financeiro (Paula)" e "Analista de novos negócios (Ronaldo)" sem ninguém ter dito; o certo é registrar o que foi dito e pôr o resto em pendência.
@@ -91,5 +102,5 @@ Depois da sessão começar, ela fala em 0,4 a 0,8 s. O servidor ficou em cerca d
 6. **Mais de uma pessoa:** a conversa não separa quem falou do lado de lá (no teste do Ronaldo, a análise acertou pelo contexto).
 7. **Fechar a sessão pelo servidor:** a OpenAI não permite (o endereço de sessões só aceita WebSocket); quem garante o fechamento é o navegador.
 8. **Persona fixa:** nome, "Rafael Brasil" e "Ínqui" estão escritos no código; para outras empresas, viram configuração da organização.
-9. **Próximo passo do produto (combinado no começo):** usar o resultado para criar o processo, a descrição e o fluxograma (e depois o POP); talvez entrevistas pelo Meet ou Teams.
+9. **Depois do login e do convite:** usar o resultado para criar o processo, a descrição e o fluxograma (e depois o POP), como combinado no começo; talvez entrevistas pelo Meet ou Teams.
 10. **Chaves:** revogar a chave da OpenAI e o token do Supabase usados nesta fase quando ela terminar, e criar novas.
