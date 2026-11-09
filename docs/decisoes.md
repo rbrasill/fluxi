@@ -382,6 +382,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **E-mail:** um "carteiro" separado (workflow do Pipedream, como no Atylux) recebe e-mail, nome e código e entrega a mensagem; tem segredo próprio (`AUTH_MAILER_SECRET`) e o e-mail não leva link. Configuração e código do workflow em `docs/login.md`; modelo do e-mail em `docs/login-email-codigo.html`.
 - **Entrevista:** a entrevista guarda quem foi entrevistado (`entrevistas.entrevistado_id`: a pessoa logada que abriu a primeira sessão) e a Maia chama a pessoa pelo primeiro nome desde a abertura. O convite por e-mail (decisão 49) é o próximo passo e usa este login.
 - **Antes de promover para produção:** criar o workflow no Pipedream, cadastrar na Vercel `INC_AUTH_SECRET`, `AUTH_MAILER_URL` e `AUTH_MAILER_SECRET`, e cadastrar o primeiro administrador. Sem isso, o app responde 503 e ninguém entra.
+- **Em produção desde 09/11/2026:** workflow do Pipedream montado (recusas e envio testados), as três variáveis na Vercel (Production e Preview), primeiro administrador cadastrado e primeiro login feito com sucesso; o código chegou em segundos.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

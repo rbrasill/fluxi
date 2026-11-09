@@ -27,6 +27,8 @@ Detalhes de segurança:
 
 Sem isso, em produção o app inteiro responde 503 e ninguém consegue entrar.
 
+> Feito em 09/11/2026: carteiro no Pipedream, variáveis na Vercel (Production e Preview), primeiro administrador cadastrado e login funcionando em produção. Os passos ficam aqui para refazer (por exemplo, ao trocar um segredo).
+
 1. **Gerar os dois segredos** (valores diferentes), por exemplo com `openssl rand -base64 48`:
    - `INC_AUTH_SECRET`: assina as sessões. Nunca sai do servidor.
    - `AUTH_MAILER_SECRET`: autentica o servidor junto ao carteiro.
