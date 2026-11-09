@@ -445,6 +445,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **No processo:** a seção de entrevistas junta as perguntas para outras pessoas de todas as entrevistas concluídas, por área ("Financeiro"), com quem não soube; gestores e administradores têm **"Convidar alguém de Financeiro"**, que abre o convite com o pedido já escrito ("Perguntas que ficaram para alguém de Financeiro: …", até 500 caracteres). A Maia recebe o pedido como contexto e foca nessas perguntas.
 - Resultados anteriores ficam como estão (sem a separação); a separação aparece a partir da próxima análise.
 
+## 59. As consultas da Maia também com o Sonnet (09/11/2026)
+- **Pedido:** usar sempre o Sonnet, nunca o Haiku: o Sonnet é mais assertivo.
+- **Como ficou:** as consultas no meio da conversa (decisão 41) usam o Claude Sonnet 5.5, o mesmo modelo da análise. Continuam sem raciocínio estendido (no Sonnet 5.5 isso é `thinking: between_tools`, porque ele recusa `disabled`), com esforço baixo e limite de 12 s. `INCFLOW_MODELO_CONSULTA` ainda troca o modelo.
+- **Custo:** cerca de US$ 0,01 por consulta (antes, US$ 0,0002). A voz continua sendo quase todo o custo da entrevista.
+- **Espera:** o Sonnet costuma demorar um pouco mais que o Haiku. O Painel da Maia mostra a espera de cada consulta; se passar de 12 s, a Maia diz que não conseguiu verificar e segue.
+- **Preço do cache corrigido:** a leitura de cache do Sonnet 5.5 custa US$ 0,10 por milhão de tokens (0,05x da entrada, como no Opus 5.5), não US$ 0,20. A estimativa da análise ficava um pouco acima do real.
+- **Preços são tabela fixa:** nenhuma API devolve preço (nem a de modelos da OpenAI, nem a da Anthropic). As APIs devolvem o uso (segundos de voz, tokens) e o app multiplica pela tabela publicada. O valor cobrado de fato só sai nos relatórios de custo das duas empresas, por dia e por organização, com chave de administrador (a chave do app recebe 403).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

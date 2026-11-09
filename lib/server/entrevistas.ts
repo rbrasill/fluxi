@@ -19,7 +19,7 @@ const BUCKET = 'gravacoes';
 const MODELO_VOZ = process.env.INCFLOW_MODELO_VOZ || 'gpt-live-1'; // US$ 0,05 por minuto de sessão
 const VOZ = process.env.INCFLOW_VOZ_ENTREVISTA || 'bossa'; // vozes em português do Brasil: bossa e tempo
 const MODELO_ANALISE = process.env.INCFLOW_MODELO_ANALISE || 'claude-sonnet-5-5';
-const MODELO_CONSULTA = process.env.INCFLOW_MODELO_CONSULTA || 'claude-haiku-5-5'; // rápido: a pessoa está esperando
+const MODELO_CONSULTA = process.env.INCFLOW_MODELO_CONSULTA || 'claude-sonnet-5-5'; // o mesmo da análise: mais assertivo (decisão 59)
 const URL_SESSOES = process.env.INCFLOW_LIVE_URL || 'https://api.openai.com/v1/live/sessions';
 /** A expressão da despedida: quando a IA a diz (e termina de falar), o app encerra a entrevista sozinho. */
 export const FRASE_FINAL = 'Vamos concluir por aqui';
@@ -527,7 +527,7 @@ export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchem
 // Preços da Anthropic por milhão de tokens (tabela de 06/10/2026): entrada, saída, leitura de cache.
 // A escrita no cache custa 1,25× a entrada. Modelo desconhecido: assume o do Sonnet.
 const PRECOS_USD_MTOK: Record<string, { entrada: number; saida: number; cache: number }> = {
-  'claude-sonnet-5-5': { entrada: 2, saida: 10, cache: 0.2 },
+  'claude-sonnet-5-5': { entrada: 2, saida: 10, cache: 0.1 }, // leitura de cache: 0,05x da entrada no Sonnet 5.5 e no Opus 5.5
   'claude-haiku-5-5': { entrada: 0.1, saida: 0.5, cache: 0.01 },
   'claude-opus-5-5': { entrada: 4, saida: 20, cache: 0.2 },
 };

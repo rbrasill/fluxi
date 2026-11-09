@@ -43,7 +43,7 @@ export type OpcoesIa = {
   modelo?: string;
   maxTokens?: number;
   esforco?: 'low' | 'medium' | 'high';
-  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido). Só no Haiku 5.5: o Sonnet 5.5 recusa. */
+  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido). No Sonnet 5.5 vira `between_tools` (ele recusa `disabled`). */
   pensar?: boolean;
   limiteMs?: number;
   /** Recebe o uso de tokens da chamada (para medir custo). */
@@ -62,7 +62,7 @@ export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, siste
       model: modelo,
       ...fallback,
       max_tokens: opcoes.maxTokens ?? 16000,
-      thinking: opcoes.pensar === false ? { type: 'disabled' } : { type: 'adaptive' },
+      thinking: opcoes.pensar === false ? (modelo.startsWith('claude-sonnet-5-5') ? { type: 'between_tools' } : { type: 'disabled' }) : { type: 'adaptive' },
       output_config: { effort: opcoes.esforco ?? 'medium', format: zodOutputFormat(schema) },
       system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: conteudo }],

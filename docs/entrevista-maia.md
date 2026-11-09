@@ -8,7 +8,7 @@ A Maia é a entrevistadora por voz do INCFlow: conversa ao vivo com quem executa
 - **Quem é:** "Oi, Ana! Eu sou a Maia, trabalho com o Rafael Brasil, na área de processos da Ínqui. Essa conversa fica gravada, tá? Pra começar…". Chama a pessoa logada pelo primeiro nome (decisão 50). Se perguntarem, diz que é uma inteligência artificial.
 - **Como conduz:** começa pela visão geral e pelo início do processo, percorre as etapas na ordem e, em cada uma, descobre quem faz, com que sistema, o que entra e o que sai. Aprofunda respostas vagas, pergunta o que acontece em cada caminho de uma decisão, confirma o que entendeu com resumos curtos e não repete perguntas já respondidas. Quando a pessoa não sabe uma parte ("isso é com a outra área"), foca no que ela sabe e o resto vira pendência.
 - **Tópicos que procura cobrir:** objetivo, início (gatilho e frequência), etapas, responsáveis, ferramentas, entradas, saídas, regras (prazos, alçadas, aprovações), exceções e dificuldades.
-- **Pesquisa na hora:** quando a pessoa pergunta "você sabe o que é o RM da TOTVS?" (ou ela precisa entender um termo), diz "deixa eu ver aqui", o Claude Haiku responde em 2 a 3 s e ela explica em uma ou duas frases, voltando ao processo. Só conhecimento geral: sobre o processo da pessoa, quem sabe é a pessoa.
+- **Pesquisa na hora:** quando a pessoa pergunta "você sabe o que é o RM da TOTVS?" (ou ela precisa entender um termo), diz "deixa eu ver aqui", o Claude Sonnet responde em poucos segundos e ela explica em uma ou duas frases, voltando ao processo. Só conhecimento geral: sobre o processo da pessoa, quem sabe é a pessoa.
 - **Não encerra com lacunas.** A entrevista termina quando os tópicos estão cobertos, não pelo tempo. Antes do resumo final, confere o que falta (reprovação, prazos, participantes, frequência, problemas). "Acho que é isso" depois de um resumo não é pedido para encerrar.
 - **Quando a pessoa precisa sair:** diz o que falta e pede quatro perguntas rápidas; se a pessoa topar, faz as quatro e cumpre o combinado. Se ainda faltar algo, despede-se com "a gente continua depois" e a entrevista fica **Pausada**; se cobriu tudo, "vamos concluir por aqui". Se a pessoa não puder, pausa na hora, sem insistir.
 - **Ela mesma desliga a chamada.** "Vamos concluir por aqui" encerra e gera o resultado; "a gente continua depois" desliga e deixa a entrevista aberta. Ao continuar, ela retoma mostrando que lembra ("que bom que você voltou", onde pararam, o que faltava); se for outra pessoa, apresenta-se e pergunta o nome.
@@ -31,7 +31,7 @@ Regras da análise: corrige nomes pela transcrição sem inventar; falas ditas p
 | Abrir a sessão | `POST /api/entrevistas/:id/sessao`: o servidor chama `POST /v1/live/sessions` com a chave (que não vai para o navegador), as instruções da Maia e, ao continuar, o histórico |
 | Condução | Só pelas instruções da sessão (`instrucoesDaSessao` em `lib/server/entrevistas.ts`), no esqueleto do guia do GPT-Live: papel, jeito de falar, `Backchannel policy`, `Interruption policy`, `Delegation policy`, tópicos, condução e encerramento |
 | Pronúncia | O modelo fala do jeito que lê: tudo o que ela lê traz "Ínqui" escrito (instruções, tema, contexto, histórico); nada de "INC" |
-| Pesquisa | `session.delegation.created` → o navegador manda o fim da conversa para `POST /api/entrevistas/:id/consulta` → Claude Haiku 5.5 → a resposta volta por `session.commentary.append` |
+| Pesquisa | `session.delegation.created` → o navegador manda o fim da conversa para `POST /api/entrevistas/:id/consulta` → Claude Sonnet 5.5 → a resposta volta por `session.commentary.append` |
 | Conversa e métricas | Os pedaços de transcrição dos dois lados viram a conversa no navegador (`lib/entrevista/conversa.ts`), guardada a cada 15 s e no fim (`PUT …/conversa`) |
 | Gravação | Os dois lados num arquivo por sessão, no Storage (`tenants/<t>/entrevistas/<id>/conversa-<n>.webm`) |
 | Resultado | `POST …/encerrar`: Claude Sonnet 5.5 com saída estruturada |
@@ -46,7 +46,7 @@ Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consult
 |---|---|---|
 | Voz (GPT-Live) | US$ 0,05 por minuto de sessão aberta, cobrado por segundo | US$ 0,25 (cerca de 90% do total) |
 | Análise no fim (Claude Sonnet 5.5) | US$ 2 / 10 por milhão de tokens | US$ 0,02 a 0,03 |
-| Pesquisas (Claude Haiku 5.5) | US$ 0,10 / 0,50 por milhão de tokens | cerca de US$ 0,0002 cada |
+| Pesquisas (Claude Sonnet 5.5, decisão 59) | US$ 2 / 10 por milhão de tokens | cerca de US$ 0,01 cada |
 
 Os testes custaram de US$ 0,13 a 0,42; uma entrevista de 20 minutos sai por volta de US$ 1,05.
 
