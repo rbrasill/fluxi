@@ -33,7 +33,7 @@ Sem isso, em produção o app inteiro responde 503 e ninguém consegue entrar.
 2. **Montar o carteiro no Pipedream** (um workflow novo, só do INCFlow):
    1. `trigger`: HTTP / Webhook. Em *HTTP Response*, marque **"Return a custom response from your workflow"**. A URL do trigger é o `AUTH_MAILER_URL`.
    2. `validar_envio`: Node.js, com o código abaixo.
-   3. `send_email_code`: ação de e-mail (Outlook/Microsoft 365 "Send Email", ou SMTP). Destinatário `{{steps.validar_envio.$return_value.email}}`, assunto "Seu código de acesso ao INCFlow", corpo HTML de `docs/login-email-codigo.html` (trocando `{{nome}}` e `{{codigo}}` pelos valores do step 2). Prefira uma caixa de serviço (ex.: `nao-responda@…`) como remetente.
+   3. `enviar_email`: Node.js, com o código de `docs/pipedream-enviar-codigo.js` (mesmo formato do lembrete de tarefas do Atylux). Em *Connect*, conecte a conta do Outlook que vai enviar (de preferência uma caixa de serviço, como `nao-responda@…`); o envio é pelo Graph API, com o e-mail no modelo do Atylux (gradiente da INC, código em destaque, à prova do Outlook desktop) e **sem cópia nos Itens Enviados** (o código não pode ficar guardado). Quem preferir a ação pronta "Send Email" do Outlook pode colar o HTML de `docs/login-email-codigo.html` (com a opção HTML ativada) e desligar a cópia nos enviados, se a ação permitir.
    4. `return_response`: Node.js com `await $.respond({ status: 200, body: { ok: true } })`.
    - Em *Project → Variables*, crie `AUTH_MAILER_SECRET` (marcada como *Secret*) com o mesmo valor do servidor.
    - Em *Settings → Data Retention*, reduza a retenção ao mínimo (o histórico guarda o corpo, com o código).
