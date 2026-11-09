@@ -69,10 +69,13 @@ export type Etapa = {
   excecoes: string[];
 };
 
+/** O que a pessoa entrevistada não soube responder e outra pessoa sabe (decisão 58): a pergunta e quem saberia (área ou cargo). */
+export type PendenciaOutraPessoa = { pergunta: string; quem_sabe: string };
 export type ResultadoEntrevista = {
   descricao: string; // HTML simples (p, ul, ol, li, strong, em)
   ficha: { objetivo: string; gatilho: string; resultado: string; etapas: Etapa[]; dificuldades: string[] };
-  pendencias: string[];
+  pendencias: string[]; // o que a própria pessoa pode responder (dá para voltar à ligação; decisão 56)
+  pendencias_outra_pessoa?: PendenciaOutraPessoa[]; // o que precisa de outra pessoa (resultados antigos não têm)
 };
 
 const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;

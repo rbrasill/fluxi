@@ -11,15 +11,17 @@ import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function Convidar({ processoId, processoNome, indisponiveis, aoConvidar, aoFechar }: {
+export function Convidar({ processoId, processoNome, indisponiveis, notaInicial = '', dica, aoConvidar, aoFechar }: {
   processoId: string; processoNome: string;
   indisponiveis: string[]; // quem já tem entrevista aberta neste processo
+  notaInicial?: string; // o pedido já escrito (perguntas para outra pessoa, decisão 58)
+  dica?: string; // por exemplo, "Escolha alguém de Financeiro."
   aoConvidar: (r: ResultadoConvite) => void; aoFechar: () => void;
 }) {
   const [pessoas, setPessoas] = useState<PessoaConvidavel[] | null>(null);
   const [busca, setBusca] = useState('');
   const [marcadas, setMarcadas] = useState<string[]>([]);
-  const [nota, setNota] = useState('');
+  const [nota, setNota] = useState(notaInicial);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -52,6 +54,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, aoConvidar, 
       <form className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} onSubmit={enviar}>
         <h2 id="convidar-titulo">Convidar para entrevista com a Maia</h2>
         <p className="notice">Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre <b>{processoNome}</b> quando puder. Até {MAX_CONVITES} pessoas por vez, uma entrevista para cada uma.</p>
+        {dica && <p className="notice convite-dica">{dica}</p>}
         <label className="field">Buscar pessoa
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou e-mail" autoFocus />
         </label>

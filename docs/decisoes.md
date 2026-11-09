@@ -438,6 +438,13 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Custo:** completar a entrevista refaz o resultado, e cada análise é cobrada. Antes, a análise nova substituía o custo da anterior (o Painel da Maia mostrava só a última; no Matheus, US$ 0,04 em vez de cerca de US$ 0,17). Agora tokens e custo **somam** todas as análises, e o painel mostra quantas foram ("5 análises"). As análises antigas que já tinham sido substituídas não dão para recuperar; a soma vale dali em diante.
 - **Marcas de som:** o reconhecimento de voz às vezes escreve "[sigh]", "(sigh)", "[cough]" e parecidos. Saem do texto ao montar a conversa nova, ao mostrar a conversa e no que a análise e a Maia leem; a risada continua como "(risos)". O que já está gravado não é alterado (decisão 54): a limpeza é feita na hora de mostrar e de ler.
 
+## 58. Pendências que precisam de outra pessoa (09/11/2026)
+
+- **O que o teste mostrou:** na volta do Matheus, a pergunta "o financeiro faz alguma aprovação antes de pagar?" ficou como pendência dele, mas ele disse que não tem acesso a essa informação. Voltar à ligação com ele não resolve: quem sabe é alguém do Financeiro.
+- **Como ficou:** o resultado separa dois tipos de pendência. **"Ficou em aberto"** é o que a própria pessoa pode responder (não foi perguntado, ficou vago): dá para voltar à ligação (decisão 56). **"Para outra pessoa responder"** é o que ela disse não saber, não ter acesso ou ser de outra área, com **quem saberia** (área ou cargo). Durante a conversa, quando a pessoa não sabe, a Maia pergunta em uma frase quem saberia e segue.
+- **No processo:** a seção de entrevistas junta as perguntas para outras pessoas de todas as entrevistas concluídas, por área ("Financeiro"), com quem não soube; gestores e administradores têm **"Convidar alguém de Financeiro"**, que abre o convite com o pedido já escrito ("Perguntas que ficaram para alguém de Financeiro: …", até 500 caracteres). A Maia recebe o pedido como contexto e foca nessas perguntas.
+- Resultados anteriores ficam como estão (sem a separação); a separação aparece a partir da próxima análise.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

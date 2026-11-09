@@ -5,7 +5,7 @@ import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Convidar } from '@/components/entrevista/Convidar';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, reenviarConvite, situacaoDaEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, perguntasParaOutrasPessoas, reenviarConvite, situacaoDaEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
 // conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites;
@@ -21,7 +21,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   const gestor = ehGestor(eu);
   const admin = ehAdmin(eu);
   const [lista, setLista] = useState<EntrevistaDoProcesso[] | null>(null);
-  const [convidando, setConvidando] = useState(false);
+  const [convidando, setConvidando] = useState<false | { nota?: string; dica?: string }>(false);
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState('');
 
@@ -51,13 +51,14 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     try { await excluirEntrevista(x.id); await carregar(); } catch (e) { void avisar('Não foi possível excluir.', msg(e)); } finally { setOcupado(''); }
   }
 
+  const paraOutros = perguntasParaOutrasPessoas((lista ?? []).filter((x) => x.status === 'concluida'));
   const abertas = (lista ?? []).filter((x) => x.status === 'convidada' || x.status === 'em_andamento').map((x) => x.entrevistado_id).filter((x): x is string => !!x);
 
   return (
     <section className="secao-processo" aria-labelledby="titulo-entrevistas">
       <div className="secao-head">
         <h2 id="titulo-entrevistas"><Icone nome="microfone" tamanho={18} />Entrevistas com a Maia</h2>
-        {gestor && !arquivado && <button className="btn btn-primary" onClick={() => setConvidando(true)}><Icone nome="mais" />Convidar para entrevista</button>}
+        {gestor && !arquivado && <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>}
       </div>
       {aviso && <p className="notice">{aviso}</p>}
       {lista === null && <p className="notice">Carregando…</p>}
@@ -96,8 +97,27 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
           })}
         </div>
       )}
+      {paraOutros.length > 0 && (
+        <div className="cartao perguntas-outros" id="perguntas-para-outros">
+          <h3 className="sem-margem">Perguntas para outras pessoas</h3>
+          <p className="notice">Quem foi entrevistado não soube responder: quem sabe é de outra área. Convide alguém de lá; a Maia já recebe as perguntas no pedido do convite.</p>
+          {paraOutros.map((g) => (
+            <div key={g.quem_sabe} className="perguntas-grupo">
+              <div className="perguntas-grupo-head">
+                <strong>{g.quem_sabe}</strong>
+                {gestor && !arquivado && (
+                  <button className="btn" onClick={() => setConvidando({ nota: notaParaOutraPessoa(g.quem_sabe, [...new Set(g.perguntas.map((x) => x.pergunta))]), dica: `Escolha alguém de ${g.quem_sabe}.` })}>
+                    <Icone nome="mais" tamanho={16} />Convidar alguém de {g.quem_sabe}
+                  </button>
+                )}
+              </div>
+              <ul className="ficha-lista">{g.perguntas.map((x, i) => <li key={i}>{x.pergunta}{x.de ? <small> · {x.de} não soube</small> : null}</li>)}</ul>
+            </div>
+          ))}
+        </div>
+      )}
       {convidando && (
-        <Convidar processoId={processoId} processoNome={processoNome} indisponiveis={abertas} aoConvidar={convidou} aoFechar={() => setConvidando(false)} />
+        <Convidar processoId={processoId} processoNome={processoNome} indisponiveis={abertas} notaInicial={convidando.nota} dica={convidando.dica} aoConvidar={convidou} aoFechar={() => setConvidando(false)} />
       )}
     </section>
   );

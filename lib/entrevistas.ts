@@ -1,5 +1,5 @@
 // Cliente da API da entrevista por voz com a Maia (decisões 39, 41 e 53).
-import type { Complemento, Metricas, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
+import type { Complemento, Metricas, PendenciaOutraPessoa, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
 import { ErroCliente } from './fluxogramas';
 
 export type Entrevista = {
@@ -24,6 +24,7 @@ export type EntrevistaDoProcesso = {
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
   complemento_pendencias: number | null;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
+  pendencias_outra_pessoa: PendenciaOutraPessoa[];
 };
 export type ResultadoConvite = { criadas: { id: string; pessoa: string; email_enviado: boolean }[]; repetidas: string[]; carteiro_configurado: boolean };
 
@@ -79,6 +80,24 @@ export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: numb
     mensagem: `${pausada ? 'A entrevista está pausada e ainda pode ser retomada. ' : ''}A conversa, o áudio e o resultado são apagados de vez; não dá para desfazer.`,
     acao: 'Excluir', perigo: true,
   };
+}
+
+/** As perguntas para outras pessoas, juntas por quem saberia responder (decisão 58), com quem não soube. */
+export function perguntasParaOutrasPessoas(lista: { entrevistado: string | null; pendencias_outra_pessoa: PendenciaOutraPessoa[] }[]) {
+  const grupos = new Map<string, { quem_sabe: string; perguntas: { pergunta: string; de: string | null }[] }>();
+  for (const e of lista) for (const p of e.pendencias_outra_pessoa ?? []) {
+    const chave = p.quem_sabe.trim().toLocaleLowerCase('pt-BR');
+    const g = grupos.get(chave) ?? { quem_sabe: p.quem_sabe.trim(), perguntas: [] };
+    g.perguntas.push({ pergunta: p.pergunta, de: e.entrevistado });
+    grupos.set(chave, g);
+  }
+  return [...grupos.values()];
+}
+
+/** O pedido do convite já com as perguntas (até 500 caracteres, o limite da nota). */
+export function notaParaOutraPessoa(quemSabe: string, perguntas: string[]) {
+  const texto = `Perguntas que ficaram para alguém de ${quemSabe}: ${perguntas.join(' ')}`;
+  return texto.length <= 500 ? texto : `${texto.slice(0, 497).trimEnd()}…`;
 }
 
 /** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */

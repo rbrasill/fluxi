@@ -340,6 +340,17 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
             )}
           </div>
 
+          {(r.pendencias_outra_pessoa?.length ?? 0) > 0 && (
+            <div className="cartao" id="para-outra-pessoa">
+              <h3 className="sem-margem">Para outra pessoa responder</h3>
+              <p className="notice">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
+              <ul className="ficha-lista">{r.pendencias_outra_pessoa!.map((x, i) => <li key={i}>{x.pergunta} <small>· quem sabe: {x.quem_sabe}</small></li>)}</ul>
+              {gestor && e.processo && (
+                <div className="fluxo-acoes"><Link className="btn" href={`/app/processos/${e.processo.id}#perguntas-para-outros`}><Icone nome="mais" tamanho={16} />Convidar alguém para responder</Link></div>
+              )}
+            </div>
+          )}
+
           {r.pendencias.length > 0 && (
             <div className="cartao" id="em-aberto">
               <h3 className="sem-margem">Ficou em aberto</h3>

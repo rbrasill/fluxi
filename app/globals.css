@@ -932,3 +932,10 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .lista-pendencias .check input { margin-top: 2px; flex: none; }
 .lista-pendencias-escolhidas li { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; }
 .conversa-divisor { margin: 12px 0 4px; padding-top: 10px; border-top: 1px dashed var(--line-strong); text-align: center; font-size: 12px; color: var(--muted); }
+
+/* Perguntas para outras pessoas (decisão 58) */
+.perguntas-outros { margin-top: 4px; }
+.perguntas-grupo { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.perguntas-grupo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.perguntas-grupo small, #para-outra-pessoa small { color: var(--muted); font-size: 12px; }
+.convite-dica { margin: 0; font-weight: 600; color: var(--ink); }

@@ -247,6 +247,7 @@ export async function listarDoProcesso(processoId: string) {
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
       tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
+      pendencias_outra_pessoa: r?.pendencias_outra_pessoa ?? [], // perguntas para outras pessoas (decisão 58)
     };
   });
 }
@@ -322,7 +323,7 @@ export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continua
   const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
   // Voltou para fechar pontos em aberto (decisão 56): cumprimenta de volta e vai direto aos pontos escolhidos.
   const retomada = complemento
-    ? `A pessoa voltou para completar a entrevista (o histórico está acima). Ela escolheu responder a estes pontos que ficaram em aberto:\n${complemento.pendencias.map((p, i) => `${i + 1}. ${comoSeFala(p)}`).join('\n')}\nAo abrir, cumprimente de volta em uma frase ("Oi de novo${primeiro ? `, ${primeiro}` : ''}! Que bom que você voltou."), diga que vocês vão fechar os pontos que ficaram em aberto e já faça a primeira pergunta da lista. Percorra só esses pontos, um por vez, aprofundando quando a resposta for vaga; não refaça a entrevista, não repita o resumo anterior nem a lista de conferência do fim. Ao terminar a lista, resuma em uma frase o que foi acrescentado e despeça-se com "${FRASE_FINAL.toLowerCase()}". Não repita a apresentação nem o aviso da gravação.`
+    ? `A pessoa voltou para completar a entrevista (o histórico está acima). Ela escolheu responder a estes pontos que ficaram em aberto:\n${complemento.pendencias.map((p, i) => `${i + 1}. ${comoSeFala(p)}`).join('\n')}\nAo abrir, cumprimente de volta em uma frase ("Oi de novo${primeiro ? `, ${primeiro}` : ''}! Que bom que você voltou."), diga que vocês vão fechar os pontos que ficaram em aberto e já faça a primeira pergunta da lista. Percorra só esses pontos, um por vez, aprofundando quando a resposta for vaga (se ela não souber, pergunte quem saberia e siga); não refaça a entrevista, não repita o resumo anterior nem a lista de conferência do fim. Ao terminar a lista, resuma em uma frase o que foi acrescentado e despeça-se com "${FRASE_FINAL.toLowerCase()}". Não repita a apresentação nem o aviso da gravação.`
     : 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase onde vocês pararam e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.';
   // Segue o esqueleto do guia de prompt do GPT-Live: papel, jeito de falar e as três políticas com os
   // rótulos originais (Backchannel policy, Interruption policy, Delegation policy), que o modelo reconhece.
@@ -359,7 +360,7 @@ ${TOPICOS_TEXTO}
 - Se a pessoa pedir um instante, espere em silêncio até ela voltar.
 
 # Ritmo e encerramento
-- A entrevista termina quando os tópicos estiverem cobertos, não pelo tempo. Antes de resumir, repasse os tópicos e explore o que ainda estiver em aberto, uma pergunta por vez. Confira em especial: o que acontece quando uma aprovação ou decisão é negada ou algo dá errado; prazos; quem participa de cada etapa; com que frequência o processo acontece; o que costuma dar problema. Se a pessoa não souber responder, siga para o próximo ponto (vira pendência).
+- A entrevista termina quando os tópicos estiverem cobertos, não pelo tempo. Antes de resumir, repasse os tópicos e explore o que ainda estiver em aberto, uma pergunta por vez. Confira em especial: o que acontece quando uma aprovação ou decisão é negada ou algo dá errado; prazos; quem participa de cada etapa; com que frequência o processo acontece; o que costuma dar problema. Se a pessoa não souber responder, pergunte em uma frase quem saberia (a área ou o cargo) e siga para o próximo ponto (vira pergunta para essa outra pessoa).
 - Lista de conferência, obrigatória antes de se despedir: você só pode dizer a despedida depois de ter perguntado, de forma direta, (1) quem faz cada etapa, com cargo e quantas pessoas; (2) prazos e tempos de cada etapa; (3) o que acontece quando algo dá errado ou não é resolvido (por exemplo, um item reprovado que não volta corrigido, uma aprovação negada); (4) o que costuma dar problema, demorar ou gerar retrabalho. Entender o caminho feliz não basta: mesmo que a pessoa pareça ter concluído e o resumo esteja confirmado, passe pela lista antes de encerrar.
 - Se a pessoa perguntar "alguma dúvida?", "mais alguma coisa?" ou "é isso?", é um convite para perguntar: faça as perguntas da lista que ainda faltam, uma por vez, em vez de responder que ficou claro.
 - "Acho que é isso" ou "tá bom" depois de um resumo não é pedido para encerrar: se ainda houver lacuna, pergunte.
@@ -555,7 +556,11 @@ const ResultadoSchema = z.object({
     })).describe('Na ordem em que acontecem'),
     dificuldades: z.array(z.string()),
   }),
-  pendencias: z.array(z.string()).describe('Perguntas para uma próxima conversa'),
+  pendencias: z.array(z.string()).describe('Perguntas que a própria pessoa entrevistada pode responder numa próxima conversa'),
+  pendencias_outra_pessoa: z.array(z.object({
+    pergunta: z.string().describe('A pergunta, curta'),
+    quem_sabe: z.string().describe('A área ou o cargo que saberia responder, como a pessoa disse ou como fica claro na conversa (ex.: "Financeiro")'),
+  })).describe('O que a pessoa entrevistada disse não saber, não ter acesso ou ser de outra área'),
 });
 
 export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos. Recebe a transcrição de uma entrevista por voz em que um entrevistador (IA) fez perguntas e uma pessoa explicou como um processo de trabalho funciona. A transcrição veio de reconhecimento de voz: corrija nomes e termos pelo contexto, mas não invente nada que não foi dito. A conversa foi ao vivo e os dois podiam falar ao mesmo tempo: falas marcadas "falou junto com o entrevistador" foram ditas por cima da fala dele e costumam ser correções ou informações novas, que valem mais que o que foi dito antes.
@@ -563,9 +568,10 @@ export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos
 Produza, em português do Brasil:
 1. "descricao": a descrição do processo para o cadastro, em HTML simples (só <p>, <ul>, <ol>, <li>, <strong> e <em>), com dois a cinco parágrafos: o que o processo é e para que serve; onde começa (o gatilho) e onde termina (o resultado); as áreas, os cargos e os sistemas envolvidos; as principais etapas em uma frase corrida (sem virar lista de passos: isso é o fluxograma); regras e prazos importantes. Frases completas, tom de documento, sem "o entrevistado disse".
 2. "ficha": a estrutura do processo: objetivo, gatilho, resultado e as etapas na ordem em que acontecem, cada uma com responsável (cargo ou área), descrição curta, ferramentas, entradas, saídas, regras e exceções citadas (listas vazias quando nada foi dito); e as dificuldades relatadas.
-3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório, escrito como perguntas para uma próxima conversa (vazio se nada).
+3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório e que a própria pessoa entrevistada pode responder (não foi perguntado, ficou vago), escrito como perguntas para uma próxima conversa com ela (vazio se nada).
+   "pendencias_outra_pessoa": o que a pessoa disse não saber, não ter acesso ou ser de outra área ("isso é com o financeiro", "não sei como eles fazem"): a pergunta e "quem_sabe", a área ou o cargo que saberia responder (o que ela indicou ou o que fica claro na conversa). O que vai para uma lista não vai para a outra.
 4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia e a pergunta ("o que costuma dar problema?") vai para as pendências. "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e o pedido de quem convidou) serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
-A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais e retire das pendências o que foi respondido.
+A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais e retire das pendências o que foi respondido; o que ela disse não saber vai para "pendencias_outra_pessoa".
 Ignore saudações, desvios de assunto e o que não descreve o processo. O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala): escreva sempre INC. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
 
 export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
@@ -613,7 +619,10 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
     const inicio = Date.now();
     let uso: UsoIa | undefined;
     const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(linha), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium', aoUsar: (u) => { uso = u; } });
-    const resultado: ResultadoEntrevista = { descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias };
+    const resultado: ResultadoEntrevista = {
+      descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias,
+      pendencias_outra_pessoa: r.pendencias_outra_pessoa.map((x) => ({ pergunta: x.pergunta.trim(), quem_sabe: x.quem_sabe.trim() || 'Outra área' })).filter((x) => x.pergunta),
+    };
     // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
     const metricas = (await carregar(id)).metricas ?? {};
     // Soma às análises anteriores (completar a entrevista refaz o resultado; cada vez é cobrada; decisão 57).
