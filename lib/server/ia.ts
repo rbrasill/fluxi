@@ -139,11 +139,13 @@ export async function analisarGravacao(transcricao: string, telas: { id: string;
 }
 
 // Conversas com a Maia (decisão 63): o resumo orienta, a transcrição é a fonte.
-const INTRO_ENTREVISTA = `Conversas de mapeamento do processo, feitas por voz: a Maia (entrevistadora, uma IA) perguntou e quem executa o processo respondeu. De cada conversa vêm o resumo que a Maia escreveu no fim e a transcrição.
-- A transcrição é a fonte. Use o resumo para se orientar, mas desenhe só o que a pessoa disse ou confirmou; o que o entrevistador explicou por conta própria é conhecimento geral, não etapa do processo.
-- As raias são as áreas ou os papéis que a pessoa citou como responsáveis por cada etapa.
+const INTRO_ENTREVISTA = `Conversas de mapeamento do processo, feitas por voz: a Maia (entrevistadora, uma IA) perguntou e quem executa o processo respondeu. De cada conversa vem tudo o que foi gerado: quem é a pessoa, o resumo que a Maia escreveu no fim (a descrição do processo, as etapas com quem faz, ferramentas, entradas, saídas, regras e exceções, as dificuldades relatadas, o que ficou em aberto e as perguntas para outra pessoa) e a transcrição inteira.
+- Use todo esse material. A transcrição é a fonte; o resumo organiza o que foi dito e ajuda a não esquecer etapas, responsáveis e caminhos. Desenhe só o que a pessoa disse ou confirmou; o que o entrevistador explicou por conta própria é conhecimento geral, não etapa do processo.
+- O que foi dito depois vale sobre o que foi dito antes, inclusive quando a pessoa voltou à ligação para completar (está marcado na transcrição).
+- As raias são as áreas ou os papéis que a pessoa citou como responsáveis por cada etapa. A área da própria pessoa entrevistada ajuda a saber de quem é cada raia quando ela diz "a gente" ou "eu".
 - Com mais de uma conversa, junte tudo num fluxograma só. Se as pessoas se contradisserem, desenhe o que a maioria descreveu e registre um "alerta" no nó, dizendo a diferença.
-- O que ficou em aberto e muda o caminho do processo (uma aprovação que ninguém soube explicar, por exemplo) vira "alerta" no nó a que se refere.
+- Pontos em aberto e perguntas para outra pessoa: nunca invente a resposta. Quando o ponto é sobre uma etapa ou uma decisão do desenho, registre um "alerta" no nó a que ele se refere, com a pergunta em poucas palavras. Se a decisão existe mas um dos caminhos não foi explicado (o que acontece quando é negado, por exemplo), desenhe a decisão com o caminho conhecido e o alerta nela. Ponto em aberto que não muda o desenho não vira anotação.
+- Dificuldades relatadas viram "nota" curta no nó em que acontecem (no máximo uma por nó).
 - O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala).`;
 
 export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao' | 'entrevista'): Promise<Fluxo> {

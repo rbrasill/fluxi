@@ -259,9 +259,11 @@ export async function listar(pessoa?: Pessoa | null) {
 }
 
 /**
- * O material de uma ou mais conversas com a Maia para a IA desenhar o fluxograma do processo (decisão 63):
- * de cada conversa, quem falou, o que a Maia escreveu no fim (objetivo, etapas, o que ficou em aberto) e a
- * transcrição. Só entram conversas deste processo, e só as que têm falas.
+ * O material de uma ou mais conversas com a Maia para a IA desenhar o fluxograma do processo (decisões 63 e 68):
+ * de cada conversa, tudo o que foi gerado: quem é a pessoa, a descrição do processo, a ficha inteira (etapas com
+ * responsável, ferramentas, entradas, saídas, regras e exceções), as dificuldades, os pontos em aberto, as
+ * perguntas para outra pessoa e a transcrição, com a marca de onde a pessoa voltou para completar. Só entram
+ * conversas deste processo, e só as que têm falas.
  */
 export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const unicos = [...new Set(ids)];
@@ -269,7 +271,7 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const db = supabase();
   const [proc, conv] = await Promise.all([
     db.from('processos').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
-    db.from('entrevistas').select('id, turnos, resultado, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
+    db.from('entrevistas').select('id, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
   ]);
   for (const r of [proc, conv]) if (r.error) throw r.error;
   if (!proc.data) throw new ErroApi(404, 'Processo não encontrado');
@@ -284,18 +286,25 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
     const r = (l.resultado as ResultadoEntrevista | null) ?? null;
     const f = r?.ficha;
     const perfil = perfilDe(r);
+    const descricao = r?.descricao ? textoPuro(r.descricao).replace(/\s+/g, ' ').trim() : '';
     const resumo = !f ? '' : [
       perfil && `Quem é a pessoa: ${[perfil.area && `área ${perfil.area}`, perfil.funcao].filter(Boolean).join('; ')}`,
+      descricao && `Descrição do processo: ${descricao}`,
       f.objetivo && `Objetivo: ${f.objetivo}`,
       f.gatilho && `O que dá início: ${f.gatilho}`,
       f.resultado && `Resultado: ${f.resultado}`,
-      f.etapas?.length && `Etapas:\n${f.etapas.map((e, k) => `${k + 1}. ${e.nome}${e.responsavel ? ` (quem faz: ${e.responsavel})` : ''}${e.descricao ? `: ${e.descricao}` : ''}${lista('ferramentas', e.ferramentas)}${lista('regras', e.regras)}${lista('exceções', e.excecoes)}`).join('\n')}`,
-      f.dificuldades?.length && `Dificuldades: ${f.dificuldades.join('; ')}`,
-      r?.pendencias?.length && `Ficou em aberto: ${r.pendencias.join('; ')}`,
-      r?.pendencias_outra_pessoa?.length && `Para outra pessoa responder: ${r.pendencias_outra_pessoa.map((x) => `${x.pergunta} (${x.quem_sabe})`).join('; ')}`,
+      f.etapas?.length && `Etapas:\n${f.etapas.map((e, k) => `${k + 1}. ${e.nome}${e.responsavel ? ` (quem faz: ${e.responsavel})` : ''}${e.descricao ? `: ${e.descricao}` : ''}${lista('ferramentas', e.ferramentas)}${lista('entradas', e.entradas)}${lista('saídas', e.saidas)}${lista('regras', e.regras)}${lista('exceções', e.excecoes)}`).join('\n')}`,
+      f.dificuldades?.length && `Dificuldades relatadas: ${f.dificuldades.join('; ')}`,
+      r?.pendencias?.length && `Ficou em aberto (perguntas ainda sem resposta):\n${r.pendencias.map((p) => `- ${p}`).join('\n')}`,
+      r?.pendencias_outra_pessoa?.length && `Para outra pessoa responder (a pessoa disse não saber):\n${r.pendencias_outra_pessoa.map((x) => `- ${x.pergunta} (quem sabe: ${x.quem_sabe})`).join('\n')}`,
     ].filter(Boolean).join('\n');
+    // Onde a pessoa voltou para completar (decisão 56): o que ela disse dali em diante vale sobre o que disse antes.
+    const volta = (l.complemento as Complemento | null)?.a_partir_do_turno ?? 0;
+    const transcricao = volta > 0 && volta < turnos.length
+      ? `${transcricaoDaConversa(turnos.slice(0, volta))}\n[A pessoa voltou à ligação para responder pontos que tinham ficado em aberto. O que ela disse daqui em diante vale sobre o que disse antes.]\n${transcricaoDaConversa(turnos.slice(volta))}`
+      : transcricaoDaConversa(turnos);
     const data = new Date((l.iniciada_em ?? l.criado_em) as string).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-    return `<conversa numero="${i + 1}" entrevistado="${quem.replace(/"/g, "'")}" data="${data}">\n${resumo ? `<resumo_da_maia>\n${resumo}\n</resumo_da_maia>\n` : ''}<transcricao>\n${transcricaoDaConversa(turnos)}\n</transcricao>\n</conversa>`;
+    return `<conversa numero="${i + 1}" entrevistado="${quem.replace(/"/g, "'")}" data="${data}">\n${resumo ? `<resumo_da_maia>\n${resumo}\n</resumo_da_maia>\n` : ''}<transcricao>\n${transcricao}\n</transcricao>\n</conversa>`;
   });
   return `<processo>\nNome do processo: ${proc.data.nome}\n</processo>\n\n${blocos.join('\n\n')}`;
 }
