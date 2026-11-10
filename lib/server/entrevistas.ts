@@ -1,6 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
-import { LIMITES_ENTREVISTA, MAX_CONVITES, PRECO_VOZ_USD_MIN, TOPICOS, limparMarcasDeSom, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { LIMITES_ENTREVISTA, MAX_CONVITES, MAX_PENDENCIAS, PRECO_VOZ_USD_MIN, TOPICOS, limparMarcasDeSom, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type PerfilEntrevistado, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
@@ -213,6 +213,25 @@ async function nomesDasPessoas(ids: (string | null | undefined)[]) {
 
 type ProcessoEmbutido = { id: string; nome: string } | null;
 
+const perfilDe = (r: unknown): PerfilEntrevistado | null => {
+  const e = (r as ResultadoEntrevista | null)?.entrevistado;
+  const perfil = { area: e?.area?.trim() ?? '', funcao: e?.funcao?.trim() ?? '' };
+  return perfil.area || perfil.funcao ? perfil : null;
+};
+
+/**
+ * O que a pessoa já contou sobre si à Maia (área e o que faz; decisão 67), na conversa concluída mais recente:
+ * a Maia não pergunta de novo e a análise aproveita.
+ */
+export async function perfilConhecido(entrevistadoId: string | null | undefined): Promise<PerfilEntrevistado | null> {
+  if (!entrevistadoId) return null;
+  const { data, error } = await supabase().from('entrevistas').select('resultado, encerrado_em').eq('tenant_id', TENANT_PADRAO).eq('entrevistado_id', entrevistadoId)
+    .not('resultado', 'is', null).order('encerrado_em', { ascending: false }).limit(10);
+  if (error) return null;
+  for (const l of data ?? []) { const p = perfilDe(l.resultado); if (p) return p; }
+  return null;
+}
+
 /** Todas as entrevistas, da mais recente para a mais antiga, com o processo e a pessoa de cada uma. */
 /**
  * As entrevistas da tela "Conversas com a Maia" (decisão 60): quem é comum recebe só as suas; gestores e
@@ -264,7 +283,9 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
     if (!turnos.some((t) => t.quem !== 'ia' && !t.apoio)) throw new ErroApi(422, `A conversa de ${quem} ainda não tem falas para virar fluxograma.`);
     const r = (l.resultado as ResultadoEntrevista | null) ?? null;
     const f = r?.ficha;
+    const perfil = perfilDe(r);
     const resumo = !f ? '' : [
+      perfil && `Quem é a pessoa: ${[perfil.area && `área ${perfil.area}`, perfil.funcao].filter(Boolean).join('; ')}`,
       f.objetivo && `Objetivo: ${f.objetivo}`,
       f.gatilho && `O que dá início: ${f.gatilho}`,
       f.resultado && `Resultado: ${f.resultado}`,
@@ -293,6 +314,7 @@ export async function listarDoProcesso(processoId: string) {
       ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
+      entrevistado_area: perfilDe(r)?.area || null,
       tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
       pendencias_outra_pessoa: r?.pendencias_outra_pessoa ?? [], // perguntas para outras pessoas (decisão 58)
     };
@@ -366,8 +388,16 @@ export async function excluir(id: string, quem?: Pessoa | null) {
 const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
 
 /** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
-export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null) {
+export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null, perfil?: PerfilEntrevistado | null) {
   const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
+  // Quem é a pessoa (decisão 67): a Maia pergunta a área e o que ela faz antes de entrar no processo; se a
+  // pessoa já contou em outra conversa, a Maia já sabe e não pergunta de novo.
+  const sobreAPessoa = perfil
+    ? `O que você já sabe sobre ${primeiro || 'a pessoa'}, de outra conversa: ${[perfil.area && `é da área ${comoSeFala(perfil.area)}`, perfil.funcao && `o que faz: ${comoSeFala(perfil.funcao)}`].filter(Boolean).join('; ')}. Não pergunte isso de novo.\n`
+    : '';
+  const abertura = perfil
+    ? `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`
+    : `Abra curto, em no máximo duas frases: diga quem você é, com quem trabalha e que a conversa fica gravada, e comece pela pessoa, antes do processo. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Antes de entrar no processo, me conta rapidinho: de qual área você é e o que você faz no dia a dia?" Depois que ela responder, reaja em poucas palavras e siga para o processo ("E esse processo, para que ele serve?"). É uma pergunta só, para conhecer quem está falando: se ela disser só a área ou só o cargo, não insista nem aprofunde`;
   // Voltou para fechar pontos em aberto (decisão 56): cumprimenta de volta e vai direto aos pontos escolhidos.
   const retomada = complemento
     ? `A pessoa voltou para completar a entrevista (o histórico está acima). Ela escolheu responder a estes pontos que ficaram em aberto:\n${complemento.pendencias.map((p, i) => `${i + 1}. ${comoSeFala(p)}`).join('\n')}\nAo abrir, cumprimente de volta em uma frase ("Oi de novo${primeiro ? `, ${primeiro}` : ''}! Que bom que você voltou."), diga que vocês vão fechar os pontos que ficaram em aberto e já faça a primeira pergunta da lista. Percorra só esses pontos, um por vez, aprofundando quando a resposta for vaga (se ela não souber, pergunte quem saberia e siga); não refaça a entrevista, não repita o resumo anterior nem a lista de conferência do fim. Ao terminar a lista, resuma em uma frase o que foi acrescentado e despeça-se com "${FRASE_FINAL.toLowerCase()}". Não repita a apresentação nem o aviso da gravação.`
@@ -392,13 +422,13 @@ Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou expl
 
 # O que vamos mapear
 Processo: ${comoSeFala(l.tema)}
-${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}
+${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}
 # Objetivo
 Entender o processo de ponta a ponta para, depois da conversa, escrever a descrição e desenhar o fluxograma. Tópicos a cobrir:
 ${TOPICOS_TEXTO}
 
 # Como conduzir
-- ${continuando ? retomada : `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`}
+- ${continuando ? retomada : abertura}
 - Comece pela visão geral e pelo início do processo; depois percorra as etapas na ordem em que acontecem e, em cada etapa, descubra quem faz, com que sistema ou documento, o que precisa existir antes e o que sai dela. Regras, exceções e dificuldades entram quando a pessoa as cita ou quando as etapas já estão claras.
 - Aprofunde respostas vagas ("como é feito isso?", "me dá um exemplo?"). Quando a pessoa citar uma decisão ("se for aprovado"), pergunte o que acontece em cada caminho.
 - De vez em quando, repita em uma frase o que entendeu e peça confirmação. Nunca pergunte o que a pessoa já respondeu.
@@ -442,9 +472,10 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | nul
   // O nome que a Maia usa: a pessoa logada ou, sem login (desenvolvimento), a pessoa convidada.
   const nome = pessoa?.nome ?? (linha.entrevistado_id ? (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id) ?? null : null);
   const complemento = complementoAberto(linha);
+  const perfil = continuando ? null : await perfilConhecido(linha.entrevistado_id); // só importa na abertura
   const session = {
     model: MODELO_VOZ,
-    instructions: instrucoesDaSessao(linha, continuando, nome, complemento),
+    instructions: instrucoesDaSessao(linha, continuando, nome, complemento, perfil),
     audio: { output: { voice: VOZ } },
     delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
@@ -586,6 +617,10 @@ export function custoAnalise(uso: UsoIa) {
 // --- Depois da chamada: a conversa inteira vira a descrição, a ficha e as pendências ---
 
 const ResultadoSchema = z.object({
+  entrevistado: z.object({
+    area: z.string().describe('A área ou o setor da pessoa entrevistada, como ela disse (ex.: "Departamento Pessoal"); vazio se ela não disse'),
+    funcao: z.string().describe('O que ela faz: o cargo e as atividades do dia a dia, em uma frase curta; vazio se ela não disse'),
+  }).describe('Quem é a pessoa entrevistada, só com o que ela contou sobre si'),
   descricao: z.string().describe('A descrição do processo em HTML simples (só <p>, <ul>, <ol>, <li>, <strong>, <em>), de dois a cinco parágrafos'),
   ficha: z.object({
     objetivo: z.string().describe('Para que o processo existe'),
@@ -603,11 +638,21 @@ const ResultadoSchema = z.object({
     })).describe('Na ordem em que acontecem'),
     dificuldades: z.array(z.string()),
   }),
-  pendencias: z.array(z.string()).describe('Perguntas que a própria pessoa entrevistada pode responder numa próxima conversa'),
+  pendencias: z.array(z.string()).describe(`Perguntas que a própria pessoa entrevistada pode responder numa próxima conversa: só o que faz falta para descrever o processo, no máximo ${MAX_PENDENCIAS}`),
   pendencias_outra_pessoa: z.array(z.object({
     pergunta: z.string().describe('A pergunta, curta'),
     quem_sabe: z.string().describe('A área ou o cargo que saberia responder, como a pessoa disse ou como fica claro na conversa (ex.: "Financeiro")'),
   })).describe('O que a pessoa entrevistada disse não saber, não ter acesso ou ser de outra área'),
+});
+
+// A análise depois que a pessoa voltou para completar (decisão 66): além do resultado refeito, a situação de cada
+// pendência anterior. A lista de pendências sai daí, não de uma lista nova: ela só diminui.
+const ReanaliseSchema = ResultadoSchema.extend({
+  situacao_pendencias: z.array(z.object({
+    numero: z.number().int().describe('O número da pendência em <pendencias_anteriores>'),
+    situacao: z.enum(['respondida', 'em_aberto', 'outra_pessoa']).describe('respondida: a pessoa respondeu, mesmo que em poucas palavras ou com um "não"; outra_pessoa: ela disse não saber ou ser de outra área; em_aberto: não houve resposta nenhuma'),
+    quem_sabe: z.string().describe('Só para outra_pessoa: a área ou o cargo que saberia responder; vazio nos outros casos'),
+  })).describe('Uma entrada para cada pendência anterior'),
 });
 
 export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos. Recebe a transcrição de uma entrevista por voz em que um entrevistador (IA) fez perguntas e uma pessoa explicou como um processo de trabalho funciona. A transcrição veio de reconhecimento de voz: corrija nomes e termos pelo contexto, mas não invente nada que não foi dito. A conversa foi ao vivo e os dois podiam falar ao mesmo tempo: falas marcadas "falou junto com o entrevistador" foram ditas por cima da fala dele e costumam ser correções ou informações novas, que valem mais que o que foi dito antes.
@@ -615,14 +660,49 @@ export const SISTEMA_ANALISE = `Você é especialista em mapeamento de processos
 Produza, em português do Brasil:
 1. "descricao": a descrição do processo para o cadastro, em HTML simples (só <p>, <ul>, <ol>, <li>, <strong> e <em>), com dois a cinco parágrafos: o que o processo é e para que serve; onde começa (o gatilho) e onde termina (o resultado); as áreas, os cargos e os sistemas envolvidos; as principais etapas em uma frase corrida (sem virar lista de passos: isso é o fluxograma); regras e prazos importantes. Frases completas, tom de documento, sem "o entrevistado disse".
 2. "ficha": a estrutura do processo: objetivo, gatilho, resultado e as etapas na ordem em que acontecem, cada uma com responsável (cargo ou área), descrição curta, ferramentas, entradas, saídas, regras e exceções citadas (listas vazias quando nada foi dito); e as dificuldades relatadas.
-3. "pendencias": o que ficou sem resposta, ambíguo ou contraditório e que a própria pessoa entrevistada pode responder (não foi perguntado, ficou vago), escrito como perguntas para uma próxima conversa com ela (vazio se nada).
+3. "pendencias": o que faz falta para descrever ou desenhar o processo e que a própria pessoa entrevistada pode responder, escrito como perguntas para uma próxima conversa com ela (vazio se nada). No máximo ${MAX_PENDENCIAS}, as mais importantes primeiro. Regras:
+   - Entra: uma etapa sem quem faz; um caminho de decisão que não foi explicado (o que acontece quando é negado, por exemplo); um prazo ou uma regra que a pessoa citou sem dizer qual é.
+   - Pergunta respondida está fechada, mesmo que a resposta seja curta ou negativa ("não", "não tem prazo", "normalmente não dá problema", "é o próprio analista"). Não peça mais detalhe do que foi dado e não repita, com outras palavras, uma pergunta que o entrevistador já fez e a pessoa respondeu.
+   - O que foi dito depois corrige o que foi dito antes: vale a resposta mais recente e mais clara, e isso não é contradição. Só há pendência por contradição quando as duas falas são igualmente vagas e nenhuma foi confirmada.
+   - Curiosidade não é pendência: se o processo já dá para descrever sem a resposta, não pergunte.
    "pendencias_outra_pessoa": o que a pessoa disse não saber, não ter acesso ou ser de outra área ("isso é com o financeiro", "não sei como eles fazem"): a pergunta e "quem_sabe", a área ou o cargo que saberia responder (o que ela indicou ou o que fica claro na conversa). O que vai para uma lista não vai para a outra.
-4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia e a pergunta ("o que costuma dar problema?") vai para as pendências. "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e o pedido de quem convidou) serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
-A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais e retire das pendências o que foi respondido; o que ela disse não saber vai para "pendencias_outra_pessoa".
+4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia; a pergunta ("o que costuma dar problema?") só vai para as pendências se o entrevistador não chegou a fazê-la (se ele perguntou e ela disse que não costuma dar problema, está respondida). "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e o pedido de quem convidou) serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
+5. "entrevistado": a área ou o setor da pessoa e o que ela faz (cargo e atividades), só com o que ela contou sobre si na conversa ou com o que vier no bloco <pessoa> (dito por ela em outra conversa). Não deduza do processo nem do bloco <processo>; o que ela não disse fica vazio, e isso não vira pendência.
+Ruído: a transcrição pode trazer falas soltas que não respondem à pergunta e não têm ligação com o processo (outra conversa perto do microfone, a pessoa falando com alguém ao lado, frase cortada). Ignore essas falas: não viram etapa, regra, dificuldade nem pendência.
+A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais (elas valem mais que o que foi dito antes sobre o mesmo ponto). Nesse caso vem o bloco <pendencias_anteriores>: preencha "situacao_pendencias" com a situação de cada uma e não crie pendências novas; a lista de pendências sai dessa situação.
 Ignore saudações, desvios de assunto e o que não descreve o processo. O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala): escreva sempre INC. O que o entrevistador explicou por conta própria (por exemplo, o que é um sistema, depois de verificar) é conhecimento geral: use para entender a conversa, mas registre como fato do processo só o que a pessoa disse ou confirmou.`;
 
-export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>) {
-  return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n<entrevista>\n${transcricaoDaConversa(l.turnos)}\n</entrevista>`;
+/**
+ * O pedido da análise. `perfil`: o que a pessoa já contou sobre si em outra conversa (decisão 67). `anteriores`:
+ * as pendências do resultado anterior, quando a pessoa voltou para completar (decisão 66), com as que ela escolheu
+ * responder marcadas.
+ */
+export function montarPedidoAnalise(l: Pick<Linha, 'tema' | 'contexto' | 'turnos'>, perfil?: PerfilEntrevistado | null, anteriores?: { pendencias: string[]; escolhidas: string[] } | null) {
+  const pessoa = perfil ? `<pessoa>\n${[perfil.area && `Área: ${perfil.area}`, perfil.funcao && `O que faz: ${perfil.funcao}`].filter(Boolean).join('\n')}\n</pessoa>\n\n` : '';
+  const antes = anteriores?.pendencias.length
+    ? `\n\n<pendencias_anteriores>\nA pessoa voltou à conversa para responder pontos em aberto. Estas eram as pendências; as marcadas com (escolhida) são as que ela veio responder.\n${anteriores.pendencias.map((p, i) => `${i + 1}. ${p}${anteriores.escolhidas.includes(p) ? ' (escolhida)' : ''}`).join('\n')}\n</pendencias_anteriores>`
+    : '';
+  return `<processo>\nTema da entrevista: ${l.tema}\n${l.contexto ? `Contexto: ${l.contexto}\n` : ''}</processo>\n\n${pessoa}<entrevista>\n${transcricaoDaConversa(l.turnos)}\n</entrevista>${antes}`;
+}
+
+const mesmaPergunta = (a: string, b: string) => a.trim().toLocaleLowerCase('pt-BR') === b.trim().toLocaleLowerCase('pt-BR');
+
+/**
+ * As pendências depois que a pessoa voltou para completar (decisão 66): saem das anteriores, pela situação que a
+ * análise deu a cada uma. Respondida sai; o que ela disse não saber passa para outra pessoa; o resto continua.
+ * Nenhuma pendência nova entra: a lista só diminui, e a entrevista não fica presa num ciclo de voltas.
+ */
+export function pendenciasDepoisDoComplemento(anterior: Pick<ResultadoEntrevista, 'pendencias' | 'pendencias_outra_pessoa'>, situacoes: { numero: number; situacao: 'respondida' | 'em_aberto' | 'outra_pessoa'; quem_sabe: string }[]) {
+  const situacao = new Map(situacoes.map((x) => [x.numero, x]));
+  const pendencias: string[] = [];
+  const outra = [...(anterior.pendencias_outra_pessoa ?? [])];
+  anterior.pendencias.forEach((p, i) => {
+    const x = situacao.get(i + 1);
+    if (x?.situacao === 'respondida') return;
+    if (x?.situacao === 'outra_pessoa') { if (!outra.some((o) => mesmaPergunta(o.pergunta, p))) outra.push({ pergunta: p, quem_sabe: x.quem_sabe.trim() || 'Outra área' }); return; }
+    pendencias.push(p); // em aberto, ou a análise não disse nada sobre ela
+  });
+  return { pendencias, pendencias_outra_pessoa: outra };
 }
 
 const TAGS_OK = new Set(['p', 'ul', 'ol', 'li', 'strong', 'em', 'br']);
@@ -669,11 +749,23 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
   try {
     const inicio = Date.now();
     let uso: UsoIa | undefined;
-    const r = await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, montarPedidoAnalise(linha), { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium', aoUsar: (u) => { uso = u; } });
-    const resultado: ResultadoEntrevista = {
-      descricao: limparHtml(r.descricao), ficha: r.ficha, pendencias: r.pendencias,
-      pendencias_outra_pessoa: r.pendencias_outra_pessoa.map((x) => ({ pergunta: x.pergunta.trim(), quem_sabe: x.quem_sabe.trim() || 'Outra área' })).filter((x) => x.pergunta),
-    };
+    // A pessoa voltou para completar (decisão 66): a análise diz a situação de cada pendência anterior, e a
+    // lista nova sai daí. Na primeira análise, a lista vem da IA, até o limite.
+    const volta = complementoAberto(linha);
+    const anterior = volta && linha.resultado ? linha.resultado : null;
+    const conhecido = await perfilConhecido(linha.entrevistado_id).catch(() => null);
+    const pedido = montarPedidoAnalise(linha, conhecido, anterior ? { pendencias: anterior.pendencias, escolhidas: volta!.pendencias } : null);
+    const opcoes = { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium' as const, aoUsar: (u: UsoIa) => { uso = u; } };
+    const r = anterior ? await chamarEstruturado(ReanaliseSchema, SISTEMA_ANALISE, pedido, opcoes) : await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, pedido, opcoes);
+    const pendencias = anterior
+      ? pendenciasDepoisDoComplemento(anterior, (r as z.infer<typeof ReanaliseSchema>).situacao_pendencias ?? [])
+      : {
+        pendencias: r.pendencias.map((p) => p.trim()).filter(Boolean).slice(0, MAX_PENDENCIAS),
+        pendencias_outra_pessoa: r.pendencias_outra_pessoa.map((x) => ({ pergunta: x.pergunta.trim(), quem_sabe: x.quem_sabe.trim() || 'Outra área' })).filter((x) => x.pergunta),
+      };
+    // Quem é a pessoa (decisão 67): o que ela disse nesta conversa; se não disse, o que já tinha contado antes.
+    const perfil = perfilDe({ entrevistado: r.entrevistado }) ?? perfilDe(anterior) ?? conhecido;
+    const resultado: ResultadoEntrevista = { ...(perfil ? { entrevistado: perfil } : {}), descricao: limparHtml(r.descricao), ficha: r.ficha, ...pendencias };
     // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
     const metricas = (await carregar(id)).metricas ?? {};
     // Soma às análises anteriores (completar a entrevista refaz o resultado; cada vez é cobrada; decisão 57).

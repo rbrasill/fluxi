@@ -21,7 +21,7 @@ export type EntrevistaResumo = {
 };
 /** Uma entrevista na página do processo. */
 export type EntrevistaDoProcesso = {
-  id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; convidado_por: string | null;
+  id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; entrevistado_area: string | null; convidado_por: string | null;
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
   complemento_pendencias: number | null;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;

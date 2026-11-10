@@ -339,6 +339,16 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
 
       {r && (
         <>
+          {r.entrevistado && (r.entrevistado.area || r.entrevistado.funcao) && (
+            <div className="cartao" id="quem-foi-entrevistado">
+              <h3 className="sem-margem">{minha ? 'Sobre você' : 'Quem foi entrevistado'}</h3>
+              <dl className="ficha-resumo">
+                {!minha && e.entrevistado && <><dt>Nome</dt><dd>{e.entrevistado}</dd></>}
+                {r.entrevistado.area && <><dt>Área</dt><dd>{r.entrevistado.area}</dd></>}
+                {r.entrevistado.funcao && <><dt>O que faz</dt><dd>{r.entrevistado.funcao}</dd></>}
+              </dl>
+            </div>
+          )}
           <div className="cartao">
             <h3 className="sem-margem">Descrição do processo</h3>
             <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />

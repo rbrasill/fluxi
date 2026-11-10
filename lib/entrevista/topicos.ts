@@ -73,7 +73,13 @@ export type Etapa = {
 
 /** O que a pessoa entrevistada não soube responder e outra pessoa sabe (decisão 58): a pergunta e quem saberia (área ou cargo). */
 export type PendenciaOutraPessoa = { pergunta: string; quem_sabe: string };
+/** Quem é a pessoa entrevistada, como ela contou à Maia (decisão 67): a área ou o setor e o que ela faz. */
+export type PerfilEntrevistado = { area: string; funcao: string };
+/** No máximo quantos pontos em aberto a análise deixa (decisão 66): os que fazem falta para descrever o processo. */
+export const MAX_PENDENCIAS = 5;
+
 export type ResultadoEntrevista = {
+  entrevistado?: PerfilEntrevistado; // resultados antigos não têm
   descricao: string; // HTML simples (p, ul, ol, li, strong, em)
   ficha: { objetivo: string; gatilho: string; resultado: string; etapas: Etapa[]; dificuldades: string[] };
   pendencias: string[]; // o que a própria pessoa pode responder (dá para voltar à ligação; decisão 56)

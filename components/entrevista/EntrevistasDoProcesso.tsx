@@ -77,7 +77,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
               <article key={x.id} className="linha-pop" data-status={x.status}>
                 <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
                 <div className="pop-nome">
-                  <strong>{x.entrevistado ?? 'Sem entrevistado'}</strong>
+                  <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}</strong>
                   <span>
                     {x.convidado_em ? `Convidad${x.entrevistado?.trim().endsWith('a') ? 'a' : 'o'} em ${data(x.convidado_em)}${x.convidado_por ? ` por ${x.convidado_por}` : ''}` : `Criada em ${data(x.criado_em)}`}
                     {x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}

@@ -498,6 +498,19 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Gestor e comum:** como antes (o cartão com o aviso). O gestor continua podendo reenviar e cancelar convites pela página do processo e gerar de novo um resultado que falhou.
 - **Junto:** na conversa transcrita, quem não é a pessoa entrevistada lê o nome dela no lugar de "Você".
 
+## 66. Os pontos em aberto param de se multiplicar (10/11/2026)
+- **O que o Rafael viu (testes com o Rodrigo Agreli):** a conversa entrava num ciclo: voltava à ligação para responder os pontos em aberto e, no fim, apareciam pontos novos. A entrevista de Férias passou por sete análises e terminou com seis pendências; a do eSocial, por quatro.
+- **A causa, lendo as conversas:** a cada volta a análise relia a conversa inteira e escrevia a lista de pendências do zero. Com isso: (1) reabria o que já tinha sido respondido, tratando a resposta nova como "contradição" com o que foi dito antes (o prazo de trinta dias, respondido três vezes); (2) não aceitava resposta curta ou negativa ("não costuma dar problema" voltava como pergunta); (3) transformava em dúvida falas de fundo que o microfone captou, sem ligação com a pergunta ("as vagas", "tinha que ser semanal"); (4) acrescentava curiosidades novas a cada rodada.
+- **Depois de uma volta, a lista só diminui.** A análise recebe as pendências anteriores numeradas (com as que a pessoa escolheu responder marcadas) e devolve a situação de cada uma: respondida, em aberto ou "ela não sabe, é com outra pessoa". A lista nova é montada pelo código a partir daí (`pendenciasDepoisDoComplemento`): respondida sai; o que ela não sabe vai para "Para outra pessoa responder"; o resto fica. Pendência nova não entra, nem que a IA escreva uma. A descrição e a ficha continuam sendo refeitas com a conversa inteira.
+- **Na primeira análise, menos pendências e melhores:** só o que faz falta para descrever o processo (etapa sem responsável, caminho de decisão sem explicação, prazo ou regra citada sem dizer qual), no máximo cinco. Pergunta respondida está fechada, mesmo com resposta curta ou negativa; o que foi dito depois vale sobre o que foi dito antes; curiosidade não é pendência; falas soltas, sem ligação com a pergunta, são ruído e são ignoradas.
+- As entrevistas já analisadas ficam como estão; as regras valem para as próximas análises.
+
+## 67. A Maia pergunta quem é a pessoa: área e o que faz (10/11/2026)
+- **Pedido:** a Maia pegar a informação da pessoa que ela entrevista: a área ou o setor e um pouco do que ela faz.
+- **Na conversa:** na abertura da primeira ligação, depois de se apresentar e avisar da gravação, a Maia pergunta de qual área a pessoa é e o que ela faz no dia a dia, e só então entra no processo. É uma pergunta só; ela não insiste nem aprofunda.
+- **No resultado:** a análise guarda `entrevistado` (área e o que faz), só com o que a pessoa contou. O resultado mostra o cartão "Quem foi entrevistado" ("Sobre você", para a própria pessoa); na página do processo, a área aparece ao lado do nome; e o material do fluxograma gerado das conversas (decisão 63) leva essa informação, que ajuda a IA a escolher as raias.
+- **Nas próximas entrevistas da mesma pessoa:** a Maia já sabe (lê da conversa concluída mais recente) e não pergunta de novo; a análise recebe o que ela já contou. Não há campo novo no cadastro de pessoas nem migração: fica no resultado da entrevista.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
