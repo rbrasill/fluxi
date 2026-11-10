@@ -921,6 +921,7 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .entrevistas-pendentes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; background: #eef4ff; border: 1px solid #c9d8f5; color: #15325e; font-size: 14px; }
 .entrevistas-pendentes .btn { margin-left: auto; }
 .lista-entrevistas .linha-pop .pop-nome { min-width: 0; }
+.pop-nome .rotulo-processo { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .selo-convidada { background: #fff3e0; color: #8a4b00; }
 .selo-andamento, .selo-processando { background: #eef2ff; color: #3b3fa3; }
 .selo-concluida { background: #e7f5ec; color: #1f6b3a; }

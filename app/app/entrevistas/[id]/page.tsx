@@ -174,8 +174,8 @@ function EntrevistaPage() {
       <div>
         <nav className="migalha" aria-label="Caminho">
           {e.processo
-            ? <><Link href={`/app/processos/${e.processo.id}`}>{e.processo.nome}</Link><span>›</span><Link href="/app/entrevistas">Entrevista com a Maia</Link></>
-            : <Link href="/app/entrevistas">Entrevista com IA</Link>}
+            ? <><Link href={`/app/processos/${e.processo.id}`}>{e.processo.nome}</Link><span>›</span><Link href="/app/entrevistas">Conversas com a Maia</Link></>
+            : <Link href="/app/entrevistas">Conversas com a Maia</Link>}
         </nav>
         <h1>{e.tema || 'Entrevista'}</h1>
         {!e.processo && e.contexto && <p>{e.contexto}</p>}

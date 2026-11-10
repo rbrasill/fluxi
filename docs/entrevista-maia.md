@@ -1,6 +1,6 @@
 # Maia: entrevista por voz com IA (registro até 09/11/2026)
 
-A Maia é a entrevistadora por voz do INCFlow: conversa ao vivo com quem executa um processo e, no fim, entrega a descrição do processo, uma ficha com as etapas e a lista do que ficou em aberto. Está em teste no menu **Laboratório → Entrevista com IA** (`/app/entrevistas`) e não cria nem altera processos. A história completa está nas decisões 39 a 48 (`docs/decisoes.md`); este documento junta o estado atual.
+A Maia é a entrevistadora por voz do INCFlow: conversa ao vivo com quem executa um processo e, no fim, entrega a descrição do processo, uma ficha com as etapas e a lista do que ficou em aberto. Fica no menu **Conversas com a Maia** (`/app/entrevistas`, decisão 60: quem é comum vê só as suas conversas, com o processo e a data e hora de cada uma) e não cria nem altera processos. A história completa está nas decisões 39 a 60 (`docs/decisoes.md`); este documento junta o estado atual.
 
 ## O que ela faz hoje
 

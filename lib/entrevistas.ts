@@ -13,8 +13,9 @@ export type Entrevista = {
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
 export type EntrevistaResumo = {
-  id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; processo: { id: string; nome: string } | null;
-  convidado_em: string | null; convite_enviado_em: string | null; criado_em: string; encerrado_em: string | null;
+  id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null;
+  processo: { id: string; nome: string; area: { id: string; nome: string } | null } | null;
+  convidado_por: string | null; convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
   complemento_pendencias: number | null;
   falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number;
 };
@@ -98,6 +99,15 @@ export function perguntasParaOutrasPessoas(lista: { entrevistado: string | null;
 export function notaParaOutraPessoa(quemSabe: string, perguntas: string[]) {
   const texto = `Perguntas que ficaram para alguém de ${quemSabe}: ${perguntas.join(' ')}`;
   return texto.length <= 500 ? texto : `${texto.slice(0, 497).trimEnd()}…`;
+}
+
+const dataHora = (iso: string) => { const d = new Date(iso); return `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`; };
+
+/** Quando foi a entrevista, com data e hora (decisão 60): a conversa, se já começou; senão, o convite. */
+export function quandoFoiAEntrevista(e: { status: StatusEntrevista; falas: number; convidado_por?: string | null; convidado_em: string | null; iniciada_em: string | null; criado_em: string }) {
+  const comecou = e.status !== 'convidada' && (!!e.iniciada_em || e.falas > 0 || !e.convidado_em);
+  if (comecou) return `Conversa em ${dataHora(e.iniciada_em ?? e.criado_em)}`;
+  return `Convite de ${dataHora(e.convidado_em ?? e.criado_em)}${e.convidado_por ? `, por ${e.convidado_por}` : ''} · ainda não começou`;
 }
 
 /** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */

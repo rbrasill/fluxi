@@ -453,6 +453,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Preço do cache corrigido:** a leitura de cache do Sonnet 5.5 custa US$ 0,10 por milhão de tokens (0,05x da entrada, como no Opus 5.5), não US$ 0,20. A estimativa da análise ficava um pouco acima do real.
 - **Preços são tabela fixa:** nenhuma API devolve preço (nem a de modelos da OpenAI, nem a da Anthropic). As APIs devolvem o uso (segundos de voz, tokens) e o app multiplica pela tabela publicada. O valor cobrado de fato só sai nos relatórios de custo das duas empresas, por dia e por organização, com chave de administrador (a chave do app recebe 403).
 
+## 60. Menu "Conversas com a Maia": cada pessoa vê as suas (10/11/2026)
+- **Pedido:** o menu passa a se chamar **Conversas com a Maia**; o usuário comum vê ali as conversas dele com a Maia; cada entrevista mostra de que processo é e a data e a hora.
+- **Menu e página:** "Entrevista com IA" virou "Conversas com a Maia" (o selo "TESTE" saiu: não cabia ao lado do nome novo); a página e o caminho de volta da entrevista usam o mesmo nome. O endereço continua `/app/entrevistas`.
+- **Quem vê o quê:** `GET /api/entrevistas` devolve a quem é **comum só as entrevistas em que ele é o entrevistado** (o filtro é no servidor); gestores e administradores continuam recebendo todas, separadas em "Suas conversas" e "Conversas de outras pessoas". A seção de entrevistas da página do processo não mudou: lá, todos veem as entrevistas daquele processo.
+- **Cada linha:** o rótulo "Processo · Área", o nome do processo, e quando foi: **"Conversa em 09/11/2026 às 14:32"** (a hora em que a ligação começou, no fuso de quem está vendo), com a duração e as falas; se ainda não começou, **"Convite de 10/11/2026 às 09:05, por Fulano · ainda não começou"**. Entrevistas antigas sem processo aparecem como "Sem processo", com o tema.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

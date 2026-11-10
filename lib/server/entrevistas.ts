@@ -214,18 +214,25 @@ async function nomesDasPessoas(ids: (string | null | undefined)[]) {
 type ProcessoEmbutido = { id: string; nome: string } | null;
 
 /** Todas as entrevistas, da mais recente para a mais antiga, com o processo e a pessoa de cada uma. */
-export async function listar() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_em, convite_enviado_em, complemento, criado_em, encerrado_em, processo:processos(id, nome)')
-    .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
+/**
+ * As entrevistas da tela "Conversas com a Maia" (decisão 60): quem é comum recebe só as suas; gestores e
+ * administradores, todas. Cada uma vem com o processo (e a área dele) e as datas do convite e da conversa.
+ */
+export async function listar(pessoa?: Pessoa | null) {
+  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
+    .eq('tenant_id', TENANT_PADRAO);
+  if (!ehGestor(pessoa)) consulta = consulta.eq('entrevistado_id', pessoa!.id);
+  const { data, error } = await consulta.order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
-  const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
-  return linhas.map(({ turnos, metricas, entrevistado_id, processo, complemento, ...e }) => {
+  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
+  return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, processo, complemento, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
       ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
-      processo: (processo as unknown as ProcessoEmbutido) ?? null,
+      convidado_por: nomes.get(convidado_por as string) ?? null,
+      processo: (processo as unknown as (ProcessoEmbutido & { area: { id: string; nome: string } | null })) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
     };
