@@ -4,7 +4,7 @@ import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 
 export type ProcessoResumo = {
   id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null;
-  arquivado_em: string | null; criado_em: string; atualizado_em: string;
+  arquivado_em: string | null; criado_em: string; atualizado_em: string; link_publico_ativo: boolean; // página pública no ar (decisão 35)
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {

@@ -459,6 +459,15 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Quem vê o quê:** `GET /api/entrevistas` devolve a quem é **comum só as entrevistas em que ele é o entrevistado** (o filtro é no servidor); gestores e administradores continuam recebendo todas, separadas em "Suas conversas" e "Conversas de outras pessoas". A seção de entrevistas da página do processo não mudou: lá, todos veem as entrevistas daquele processo.
 - **Cada linha:** o rótulo "Processo · Área", o nome do processo, e quando foi: **"Conversa em 09/11/2026 às 14:32"** (a hora em que a ligação começou, no fuso de quem está vendo), com a duração e as falas; se ainda não começou, **"Convite de 10/11/2026 às 09:05, por Fulano · ainda não começou"**. Entrevistas antigas sem processo aparecem como "Sem processo", com o tema.
 
+## 61. Processos em pastas (10/11/2026)
+- **Pedido:** ver os processos como pastas, no estilo da imagem de referência (cartões em forma de pasta), menores, sem menu de três pontos, só com o nome do processo, a data da última atualização e se a página pública está online ou offline. Validado em dois protótipos em HTML antes de ir para o app.
+- **Onde:** na página da área (`/app/areas/:id`, abas Ativos e Arquivados) e em "Todos os processos" (`/app/processos`). O componente é `components/PastaProcesso.tsx`; a lista de processos do Início ("Processos sem POP") não mudou.
+- **A pasta:** um quadrado de cor suave (fundo claro e miolo um pouco mais escuro; a cor sai do id do processo, então não muda de uma visita para outra e não tem significado), o nome em até duas linhas (o nome inteiro aparece ao passar o mouse), "Atualizado em dd/mm/aaaa" e o selo **Online** (verde) ou **Offline** (cinza), que é a chave da página pública do processo (decisão 35). A pasta inteira abre o processo. Cabem quatro por linha num notebook e duas no celular.
+- **Arquivada:** cinza, com "Arquivado em dd/mm/aaaa" e o botão **Restaurar** na própria pasta.
+- **Saíram da lista:** o resumo da descrição, o código e as contagens de gravações, fluxograma e POPs (continuam dentro do processo; a busca de "Todos os processos" ainda acha pelo código).
+- **Servidor:** a área passa a devolver `link_publico_ativo` de cada processo (a lista de todos os processos já devolvia).
+- **Correção junto:** o contador das abas (Ativos 8, Arquivados 1, e os filtros de POPs) usava a classe `conta`, a mesma do bloco da conta no menu lateral (decisão 50); o número aparecia embaixo do nome, com um traço. Virou `conta-aba`.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

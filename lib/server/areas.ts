@@ -37,7 +37,7 @@ export async function obter(id: string) {
   const db = supabase();
   const [a, p] = await Promise.all([
     db.from('areas').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('processos').select('id, codigo, nome, descricao, arquivado_em, atualizado_em, fluxogramas(count), gravacoes(count), pops(arquivado_em)')
+    db.from('processos').select('id, codigo, nome, descricao, arquivado_em, atualizado_em, link_publico_ativo, fluxogramas(count), gravacoes(count), pops(arquivado_em)')
       .eq('tenant_id', TENANT_PADRAO).eq('area_id', id).order('nome'),
   ]);
   for (const r of [a, p]) if (r.error) throw r.error;
