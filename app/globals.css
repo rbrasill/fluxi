@@ -981,3 +981,6 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .fontes-ia button { flex: 1 1 auto; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
 .conversas-fluxo { background: var(--surface); max-height: 240px; }
 @media (max-width: 560px) { .fontes-ia { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .fontes-ia button { padding: 6px; height: auto; min-height: 34px; white-space: normal; line-height: 1.2; } }
+/* A entrevista de outra pessoa vista pelo administrador (decisão 65). */
+.gestao-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gestao-entrevista .fluxo-acoes { flex-wrap: wrap; }

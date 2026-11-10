@@ -1,20 +1,21 @@
 'use client';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { confirmar } from '@/components/Dialogos';
+import { avisar, confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, limparMarcasDeSom, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
-import { aquecerSessaoDeVoz, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, obterEntrevista, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
+import { aquecerSessaoDeVoz, confirmacaoDeExclusao, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, reenviarConvite, retomarEntrevista, situacaoDaEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
 // é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera reagindo
 // às vozes; nada de texto nem de números) e o resultado (a descrição, a ficha e a conversa). Custos e
-// indicadores ficam no Painel da Maia, só para administradores.
+// indicadores ficam no Painel da Maia, só para administradores. O administrador tem acesso total a qualquer
+// entrevista (decisão 65): vê a conversa mesmo antes de terminar e gerencia; só não fala no lugar da pessoa.
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 // Durante a conversa a tela não muda de texto (a esfera mostra quem fala); só o antes e o depois têm aviso.
@@ -26,6 +27,7 @@ const LEGENDA_CONVERSA = 'Conversa ao vivo: fale com naturalidade e interrompa a
 
 function EntrevistaPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const eu = useEu();
   const [e, setE] = useState<Entrevista | null | undefined>(undefined);
   const [tela, setTela] = useState<'inicio' | 'conversa' | 'processando' | 'resultado'>('inicio');
@@ -166,6 +168,16 @@ function EntrevistaPage() {
     await carregar();
   }
 
+  /** O administrador encerra a conversa pausada de outra pessoa e gera o resultado (decisão 65). */
+  async function encerrarComoAdmin() {
+    setErro(null);
+    setAviso('');
+    setE((x) => x && { ...x, status: 'processando' });
+    setTela('resultado');
+    try { await encerrarEntrevista(id); } catch (err) { setTela('inicio'); setErro({ texto: `Não foi possível encerrar a entrevista (${msg(err)}).` }); }
+    await carregar();
+  }
+
   if (e === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (e === null) return <div className="page"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/entrevistas" className="btn btn-primary">Voltar</Link></div></div>;
 
@@ -188,6 +200,15 @@ function EntrevistaPage() {
     const retomando = e.turnos.length > 0;
     const minha = souEu(eu, e.entrevistado_id); // só a pessoa convidada liga para a Maia (decisão 49)
     const complemento = e.complemento && !e.complemento.concluido_em ? e.complemento : null; // voltou para fechar pontos em aberto (decisão 56)
+    if (eu !== null && !minha && ehAdmin(eu)) {
+      return (
+        <GestaoDaEntrevista e={e} cabecalho={cabecalho} aviso={aviso} erro={erro?.texto ?? ''}
+          aoMudar={async (texto) => { setErro(null); setAviso(texto); await carregar(); }}
+          aoEncerrar={encerrarComoAdmin}
+          aoDesistir={desistir}
+          aoExcluir={() => router.push(e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas')} />
+      );
+    }
     if (eu !== null && !minha) {
       return (
         <div className="page page-estreita">
@@ -382,30 +403,104 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
         </>
       )}
 
-      {e.turnos.length > 0 && (
-        <details className="cartao conversa-detalhes" open={!r}>
-          <summary>Conversa transcrita ({e.turnos.length} falas)</summary>
-          {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
-          <div className="conversa-lida">
-            {e.turnos.map((t, i) => (
-              <Fragment key={i}>
-                {e.complemento && i === e.complemento.a_partir_do_turno && i > 0 && (
-                  <p className="conversa-divisor">Continuação para fechar {e.complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${e.complemento.pendencias.length} pontos que ficaram`} em aberto · {new Date(e.complemento.escolhidas_em).toLocaleDateString('pt-BR')}</p>
-                )}
-                <p className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
-                  {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
-                  <b>{t.quem === 'ia' ? 'Maia' : 'Você'}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {limparMarcasDeSom(t.texto)}
-                </p>
-              </Fragment>
-            ))}
-          </div>
-        </details>
-      )}
+      <ConversaTranscrita e={e} minha={minha} aberta={!r} />
 
       <div className="fluxo-acoes">
         <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar às entrevistas'}</Link>
         {admin && <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>}
       </div>
+    </div>
+  );
+}
+
+/** A conversa em texto, com as gravações: quem não é a pessoa entrevistada lê o nome dela no lugar de "Você". */
+function ConversaTranscrita({ e, minha, aberta, titulo = 'Conversa transcrita' }: { e: Entrevista; minha: boolean; aberta: boolean; titulo?: string }) {
+  if (!e.turnos.length) return null;
+  const quem = minha ? 'Você' : e.entrevistado?.trim().split(/\s+/)[0] ?? 'Entrevistado';
+  return (
+    <details className="cartao conversa-detalhes" open={aberta}>
+      <summary>{titulo} ({e.turnos.length} falas)</summary>
+      {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
+      <div className="conversa-lida">
+        {e.turnos.map((t, i) => (
+          <Fragment key={i}>
+            {e.complemento && i === e.complemento.a_partir_do_turno && i > 0 && (
+              <p className="conversa-divisor">Continuação para fechar {e.complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${e.complemento.pendencias.length} pontos que ficaram`} em aberto · {new Date(e.complemento.escolhidas_em).toLocaleDateString('pt-BR')}</p>
+            )}
+            <p className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
+              {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
+              <b>{t.quem === 'ia' ? 'Maia' : quem}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {limparMarcasDeSom(t.texto)}
+            </p>
+          </Fragment>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+const dataHora = (iso: string) => { const d = new Date(iso); return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`; };
+
+/**
+ * A entrevista de outra pessoa que ainda não terminou, vista pelo administrador (decisão 65): em que pé está, o
+ * convite, a conversa até agora e as ações (reenviar ou cancelar o convite, encerrar e gerar o resultado, excluir).
+ * Falar com a Maia continua sendo só da pessoa convidada: a conversa fica no nome dela.
+ */
+function GestaoDaEntrevista({ e, cabecalho, aviso, erro, aoMudar, aoEncerrar, aoDesistir, aoExcluir }: {
+  e: Entrevista; cabecalho: React.ReactNode; aviso: string; erro: string;
+  aoMudar: (aviso: string) => Promise<void>; aoEncerrar: () => Promise<void>; aoDesistir: () => Promise<void>; aoExcluir: () => void;
+}) {
+  const [ocupado, setOcupado] = useState(false);
+  const nome = e.entrevistado ?? 'a pessoa convidada';
+  const primeiroNome = e.entrevistado?.trim().split(/\s+/)[0] ?? 'a pessoa';
+  const pendente = e.status === 'convidada';
+  const falas = e.turnos.filter((t) => !t.apoio).length;
+  const temFala = e.turnos.some((t) => t.quem === 'pessoa' && t.texto.trim());
+  const complemento = e.complemento && !e.complemento.concluido_em ? e.complemento : null;
+  const duracao_s = e.metricas?.duracao_s ?? 0;
+
+  async function agir(fn: () => Promise<void>, falha: string) {
+    setOcupado(true);
+    try { await fn(); } catch (err) { void avisar(falha, msg(err)); } finally { setOcupado(false); }
+  }
+  const reenviar = () => agir(async () => { await reenviarConvite(e.id); await aoMudar(`Convite reenviado para ${nome}.`); }, 'Não foi possível reenviar o convite.');
+  async function excluir() {
+    if (!(await confirmar(confirmacaoDeExclusao({ status: e.status, falas, entrevistado: e.entrevistado })))) return;
+    await agir(async () => { await excluirEntrevista(e.id); aoExcluir(); }, pendente ? 'Não foi possível cancelar o convite.' : 'Não foi possível excluir a entrevista.');
+  }
+  async function encerrar() {
+    if (!(await confirmar({ titulo: `Encerrar a entrevista de ${nome}?`, mensagem: `A conversa termina como está, com ${falas} falas, e a Maia gera o resultado. ${primeiroNome} não continua mais esta ligação; se faltar algo, dá para pedir que responda os pontos em aberto depois.`, acao: 'Encerrar e gerar o resultado' }))) return;
+    await agir(aoEncerrar, 'Não foi possível encerrar a entrevista.');
+  }
+
+  return (
+    <div className="page page-estreita">
+      {cabecalho}
+      {aviso && <p className="notice">{aviso}</p>}
+      {erro && <div className="entrevista-erro" role="alert"><span>{erro}</span></div>}
+      <div className="cartao gestao-entrevista">
+        <div className="gestao-topo">
+          <h3 className="sem-margem">Entrevista de {nome}</h3>
+          <span className={`selo-status ${pendente ? 'selo-convidada' : 'selo-andamento'}`}>{situacaoDaEntrevista({ status: e.status, falas, convite_enviado_em: e.convite_enviado_em, complemento_pendencias: complemento?.pendencias.length ?? null })}</span>
+        </div>
+        <dl className="ficha-resumo">
+          {e.convidado_em && <><dt>Convite</dt><dd>{dataHora(e.convidado_em)}{e.convidador ? `, por ${e.convidador}` : ''}{e.convite_enviado_em ? ` · e-mail enviado em ${dataHora(e.convite_enviado_em)}` : ' · o e-mail não foi enviado'}</dd></>}
+          {e.nota_convite && <><dt>Pedido</dt><dd>“{e.nota_convite}”</dd></>}
+          <dt>Conversa</dt>
+          <dd>{pendente ? `${primeiroNome} ainda não ligou para a Maia.` : `${e.iniciada_em ? `Começou em ${dataHora(e.iniciada_em)}` : 'Começou'}${falas ? ` · ${falas} falas` : ''}${duracao_s ? ` · ${duracao_s >= 60 ? `${Math.round(duracao_s / 60)} min` : `${Math.round(duracao_s)} s`}` : ''} · pausada, ainda sem resultado.`}</dd>
+          {complemento && <><dt>Completar</dt><dd>Está marcado para {primeiroNome} responder {complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto.</dd></>}
+        </dl>
+        {complemento && <ul className="ficha-lista">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+        <p className="notice">Como administrador, você vê e gerencia esta entrevista. Só {primeiroNome} fala com a Maia nela: a conversa fica registrada no nome de quem foi convidado.</p>
+        <div className="fluxo-acoes">
+          <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
+          {pendente && <button type="button" className="btn" disabled={ocupado} onClick={() => void reenviar()} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
+          {complemento && e.turnos.length === complemento.a_partir_do_turno && <button type="button" className="btn btn-ghost" disabled={ocupado} onClick={() => void agir(aoDesistir, 'Não foi possível desfazer.')} title="Fica com o resultado que já existe">Deixar como está</button>}
+          <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado} onClick={() => void excluir()} title={pendente ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar convite' : 'Excluir entrevista'}</button>
+          {!pendente && temFala && <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => void encerrar()} title="Termina a conversa como está e gera a descrição e a ficha"><Icone nome="ia" tamanho={16} />Encerrar e gerar o resultado</button>}
+          <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>
+        </div>
+      </div>
+      <ConversaTranscrita e={e} minha={false} aberta titulo="Conversa até agora" />
     </div>
   );
 }

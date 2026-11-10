@@ -647,12 +647,16 @@ export function limparHtml(html: string) {
 export async function encerrar(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status === 'convidada') throw new ErroApi(409, 'A entrevista ainda não começou.');
-  // A pessoa encerra a sua conversa. Gestores e administradores só geram de novo um resultado que falhou
-  // (erro ou processamento parado): não encerram a conversa de outra pessoa (decisão 54).
+  // A pessoa encerra a sua conversa. O administrador tem acesso total (decisão 65): também encerra a conversa
+  // pausada de outra pessoa e gera o resultado, menos enquanto ela está na ligação. Gestores só geram de novo
+  // um resultado que falhou (erro ou processamento parado).
   const dono = !pessoa || !linha.entrevistado_id || linha.entrevistado_id === pessoa.id;
   if (!dono) {
     if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
-    if (linha.status === 'em_andamento') throw new ErroApi(403, 'Só a pessoa entrevistada encerra a conversa.', 'outra_pessoa');
+    if (linha.status === 'em_andamento') {
+      if (pessoa.nivel !== 'admin') throw new ErroApi(403, 'Só a pessoa entrevistada ou um administrador encerra a conversa.', 'outra_pessoa');
+      if (Date.now() - new Date(linha.atualizado_em).getTime() < EM_LIGACAO_MS) throw new ErroApi(409, 'A pessoa está conversando com a Maia agora. Tente de novo em alguns minutos.', 'em_ligacao');
+    }
   }
   if (linha.status === 'concluida') return { status: 'concluida' as const };
   if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) return { status: 'processando' as const };
