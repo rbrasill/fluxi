@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { mmss, seg, usd } from '@/components/entrevista/Metricas';
 import { ROTULO_STATUS } from '@/lib/entrevista/topicos';
+import { SoAdministradores } from '@/components/SoAdministradores';
 import { obterPainelDaMaia, type EntrevistaPainel, type PainelMaia } from '@/lib/maia';
 
 // Painel da Maia (decisão 52), só administradores: o acumulado e o custo de cada entrevista, o resumo por
@@ -18,6 +19,10 @@ const situacao = (x: EntrevistaPainel) => (x.status === 'em_andamento' && x.fala
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export default function PainelMaiaPage() {
+  return <SoAdministradores titulo="O Painel da Maia"><ConteudoPainel /></SoAdministradores>;
+}
+
+function ConteudoPainel() {
   const [p, setP] = useState<PainelMaia | null>(null);
   const [erro, setErro] = useState('');
   useEffect(() => { obterPainelDaMaia().then(setP).catch((e) => setErro(e instanceof Error ? e.message : 'Não foi possível carregar o painel.')); }, []);

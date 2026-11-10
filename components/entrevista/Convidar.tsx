@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { ehAdmin, useEu } from '@/lib/auth/eu';
 import { MAX_CONVITES } from '@/lib/entrevista/topicos';
 import { convidarParaEntrevista, type ResultadoConvite } from '@/lib/entrevistas';
 import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
@@ -18,6 +19,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
   dica?: string; // por exemplo, "Escolha alguém de Financeiro."
   aoConvidar: (r: ResultadoConvite) => void; aoFechar: () => void;
 }) {
+  const admin = ehAdmin(useEu());
   const [pessoas, setPessoas] = useState<PessoaConvidavel[] | null>(null);
   const [busca, setBusca] = useState('');
   const [marcadas, setMarcadas] = useState<string[]>([]);
@@ -60,7 +62,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
         </label>
         <div className="lista-pessoas" role="group" aria-label="Pessoas cadastradas">
           {pessoas === null && <p className="notice">Carregando…</p>}
-          {pessoas && filtradas.length === 0 && <p className="notice">{pessoas.length ? 'Ninguém com esse nome.' : 'Nenhuma pessoa cadastrada ainda. Cadastre em Pessoas e acessos.'}</p>}
+          {pessoas && filtradas.length === 0 && <p className="notice">{pessoas.length ? 'Ninguém com esse nome.' : (admin ? 'Nenhuma pessoa cadastrada ainda. Cadastre em Pessoas e acessos.' : 'Nenhuma pessoa cadastrada ainda. Peça a um administrador para cadastrar em Pessoas e acessos.')}</p>}
           {filtradas.map((p) => {
             const marcada = marcadas.includes(p.id);
             const aberta = indisponiveis.includes(p.id);

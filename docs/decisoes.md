@@ -485,6 +485,11 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **O resto não muda:** o fluxograma nasce como os outros gerados pela IA (estrutura guardada, estilo da Biblioteca de Processos, "Refazer no padrão INC" disponível). A conversa e o resultado da entrevista não são alterados.
 - **Conferência:** a montagem do material e as recusas foram testadas com um banco de mentira, e o diálogo, no navegador com a API simulada. A chamada de verdade à IA não rodou no desenvolvimento (a sessão não tem a chave da Anthropic).
 
+## 64. Só administradores cadastram pessoas (10/11/2026)
+- **Regra (Rafael):** só administradores cadastram pessoas, mudam acessos e removem pessoas. Comum e gestor, não.
+- **Como estava:** o servidor já recusava (as rotas de `/api/pessoas` exigem administrador e respondem 403 "Só administradores podem fazer isso"), e o item do menu só aparecia para administradores. Mas a tela `/app/pessoas` abria para qualquer pessoa que digitasse o endereço, com o formulário de cadastro à vista (a tentativa terminava no erro). O Painel da Maia tinha o mesmo jeito.
+- **Como ficou:** as duas telas passam por `components/SoAdministradores.tsx`: para comum e gestor, mostram só o aviso "… é só para administradores" e o botão de voltar, sem formulário e sem pedir dados ao servidor. A ajuda dos níveis diz o que cada um pode: comum usa o INCFlow e conversa com a Maia quando é convidado; gestor também convida para conversas com a Maia; nenhum dos dois cadastra pessoas. No convite para entrevista, quando ninguém está cadastrado, o gestor lê "peça a um administrador para cadastrar".
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

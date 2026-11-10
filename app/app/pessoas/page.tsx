@@ -2,20 +2,26 @@
 import { useEffect, useState } from 'react';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Icone } from '@/components/Icone';
+import { SoAdministradores } from '@/components/SoAdministradores';
 import { ROTULO_NIVEL, alterarPessoa, criarPessoa, excluirPessoa, listarPessoas, type Nivel, type PessoaResumo } from '@/lib/pessoas';
 
-// Pessoas e acessos (decisão 50): quem pode entrar no INCFlow. Só administradores veem esta página.
+// Pessoas e acessos (decisão 50): quem pode entrar no INCFlow. Só administradores cadastram pessoas e mudam
+// acessos: o servidor recusa os outros, e a tela nem abre para eles (decisão 64).
 // Entrar é sem senha: a pessoa digita o e-mail corporativo e recebe um código.
 
 const NIVEIS: Nivel[] = ['comum', 'gestor', 'admin'];
 const AJUDA_NIVEL: Record<Nivel, string> = {
-  comum: 'Usa o INCFlow.',
-  gestor: 'Usa o INCFlow (permissões de gestor virão com as regras por área).',
-  admin: 'Também cadastra pessoas e muda acessos.',
+  comum: 'Usa o INCFlow e conversa com a Maia quando é convidado. Não cadastra pessoas.',
+  gestor: 'Também convida pessoas para conversas com a Maia. Não cadastra pessoas nem muda acessos.',
+  admin: 'Também cadastra pessoas, muda acessos e vê o Painel da Maia.',
 };
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 
 export default function PessoasPage() {
+  return <SoAdministradores titulo="Pessoas e acessos"><Pessoas /></SoAdministradores>;
+}
+
+function Pessoas() {
   const [lista, setLista] = useState<PessoaResumo[] | null>(null);
   const [erro, setErro] = useState('');
   const [eu, setEu] = useState<string | null>(null);
