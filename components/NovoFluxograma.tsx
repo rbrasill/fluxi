@@ -72,7 +72,7 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
         {!substituir && (
           <div className="options">
             <button type="button" className="option" aria-pressed={modo === 'manual'} onClick={() => setModo('manual')} disabled={ocupado}>
-              <strong>Desenhar</strong><span>Do zero, com a biblioteca BPMN INC.</span>
+              <strong>Desenhar</strong><span>Do zero, com a Biblioteca de Processos.</span>
             </button>
             <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado}>
               <strong><Icone nome="ia" tamanho={14} /> Gerar com IA</strong>

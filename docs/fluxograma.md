@@ -17,40 +17,45 @@ A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca
 2. **Colunas:** cada nó fica na coluna da **maior** distância desde o início. Assim toda seta de ida aponta para a direita, e uma junção fica depois de todos os caminhos que chegam nela. Nó sem entrada (ex.: link de outro processo) fica logo antes de quem ele alimenta.
 3. **Trilhas:** dentro da raia, cada nó ocupa uma trilha (linha). O nó herda a trilha do antecessor na mesma raia; se ela estiver ocupada, desce para a próxima livre. O caminho principal segue reto e os desvios descem. A anotação reserva a célula logo abaixo do nó.
 4. **Setas:** passam pelos corredores entre colunas e entre trilhas, nunca por cima de uma caixa. Seta reta quando a linha está livre; senão, curva no corredor. Saídas do mesmo nó (ou entradas no mesmo nó) dividem o trecho vertical, como um barramento; setas diferentes no mesmo corredor ficam lado a lado. Laço sai por baixo, volta pelo corredor abaixo da trilha e entra pela esquerda. Quando outro nó está colado à esquerda do destino, a seta entra por cima ou por baixo, para não parecer que sai desse vizinho.
-5. **Gateway:** pergunta acima do losango; a saída para um destino abaixo usa a ponta de baixo quando a coluna está livre. Rótulos "Sim"/"Não" usam o Indicador de Caminho da biblioteca, presos à seta. O corredor depois de um gateway alarga quando a condição escrita é longa.
+5. **Gateway:** pergunta acima do losango; a saída para um destino abaixo usa a ponta de baixo quando a coluna está livre. Rótulos "Sim"/"Não" usam o Indicador de Caminho da biblioteca, presos à seta. As saídas do gateway baseado em evento usam as caixas de "Evento ocorrido". O rótulo fica junto da saída; quando duas saídas do mesmo nó partem pelo mesmo trecho (as duas descem, ou sobem pelo mesmo corredor), cada rótulo vai para a chegada da sua seta, para dar para saber qual é de qual. O corredor depois de um gateway alarga quando a condição escrita é longa.
 
 **Refazer no padrão INC** (menu Reorganizar do editor): nos fluxogramas gerados pela IA, monta o diagrama de novo a partir da estrutura original guardada (`fluxogramas.schema`). Pede confirmação, porque descarta as mudanças feitas à mão. As opções "Fluxo horizontal/vertical" são os layouts do próprio draw.io e não respeitam as raias.
 
 ## Estrutura do diagrama
 
 - **Cabeçalho:** logo do tenant, nome do processo, descrição curta, caixa com o código do processo, botão "Acessar Documentação" (link para o POP) e selo de versão ("Atual").
-- **Raias (pools horizontais):** uma por **área** ou papel que executa atividades, sem cabeçalho e com a etiqueta roxa da área no canto (como na biblioteca).
-- **Tarefas:** retângulo arredondado, borda `#005F73`. Pode levar etiqueta de responsável quando executada por outra área dentro da raia.
+- **Raias (pools horizontais):** uma por **área** ou papel que executa atividades, sem cabeçalho, de cantos arredondados e com a etiqueta azul da área no canto (como na biblioteca).
+- **Tarefas:** retângulo arredondado branco, borda `#A9BCD0`. Pode levar etiqueta de responsável quando executada por outra área dentro da raia.
 - **Anotações:** caixas de apoio ligadas por linha tracejada (ex.: "Análise — Retorno entre 45 minutos e 3 horas"), alertas (ex.: "Obrigatório anexar tela...") e logos de sistemas utilizados (ex.: CV CRM).
 - **Conectores:** ortogonais; sólidos e tracejados.
 
 ## Catálogo de elementos (biblioteca)
 
-| Tipo (JSON) | Elemento | Cor principal |
+| Tipo (JSON) | Elemento | Cores (fundo / borda / texto) |
 |---|---|---|
-| `inicio` | Início ("Início" no círculo; o gatilho escrito embaixo) | `#13AE84` |
-| `inicio_mensagem` | Início por Mensagem | `#7AE2CF` |
-| `inicio_condicional` | Início Condicional | `#306D29` |
-| `fim` | Fim do Processo ("Fim" no círculo; o resultado embaixo) | `#F14F21` |
-| `link_saida` | Evento de Link (Throwing) — continua em outro processo | `#006633` |
-| `link_entrada` | Evento de Link (Catching) — iniciado em outro processo | — |
-| `tarefa` | Caixa de Texto (retângulo arredondado) | borda `#005F73` |
-| `gateway_exclusivo` | Gateway Exclusivo | `#fad7ac` / `#b46504` |
-| `gateway_paralelo` | Gateway Paralelo | `#fad7ac` / `#b46504` |
-| `gateway_inclusivo` | Gateway Inclusivo | `#fad7ac` / `#b46504` |
-| `gateway_evento` | Gateway Baseado em Evento | `#fad7ac` / `#b46504` |
-| rótulo `Sim` / `Não` | Indicador de Caminho | `#13AE84` / `#DB2843` |
-| rótulo de evento | Caixa de Indicação de Evento Ocorrido | `#C13383`, `#0E8088`, `#093FB4` |
-| `raia` | Swimlane / Pool + etiqueta da área | borda `#005F73`, etiqueta `#9FA1FF` |
-| `conexao` | Seta ortogonal (espessura 2, losango na saída) | `#415A77` |
-| pergunta do gateway | Caixa de Texto de Condição (acima do losango) | `#003049` |
-| `nota` / `alerta` / `condicao` | Caixas de apoio (não interferem no fluxo) | — |
-| `codigo_processo` | Caixa Informativa de Código do Processo | `#76ABAE` |
+| `inicio` | Início ("Início" no círculo; o gatilho escrito embaixo) | verde: `#E7F6EE` / `#1EA65A` / `#178A4A` |
+| `inicio_mensagem` | Início por mensagem | verde |
+| `inicio_condicional` | Início condicional | verde |
+| `inicio_paralelo` | Início paralelo múltiplo (só começa quando todos os eventos aconteceram) | verde |
+| `fim` | Fim ("Fim" no círculo de borda grossa; o resultado embaixo) | vermelho: `#FDEDED` / `#E5484D` / `#D3383E` |
+| `link_saida` | Link (saída): continua em outro processo | azul: `#E6F6FE` / `#12A3EB` / `#0B86C6` |
+| `link_entrada` | Link (entrada): iniciado em outro processo | azul |
+| `tarefa` | Caixa de texto (retângulo arredondado) | `#FFFFFF` / `#A9BCD0` / `#52637A` |
+| `gateway_exclusivo` | Gateway exclusivo | amarelo: `#FFF8E3` / `#F2BE22` |
+| `gateway_paralelo` | Gateway paralelo | amarelo |
+| `gateway_inclusivo` | Gateway inclusivo | amarelo |
+| `gateway_evento` | Gateway baseado em evento | amarelo |
+| rótulo `Sim` / `Não` | Caminho "Sim" / Caminho "Não" | verde / vermelho |
+| saída do gateway de evento | Evento ocorrido (as três caixas, alternadas) | azul, amarelo e neutro (`#FFFFFF` / `#A9BCD0` / `#7B8CA4`) |
+| outra condição na saída | texto preso à seta | `#52637A` |
+| `raia` | Swimlane de cantos arredondados + etiqueta da área | borda `#A9BCD0`, etiqueta `#12A3EB` com texto branco |
+| `conexao` | Seta principal (1,5; bolinha na saída, ponta cheia na chegada) | `#12A3EB` |
+| retorno (laço) | Seta secundária | `#A9BCD0` |
+| pergunta do gateway | Condição do gateway (acima do losango) | `#1F1D5C` |
+| `nota` | Caixa de texto, ligada por linha tracejada | `#FFFFFF` / `#A9BCD0` / `#52637A` |
+| `alerta` | Alerta, com o triângulo de atenção | `#FFF8E3` / `#F2BE22` / `#7A5C00` |
+
+Toda a biblioteca usa a fonte **Poppins** (carregada do Google Fonts pelo draw.io). Elementos da biblioteca que o gerador não usa, mas que ficam à mão no editor: Código do processo, Label de texto e Caixa de diálogo.
 
 ## Schema de extração (proposta)
 
@@ -60,7 +65,7 @@ const FluxoSchema = z.object({
   nos: z.array(z.object({
     id: z.string(),
     tipo: z.enum([
-      'inicio', 'inicio_mensagem', 'inicio_condicional', 'fim',
+      'inicio', 'inicio_mensagem', 'inicio_condicional', 'inicio_paralelo', 'fim',
       'link_entrada', 'link_saida', 'tarefa',
       'gateway_exclusivo', 'gateway_paralelo', 'gateway_inclusivo', 'gateway_evento',
     ]),
@@ -105,4 +110,4 @@ A transcrição e a extração da IA podem errar, então **todo fluxograma gerad
 - **Código do processo:** formato `XXXX-XXXX` (ver `docs/modelo-pop.md`).
 - **Cores das raias:** fixas por área. Cada área recebe uma cor ao ser cadastrada no tenant, e essa cor se mantém em todos os fluxogramas.
 - **Logos de sistemas:** não haverá cadastro de sistemas nem logos de sistemas nos fluxogramas gerados.
-- **Fonte da verdade dos estilos:** a biblioteca (`biblioteca-estilos.xml`). Tarefas com borda `#005F73` e conectores `#415A77`.
+- **Fonte da verdade dos estilos:** a biblioteca (`biblioteca-estilos.xml`). Tarefas com borda `#A9BCD0` e conectores `#12A3EB` (decisão 62).

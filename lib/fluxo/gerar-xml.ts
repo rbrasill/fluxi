@@ -1,12 +1,12 @@
-// Converte o FluxoSchema (saída da IA) em XML do draw.io, com os elementos da biblioteca BPMN INC.
+// Converte o FluxoSchema (saída da IA) em XML do draw.io, com os elementos da Biblioteca de Processos (decisão 62).
 // Layout em camadas com raias horizontais, para o diagrama sair organizado:
 // 1. as setas de volta (laços) são separadas, e o resto vira um fluxo da esquerda para a direita;
 // 2. coluna = maior distância desde o início, então toda seta de ida aponta para a direita;
 // 3. cada nó ocupa uma trilha (linha) da sua raia: o caminho principal segue reto e os desvios descem;
 // 4. as setas passam pelos corredores entre colunas e entre trilhas, nunca por cima de uma caixa.
 import {
-  COR_INDICADOR, ESTILO_ALERTA, ESTILO_INDICADOR, ESTILO_LIGACAO_NOTA, ESTILO_NO, ESTILO_NOTA, ESTILO_RAIA,
-  ESTILO_RAIA_NOME, ESTILO_ROTULO, ESTILO_SETA, ESTILO_TEXTO_EVENTO,
+  COR_TEXTO_EVENTO, ESTILO_ALERTA, ESTILO_ALERTA_ICONE, ESTILO_EVENTO_OCORRIDO, ESTILO_INDICADOR, ESTILO_LIGACAO_NOTA, ESTILO_NO,
+  ESTILO_NOTA, ESTILO_RAIA, ESTILO_RAIA_NOME, ESTILO_ROTULO, ESTILO_SETA, ESTILO_SETA_SECUNDARIA, ESTILO_TEXTO_EVENTO,
 } from './estilos';
 import type { Fluxo, TipoNo } from './schema';
 
@@ -14,7 +14,7 @@ const NO_W = 160;
 const CORREDOR = 50; // espaço entre colunas; cresce quando a condição escrita na seta é longa
 const TRILHA_H = 140; // pergunta acima do gateway, nó e texto abaixo do evento
 const NO_Y = 75; // centro do nó a partir do topo da trilha
-const RAIA_TOPO = 48; // etiqueta com o nome da área
+const RAIA_TOPO = 60; // etiqueta com o nome da área (a 14 do topo, com 30 de altura)
 const RAIA_BASE = 20;
 const ESQ = 20;
 const RAIA_W_MIN = 800;
@@ -28,8 +28,12 @@ type Anotacao = NonNullable<Fluxo['anotacoes']>[number];
 // Início e fim mostram a palavra no círculo, como na biblioteca; o texto da IA vai embaixo.
 const CIRCULO: Partial<Record<TipoNo, string>> = { inicio: 'Início', fim: 'Fim' };
 
-const larguraRotulo = (rotulo: string) =>
-  COR_INDICADOR[rotulo.toLowerCase()] ? Math.max(40, rotulo.length * 8 + 12) : Math.min(150, rotulo.length * 7 + 8);
+// O rótulo de uma saída: "Sim"/"Não" viram o indicador de caminho; as saídas do gateway baseado em evento,
+// a caixa de "Evento ocorrido"; qualquer outra condição, texto.
+type TipoRotulo = 'indicador' | 'evento' | 'texto';
+const ehIndicador = (rotulo: string) => !!ESTILO_INDICADOR[rotulo.toLowerCase()];
+const larguraRotulo = (rotulo: string, tipo: TipoRotulo) =>
+  tipo === 'indicador' ? Math.max(56, rotulo.length * 8 + 16) : tipo === 'evento' ? Math.min(170, Math.max(80, Math.ceil(rotulo.length * 6.5) + 18)) : Math.min(150, rotulo.length * 7 + 8);
 
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -60,6 +64,7 @@ export function gerarXml(fluxo: Fluxo): string {
   const entradas = agrupar(setas, (s) => s.para);
   const anotacoes = agrupar((fluxo.anotacoes ?? []).filter((a) => no.has(a.no)), (a) => a.no);
   const ida = (id: string, m: Map<string, Seta[]>) => (m.get(id) ?? []).filter((s) => !s.volta);
+  const tipoRotulo = (s: Seta): TipoRotulo => (ehIndicador(s.rotulo!.trim()) ? 'indicador' : no.get(s.de)!.tipo === 'gateway_evento' ? 'evento' : 'texto');
 
   // 1. Laços: busca em profundidade a partir dos inícios; seta para um nó que ainda está na pilha é de volta.
   const estado = new Map<string, 'pilha' | 'feito'>();
@@ -134,7 +139,7 @@ export function gerarXml(fluxo: Fluxo): string {
   const folga = Array.from({ length: maxCol + 1 }, () => CORREDOR);
   for (const s of setas) {
     const rotulo = s.rotulo?.trim();
-    if (rotulo && !COR_INDICADOR[rotulo.toLowerCase()]) folga[col.get(s.de)!] = Math.max(folga[col.get(s.de)!], larguraRotulo(rotulo) + 30);
+    if (rotulo && !ehIndicador(rotulo)) folga[col.get(s.de)!] = Math.max(folga[col.get(s.de)!], larguraRotulo(rotulo, tipoRotulo(s)) + 30);
   }
   const centros: number[] = [];
   for (let c = 0, x = ESQ + CORREDOR / 2 + NO_W / 2; c <= maxCol; x += NO_W + folga[c++]) centros.push(x);
@@ -222,11 +227,13 @@ export function gerarXml(fluxo: Fluxo): string {
   const celulas: string[] = [];
   raias.forEach((r, i) => {
     const altura = RAIA_TOPO + trilhas[i] * TRILHA_H + RAIA_BASE;
-    const wNome = Math.min(200, Math.max(120, r.area.length * 8 + 24));
-    const hNome = r.area.length * 8 + 24 > 200 ? 40 : 28;
+    // A etiqueta termina antes do primeiro corredor de setas (x = 230); nome longo quebra em duas linhas, com letra menor.
+    const wCheia = Math.ceil(r.area.length * 8.2) + 28;
+    const longo = wCheia > 200;
+    const [wNome, hNome] = longo ? [200, 40] : [Math.max(110, wCheia), 30];
     celulas.push(
       `<mxCell id="raia_${i}" value="" style="${ESTILO_RAIA}" vertex="1" parent="1"><mxGeometry x="0" y="${topo[i]}" width="${largura}" height="${altura}" as="geometry"/></mxCell>`,
-      `<mxCell id="raia_${i}_nome" value="${esc(r.area)}" style="${ESTILO_RAIA_NOME}" vertex="1" parent="raia_${i}"><mxGeometry width="${wNome}" height="${hNome}" as="geometry"/></mxCell>`,
+      `<mxCell id="raia_${i}_nome" value="${esc(r.area)}" style="${ESTILO_RAIA_NOME}${longo ? 'fontSize=11;arcSize=40;' : ''}" vertex="1" parent="raia_${i}"><mxGeometry x="16" y="${longo ? 9 : 14}" width="${wNome}" height="${hNome}" as="geometry"/></mxCell>`,
     );
   });
 
@@ -243,32 +250,59 @@ export function gerarXml(fluxo: Fluxo): string {
     );
     if (circulo && textoAbaixo(n.id))
       celulas.push(
-        `<mxCell id="t_${esc(n.id)}" value="${esc(texto)}" style="${ESTILO_TEXTO_EVENTO}" vertex="1" parent="${id}"><mxGeometry x="${(e.w - 150) / 2}" y="${e.h + 3}" width="150" height="30" as="geometry"/></mxCell>`,
+        `<mxCell id="t_${esc(n.id)}" value="${esc(texto)}" style="${ESTILO_TEXTO_EVENTO}fontColor=${COR_TEXTO_EVENTO[n.tipo] ?? '#52637A'};" vertex="1" parent="${id}"><mxGeometry x="${(e.w - 150) / 2}" y="${e.h + 3}" width="150" height="30" as="geometry"/></mxCell>`,
       );
   }
 
+  // Rótulo preso à seta, logo depois da saída (x=-1 é o ponto de saída). Se a seta sobe ou desce logo no corredor
+  // seguinte, o rótulo vai ao lado desse trecho, para não encostar no de outra saída pela direita.
+  const rotas = new Map(setas.map((s) => [s.i, rota(s)]));
+  type Rotulo = { s: Seta; texto: string; tipo: TipoRotulo; w: number; h: number; dx: number; dy: number; naChegada: boolean };
+  const rotulos: Rotulo[] = [];
   for (const s of setas) {
-    const { saida, entrada, pontos } = rota(s);
+    const texto = s.rotulo?.trim();
+    if (!texto) continue;
+    const { saida, pontos } = rotas.get(s.i)!;
+    const tipo = tipoRotulo(s);
+    const w = larguraRotulo(texto, tipo);
+    const h = tipo === 'texto' ? (w >= 150 ? 34 : 18) : tipo === 'evento' && Math.ceil(texto.length * 6.5) + 18 > 170 ? 38 : 24;
+    const yu = cy(raiaDe(s.de), trilha.get(s.de)!);
+    const xSaida = cx(col.get(s.de)!) + ESTILO_NO[no.get(s.de)!.tipo].w / 2;
+    const vira = saida === 'direita' && pontos.length > 1 && pontos[0][1] === yu && pontos[1][1] !== yu && pontos[0][0] < cx(col.get(s.de)!) + NO_W / 2 + folga[col.get(s.de)!];
+    const [dx, dy] = saida === 'baixo' ? [6, 4] : vira ? [pontos[0][0] - xSaida + 4, pontos[1][1] < yu ? -h - 34 : 34] : [4, -h - 4];
+    rotulos.push({ s, texto, tipo, w, h, dx: saida === 'baixo' ? dx - ESTILO_NO[no.get(s.de)!.tipo].w / 2 : dx, dy: saida === 'baixo' ? dy + ESTILO_NO[no.get(s.de)!.tipo].h / 2 : dy, naChegada: false });
+  }
+  // Duas saídas do mesmo nó que partem pelo mesmo trecho (as duas descem, ou as duas sobem pelo mesmo corredor)
+  // teriam o rótulo no mesmo lugar, sem dar para saber qual é de qual: esses vão para a chegada de cada seta.
+  for (const a of rotulos) for (const b of rotulos) {
+    if (a === b || a.s.de !== b.s.de) continue;
+    if (a.dx < b.dx + b.w && b.dx < a.dx + a.w && a.dy < b.dy + b.h && b.dy < a.dy + a.h) a.naChegada = b.naChegada = true;
+  }
+  const rotuloDe = new Map(rotulos.map((r) => [r.s.i, r]));
+
+  for (const s of setas) {
+    const { saida, entrada, pontos } = rotas.get(s.i)!;
     const portas =
       (saida === 'baixo' ? 'exitX=0.5;exitY=1;' : 'exitX=1;exitY=0.5;') + 'exitDx=0;exitDy=0;' +
       (entrada === 'cima' ? 'entryX=0.5;entryY=0;' : entrada === 'baixo' ? 'entryX=0.5;entryY=1;' : 'entryX=0;entryY=0.5;') + 'entryDx=0;entryDy=0;';
     const pts = pontos.length ? `<Array as="points">${pontos.map(([x, y]) => `<mxPoint x="${x}" y="${y}"/>`).join('')}</Array>` : '';
     celulas.push(
-      `<mxCell id="c_${s.i}" value="" style="${ESTILO_SETA}${portas}" edge="1" parent="1" source="n_${esc(s.de)}" target="n_${esc(s.para)}"><mxGeometry relative="1" as="geometry">${pts}</mxGeometry></mxCell>`,
+      `<mxCell id="c_${s.i}" value="" style="${s.volta ? ESTILO_SETA_SECUNDARIA : ESTILO_SETA}${portas}" edge="1" parent="1" source="n_${esc(s.de)}" target="n_${esc(s.para)}"><mxGeometry relative="1" as="geometry">${pts}</mxGeometry></mxCell>`,
     );
-    const rotulo = s.rotulo?.trim();
-    if (!rotulo) continue;
-    // Rótulo preso à seta, logo depois da saída (x=-1 é o ponto de saída). Se a seta sobe ou desce logo
-    // no corredor seguinte, o rótulo vai ao lado desse trecho, para não encostar no de outra saída pela direita.
-    const cor = COR_INDICADOR[rotulo.toLowerCase()];
-    const w = larguraRotulo(rotulo);
-    const h = cor ? 22 : w >= 150 ? 34 : 18;
-    const yu = cy(raiaDe(s.de), trilha.get(s.de)!);
-    const xSaida = cx(col.get(s.de)!) + ESTILO_NO[no.get(s.de)!.tipo].w / 2;
-    const vira = saida === 'direita' && pontos.length > 1 && pontos[0][1] === yu && pontos[1][1] !== yu && pontos[0][0] < cx(col.get(s.de)!) + NO_W / 2 + folga[col.get(s.de)!];
-    const [dx, dy] = saida === 'baixo' ? [6, 4] : vira ? [pontos[0][0] - xSaida + 4, pontos[1][1] < yu ? -h - 34 : 34] : [4, -h - 4];
+    const r = rotuloDe.get(s.i);
+    if (!r) continue;
+    const { texto: rotulo, tipo, w, h } = r;
+    // As saídas do gateway baseado em evento alternam as três caixas de "Evento ocorrido" (azul, amarela, neutra).
+    const estilo = tipo === 'indicador' ? ESTILO_INDICADOR[rotulo.toLowerCase()]
+      : tipo === 'evento' ? ESTILO_EVENTO_OCORRIDO[Math.max(0, (saidas.get(s.de) ?? []).indexOf(s)) % ESTILO_EVENTO_OCORRIDO.length]
+      : ESTILO_ROTULO;
+    // Junto da saída (x=-1) ou, quando disputaria o lugar com outra saída, junto da chegada (x=1): à esquerda
+    // do destino e acima da seta; se a seta entra por cima ou por baixo, ao lado da ponta.
+    const [pos, dx, dy] = !r.naChegada
+      ? [-1, saida === 'baixo' ? 6 : r.dx, saida === 'baixo' ? 4 : r.dy]
+      : entrada === 'esquerda' ? [1, -w - 8, -h - 4] : entrada === 'cima' ? [1, 6, -h - 8] : [1, 6, 8];
     celulas.push(
-      `<mxCell id="c_${s.i}_rotulo" value="${esc(rotulo)}" style="${cor ? ESTILO_INDICADOR + `fillColor=${cor};` : ESTILO_ROTULO}" vertex="1" connectable="0" parent="c_${s.i}"><mxGeometry x="-1" width="${w}" height="${h}" relative="1" as="geometry"><mxPoint x="${dx}" y="${dy}" as="offset"/></mxGeometry></mxCell>`,
+      `<mxCell id="c_${s.i}_rotulo" value="${esc(rotulo)}" style="${estilo}" vertex="1" connectable="0" parent="c_${s.i}"><mxGeometry x="${pos}" width="${w}" height="${h}" relative="1" as="geometry"><mxPoint x="${dx}" y="${dy}" as="offset"/></mxGeometry></mxCell>`,
     );
   }
 
@@ -277,13 +311,16 @@ export function gerarXml(fluxo: Fluxo): string {
   for (const [idNo, lista] of anotacoes) {
     const [r, c, t] = [raiaDe(idNo), col.get(idNo)!, trilha.get(idNo)!];
     lista.forEach((a: Anotacao, k) => {
-      const linhasTexto = Math.ceil(a.texto.length / 26);
-      const h = Math.min(TRILHA_H - 25, Math.max(40, linhasTexto * 15 + 12));
+      const alerta = a.tipo === 'alerta';
+      const linhasTexto = Math.ceil(a.texto.length / (alerta ? 19 : 23)); // o triângulo do alerta toma 24 da largura
+      const h = Math.min(TRILHA_H - 25, Math.max(40, linhasTexto * 16 + 12));
       const id = `a_${ia++}`;
       celulas.push(
         `<mxCell id="${id}_ligacao" style="${ESTILO_LIGACAO_NOTA}" edge="1" parent="raia_${r}" source="${id}" target="n_${esc(idNo)}"><mxGeometry relative="1" as="geometry"/></mxCell>`,
-        `<mxCell id="${id}" value="${esc(a.texto)}" style="${a.tipo === 'alerta' ? ESTILO_ALERTA : ESTILO_NOTA}" vertex="1" parent="raia_${r}"><mxGeometry x="${cx(c) - 80}" y="${RAIA_TOPO + (t + 1 + k) * TRILHA_H + 15}" width="160" height="${h}" as="geometry"/></mxCell>`,
+        `<mxCell id="${id}" value="${esc(a.texto)}" style="${alerta ? ESTILO_ALERTA : ESTILO_NOTA}" vertex="1" parent="raia_${r}"><mxGeometry x="${cx(c) - 80}" y="${RAIA_TOPO + (t + 1 + k) * TRILHA_H + 15}" width="160" height="${h}" as="geometry"/></mxCell>`,
       );
+      // O triângulo de atenção é filho da caixa: move junto.
+      if (alerta) celulas.push(`<mxCell id="${id}_icone" value="" style="${ESTILO_ALERTA_ICONE}" vertex="1" parent="${id}"><mxGeometry x="8" y="${(h - 18) / 2}" width="18" height="18" as="geometry"/></mxCell>`);
     });
   }
 

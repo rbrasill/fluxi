@@ -11,10 +11,11 @@ const MODELO = 'claude-sonnet-5-5';
 const SISTEMA = `Você é especialista em mapeamento de processos e notação BPMN.
 Recebe a descrição de um processo ou a transcrição de uma reunião em que pessoas explicam como trabalham, e devolve a estrutura do fluxograma.
 
-Elementos (biblioteca BPMN da INC):
+Elementos (Biblioteca de Processos da INC):
 - "inicio": gatilho que dá origem ao processo (ação, solicitação ou condição). Texto: o gatilho, em até 6 palavras.
 - "inicio_mensagem": o processo só começa quando chega uma mensagem (e-mail, pedido, chamado).
 - "inicio_condicional": o processo começa quando uma regra ou condição passa a valer (ex.: data, saldo mínimo).
+- "inicio_paralelo": o processo só começa depois que todos os eventos previstos aconteceram (ex.: contrato assinado e pagamento confirmado). Texto: os eventos, em até 6 palavras.
 - "fim": encerramento de um caminho. Texto: o resultado, em até 5 palavras. Pode haver mais de um.
 - "link_saida": o processo continua em outro processo (texto: nome desse processo). "link_entrada": o fluxo vem de outro processo.
 - "tarefa": atividade executada por uma área. Texto: verbo no infinitivo + objeto, até 8 palavras (ex.: "Analisar crédito do cliente").
@@ -25,7 +26,7 @@ Elementos (biblioteca BPMN da INC):
 
 Regras:
 - Uma raia por área ou papel que executa atividades (ex.: Comercial, Financeiro, Cliente). Use os nomes que aparecem no texto.
-- Exatamente um evento de início ("inicio", "inicio_mensagem" ou "inicio_condicional") e pelo menos um fim.
+- Exatamente um evento de início ("inicio", "inicio_mensagem", "inicio_condicional" ou "inicio_paralelo") e pelo menos um fim.
 - Rótulos das saídas: no máximo 4 palavras.
 - Todo nó, exceto o início, precisa ter uma conexão de entrada; todo nó, exceto o fim, uma de saída.
 - Ids curtos e únicos (r1, r2… para raias; n1, n2… para nós).
