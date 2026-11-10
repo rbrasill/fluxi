@@ -24,6 +24,8 @@ export type StatusEntrevista = 'convidada' | 'em_andamento' | 'processando' | 'c
 export const ROTULO_STATUS: Record<StatusEntrevista, string> = { convidada: 'Convidada', em_andamento: 'Em andamento', processando: 'Gerando o resultado', concluida: 'Concluída', erro: 'Erro ao gerar o resultado' };
 /** Até quantas pessoas um convite pode chamar de uma vez (uma entrevista por pessoa; decisão 53). */
 export const MAX_CONVITES = 3;
+/** Quantas conversas entram de uma vez num fluxograma gerado pela IA (decisão 63). */
+export const MAX_CONVERSAS_FLUXO = 5;
 
 /** Medidas da conversa (as da especificação de voz full duplex do Rafael). */
 export type Metricas = {

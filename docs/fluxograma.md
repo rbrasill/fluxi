@@ -6,7 +6,7 @@
 
 Geração do XML do draw.io direto (não Mermaid), em duas camadas:
 
-1. **IA (Claude)** devolve apenas a estrutura semântica do fluxo em JSON: raias, nós (tipo + texto + raia), conexões (com rótulo) e anotações.
+1. **IA (Claude)** devolve apenas a estrutura semântica do fluxo em JSON: raias, nós (tipo + texto + raia), conexões (com rótulo) e anotações. O material de entrada é uma descrição, a transcrição ou o áudio de uma reunião, ou as conversas com a Maia sobre o processo (decisão 63).
 2. **Código (`lib/fluxo/gerar-xml.ts`)** converte a estrutura em XML: aplica o estilo exato da biblioteca para cada tipo (`lib/fluxo/estilos.ts`), calcula posições e roteia as setas.
 
 A IA não gera estilos nem coordenadas. As descrições (tooltips) da biblioteca entram no prompt como glossário de quando usar cada elemento (`lib/server/ia.ts`). O layout gerado é um rascunho organizado; o usuário refina no editor embutido.

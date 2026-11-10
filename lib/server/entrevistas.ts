@@ -239,6 +239,46 @@ export async function listar(pessoa?: Pessoa | null) {
   });
 }
 
+/**
+ * O material de uma ou mais conversas com a Maia para a IA desenhar o fluxograma do processo (decisão 63):
+ * de cada conversa, quem falou, o que a Maia escreveu no fim (objetivo, etapas, o que ficou em aberto) e a
+ * transcrição. Só entram conversas deste processo, e só as que têm falas.
+ */
+export async function textoParaFluxograma(processoId: string, ids: string[]) {
+  const unicos = [...new Set(ids)];
+  if (!UUID.test(processoId) || !unicos.length || unicos.some((id) => !UUID.test(id))) throw new ErroApi(404, 'Conversa não encontrada neste processo.');
+  const db = supabase();
+  const [proc, conv] = await Promise.all([
+    db.from('processos').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
+    db.from('entrevistas').select('id, turnos, resultado, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
+  ]);
+  for (const r of [proc, conv]) if (r.error) throw r.error;
+  if (!proc.data) throw new ErroApi(404, 'Processo não encontrado');
+  const linhas = conv.data ?? [];
+  if (linhas.length !== unicos.length) throw new ErroApi(404, 'Conversa não encontrada neste processo.');
+  const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
+  const lista = (rotulo: string, itens: string[] | undefined) => (itens?.length ? `; ${rotulo}: ${itens.join(', ')}` : '');
+  const blocos = linhas.map((l, i) => {
+    const turnos = (l.turnos as Turno[] | null) ?? [];
+    const quem = nomes.get(l.entrevistado_id as string) ?? 'pessoa entrevistada';
+    if (!turnos.some((t) => t.quem !== 'ia' && !t.apoio)) throw new ErroApi(422, `A conversa de ${quem} ainda não tem falas para virar fluxograma.`);
+    const r = (l.resultado as ResultadoEntrevista | null) ?? null;
+    const f = r?.ficha;
+    const resumo = !f ? '' : [
+      f.objetivo && `Objetivo: ${f.objetivo}`,
+      f.gatilho && `O que dá início: ${f.gatilho}`,
+      f.resultado && `Resultado: ${f.resultado}`,
+      f.etapas?.length && `Etapas:\n${f.etapas.map((e, k) => `${k + 1}. ${e.nome}${e.responsavel ? ` (quem faz: ${e.responsavel})` : ''}${e.descricao ? `: ${e.descricao}` : ''}${lista('ferramentas', e.ferramentas)}${lista('regras', e.regras)}${lista('exceções', e.excecoes)}`).join('\n')}`,
+      f.dificuldades?.length && `Dificuldades: ${f.dificuldades.join('; ')}`,
+      r?.pendencias?.length && `Ficou em aberto: ${r.pendencias.join('; ')}`,
+      r?.pendencias_outra_pessoa?.length && `Para outra pessoa responder: ${r.pendencias_outra_pessoa.map((x) => `${x.pergunta} (${x.quem_sabe})`).join('; ')}`,
+    ].filter(Boolean).join('\n');
+    const data = new Date((l.iniciada_em ?? l.criado_em) as string).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    return `<conversa numero="${i + 1}" entrevistado="${quem.replace(/"/g, "'")}" data="${data}">\n${resumo ? `<resumo_da_maia>\n${resumo}\n</resumo_da_maia>\n` : ''}<transcricao>\n${transcricaoDaConversa(turnos)}\n</transcricao>\n</conversa>`;
+  });
+  return `<processo>\nNome do processo: ${proc.data.nome}\n</processo>\n\n${blocos.join('\n\n')}`;
+}
+
 /** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
 export async function listarDoProcesso(processoId: string) {
   if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');

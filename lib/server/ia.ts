@@ -138,11 +138,19 @@ export async function analisarGravacao(transcricao: string, telas: { id: string;
   );
 }
 
-export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao'): Promise<Fluxo> {
+// Conversas com a Maia (decisão 63): o resumo orienta, a transcrição é a fonte.
+const INTRO_ENTREVISTA = `Conversas de mapeamento do processo, feitas por voz: a Maia (entrevistadora, uma IA) perguntou e quem executa o processo respondeu. De cada conversa vêm o resumo que a Maia escreveu no fim e a transcrição.
+- A transcrição é a fonte. Use o resumo para se orientar, mas desenhe só o que a pessoa disse ou confirmou; o que o entrevistador explicou por conta própria é conhecimento geral, não etapa do processo.
+- As raias são as áreas ou os papéis que a pessoa citou como responsáveis por cada etapa.
+- Com mais de uma conversa, junte tudo num fluxograma só. Se as pessoas se contradisserem, desenhe o que a maioria descreveu e registre um "alerta" no nó, dizendo a diferença.
+- O que ficou em aberto e muda o caminho do processo (uma aprovação que ninguém soube explicar, por exemplo) vira "alerta" no nó a que se refere.
+- O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala).`;
+
+export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao' | 'entrevista'): Promise<Fluxo> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie o fluxograma manualmente por enquanto.');
   const intro =
-    origem === 'transcricao'
-      ? 'Transcrição da reunião de mapeamento do processo:'
+    origem === 'entrevista' ? INTRO_ENTREVISTA
+      : origem === 'transcricao' ? 'Transcrição da reunião de mapeamento do processo:'
       : 'Descrição do processo:';
   try {
     const resposta = await claude().beta.messages.parse({

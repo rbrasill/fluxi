@@ -39,7 +39,8 @@ export const excluir = (id: string) => api<{ ok: true }>(`/api/fluxogramas/${id}
 
 // IA
 /** `substituir`: o processo já tem fluxograma e o desenho atual é trocado pelo gerado. */
-export const gerarComIa = (p: { texto: string; origem: 'descricao' | 'transcricao'; nome?: string; processo_id?: string; substituir?: boolean }) =>
+/** Gera o fluxograma com IA: de um texto (descrição ou transcrição) ou de conversas com a Maia do processo (decisão 63). */
+export const gerarComIa = (p: ({ texto: string; origem: 'descricao' | 'transcricao' } | { entrevistas: string[]; origem: 'entrevista' }) & { nome?: string; processo_id?: string; substituir?: boolean }) =>
   api<FluxogramaResumo>('/api/ia/fluxograma', { method: 'POST', body: JSON.stringify(p) });
 
 const LIMITE_AUDIO_BYTES = 50 * 1024 * 1024; // limite por arquivo do Storage (Supabase Free)
