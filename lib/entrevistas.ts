@@ -42,6 +42,8 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const listarEntrevistas = () => api<EntrevistaResumo[]>('/api/entrevistas');
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
+/** Só a situação da entrevista (leve): para a tela perceber quando a ligação começa ou termina (decisão 69). */
+export const consultarSituacao = (id: string) => api<{ status: StatusEntrevista; em_ligacao: boolean }>(`/api/entrevistas/${id}/situacao`);
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
 /** As entrevistas de um processo. */
 export const listarEntrevistasDoProcesso = (processoId: string) => api<EntrevistaDoProcesso[]>(`/api/processos/${processoId}/entrevistas`);

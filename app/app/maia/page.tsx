@@ -5,6 +5,8 @@ import { Icone } from '@/components/Icone';
 import { mmss, seg, usd } from '@/components/entrevista/Metricas';
 import { ROTULO_STATUS } from '@/lib/entrevista/topicos';
 import { SoAdministradores } from '@/components/SoAdministradores';
+import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
+import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
 import { obterPainelDaMaia, type EntrevistaPainel, type PainelMaia } from '@/lib/maia';
 
 // Painel da Maia (decisão 52), só administradores: o acumulado e o custo de cada entrevista, o resumo por
@@ -27,6 +29,8 @@ function ConteudoPainel() {
   const [p, setP] = useState<PainelMaia | null>(null);
   const [erro, setErro] = useState('');
   useEffect(() => { obterPainelDaMaia().then(setP).catch((e) => setErro(e instanceof Error ? e.message : 'Não foi possível carregar o painel.')); }, []);
+  // A situação de cada entrevista se atualiza sozinha (decisão 69); se a consulta falhar, fica o que já estava.
+  useAcompanharEntrevistas(p?.entrevistas ?? null, () => obterPainelDaMaia().then(setP).catch(() => {}));
 
   const cabecalho = (
     <div className="page-head">
@@ -101,7 +105,7 @@ function ConteudoPainel() {
                   <tr key={x.id}>
                     <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}{x.processo && x.processo !== x.tema ? ` · ${x.processo}` : ''}</small></td>
                     <td>{data(x.criado_em)}</td>
-                    <td>{situacao(x)}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
+                    <td>{x.em_ligacao ? <SeloSituacao entrevista={x} /> : situacao(x)}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
                     <td className="col-num">{x.duracao_s ? mmss(x.duracao_s) : '—'}<small>{plural(x.sessoes, 'sessão', 'sessões')}{x.pausas ? ` · ${plural(x.pausas, 'pausa', 'pausas')}` : ''}</small></td>
                     <td className="col-num">{seg(x.reacao_mediana_ms)}</td>
                     <td className="col-num">{seg(x.conexao_ms)}</td>

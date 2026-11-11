@@ -386,12 +386,25 @@ export async function obter(id: string, pessoa?: Pessoa | null) {
   const { em_ligacao_ate: _prazo, ...dados } = linha;
   void _prazo;
   return {
-    ...dados, ...(oculto ? { turnos: [] as Turno[], resultado: null, falas_ocultas: linha.turnos.filter((t) => !t.apoio).length } : {}),
+    // As métricas também saem: as consultas e os erros guardam trechos da conversa.
+    ...dados, ...(oculto ? { turnos: [] as Turno[], resultado: null, metricas: {} as Metricas, falas_ocultas: linha.turnos.filter((t) => !t.apoio).length } : {}),
     em_ligacao, conteudo_oculto: oculto,
     entrevistado: nomes.get(linha.entrevistado_id ?? '') ?? null, convidador: nomes.get(linha.convidado_por ?? '') ?? null,
     processo: processo ? { id: processo.id, nome: processo.nome, area: processo.area } : null,
     audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA,
   };
+}
+
+/**
+ * A situação da entrevista, leve (sem a conversa): as telas abertas consultam para perceber quando a ligação começa
+ * ou termina (decisão 69).
+ */
+export async function situacaoDaLigacao(id: string) {
+  if (!UUID.test(id)) throw new ErroApi(404, 'Entrevista não encontrada');
+  const { data, error } = await supabase().from('entrevistas').select('status, em_ligacao_ate').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'Entrevista não encontrada');
+  return { status: data.status as StatusEntrevista, em_ligacao: emLigacao(data as { status: string; em_ligacao_ate: string | null }) };
 }
 
 /**

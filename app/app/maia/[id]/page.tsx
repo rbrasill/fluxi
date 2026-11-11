@@ -4,12 +4,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { ConversaEmLigacao } from '@/components/entrevista/ConversaEmLigacao';
+import { souEu, useEu } from '@/lib/auth/eu';
+import { useAcompanharEntrevista } from '@/lib/entrevista/acompanhar';
 import { Consultas, DetalhesMetricas, Diagnostico, PainelMetricas } from '@/components/entrevista/Metricas';
 import { ROTULO_STATUS } from '@/lib/entrevista/topicos';
 import { confirmacaoDeExclusao, excluirEntrevista, obterEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Uma entrevista no Painel da Maia (decisão 52): os indicadores, os custos, as consultas e o diagnóstico da
-// sessão de voz. A conversa e o resultado ficam na tela da entrevista.
+// sessão de voz. A conversa e o resultado ficam na tela da entrevista. Enquanto a pessoa está na ligação, a página
+// fica fechada (as consultas e os erros guardam trechos da conversa) e abre sozinha quando a ligação termina (decisão 69).
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -18,7 +22,9 @@ export default function MaiaEntrevistaPage() {
   const router = useRouter();
   const [e, setE] = useState<Entrevista | null | undefined>(undefined);
   const [excluindo, setExcluindo] = useState(false);
+  const eu = useEu();
   useEffect(() => { obterEntrevista(id).then(setE).catch(() => setE(null)); }, [id]);
+  useAcompanharEntrevista(id, e, !!e && eu !== null && !souEu(eu, e.entrevistado_id), () => obterEntrevista(id).then(setE).catch(() => {}));
 
   if (e === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (e === null) return <div className="page"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/maia" className="btn btn-primary">Voltar ao painel</Link></div></div>;
@@ -29,8 +35,23 @@ export default function MaiaEntrevistaPage() {
     try { await excluirEntrevista(e.id); router.push('/app/maia'); } catch (err) { setExcluindo(false); void avisar('Não foi possível excluir a entrevista.', err instanceof Error ? err.message : 'Tente de novo em instantes.'); }
   }
 
+  if (e.conteudo_oculto) {
+    return (
+      <div className="page page-estreita">
+        <div className="page-head">
+          <div>
+            <nav className="migalha" aria-label="Caminho"><Link href="/app/maia">Painel da Maia</Link></nav>
+            <h1>{e.tema || 'Entrevista'}</h1>
+            <p>{e.entrevistado ? `Entrevistado: ${e.entrevistado} · ` : ''}{data(e.criado_em)} · Em andamento</p>
+          </div>
+        </div>
+        <ConversaEmLigacao entrevistado={e.entrevistado} voltar={{ href: '/app/maia', rotulo: 'Voltar ao painel' }} />
+      </div>
+    );
+  }
+
   const m = e.metricas ?? {};
-  const situacao = e.status === 'em_andamento' && e.turnos.length > 0 ? 'Pausada' : ROTULO_STATUS[e.status];
+  const situacao = e.status === 'em_andamento' ? (e.em_ligacao ? 'Em andamento' : 'Pausada') : ROTULO_STATUS[e.status];
   return (
     <div className="page page-estreita">
       <div className="page-head">
