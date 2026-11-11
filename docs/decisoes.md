@@ -552,6 +552,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Painel da Maia:** a arquivada continua na conta dos custos, marcada "arquivada"; o botão de excluir que havia na página da entrevista no painel saiu.
 - **Banco:** `arquivado_em` e `arquivado_por` em `entrevistas` (migração 0022).
 
+## 73. Tela de login nova: cartão em duas partes, com a ilustração 3D (11/11/2026)
+- **Pedido do Rafael:** ajustar o design do login a partir de uma tela de inspiração (cartão branco sobre um fundo em degradê, o formulário à esquerda e um painel colorido à direita com uma ilustração que avança sobre a parte branca), trocando a ilustração pela imagem 3D do processo que ele mandou (documento, engrenagem e servidor). O nosso login não tem as mesmas informações do exemplo.
+- **Como ficou:** fundo em degradê suave (do azul-petróleo claro ao lilás, as cores do app e da ilustração) e um cartão branco de cantos bem arredondados. À esquerda, o logo, uma saudação curta, o título grande, a explicação, o campo preenchido (sem borda até ganhar o foco) e o botão em pílula com a seta. À direita, o painel lilás com a ilustração 3D, que avança sobre a parte branca e flutua de leve (parada para quem pede menos movimento).
+- **O que não veio do exemplo:** senha, "esqueci a senha", entrar com Google, GitHub ou Facebook e "criar conta". O acesso continua sem senha (decisão 50): e-mail corporativo, código de 6 dígitos, "Reenviar código" e "Trocar e-mail". No lugar, uma linha explica: "Acesso sem senha: a cada entrada, você recebe um código no seu e-mail".
+- **Logo:** o logo do menu tem o nome em branco, para fundo escuro. No cartão branco entra `public/logo-incflow-escuro.png`, o mesmo logo com o nome na cor do texto, gerado por `scripts/gerar-logo-escuro.mjs`.
+- **Celular:** o painel com a ilustração vai para cima, menor, e o formulário ocupa a largura toda.
+- **A ilustração** (`public/login-ilustracao.png`) tem 450 × 450 px: em telas de alta densidade fica um pouco suave. Uma versão com 900 px ou mais deixaria mais nítida, é só trocar o arquivo.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

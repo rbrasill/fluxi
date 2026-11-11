@@ -1,10 +1,13 @@
 'use client';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
+import { Icone } from '@/components/Icone';
 import { destinoSeguro } from '@/lib/auth/sessao';
 
 // Login sem senha (decisão 50): e-mail corporativo → código de 6 dígitos por e-mail → entra por 6 horas.
 // Duas etapas na mesma página. Depois de entrar, recarga completa para o porteiro enxergar o cookie novo.
+// O desenho (decisão 73): um cartão em duas partes sobre um fundo em degradê; à esquerda, o logo e o formulário;
+// à direita, um painel lilás com a ilustração 3D do processo, que avança sobre a parte branca.
 
 const CARENCIA_S = 60;
 
@@ -65,44 +68,52 @@ export default function Login() {
 
   return (
     <main className="login">
-      <Image src="/logo-incflow.png" alt="INCFlow" width={199} height={32} priority className="login-logo" />
-      <div className="cartao login-cartao">
-        {etapa === 'email' ? (
-          <form onSubmit={pedirCodigo} className="login-form">
-            <div>
-              <h1>Entrar</h1>
-              <p className="login-sub">Digite o seu e-mail corporativo. Vamos mandar um código de acesso.</p>
-            </div>
-            <label className="field">
-              <span>E-mail</span>
-              <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@meuinc.com.br" required autoFocus />
-            </label>
-            {erro && <p className="login-erro" role="alert">{erro}</p>}
-            <button className="btn btn-primary" disabled={enviando || !email.trim()}>{enviando ? 'Enviando…' : 'Enviar código'}</button>
-          </form>
-        ) : (
-          <form onSubmit={entrar} className="login-form">
-            <div>
-              <h1>Digite o código</h1>
-              <p className="login-sub">{aviso} Ele vale por 10 minutos. Enviado para <strong>{email.trim().toLowerCase()}</strong>.</p>
-            </div>
-            <label className="field">
-              <span>Código de 6 dígitos</span>
-              <input
-                ref={campoCodigo} inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}" className="login-codigo"
-                value={codigo} onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))} required
-              />
-            </label>
-            {erro && <p className="login-erro" role="alert">{erro}</p>}
-            <button className="btn btn-primary" disabled={enviando || codigo.length !== 6}>{enviando ? 'Entrando…' : 'Entrar'}</button>
-            <div className="login-links">
-              <button type="button" className="link-sec" onClick={() => void pedirCodigo()} disabled={espera > 0 || enviando}>
-                {espera > 0 ? `Reenviar código (${espera}s)` : 'Reenviar código'}
-              </button>
-              <button type="button" className="link-sec" onClick={() => { setEtapa('email'); setErro(''); setCodigo(''); }}>Trocar e-mail</button>
-            </div>
-          </form>
-        )}
+      <div className="login-cartao">
+        <div className="login-lado">
+          <Image src="/logo-incflow-escuro.png" alt="INCFlow" width={199} height={32} priority className="login-logo" />
+          {etapa === 'email' ? (
+            <form onSubmit={pedirCodigo} className="login-form">
+              <div className="login-topo">
+                <p className="login-saudacao">Boas-vindas ao INCFlow</p>
+                <h1>Entrar</h1>
+                <p className="login-sub">Digite o seu e-mail corporativo. Vamos mandar um código de acesso.</p>
+              </div>
+              <label className="login-campo">
+                <span>E-mail</span>
+                <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@meuinc.com.br" required autoFocus />
+              </label>
+              {erro && <p className="login-erro" role="alert">{erro}</p>}
+              <button className="login-botao" disabled={enviando || !email.trim()}>{enviando ? 'Enviando…' : 'Enviar código'}<Icone nome="seta-direita" tamanho={18} /></button>
+              <p className="login-nota">Acesso sem senha: a cada entrada, você recebe um código no seu e-mail.</p>
+            </form>
+          ) : (
+            <form onSubmit={entrar} className="login-form">
+              <div className="login-topo">
+                <p className="login-saudacao">Quase lá</p>
+                <h1>Digite o código</h1>
+                <p className="login-sub">{aviso} Ele vale por 10 minutos. Enviado para <strong>{email.trim().toLowerCase()}</strong>.</p>
+              </div>
+              <label className="login-campo">
+                <span>Código de 6 dígitos</span>
+                <input
+                  ref={campoCodigo} inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="\d{6}" className="login-codigo"
+                  value={codigo} onChange={(e) => setCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))} required
+                />
+              </label>
+              {erro && <p className="login-erro" role="alert">{erro}</p>}
+              <button className="login-botao" disabled={enviando || codigo.length !== 6}>{enviando ? 'Entrando…' : 'Entrar'}<Icone nome="seta-direita" tamanho={18} /></button>
+              <div className="login-links">
+                <button type="button" className="link-sec" onClick={() => void pedirCodigo()} disabled={espera > 0 || enviando}>
+                  {espera > 0 ? `Reenviar código (${espera}s)` : 'Reenviar código'}
+                </button>
+                <button type="button" className="link-sec" onClick={() => { setEtapa('email'); setErro(''); setCodigo(''); }}>Trocar e-mail</button>
+              </div>
+            </form>
+          )}
+        </div>
+        <div className="login-painel" aria-hidden="true">
+          <Image src="/login-ilustracao.png" alt="" width={450} height={450} priority className="login-ilustracao" />
+        </div>
       </div>
     </main>
   );
