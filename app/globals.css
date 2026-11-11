@@ -965,6 +965,10 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .selo-andamento, .selo-processando { background: #eef2ff; color: #3b3fa3; }
 .selo-concluida { background: #e7f5ec; color: #1f6b3a; }
 .selo-erro { background: #fdecec; color: #912018; }
+/* Entrevistas arquivadas (decisão 72): o selo, as abas Ativas | Arquivadas e a faixa com o ícone ao lado do texto. */
+.selo-arquivada { background: #eceff0; color: #4a5a5f; }
+.abas-entrevistas { margin: -2px 0 2px; }
+.aviso.arquivado > span:first-of-type { flex: 1 1 300px; min-width: 0; }
 
 /* Entrevista em ligação agora (decisão 69): o selo "Em andamento", com o microfone e o ponto que pulsa, e o
    cartão de quem tenta abrir a conversa de outra pessoa durante a ligação. */

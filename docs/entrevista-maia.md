@@ -36,12 +36,13 @@ Regras da análise: corrige nomes pela transcrição sem inventar; falas ditas p
 | Pesquisa | `session.delegation.created` → o navegador manda o fim da conversa para `POST /api/entrevistas/:id/consulta` → Claude Sonnet 5.5 → a resposta volta por `session.commentary.append` |
 | Conversa e métricas | Os pedaços de transcrição dos dois lados viram a conversa no navegador (`lib/entrevista/conversa.ts`), guardada a cada 15 s e no fim (`PUT …/conversa`) |
 | Em andamento | Enquanto a pessoa está na ligação, o navegador dela renova o prazo `em_ligacao_ate` a cada 15 s (na conversa guardada ou no pulso `POST …/pulso`) e apaga ao pausar, encerrar ou fechar a página. Com o prazo valendo, a entrevista aparece como "Em andamento" e só a própria pessoa recebe a conversa; os outros, inclusive o administrador, esperam a ligação terminar (decisão 69) |
+| Arquivar | A entrevista passa por três estados: ativa, arquivada e excluída (decisão 72). Arquivar é dentro da entrevista (gestores e administradores); a arquivada sai do processo, do fluxograma e das perguntas para outras pessoas, fica na aba Arquivadas e pode ser restaurada; excluir definitivamente, só a arquivada e só o administrador |
 | Gravação | Os dois lados num arquivo por sessão, no Storage (`tenants/<t>/entrevistas/<id>/conversa-<n>.webm`) |
 | Resultado | `POST …/encerrar`: Claude Sonnet 5.5 com saída estruturada |
 | Tela | Esfera animada (`components/entrevista/Orbe.tsx`), legenda fixa, tempo, oito indicadores, botões Pausar e Encerrar |
 | Servidor | Vercel em São Paulo (`gru1`), junto do Supabase (`sa-east-1`) |
 
-Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consulta, análise), `lib/entrevista/motor.ts` (WebRTC, eventos, pausa, proteções de custo), `lib/entrevista/conversa.ts` (transcrição e métricas), `lib/entrevista/topicos.ts` (tópicos, tipos, custos), `app/app/entrevistas/` (telas), `app/api/entrevistas/` (rotas). Banco: tabela `entrevistas` (migrações 0016 a 0021).
+Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consulta, análise), `lib/entrevista/motor.ts` (WebRTC, eventos, pausa, proteções de custo), `lib/entrevista/conversa.ts` (transcrição e métricas), `lib/entrevista/topicos.ts` (tópicos, tipos, custos), `app/app/entrevistas/` (telas), `app/api/entrevistas/` (rotas). Banco: tabela `entrevistas` (migrações 0016 a 0022).
 
 ## Custos
 

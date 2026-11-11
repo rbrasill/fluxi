@@ -10,9 +10,10 @@ import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, limparMarcasDeSom, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
+import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { ConversaEmLigacao } from '@/components/entrevista/ConversaEmLigacao';
 import { useAcompanharEntrevista } from '@/lib/entrevista/acompanhar';
-import { aquecerSessaoDeVoz, confirmacaoDeExclusao, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, reenviarConvite, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
+import { aquecerSessaoDeVoz, arquivarEntrevista, confirmacaoDeArquivamento, confirmacaoDeExclusao, deixarAvisoDeEntrevistas, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, pegarAvisoDeEntrevistas, reenviarConvite, restaurarEntrevista, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
 // é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera reagindo
@@ -40,6 +41,7 @@ function EntrevistaPage() {
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [etapaFim, setEtapaFim] = useState('');
   const [ciente, setCiente] = useState(false);
+  const [ocupadoArquivo, setOcupadoArquivo] = useState(false); // arquivando, restaurando ou excluindo (decisão 72)
   // O microfone é pedido quando a pessoa marca a ciência (decisão 55): a permissão do navegador, que na primeira
   // vez pode levar dezenas de segundos, sai do caminho do "Ligar para a Maia".
   const [mic, setMic] = useState<'' | 'pedindo' | 'pronto' | 'negado'>('');
@@ -51,7 +53,7 @@ function EntrevistaPage() {
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
     if (d.status !== 'em_andamento' && d.status !== 'convidada') setTela('resultado');
-    else if (!d.conteudo_oculto) aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
+    else if (!d.conteudo_oculto && !d.arquivado_em) aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
     return d;
   }).catch(() => { setE(null); return null; });
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -82,7 +84,7 @@ function EntrevistaPage() {
   }, [tela, e]); // eslint-disable-line react-hooks/exhaustive-deps
   // Quem não é a pessoa entrevistada percebe sozinho quando a ligação começa (a página passa para o aviso de
   // bloqueio) e quando termina (a entrevista abre de novo), sem recarregar (decisão 69).
-  const deFora = !!e && eu !== null && !souEu(eu, e.entrevistado_id);
+  const deFora = !!e && eu !== null && !souEu(eu, e.entrevistado_id) && !e.arquivado_em;
   useAcompanharEntrevista(id, e, deFora, () => obterEntrevista(id).then((d) => {
     setE(d);
     if (d.status !== 'em_andamento' && d.status !== 'convidada') setTela('resultado');
@@ -167,6 +169,41 @@ function EntrevistaPage() {
     else setAviso(`Marcado: quando ${d?.entrevistado ?? 'a pessoa'} abrir a entrevista, a Maia pergunta ${n === 1 ? 'esse ponto' : `esses ${n} pontos`}.`);
   }
 
+  /** Arquivar (decisão 72): gestores e administradores tiram a entrevista do fluxo do processo. Nada é apagado. */
+  async function arquivar() {
+    if (!e || !(await confirmar(confirmacaoDeArquivamento({ status: e.status, entrevistado: e.entrevistado })))) return;
+    setOcupadoArquivo(true);
+    setErro(null);
+    setAviso('');
+    try {
+      await arquivarEntrevista(id);
+      if (e.processo) deixarAvisoDeEntrevistas(e.processo.id, { texto: `Entrevista de ${e.entrevistado ?? 'a pessoa'} arquivada. Ela saiu da lista do processo e está em Arquivadas.` });
+      await carregar();
+    } catch (err) { void avisar('Não foi possível arquivar a entrevista.', msg(err)); } finally { setOcupadoArquivo(false); }
+  }
+
+  /** Devolve a entrevista arquivada à lista de ativas do processo. */
+  async function restaurarArquivada() {
+    setOcupadoArquivo(true);
+    try {
+      await restaurarEntrevista(id);
+      if (e?.processo) pegarAvisoDeEntrevistas(e.processo.id); // o aviso de "arquivada" deixado para o processo não vale mais
+      await carregar();
+      setAviso('Entrevista restaurada: voltou para a lista de entrevistas ativas do processo.');
+    } catch (err) { void avisar('Não foi possível restaurar a entrevista.', msg(err)); } finally { setOcupadoArquivo(false); }
+  }
+
+  /** Excluir definitivamente: só a entrevista arquivada, só o administrador, e só daqui de dentro. */
+  async function excluirArquivada() {
+    if (!e || !(await confirmar(confirmacaoDeExclusao({ status: e.status, falas: e.turnos.length, entrevistado: e.entrevistado })))) return;
+    setOcupadoArquivo(true);
+    try {
+      await excluirEntrevista(id);
+      if (e.processo) deixarAvisoDeEntrevistas(e.processo.id, { texto: `Entrevista de ${e.entrevistado ?? 'a pessoa'} excluída definitivamente.`, aba: 'arquivadas' });
+      router.push(e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas');
+    } catch (err) { setOcupadoArquivo(false); void avisar('Não foi possível excluir a entrevista.', msg(err)); }
+  }
+
   async function desistir() {
     setErro(null);
     try { await desistirComplemento(id); await carregar(); setAviso(''); setTela('resultado'); } catch (err) { setErro({ texto: msg(err) }); }
@@ -192,7 +229,11 @@ function EntrevistaPage() {
   if (e === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
   if (e === null) return <div className="page"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/entrevistas" className="btn btn-primary">Voltar</Link></div></div>;
 
+  const arquivada = !!e.arquivado_em;
+  // Arquivar fica aqui dentro, no alto da entrevista (decisão 72): fora da ligação e com a entrevista já começada.
+  const podeArquivar = ehGestor(eu) && !arquivada && !e.conteudo_oculto && !e.em_ligacao && e.status !== 'convidada' && e.status !== 'processando' && (tela === 'inicio' || tela === 'resultado');
   const cabecalho = (
+    <>
     <div className="page-head">
       <div>
         <nav className="migalha" aria-label="Caminho">
@@ -204,8 +245,32 @@ function EntrevistaPage() {
         {!e.processo && e.contexto && <p>{e.contexto}</p>}
         {e.entrevistado && <p className="page-meta">Entrevistado: <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
       </div>
+      {podeArquivar && (
+        <div className="actions">
+          <button type="button" className="btn btn-ghost" disabled={ocupadoArquivo} onClick={() => void arquivar()} title="Tira a entrevista do processo. A conversa e o resultado ficam guardados, e dá para restaurar depois"><Icone nome="arquivar" tamanho={16} />Arquivar</button>
+        </div>
+      )}
     </div>
+    {arquivada && !e.conteudo_oculto && (
+      <FaixaArquivado tipo="entrevista" desde={e.arquivado_em!} por={e.arquivador} aoRestaurar={() => void restaurarArquivada()} aoExcluir={ehAdmin(eu) ? () => void excluirArquivada() : undefined} ocupado={ocupadoArquivo} />
+    )}
+    </>
   );
+
+  // A entrevista arquivada fica só com gestores e administradores (decisão 72): para os outros, inclusive a pessoa
+  // entrevistada, ela saiu do processo.
+  if (arquivada && e.conteudo_oculto) {
+    return (
+      <div className="page page-estreita">
+        {cabecalho}
+        <div className="cartao" id="conversa-arquivada">
+          <h3 className="sem-margem">Esta conversa foi arquivada</h3>
+          <p className="notice">Ela saiu da lista do processo em {new Date(e.arquivado_em!).toLocaleDateString('pt-BR')} e não pode ser continuada. Se precisar dela, fale com quem cuida do processo.</p>
+          <div className="fluxo-acoes"><Link href="/app/entrevistas" className="btn"><Icone nome="voltar" tamanho={16} />Voltar</Link></div>
+        </div>
+      </div>
+    );
+  }
 
   // Enquanto a pessoa conversa com a Maia, ninguém mais entra na entrevista, nem o administrador (decisão 69).
   if (e.conteudo_oculto) {
@@ -219,11 +284,11 @@ function EntrevistaPage() {
 
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
-    const minha = souEu(eu, e.entrevistado_id); // só a pessoa convidada liga para a Maia (decisão 49)
+    const minha = souEu(eu, e.entrevistado_id) && !arquivada; // só a pessoa convidada liga para a Maia (decisão 49); arquivada, ninguém liga (decisão 72)
     const complemento = e.complemento && !e.complemento.concluido_em ? e.complemento : null; // voltou para fechar pontos em aberto (decisão 56)
     if (eu !== null && !minha && ehAdmin(eu)) {
       return (
-        <GestaoDaEntrevista e={e} cabecalho={cabecalho} aviso={aviso} erro={erro?.texto ?? ''}
+        <GestaoDaEntrevista e={e} cabecalho={cabecalho} aviso={aviso} erro={erro?.texto ?? ''} arquivada={arquivada}
           aoMudar={async (texto) => { setErro(null); setAviso(texto); await carregar(); }}
           aoEncerrar={encerrarComoAdmin}
           aoDesistir={desistir}
@@ -236,12 +301,12 @@ function EntrevistaPage() {
           {cabecalho}
           <div className="cartao">
             <h3 className="sem-margem">Entrevista de {e.entrevistado ?? 'outra pessoa'}</h3>
-            <p className="notice">Só quem foi convidado conversa com a Maia nesta entrevista. {complemento ? `Está marcado para ${e.entrevistado ?? 'a pessoa'} responder ${complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto; quando voltar, a Maia pergunta só isso e o resultado é refeito.` : retomando ? `A conversa está pausada, com ${e.turnos.length} falas; quando ${e.entrevistado ?? 'a pessoa'} terminar, o resultado aparece aqui e no processo.` : 'Quando a pessoa fizer a entrevista, o resultado aparece aqui e no processo.'}</p>
+            <p className="notice">{arquivada ? 'Arquivada, esta entrevista não pode ser continuada. ' : 'Só quem foi convidado conversa com a Maia nesta entrevista. '}{complemento ? `Está marcado para ${e.entrevistado ?? 'a pessoa'} responder ${complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto; quando voltar, a Maia pergunta só isso e o resultado é refeito.` : retomando ? `A conversa está pausada, com ${e.turnos.length} falas; quando ${e.entrevistado ?? 'a pessoa'} terminar, o resultado aparece aqui e no processo.` : 'Quando a pessoa fizer a entrevista, o resultado aparece aqui e no processo.'}</p>
             {complemento && <ul className="ficha-lista">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>}
             {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
             <div className="fluxo-acoes">
               <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
-              {complemento && ehGestor(eu) && e.turnos.length === complemento.a_partir_do_turno && <button className="btn btn-ghost" onClick={() => void desistir()}>Deixar como está</button>}
+              {complemento && !arquivada && ehGestor(eu) && e.turnos.length === complemento.a_partir_do_turno && <button className="btn btn-ghost" onClick={() => void desistir()}>Deixar como está</button>}
             </div>
           </div>
         </div>
@@ -317,11 +382,11 @@ function EntrevistaPage() {
     );
   }
 
-  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} admin={ehAdmin(eu)} minha={souEu(eu, e.entrevistado_id)} gestor={ehGestor(eu)} aoReprocessar={reprocessar} aoRetomar={retomar} />;
+  return <Resultado e={e} aviso={aviso} erro={erro} cabecalho={cabecalho} admin={ehAdmin(eu)} minha={souEu(eu, e.entrevistado_id)} gestor={ehGestor(eu)} arquivada={arquivada} aoReprocessar={reprocessar} aoRetomar={retomar} />;
 }
 
-function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReprocessar, aoRetomar }: {
-  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; admin: boolean; minha: boolean; gestor: boolean;
+function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada, aoReprocessar, aoRetomar }: {
+  e: Entrevista; aviso: string; erro: { texto: string; repetir?: () => void } | null; cabecalho: React.ReactNode; admin: boolean; minha: boolean; gestor: boolean; arquivada: boolean;
   aoReprocessar: () => Promise<void>; aoRetomar: (pendencias: string[]) => Promise<void>;
 }) {
   const r = e.resultado;
@@ -330,7 +395,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
   const [escolhidas, setEscolhidas] = useState<string[]>([]);
   const [marcando, setMarcando] = useState(false);
   const [erroRetomar, setErroRetomar] = useState('');
-  const podeEscolher = e.status === 'concluida' && (minha || gestor);
+  const podeEscolher = e.status === 'concluida' && (minha || gestor) && !arquivada; // arquivada, não ganha complemento (decisão 72)
   const primeiroNome = e.entrevistado?.trim().split(/\s+/)[0] ?? 'a pessoa';
   async function retomar() {
     setMarcando(true);
@@ -351,7 +416,9 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
         <div className="cartao">
           <h3 className="sem-margem">{ROTULO_STATUS.erro}</h3>
           <p className="notice">{e.erro || 'O processamento foi interrompido.'} A conversa está guardada: dá para gerar o resultado de novo.</p>
-          <div className="fluxo-acoes"><button className="btn btn-primary" onClick={() => void aoReprocessar()}><Icone nome="ia" tamanho={16} />Gerar o resultado de novo</button></div>
+          {arquivada
+            ? <p className="notice">Restaure a entrevista para gerar o resultado de novo.</p>
+            : <div className="fluxo-acoes"><button className="btn btn-primary" onClick={() => void aoReprocessar()}><Icone nome="ia" tamanho={16} />Gerar o resultado de novo</button></div>}
         </div>
       )}
       {e.status === 'concluida' && !r && (
@@ -395,9 +462,9 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
           {(r.pendencias_outra_pessoa?.length ?? 0) > 0 && (
             <div className="cartao" id="para-outra-pessoa">
               <h3 className="sem-margem">Para outra pessoa responder</h3>
-              <p className="notice">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
+              <p className="notice">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo && !arquivada ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
               <ul className="ficha-lista">{r.pendencias_outra_pessoa!.map((x, i) => <li key={i}>{x.pergunta} <small>· quem sabe: {x.quem_sabe}</small></li>)}</ul>
-              {gestor && e.processo && (
+              {gestor && e.processo && !arquivada && (
                 <div className="fluxo-acoes"><Link className="btn" href={`/app/processos/${e.processo.id}#perguntas-para-outros`}><Icone nome="mais" tamanho={16} />Convidar alguém para responder</Link></div>
               )}
             </div>
@@ -425,7 +492,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, aoReproces
                 </>
               ) : (
                 <>
-                  <p className="notice">Perguntas para uma próxima conversa.</p>
+                  <p className="notice">{arquivada ? 'Com a entrevista arquivada, não dá para pedir complemento destes pontos. Restaure a entrevista para isso.' : 'Perguntas para uma próxima conversa.'}</p>
                   <ul className="ficha-lista">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
                 </>
               )}
@@ -473,11 +540,12 @@ const dataHora = (iso: string) => { const d = new Date(iso); return `${d.toLocal
 
 /**
  * A entrevista de outra pessoa que ainda não terminou, vista pelo administrador (decisão 65): em que pé está, o
- * convite, a conversa até agora e as ações (reenviar ou cancelar o convite, encerrar e gerar o resultado, excluir).
+ * convite, a conversa até agora e as ações (reenviar ou cancelar o convite, encerrar e gerar o resultado). Arquivar
+ * fica no alto da página; excluir, só depois de arquivada, na faixa (decisão 72). Arquivada, fica só para consulta.
  * Falar com a Maia continua sendo só da pessoa convidada: a conversa fica no nome dela.
  */
-function GestaoDaEntrevista({ e, cabecalho, aviso, erro, aoMudar, aoEncerrar, aoDesistir, aoExcluir }: {
-  e: Entrevista; cabecalho: React.ReactNode; aviso: string; erro: string;
+function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoEncerrar, aoDesistir, aoExcluir }: {
+  e: Entrevista; cabecalho: React.ReactNode; aviso: string; erro: string; arquivada: boolean;
   aoMudar: (aviso: string) => Promise<void>; aoEncerrar: () => Promise<void>; aoDesistir: () => Promise<void>; aoExcluir: () => void;
 }) {
   const [ocupado, setOcupado] = useState(false);
@@ -496,7 +564,7 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, aoMudar, aoEncerrar, ao
   const reenviar = () => agir(async () => { await reenviarConvite(e.id); await aoMudar(`Convite reenviado para ${nome}.`); }, 'Não foi possível reenviar o convite.');
   async function excluir() {
     if (!(await confirmar(confirmacaoDeExclusao({ status: e.status, falas, entrevistado: e.entrevistado })))) return;
-    await agir(async () => { await excluirEntrevista(e.id); aoExcluir(); }, pendente ? 'Não foi possível cancelar o convite.' : 'Não foi possível excluir a entrevista.');
+    await agir(async () => { await excluirEntrevista(e.id); aoExcluir(); }, 'Não foi possível cancelar o convite.');
   }
   async function encerrar() {
     if (!(await confirmar({ titulo: `Encerrar a entrevista de ${nome}?`, mensagem: `A conversa termina como está, com ${falas} falas, e a Maia gera o resultado. ${primeiroNome} não continua mais esta ligação; se faltar algo, dá para pedir que responda os pontos em aberto depois.`, acao: 'Encerrar e gerar o resultado' }))) return;
@@ -521,13 +589,15 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, aoMudar, aoEncerrar, ao
           {complemento && <><dt>Completar</dt><dd>Está marcado para {primeiroNome} responder {complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto.</dd></>}
         </dl>
         {complemento && <ul className="ficha-lista">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>}
-        <p className="notice">Como administrador, você vê e gerencia esta entrevista. Só {primeiroNome} fala com a Maia nela: a conversa fica registrada no nome de quem foi convidado.</p>
+        <p className="notice">{arquivada
+          ? 'Arquivada, esta entrevista fica só para consulta: não pode ser continuada nem encerrada. Restaure para voltar a usar.'
+          : `Como administrador, você vê e gerencia esta entrevista. Só ${primeiroNome} fala com a Maia nela: a conversa fica registrada no nome de quem foi convidado.`}</p>
         <div className="fluxo-acoes">
           <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
           {pendente && <button type="button" className="btn" disabled={ocupado} onClick={() => void reenviar()} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
-          {complemento && e.turnos.length === complemento.a_partir_do_turno && <button type="button" className="btn btn-ghost" disabled={ocupado} onClick={() => void agir(aoDesistir, 'Não foi possível desfazer.')} title="Fica com o resultado que já existe">Deixar como está</button>}
-          <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado} onClick={() => void excluir()} title={pendente ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar convite' : 'Excluir entrevista'}</button>
-          {!pendente && temFala && <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => void encerrar()} title="Termina a conversa como está e gera a descrição e a ficha"><Icone nome="ia" tamanho={16} />Encerrar e gerar o resultado</button>}
+          {complemento && !arquivada && e.turnos.length === complemento.a_partir_do_turno && <button type="button" className="btn btn-ghost" disabled={ocupado} onClick={() => void agir(aoDesistir, 'Não foi possível desfazer.')} title="Fica com o resultado que já existe">Deixar como está</button>}
+          {pendente && <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado} onClick={() => void excluir()} title="Cancela o convite"><Icone nome="lixo" tamanho={16} />Cancelar convite</button>}
+          {!pendente && !arquivada && temFala && <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => void encerrar()} title="Termina a conversa como está e gera a descrição e a ficha"><Icone nome="ia" tamanho={16} />Encerrar e gerar o resultado</button>}
           <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>
         </div>
       </div>

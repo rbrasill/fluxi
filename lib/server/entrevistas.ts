@@ -39,9 +39,10 @@ export type Linha = {
   entrevistado_id: string | null; // a pessoa convidada (sem convite, em desenvolvimento: quem abriu a primeira sessão)
   convidado_por: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null; em_ligacao_ate: string | null;
   complemento: Complemento | null; // voltar para fechar pontos em aberto (decisão 56)
+  arquivado_em: string | null; arquivado_por: string | null; // fora do fluxo do processo, guardada em Arquivadas (decisão 72)
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em, atualizado_em';
 /** O complemento ainda por fazer (escolhido e não concluído). */
 const complementoAberto = (l: Pick<Linha, 'complemento'>) => (l.complemento && !l.complemento.concluido_em ? l.complemento : null);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -127,7 +128,7 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
   if (error) throw error;
   const pessoas = (ps ?? []) as { id: string; nome: string; email: string }[];
   if (pessoas.length !== ids.length) throw new ErroApi(404, 'Alguma das pessoas escolhidas não está mais cadastrada.');
-  const { data: abertas, error: e2 } = await db.from('entrevistas').select('id, entrevistado_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).in('status', ['convidada', 'em_andamento']).in('entrevistado_id', ids);
+  const { data: abertas, error: e2 } = await db.from('entrevistas').select('id, entrevistado_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).in('entrevistado_id', ids);
   if (e2) throw e2;
   const jaTem = new Set(((abertas ?? []) as { entrevistado_id: string }[]).map((x) => x.entrevistado_id));
   const nota = (d.nota ?? '').trim();
@@ -163,6 +164,44 @@ export async function reenviarConvite(id: string, quem: Pessoa | null, origem: s
   return { ok: true };
 }
 
+// --- Arquivar (decisão 72): ativa → arquivada → excluída. Arquivar e restaurar: gestores e administradores ---
+
+const MSG_ARQUIVADA = 'Esta entrevista está arquivada. Restaure a entrevista para voltar a usar.';
+/** A entrevista arquivada está fora do fluxo: não continua, não ganha complemento e não tem o resultado refeito. */
+function exigirAtiva(linha: Pick<Linha, 'arquivado_em'>) {
+  if (linha.arquivado_em) throw new ErroApi(409, MSG_ARQUIVADA, 'arquivada');
+}
+
+/**
+ * Arquiva a entrevista: ela sai da lista do processo, do fluxograma e das perguntas para outras pessoas, e não pode
+ * ser continuada. Nada é apagado. Convite que não começou não se arquiva (cancela-se); durante a ligação ou com o
+ * resultado sendo gerado, espera.
+ */
+export async function arquivar(id: string, quem?: Pessoa | null) {
+  const linha = await carregar(id);
+  if (linha.arquivado_em) return { ok: true as const };
+  if (linha.status === 'convidada') throw new ErroApi(409, 'O convite ainda não começou: cancele o convite em vez de arquivar.');
+  if (emLigacao(linha)) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
+  if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) throw new ErroApi(409, 'O resultado desta entrevista está sendo gerado. Tente de novo em alguns minutos.', 'processando');
+  await salvar(id, { arquivado_em: agora(), arquivado_por: quem?.id ?? null, em_ligacao_ate: null });
+  return { ok: true as const };
+}
+
+/** Devolve a entrevista arquivada à lista de ativas do processo. */
+export async function restaurar(id: string) {
+  const linha = await carregar(id);
+  if (!linha.arquivado_em) return { ok: true as const };
+  // Uma entrevista aberta por pessoa em cada processo: se ela foi convidada de novo enquanto esta estava arquivada, não volta.
+  if (linha.status === 'em_andamento' && linha.processo_id && linha.entrevistado_id) {
+    const { data, error } = await supabase().from('entrevistas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', linha.processo_id)
+      .eq('entrevistado_id', linha.entrevistado_id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).neq('id', id).limit(1);
+    if (error) throw error;
+    if ((data ?? []).length) throw new ErroApi(409, 'Esta pessoa já tem outra entrevista aberta neste processo. Conclua ou cancele a outra antes de restaurar esta.', 'outra_aberta');
+  }
+  await salvar(id, { arquivado_em: null, arquivado_por: null });
+  return { ok: true as const };
+}
+
 // --- Acesso (decisão 49): só a pessoa convidada conversa com a Maia; gestores e administradores gerem ---
 
 /** Sem login (desenvolvimento), tudo liberado. */
@@ -185,6 +224,7 @@ export const RetomarSchema = z.object({ pendencias: z.array(z.string().trim().mi
  */
 export async function retomar(id: string, d: z.infer<typeof RetomarSchema>, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  exigirAtiva(linha);
   if (linha.status !== 'concluida' || !linha.resultado) throw new ErroApi(409, 'Só uma entrevista concluída, com resultado, pode ser completada.');
   if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
   const abertas = new Set(linha.resultado.pendencias);
@@ -198,6 +238,7 @@ export async function retomar(id: string, d: z.infer<typeof RetomarSchema>, pess
 /** Desiste do complemento antes de a conversa continuar: volta a concluída, com o resultado que já tinha. */
 export async function desistirComplemento(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  exigirAtiva(linha);
   const c = complementoAberto(linha);
   if (linha.status !== 'em_andamento' || !c) throw new ErroApi(409, 'Esta entrevista não está esperando um complemento.');
   if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
@@ -233,31 +274,31 @@ const perfilDe = (r: unknown): PerfilEntrevistado | null => {
 export async function perfilConhecido(entrevistadoId: string | null | undefined): Promise<PerfilEntrevistado | null> {
   if (!entrevistadoId) return null;
   const { data, error } = await supabase().from('entrevistas').select('resultado, encerrado_em').eq('tenant_id', TENANT_PADRAO).eq('entrevistado_id', entrevistadoId)
-    .not('resultado', 'is', null).order('encerrado_em', { ascending: false }).limit(10);
+    .not('resultado', 'is', null).is('arquivado_em', null).order('encerrado_em', { ascending: false }).limit(10);
   if (error) return null;
   for (const l of data ?? []) { const p = perfilDe(l.resultado); if (p) return p; }
   return null;
 }
 
-/** Todas as entrevistas, da mais recente para a mais antiga, com o processo e a pessoa de cada uma. */
 /**
  * As entrevistas da tela "Conversas com a Maia" (decisão 60): quem é comum recebe só as suas; gestores e
  * administradores, todas. Cada uma vem com o processo (e a área dele) e as datas do convite e da conversa.
+ * As arquivadas (decisão 72) vão só para gestores e administradores, com quando e por quem foram arquivadas.
  */
 export async function listar(pessoa?: Pessoa | null) {
-  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
+  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
     .eq('tenant_id', TENANT_PADRAO);
-  if (!ehGestor(pessoa)) consulta = consulta.eq('entrevistado_id', pessoa!.id);
+  if (!ehGestor(pessoa)) consulta = consulta.eq('entrevistado_id', pessoa!.id).is('arquivado_em', null);
   const { data, error } = await consulta.order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
-  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
-  return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, processo, complemento, em_ligacao_ate, ...e }) => {
+  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null, l.arquivado_por as string | null]));
+  return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, arquivado_por, processo, complemento, em_ligacao_ate, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
       ...e, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
-      convidado_por: nomes.get(convidado_por as string) ?? null,
+      convidado_por: nomes.get(convidado_por as string) ?? null, arquivado_por: nomes.get(arquivado_por as string) ?? null,
       processo: (processo as unknown as (ProcessoEmbutido & { area: { id: string; nome: string } | null })) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: t.length, duracao_s: m.duracao_s ?? 0, custo_analise_usd: m.analise?.custo_usd ?? 0, custo_consultas_usd: (m.consultas ?? []).reduce((a, c) => a + (c.custo_usd || 0), 0),
@@ -278,7 +319,7 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const db = supabase();
   const [proc, conv] = await Promise.all([
     db.from('processos').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
-    db.from('entrevistas').select('id, status, em_ligacao_ate, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
+    db.from('entrevistas').select('id, status, em_ligacao_ate, arquivado_em, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
   ]);
   for (const r of [proc, conv]) if (r.error) throw r.error;
   if (!proc.data) throw new ErroApi(404, 'Processo não encontrado');
@@ -289,6 +330,7 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const blocos = linhas.map((l, i) => {
     const turnos = (l.turnos as Turno[] | null) ?? [];
     const quem = nomes.get(l.entrevistado_id as string) ?? 'pessoa entrevistada';
+    if (l.arquivado_em) throw new ErroApi(409, `A conversa de ${quem} está arquivada. Restaure a entrevista para usar no fluxograma.`, 'arquivada');
     if (emLigacao({ status: l.status as string, em_ligacao_ate: l.em_ligacao_ate as string | null })) throw new ErroApi(409, `${quem} está conversando com a Maia agora. A conversa entra no fluxograma quando a ligação terminar.`, 'em_ligacao');
     if (!turnos.some((t) => t.quem !== 'ia' && !t.apoio)) throw new ErroApi(422, `A conversa de ${quem} ainda não tem falas para virar fluxograma.`);
     const r = (l.resultado as ResultadoEntrevista | null) ?? null;
@@ -318,30 +360,33 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
 }
 
 /** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
-export async function listarDoProcesso(processoId: string) {
+export async function listarDoProcesso(processoId: string, pessoa?: Pessoa | null) {
   if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');
-  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em')
     .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
   if (error) throw error;
-  const linhas = data ?? [];
-  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
-  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, complemento, em_ligacao_ate, ...e }) => {
+  // As arquivadas (decisão 72) vão só para gestores e administradores; para os outros, é como se não existissem.
+  const linhas = (data ?? []).filter((l) => !l.arquivado_em || ehGestor(pessoa));
+  const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null, l.arquivado_por as string | null]));
+  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, arquivado_por, complemento, em_ligacao_ate, ...e }) => {
     const r = (resultado as ResultadoEntrevista | null) ?? null;
     const em_ligacao = emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null });
     return {
       ...e, em_ligacao, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
+      arquivado_por: nomes.get(arquivado_por as string) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
       entrevistado_area: perfilDe(r)?.area || null,
       tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
-      pendencias_outra_pessoa: em_ligacao ? [] : r?.pendencias_outra_pessoa ?? [], // perguntas para outras pessoas (decisão 58); nada durante a ligação (decisão 69)
+      // perguntas para outras pessoas (decisão 58); nada durante a ligação (decisão 69) nem da entrevista arquivada (decisão 72)
+      pendencias_outra_pessoa: em_ligacao || e.arquivado_em ? [] : r?.pendencias_outra_pessoa ?? [],
     };
   });
 }
 
 /** Painel da Maia (decisão 52, só administradores): como ela está configurada e cada entrevista com tempos, métricas e custos. */
 export async function painel() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, em_ligacao_ate, criado_em, encerrado_em, processo:processos(id, nome)')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, em_ligacao_ate, arquivado_em, criado_em, encerrado_em, processo:processos(id, nome)')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
@@ -355,7 +400,7 @@ export async function painel() {
       const m = (metricas as Metricas | null) ?? {};
       const r = resumoMetricas(m);
       return {
-        ...e, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
+        ...e, arquivada: !!e.arquivado_em, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
         duracao_s: m.duracao_s ?? 0, sessoes: m.sessoes ?? (m.duracao_s ? 1 : 0), pausas: m.pausas ?? 0, consultas: r.consultas,
         reacao_mediana_ms: r.reacao_mediana_ms ?? null, conexao_ms: m.conexao_ms ?? null,
         custo_voz_usd: r.custo_voz_usd, custo_consultas_usd: r.custo_consultas_usd, custo_analise_usd: r.custo_analise_usd, custo_total_usd: r.custo_total_usd,
@@ -368,12 +413,13 @@ export async function painel() {
 /**
  * A entrevista inteira. Enquanto a pessoa está na ligação com a Maia (decisão 69), só ela recebe a conversa: para
  * os outros, inclusive o administrador, vêm os dados da entrevista sem as falas, as gravações e o resultado
- * (`conteudo_oculto`), até a ligação terminar.
+ * (`conteudo_oculto`), até a ligação terminar. A entrevista arquivada (decisão 72) vai inteira só para gestores e
+ * administradores; para os outros, inclusive a pessoa entrevistada, também vem sem o conteúdo.
  */
 export async function obter(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
   const em_ligacao = emLigacao(linha);
-  const oculto = em_ligacao && !!pessoa && linha.entrevistado_id !== pessoa.id;
+  const oculto = (em_ligacao && !!pessoa && linha.entrevistado_id !== pessoa.id) || (!!linha.arquivado_em && !ehGestor(pessoa));
   // Uma gravação por sessão de voz (quem continua a entrevista grava um arquivo novo).
   const arquivos = oculto ? [] : await gravacoes(id);
   let audios: string[] = [];
@@ -381,7 +427,7 @@ export async function obter(id: string, pessoa?: Pessoa | null) {
     const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
     audios = (data ?? []).map((x) => x.signedUrl).filter((u): u is string => !!u);
   }
-  const nomes = await nomesDasPessoas([linha.entrevistado_id, linha.convidado_por]);
+  const nomes = await nomesDasPessoas([linha.entrevistado_id, linha.convidado_por, linha.arquivado_por]);
   const processo = linha.processo_id ? await processoDoConvite(linha.processo_id).catch(() => null) : null;
   const { em_ligacao_ate: _prazo, ...dados } = linha;
   void _prazo;
@@ -390,6 +436,7 @@ export async function obter(id: string, pessoa?: Pessoa | null) {
     ...dados, ...(oculto ? { turnos: [] as Turno[], resultado: null, metricas: {} as Metricas, falas_ocultas: linha.turnos.filter((t) => !t.apoio).length } : {}),
     em_ligacao, conteudo_oculto: oculto,
     entrevistado: nomes.get(linha.entrevistado_id ?? '') ?? null, convidador: nomes.get(linha.convidado_por ?? '') ?? null,
+    arquivador: nomes.get(linha.arquivado_por ?? '') ?? null,
     processo: processo ? { id: processo.id, nome: processo.nome, area: processo.area } : null,
     audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA,
   };
@@ -409,13 +456,13 @@ export async function situacaoDaLigacao(id: string) {
 
 /**
  * Exclui a entrevista inteira (a conversa, o áudio e o resultado). Convite pendente: gestores e administradores
- * cancelam. Entrevista que já começou: só administradores (decisão 54), em qualquer situação, menos enquanto a
- * pessoa está na ligação ou o resultado está sendo gerado. Ninguém edita o que veio da conversa: ou fica como
- * está, ou sai inteira.
+ * cancelam. Entrevista que já começou: só administradores (decisão 54) e só depois de arquivada (decisão 72).
+ * Ninguém edita o que veio da conversa: ou fica como está, ou sai inteira.
  */
 export async function excluir(id: string, quem?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status !== 'convidada' && quem && quem.nivel !== 'admin') throw new ErroApi(403, 'Só administradores excluem entrevistas que já começaram. Gestores cancelam convites pendentes.');
+  if (linha.status !== 'convidada' && !linha.arquivado_em) throw new ErroApi(409, 'Arquive a entrevista antes de excluir definitivamente.', 'nao_arquivada');
   const desde = Date.now() - new Date(linha.atualizado_em).getTime();
   if (emLigacao(linha)) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
   if (linha.status === 'processando' && desde < 3 * 60_000) throw new ErroApi(409, 'O resultado desta entrevista está sendo gerado. Tente de novo em alguns minutos.', 'processando');
@@ -506,6 +553,7 @@ export function historicoParaSessao(turnos: Turno[]) {
 /** Abre uma sessão de voz: recebe a oferta WebRTC do navegador e devolve a resposta da OpenAI. */
 export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  exigirAtiva(linha);
   if (linha.status !== 'em_andamento' && linha.status !== 'convidada') throw new ErroApi(409, 'Esta entrevista já foi encerrada.');
   exigirEntrevistado(linha, pessoa); // só a pessoa convidada abre a sessão (decisão 49)
   const chave = process.env.OPENAI_API_KEY;
@@ -786,6 +834,7 @@ export function limparHtml(html: string) {
  */
 export async function encerrar(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  exigirAtiva(linha);
   if (linha.status === 'convidada') throw new ErroApi(409, 'A entrevista ainda não começou.');
   // A pessoa encerra a sua conversa. O administrador tem acesso total (decisão 65): também encerra a conversa
   // pausada de outra pessoa e gera o resultado, menos enquanto ela está na ligação. Gestores só geram de novo

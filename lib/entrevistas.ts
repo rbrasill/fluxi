@@ -11,8 +11,11 @@ export type Entrevista = {
   complemento: Complemento | null;
   /** A pessoa está na ligação com a Maia agora (decisão 69). */
   em_ligacao: boolean;
-  /** Durante a ligação, quem não é a pessoa entrevistada recebe a entrevista sem as falas, os áudios e o resultado. */
+  /** Durante a ligação, quem não é a pessoa entrevistada recebe a entrevista sem as falas, os áudios e o resultado
+   *  (também quem não é gestor nem administrador, quando a entrevista está arquivada). */
   conteudo_oculto: boolean;
+  /** Arquivada (decisão 72): fora do fluxo do processo, guardada em Arquivadas; quando e por quem. */
+  arquivado_em: string | null; arquivador: string | null;
   processo: { id: string; nome: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
@@ -20,14 +23,14 @@ export type EntrevistaResumo = {
   id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null;
   processo: { id: string; nome: string; area: { id: string; nome: string } | null } | null;
   convidado_por: string | null; convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
-  complemento_pendencias: number | null; em_ligacao: boolean;
+  complemento_pendencias: number | null; em_ligacao: boolean; arquivado_em: string | null; arquivado_por: string | null;
   falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number;
 };
 /** Uma entrevista na página do processo. */
 export type EntrevistaDoProcesso = {
   id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; entrevistado_area: string | null; convidado_por: string | null;
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
-  complemento_pendencias: number | null; em_ligacao: boolean;
+  complemento_pendencias: number | null; em_ligacao: boolean; arquivado_em: string | null; arquivado_por: string | null;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
   pendencias_outra_pessoa: PendenciaOutraPessoa[];
 };
@@ -44,7 +47,12 @@ export const listarEntrevistas = () => api<EntrevistaResumo[]>('/api/entrevistas
 export const obterEntrevista = (id: string) => api<Entrevista>(`/api/entrevistas/${id}`);
 /** Só a situação da entrevista (leve): para a tela perceber quando a ligação começa ou termina (decisão 69). */
 export const consultarSituacao = (id: string) => api<{ status: StatusEntrevista; em_ligacao: boolean }>(`/api/entrevistas/${id}/situacao`);
+/** Cancela um convite que não começou ou exclui definitivamente uma entrevista arquivada (decisão 72). */
 export const excluirEntrevista = (id: string) => api(`/api/entrevistas/${id}`, { method: 'DELETE' });
+/** Arquiva a entrevista: sai do fluxo do processo e fica guardada em Arquivadas (gestores e administradores). */
+export const arquivarEntrevista = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/arquivar`, { method: 'POST' });
+/** Devolve a entrevista arquivada à lista de ativas do processo. */
+export const restaurarEntrevista = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/restaurar`, { method: 'POST' });
 /** As entrevistas de um processo. */
 export const listarEntrevistasDoProcesso = (processoId: string) => api<EntrevistaDoProcesso[]>(`/api/processos/${processoId}/entrevistas`);
 /** Convida até três pessoas para entrevistas sobre o processo (gestores e administradores). */
@@ -80,16 +88,36 @@ export async function enviarAudioDaEntrevista(id: string, blob: Blob) {
   await api(`/api/entrevistas/${id}`, { method: 'PATCH', body: JSON.stringify({ audio_caminho: up.caminho }) });
 }
 
-/** A confirmação antes de cancelar um convite ou excluir uma entrevista (decisão 54). */
+/** A confirmação antes de cancelar um convite ou excluir definitivamente uma entrevista arquivada (decisões 54 e 72). */
 export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: number; entrevistado: string | null }) {
   const quem = e.entrevistado ?? 'esta pessoa';
   if (e.status === 'convidada') return { titulo: `Cancelar o convite de ${quem}?`, mensagem: 'A pessoa não vai mais conseguir abrir esta entrevista. Dá para convidar de novo depois.', acao: 'Cancelar convite', perigo: true };
-  const pausada = e.status === 'em_andamento' && e.falas > 0;
+  return { titulo: `Excluir definitivamente a entrevista de ${quem}?`, mensagem: 'A conversa, o áudio e o resultado são apagados de vez. Não dá para desfazer.', acao: 'Excluir definitivamente', perigo: true };
+}
+
+/** A confirmação antes de arquivar uma entrevista (decisão 72). */
+export function confirmacaoDeArquivamento(e: { status: StatusEntrevista; entrevistado: string | null }) {
+  const quem = e.entrevistado ?? 'esta pessoa';
   return {
-    titulo: `Excluir a entrevista de ${quem}?`,
-    mensagem: `${pausada ? 'A entrevista está pausada e ainda pode ser retomada. ' : ''}A conversa, o áudio e o resultado são apagados de vez; não dá para desfazer.`,
-    acao: 'Excluir', perigo: true,
+    titulo: `Arquivar a entrevista de ${quem}?`,
+    mensagem: `A entrevista sai da lista do processo, deixa de entrar no fluxograma e nas perguntas para outras pessoas, e não pode ser continuada${e.status === 'em_andamento' ? ' (ela está pausada)' : ''}. Nada é apagado: a conversa, o áudio e o resultado ficam guardados em Arquivadas, e dá para restaurar depois.`,
+    acao: 'Arquivar',
   };
+}
+
+// O aviso que uma tela deixa para a seção de entrevistas do processo mostrar na volta (decisão 72): "arquivada", "excluída".
+export type AvisoDeEntrevistas = { texto: string; aba?: 'arquivadas' };
+const chaveAviso = (processoId: string) => `incflow:aviso-entrevistas:${processoId}`;
+export function deixarAvisoDeEntrevistas(processoId: string, aviso: AvisoDeEntrevistas) {
+  try { sessionStorage.setItem(chaveAviso(processoId), JSON.stringify(aviso)); } catch { /* sem armazenamento: só não aparece o aviso */ }
+}
+export function pegarAvisoDeEntrevistas(processoId: string): AvisoDeEntrevistas | null {
+  try {
+    const v = sessionStorage.getItem(chaveAviso(processoId));
+    if (!v) return null;
+    sessionStorage.removeItem(chaveAviso(processoId));
+    return JSON.parse(v) as AvisoDeEntrevistas;
+  } catch { return null; }
 }
 
 /** As perguntas para outras pessoas, juntas por quem saberia responder (decisão 58), com quem não soube. */
@@ -124,7 +152,8 @@ export function quandoFoiAEntrevista(e: { status: StatusEntrevista; falas: numbe
  * (decisão 69); fora da ligação, a entrevista aberta está pausada (ou esperando o complemento). Um convite sem
  * e-mail fica avisado.
  */
-export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
+export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; arquivado_em?: string | null; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
+  if (e.arquivado_em) return 'Arquivada';
   if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';
   if (e.status === 'em_andamento' && e.em_ligacao) return 'Em andamento';
   if (e.status === 'em_andamento' && e.complemento_pendencias) return `Completar: ${e.complemento_pendencias} ${e.complemento_pendencias === 1 ? 'ponto' : 'pontos'}`;

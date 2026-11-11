@@ -12,7 +12,7 @@ export function EntrevistasPendentes() {
   const [lista, setLista] = useState<EntrevistaResumo[]>([]);
   useEffect(() => { listarEntrevistas().then(setLista).catch(() => setLista([])); }, []);
   if (!eu?.enabled) return null; // sem login (desenvolvimento) não há "você"
-  const minhas = lista.filter((x) => x.entrevistado_id === eu.personId && (x.status === 'convidada' || x.status === 'em_andamento'));
+  const minhas = lista.filter((x) => x.entrevistado_id === eu.personId && !x.arquivado_em && (x.status === 'convidada' || x.status === 'em_andamento'));
   if (!minhas.length) return null;
   const uma = minhas.length === 1 ? minhas[0] : null;
   return (

@@ -105,7 +105,7 @@ function ConteudoPainel() {
                   <tr key={x.id}>
                     <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}{x.processo && x.processo !== x.tema ? ` · ${x.processo}` : ''}</small></td>
                     <td>{data(x.criado_em)}</td>
-                    <td>{x.em_ligacao ? <SeloSituacao entrevista={x} /> : situacao(x)}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
+                    <td>{x.em_ligacao ? <SeloSituacao entrevista={x} /> : situacao(x)}{x.arquivada ? <small>arquivada</small> : null}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
                     <td className="col-num">{x.duracao_s ? mmss(x.duracao_s) : '—'}<small>{plural(x.sessoes, 'sessão', 'sessões')}{x.pausas ? ` · ${plural(x.pausas, 'pausa', 'pausas')}` : ''}</small></td>
                     <td className="col-num">{seg(x.reacao_mediana_ms)}</td>
                     <td className="col-num">{seg(x.conexao_ms)}</td>

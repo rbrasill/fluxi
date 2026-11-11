@@ -46,7 +46,7 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
   // As conversas já vêm todas marcadas (até o limite): o fluxograma do processo junta o que cada pessoa contou.
   useEffect(() => {
     listarEntrevistasDoProcesso(processoId)
-      .then((l) => { const prontas = l.filter((x) => x.tem_resultado && !x.em_ligacao); /* a conversa em ligação entra quando terminar (decisão 69) */ setConversas(prontas); setMarcadas(prontas.slice(0, MAX_CONVERSAS_FLUXO).map((x) => x.id)); })
+      .then((l) => { const prontas = l.filter((x) => x.tem_resultado && !x.em_ligacao && !x.arquivado_em); /* sem a conversa em ligação (decisão 69) nem as arquivadas (decisão 72) */ setConversas(prontas); setMarcadas(prontas.slice(0, MAX_CONVERSAS_FLUXO).map((x) => x.id)); })
       .catch(() => setConversas([]));
   }, [processoId]);
   const alternar = (id: string) => setMarcadas((m) => (m.includes(id) ? m.filter((x) => x !== id) : m.length < MAX_CONVERSAS_FLUXO ? [...m, id] : m));

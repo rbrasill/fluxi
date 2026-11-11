@@ -5,14 +5,16 @@ import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Convidar } from '@/components/entrevista/Convidar';
 import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
-import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
+import { ehGestor, souEu, useEu } from '@/lib/auth/eu';
 import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
-import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, perguntasParaOutrasPessoas, reenviarConvite, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, pegarAvisoDeEntrevistas, perguntasParaOutrasPessoas, reenviarConvite, restaurarEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
-// conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites;
-// administradores também excluem entrevistas que já começaram (decisão 54); a pessoa convidada liga daqui.
-// Enquanto a pessoa está na ligação, a linha mostra "Em andamento" e ninguém mais abre a conversa (decisão 69).
+// conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites; a pessoa
+// convidada liga daqui. Enquanto a pessoa está na ligação, a linha mostra "Em andamento" e ninguém mais abre a
+// conversa (decisão 69). Aqui ficam só as entrevistas ativas: arquivar é dentro da entrevista, e as arquivadas
+// aparecem numa aba à parte (só para gestores e administradores), de onde dá para restaurar; excluir
+// definitivamente, só dentro da entrevista arquivada (decisão 72).
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
@@ -21,14 +23,21 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em 
 export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
   const eu = useEu();
   const gestor = ehGestor(eu);
-  const admin = ehAdmin(eu);
   const [lista, setLista] = useState<EntrevistaDoProcesso[] | null>(null);
   const [convidando, setConvidando] = useState<false | { nota?: string; dica?: string }>(false);
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState('');
+  const [aba, setAba] = useState<'ativas' | 'arquivadas'>('ativas');
 
   const carregar = () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => setLista([]));
   useEffect(() => { void carregar(); }, [processoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // O aviso deixado pela tela da entrevista: "arquivada", "excluída definitivamente".
+  useEffect(() => {
+    const deixado = pegarAvisoDeEntrevistas(processoId);
+    if (!deixado) return;
+    setAviso(deixado.texto);
+    if (deixado.aba) setAba(deixado.aba);
+  }, [processoId]);
   useAcompanharEntrevistas(lista, () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => {})); // se falhar, fica a lista que já estava
 
   function convidou(r: ResultadoConvite) {
@@ -51,11 +60,21 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   async function cancelar(x: EntrevistaDoProcesso) {
     if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
     setOcupado(x.id);
-    try { await excluirEntrevista(x.id); await carregar(); } catch (e) { void avisar('Não foi possível excluir.', msg(e)); } finally { setOcupado(''); }
+    try { await excluirEntrevista(x.id); setAviso(`Convite de ${x.entrevistado ?? 'a pessoa'} cancelado.`); await carregar(); } catch (e) { void avisar('Não foi possível cancelar o convite.', msg(e)); } finally { setOcupado(''); }
   }
 
-  const paraOutros = perguntasParaOutrasPessoas((lista ?? []).filter((x) => x.status === 'concluida'));
-  const abertas = (lista ?? []).filter((x) => x.status === 'convidada' || x.status === 'em_andamento').map((x) => x.entrevistado_id).filter((x): x is string => !!x);
+  async function restaurar(x: EntrevistaDoProcesso) {
+    setOcupado(x.id);
+    try { await restaurarEntrevista(x.id); setAviso(`Entrevista de ${x.entrevistado ?? 'a pessoa'} restaurada: voltou para a lista de entrevistas ativas do processo.`); await carregar(); } catch (e) { void avisar('Não foi possível restaurar a entrevista.', msg(e)); } finally { setOcupado(''); }
+  }
+
+  // Só as ativas contam no processo: as arquivadas ficam na aba à parte (que só existe quando há alguma).
+  const ativas = (lista ?? []).filter((x) => !x.arquivado_em);
+  const arquivadas = gestor ? (lista ?? []).filter((x) => !!x.arquivado_em) : [];
+  const abaAtual = arquivadas.length ? aba : 'ativas';
+  const visiveis = abaAtual === 'arquivadas' ? arquivadas : ativas;
+  const paraOutros = perguntasParaOutrasPessoas(ativas.filter((x) => x.status === 'concluida'));
+  const abertas = ativas.filter((x) => x.status === 'convidada' || x.status === 'em_andamento').map((x) => x.entrevistado_id).filter((x): x is string => !!x);
 
   return (
     <section className="secao-processo" aria-labelledby="titulo-entrevistas">
@@ -63,16 +82,41 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
         <h2 id="titulo-entrevistas"><Icone nome="microfone" tamanho={18} />Entrevistas com a Maia</h2>
         {gestor && !arquivado && <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>}
       </div>
-      {aviso && <p className="notice">{aviso}</p>}
+      {arquivadas.length > 0 && (
+        <div className="segmented abas-arquivo abas-entrevistas" role="tablist" aria-label="Entrevistas">
+          <button type="button" role="tab" aria-selected={abaAtual === 'ativas'} onClick={() => { setAba('ativas'); setAviso(''); }}>Ativas <span className="conta-aba">{ativas.length}</span></button>
+          <button type="button" role="tab" aria-selected={abaAtual === 'arquivadas'} onClick={() => { setAba('arquivadas'); setAviso(''); }}>Arquivadas <span className="conta-aba">{arquivadas.length}</span></button>
+        </div>
+      )}
+      {aviso && (
+        <div className="aviso retomar" role="status">
+          <span>{aviso}</span>
+          {arquivadas.length > 0 && abaAtual === 'ativas' && /arquivada/i.test(aviso) && !/restaurada/i.test(aviso) && <button type="button" className="btn" onClick={() => { setAba('arquivadas'); setAviso(''); }}>Ver arquivadas</button>}
+        </div>
+      )}
       {lista === null && <p className="notice">Carregando…</p>}
-      {lista?.length === 0 && (
-        <p className="notice">{gestor && !arquivado
+      {lista && ativas.length === 0 && abaAtual === 'ativas' && (
+        <p className="notice">{arquivadas.length ? 'Nenhuma entrevista ativa neste processo.' : gestor && !arquivado
           ? 'Ninguém foi entrevistado ainda. Convide quem executa ou conhece o processo: cada pessoa conversa com a Maia por voz, no seu tempo, e o que ela contar fica registrado aqui.'
           : 'Ninguém foi entrevistado ainda.'}</p>
       )}
-      {lista && lista.length > 0 && (
+      {visiveis.length > 0 && (
         <div className="lista-pops lista-entrevistas">
-          {lista.map((x) => {
+          {visiveis.map((x) => {
+            if (x.arquivado_em) {
+              return (
+                <article key={x.id} className="linha-pop arquivada" data-status={x.status} data-arquivada="sim">
+                  <span className="pop-icone"><Icone nome="arquivar" tamanho={20} /></span>
+                  <div className="pop-nome">
+                    <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}</strong>
+                    <span>Arquivada em {data(x.arquivado_em)}{x.arquivado_por ? ` por ${x.arquivado_por}` : ''}{x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}</span>
+                  </div>
+                  <SeloSituacao entrevista={x} />
+                  {!arquivado && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void restaurar(x)} title="Devolve a entrevista à lista de ativas do processo"><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
+                  <Link className="btn" href={`/app/entrevistas/${x.id}`}>Abrir</Link>
+                </article>
+              );
+            }
             const minha = souEu(eu, x.entrevistado_id);
             const pendente = x.status === 'convidada';
             const aberta = pendente || x.status === 'em_andamento';
@@ -90,8 +134,8 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                 </div>
                 <SeloSituacao entrevista={x} />
                 {gestor && pendente && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void reenviar(x)} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
-                {!fechada && ((gestor && pendente) || (admin && !pendente)) && (
-                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title={pendente ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar' : 'Excluir'}</button>
+                {gestor && pendente && (
+                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title="Cancela o convite"><Icone nome="lixo" tamanho={16} />Cancelar</button>
                 )}
                 {fechada
                   ? <span className="nota-ao-vivo">Abre quando a ligação terminar</span>
