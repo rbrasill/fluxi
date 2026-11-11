@@ -42,7 +42,7 @@ export default function MaiaEntrevistaPage() {
           <div>
             <nav className="migalha" aria-label="Caminho"><Link href="/app/maia">Painel da Maia</Link></nav>
             <h1>{e.tema || 'Entrevista'}</h1>
-            <p>{e.entrevistado ? `Entrevistado: ${e.entrevistado} · ` : ''}{data(e.criado_em)} · Em andamento</p>
+            <p className="page-meta">{e.entrevistado ? `Entrevistado: ${e.entrevistado} · ` : ''}{data(e.criado_em)} · Em andamento</p>
           </div>
         </div>
         <ConversaEmLigacao entrevistado={e.entrevistado} voltar={{ href: '/app/maia', rotulo: 'Voltar ao painel' }} />
@@ -58,7 +58,7 @@ export default function MaiaEntrevistaPage() {
         <div>
           <nav className="migalha" aria-label="Caminho"><Link href="/app/maia">Painel da Maia</Link></nav>
           <h1>{e.tema || 'Entrevista'}</h1>
-          <p>{e.entrevistado ? `Entrevistado: ${e.entrevistado} · ` : ''}{data(e.criado_em)} · {situacao} · {e.turnos.length} {e.turnos.length === 1 ? 'fala' : 'falas'}</p>
+          <p className="page-meta">{e.entrevistado ? `Entrevistado: ${e.entrevistado} · ` : ''}{data(e.criado_em)} · {situacao} · {e.turnos.length} {e.turnos.length === 1 ? 'fala' : 'falas'}</p>
         </div>
         <div className="actions">
           <button type="button" className="btn btn-ghost btn-excluir" disabled={excluindo} onClick={() => void excluir()} title="Exclui a entrevista inteira: conversa, áudio e resultado"><Icone nome="lixo" tamanho={16} />{e.status === 'convidada' ? 'Cancelar convite' : 'Excluir'}</button>

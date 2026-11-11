@@ -202,7 +202,7 @@ function EntrevistaPage() {
         </nav>
         <h1>{e.tema || 'Entrevista'}</h1>
         {!e.processo && e.contexto && <p>{e.contexto}</p>}
-        {e.entrevistado && <p>Entrevistado: <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
+        {e.entrevistado && <p className="page-meta">Entrevistado: <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
       </div>
     </div>
   );

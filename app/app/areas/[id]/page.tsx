@@ -53,7 +53,7 @@ export default function AreaPage() {
             {a.organizacao && <Link href={`/app/organizacoes/${a.organizacao.id}`}>{a.organizacao.nome}</Link>}
           </nav>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={renomear} aria-label="Nome da área" />
-          <p>{ativos.length} {ativos.length === 1 ? 'processo' : 'processos'}{arquivados.length ? ` · ${arquivados.length} ${arquivados.length === 1 ? 'arquivado' : 'arquivados'}` : ''}</p>
+          <p className="page-meta">{ativos.length} {ativos.length === 1 ? 'processo' : 'processos'}{arquivados.length ? ` · ${arquivados.length} ${arquivados.length === 1 ? 'arquivado' : 'arquivados'}` : ''}</p>
         </div>
         <div className="actions">
           <button className="btn btn-ghost btn-icon" aria-label="Excluir área" title="Excluir área" onClick={excluir}><Icone nome="lixo" tamanho={16} /></button>

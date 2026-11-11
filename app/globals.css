@@ -17,6 +17,8 @@
   --side-ink: #c9d6d8;
   --danger: #b42318;
   --radius: 12px;
+  /* Uma fonte só, a Plus Jakarta Sans (decisão 71): os títulos usam a mesma do texto. */
+  --font-display: var(--font-body);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -884,6 +886,37 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .pessoa-nivel select { height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; }
 .lista-pessoas .pop-nome span { word-break: break-all; }
 @media (max-width: 700px) { .pessoa-campos { grid-template-columns: 1fr; } }
+/* Descrições em Plus Jakarta Sans Light (decisão 71): o texto escrito sobre o processo (a descrição, os POPs, a
+   página pública e o que a Maia escreveu) e os textos que explicam a tela (o subtítulo da página, a explicação dos
+   cartões e os avisos). Dados e metadados (datas, contagens, nomes, a linha "Entrevistado: …") ficam no peso
+   normal: o subtítulo que é só dado leva a classe page-meta. O negrito dentro das descrições continua forte. */
+.tr-conteudo,
+.pub-texto,
+.descricao-sugerida,
+.cartao:not([id="quem-foi-entrevistado"]) .ficha-resumo dd,
+.ficha-etapa > p,
+.ficha-lista:not(.ficha-etapa *) > li,
+.pop-sec textarea,
+.passo-corpo textarea,
+.tela-corpo textarea,
+.page-head p:not(.page-meta),
+.pagina-publica-texto > span,
+.fluxo-info > span,
+.notice:not(.erro),
+.empty p,
+.dicas li { font-weight: 300; }
+.tr-conteudo :is(strong, b),
+.pub-texto :is(strong, b),
+.descricao-sugerida :is(strong, b),
+.cartao:not([id="quem-foi-entrevistado"]) .ficha-resumo dd :is(strong, b),
+.ficha-etapa > p :is(strong, b),
+.ficha-lista:not(.ficha-etapa *) > li :is(strong, b),
+.page-head p:not(.page-meta) :is(strong, b),
+.pagina-publica-texto > span :is(strong, b),
+.fluxo-info > span :is(strong, b),
+.notice:not(.erro) :is(strong, b),
+.empty p :is(strong, b),
+.dicas li :is(strong, b) { font-weight: 700; }
 /* Texto só para leitores de tela. Preso no canto (top/left): sem isso, o que fica escondido dentro de uma lista com
    rolagem própria (como a de "Pessoas e acessos") esticava a página para baixo e criava um vão vazio (decisão 70). */
 .sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

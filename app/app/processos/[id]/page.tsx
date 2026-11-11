@@ -151,7 +151,7 @@ function ProcessoPage() {
           <SeloDocumento tipo="processo" />
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
-          <p className="processo-meta">
+          <p className="processo-meta page-meta">
             <span className="code">{p.codigo}</span>
             <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área" disabled={arquivado}>
               {areas.length

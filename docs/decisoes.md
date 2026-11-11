@@ -282,7 +282,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 
 ## 38. Fontes guardadas no projeto (06/11/2026)
 - **Problema:** o deploy de produção na Vercel falhou com "Can't resolve '@vercel/turbopack-next/internal/font/google/font'". O `next/font/google` baixa as fontes do Google na hora do build, e o Turbopack às vezes não consegue ler a resposta: o mesmo código passou no Preview e falhou na produção.
-- **Decisão:** as fontes Sora (títulos) e Manrope (texto) ficam em `app/fontes/` e entram pelo `next/font/local`. O build não depende mais de acesso ao Google, e o navegador também não chama o Google: as fontes saem do próprio site.
+- **Decisão:** (desde a decisão 71, a fonte é a Plus Jakarta Sans, do mesmo jeito) as fontes Sora (títulos) e Manrope (texto) ficam em `app/fontes/` e entram pelo `next/font/local`. O build não depende mais de acesso ao Google, e o navegador também não chama o Google: as fontes saem do próprio site.
 - **Arquivos:** versões variáveis (todos os pesos num arquivo só), recorte latino, que cobre o português. Licença SIL Open Font License 1.1, que permite guardar e distribuir junto com o app; o texto está em `app/fontes/LICENCA.txt`.
 
 ---
@@ -533,6 +533,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Como ficou:** no computador, o menu é **fixo na tela** (`position: fixed`), do topo ao rodapé da janela, e o conteúdo começa depois dele (a margem acompanha o menu recolhido). Ele não depende mais da altura de página nenhuma, então nenhuma tela de hoje ou futura o tira de vista. O editor de tela cheia e os diálogos continuam por cima dele. No celular, nada muda: o menu segue sendo a barra do topo.
 - **Junto:** o texto para leitores de tela (`.sr-only`) ficou preso no canto, então não estica mais a página nem deixa vão embaixo do conteúdo.
 - **Teste:** passa por todas as telas do app (início, áreas, processos, POPs, organizações, conversas com a Maia, pessoas, Painel da Maia, gravação), em duas larguras de computador e no celular: rola até o fim e confere que o menu continua inteiro na tela, que o conteúdo começa depois dele e que não sobra vão embaixo.
+
+## 71. Plus Jakarta Sans em toda a plataforma, Light nas descrições (11/11/2026)
+- **Pedido do Rafael:** Plus Jakarta Sans em toda a plataforma. Nas descrições, primeiro a Work Sans; vendo o teste, ele preferiu uma variação da própria Plus Jakarta Sans parecida com a Work Sans e escolheu a **Light (300)**. As opções foram comparadas antes num HTML com telas reais do app (processo, resultado da Maia, área e conversas), com a troca entre as fontes de hoje e as novas.
+- **Como ficou:** uma fonte só, a Plus Jakarta Sans (variável, pesos 200 a 800, com o itálico de verdade), no lugar da Sora (títulos) e da Manrope (texto). Fica em `app/fontes/` e entra pelo `next/font/local`, como antes (decisão 51); as páginas públicas, o login e os PDFs da tela também mudam. Os PDFs e DOCX do POP continuam com a fonte do modelo (Roboto e Aptos), e o fluxograma continua com a fonte da biblioteca (Poppins).
+- **O que é descrição (Light 300):** o texto escrito sobre o processo (a descrição do processo, os textos dos POPs, a página pública e o que a Maia escreveu: a descrição, a ficha, as dificuldades e os pontos em aberto) e os textos que explicam a tela (o subtítulo da página, a explicação dos cartões e os avisos de ajuda). O negrito dentro delas continua forte (700).
+- **O que não é:** títulos, menu, botões, rótulos, nomes, datas e contagens, e dados curtos (o nome e a área de quem foi entrevistado, os sistemas de cada etapa). Quando o subtítulo da página é só dado ("3 processos", "Entrevistado: … · convite de …"), ele leva a classe `page-meta` e fica no peso normal. Avisos de erro também ficam no peso normal.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
