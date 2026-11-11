@@ -9,7 +9,7 @@ export type ConfiguracaoMaia = {
   sessao_min: number; inatividade_min: number; max_consultas: number;
 };
 export type EntrevistaPainel = {
-  id: string; tema: string; status: StatusEntrevista; entrevistado: string | null; processo: string | null; criado_em: string; encerrado_em: string | null;
+  id: string; tema: string; status: StatusEntrevista; em_ligacao: boolean; entrevistado: string | null; processo: string | null; criado_em: string; encerrado_em: string | null;
   falas: number; duracao_s: number; sessoes: number; pausas: number; consultas: number; reacao_mediana_ms: number | null; conexao_ms: number | null;
   custo_voz_usd: number; custo_consultas_usd: number; custo_analise_usd: number; custo_total_usd: number; erros: number;
 };

@@ -9,6 +9,10 @@ export type Entrevista = {
   entrevistado_id: string | null; entrevistado: string | null;
   convidador: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
   complemento: Complemento | null;
+  /** A pessoa está na ligação com a Maia agora (decisão 69). */
+  em_ligacao: boolean;
+  /** Durante a ligação, quem não é a pessoa entrevistada recebe a entrevista sem as falas, os áudios e o resultado. */
+  conteudo_oculto: boolean;
   processo: { id: string; nome: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
@@ -16,14 +20,14 @@ export type EntrevistaResumo = {
   id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null;
   processo: { id: string; nome: string; area: { id: string; nome: string } | null } | null;
   convidado_por: string | null; convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
-  complemento_pendencias: number | null;
+  complemento_pendencias: number | null; em_ligacao: boolean;
   falas: number; duracao_s: number; custo_analise_usd: number; custo_consultas_usd: number;
 };
 /** Uma entrevista na página do processo. */
 export type EntrevistaDoProcesso = {
   id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; entrevistado_area: string | null; convidado_por: string | null;
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
-  complemento_pendencias: number | null;
+  complemento_pendencias: number | null; em_ligacao: boolean;
   falas: number; duracao_s: number; tem_resultado: boolean; pendencias: number;
   pendencias_outra_pessoa: PendenciaOutraPessoa[];
 };
@@ -51,8 +55,11 @@ export const aquecerSessaoDeVoz = (id: string) => { void fetch(`/api/entrevistas
 /** Abre a sessão de voz no GPT-Live: manda a oferta WebRTC e recebe a resposta. */
 export const abrirSessaoDeVoz = (id: string, sdp: string) => api<{ sdp: string; continuando: boolean; openai_ms?: number; complemento?: boolean }>(`/api/entrevistas/${id}/sessao`, { method: 'POST', body: JSON.stringify({ sdp }) });
 /** Guarda a conversa transcrita e as métricas (durante a sessão e no fim). */
-export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas }) =>
+export const salvarConversa = (id: string, dados: { turnos: Turno[]; metricas?: Metricas; em_ligacao?: boolean }) =>
   api<{ ok: true }>(`/api/entrevistas/${id}/conversa`, { method: 'PUT', body: JSON.stringify(dados), keepalive: JSON.stringify(dados).length < 60_000 });
+/** O pulso da ligação (decisão 69): avisa que a conversa com a Maia continua (ou, com `false`, que a página fechou). */
+export const pulsoDaLigacao = (id: string, ligada = true) =>
+  api<{ ok: boolean }>(`/api/entrevistas/${id}/pulso`, { method: ligada ? 'POST' : 'DELETE', keepalive: true });
 /** Uma consulta da Maia no meio da conversa: manda o fim da conversa, recebe o que ela foi verificar e a resposta. */
 export const consultarDuranteEntrevista = (id: string, turnos: Turno[]) =>
   api<{ pergunta: string; resposta: string; modelo: string; demora_ms: number; custo_usd: number }>(`/api/entrevistas/${id}/consulta`, { method: 'POST', body: JSON.stringify({ turnos }), signal: AbortSignal.timeout(15_000) });
@@ -110,11 +117,16 @@ export function quandoFoiAEntrevista(e: { status: StatusEntrevista; falas: numbe
   return `Convite de ${dataHora(e.convidado_em ?? e.criado_em)}${e.convidado_por ? `, por ${e.convidado_por}` : ''} · ainda não começou`;
 }
 
-/** O rótulo da situação como a tela mostra: uma entrevista em andamento com falas está pausada; um convite sem e-mail, avisado. */
-export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
+/**
+ * O rótulo da situação como a tela mostra. "Em andamento" é só enquanto a pessoa está na ligação com a Maia
+ * (decisão 69); fora da ligação, a entrevista aberta está pausada (ou esperando o complemento). Um convite sem
+ * e-mail fica avisado.
+ */
+export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
   if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';
+  if (e.status === 'em_andamento' && e.em_ligacao) return 'Em andamento';
   if (e.status === 'em_andamento' && e.complemento_pendencias) return `Completar: ${e.complemento_pendencias} ${e.complemento_pendencias === 1 ? 'ponto' : 'pontos'}`;
-  if (e.status === 'em_andamento') return e.falas > 0 ? 'Pausada' : 'Em andamento';
+  if (e.status === 'em_andamento') return 'Pausada';
   if (e.status === 'processando') return 'Gerando o resultado';
   if (e.status === 'concluida') return 'Concluída';
   return 'Erro ao gerar o resultado';

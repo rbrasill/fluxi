@@ -15,7 +15,8 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '
 const nomeDoMes = (iso: string) => { const s = new Date(iso).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }); return s.charAt(0).toUpperCase() + s.slice(1); };
 const chaveMes = (iso: string) => iso.slice(0, 7);
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
-const situacao = (x: EntrevistaPainel) => (x.status === 'em_andamento' && x.falas > 0 ? 'Pausada' : ROTULO_STATUS[x.status]);
+// "Em andamento" é só com a pessoa na ligação (decisão 69); fora dela, a entrevista aberta está pausada.
+const situacao = (x: EntrevistaPainel) => (x.status === 'em_andamento' ? (x.em_ligacao ? 'Em andamento' : 'Pausada') : ROTULO_STATUS[x.status]);
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
 export default function PainelMaiaPage() {

@@ -37,11 +37,11 @@ export type Linha = {
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
   entrevistado_id: string | null; // a pessoa convidada (sem convite, em desenvolvimento: quem abriu a primeira sessão)
-  convidado_por: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null;
+  convidado_por: string | null; convidado_em: string | null; nota_convite: string; convite_enviado_em: string | null; iniciada_em: string | null; em_ligacao_ate: string | null;
   complemento: Complemento | null; // voltar para fechar pontos em aberto (decisão 56)
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
-const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em, atualizado_em';
+const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em, atualizado_em';
 /** O complemento ainda por fazer (escolhido e não concluído). */
 const complementoAberto = (l: Pick<Linha, 'complemento'>) => (l.complemento && !l.complemento.concluido_em ? l.complemento : null);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -105,7 +105,13 @@ async function enviarConvite(linha: Pick<Linha, 'id' | 'tema' | 'nota_convite'>,
 
 const NOME_EQUIPE = 'A equipe de processos';
 /** Durante a ligação o navegador salva a conversa a cada 15 s: atualizada há menos que isto, a pessoa está falando com a Maia. */
-const EM_LIGACAO_MS = 60_000;
+// A pessoa está na ligação com a Maia (decisão 69): o navegador dela renova o prazo a cada 15 s; três pulsos
+// perdidos e a entrevista deixa de contar como "em ligação".
+const EM_LIGACAO_MS = 45_000;
+const prazoDaLigacao = () => new Date(Date.now() + EM_LIGACAO_MS).toISOString();
+export const emLigacao = (l: { status: string; em_ligacao_ate?: string | null }) =>
+  l.status === 'em_andamento' && !!l.em_ligacao_ate && new Date(l.em_ligacao_ate).getTime() > Date.now();
+const MSG_EM_LIGACAO = 'A pessoa está conversando com a Maia agora. A entrevista fica disponível quando a ligação terminar.';
 
 /**
  * Convida até três pessoas para entrevistas sobre um processo: uma entrevista por pessoa, com o tema e o
@@ -195,6 +201,7 @@ export async function desistirComplemento(id: string, pessoa?: Pessoa | null) {
   const c = complementoAberto(linha);
   if (linha.status !== 'em_andamento' || !c) throw new ErroApi(409, 'Esta entrevista não está esperando um complemento.');
   if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
+  if (emLigacao(linha) && pessoa && linha.entrevistado_id !== pessoa.id) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
   if (linha.turnos.length > c.a_partir_do_turno) throw new ErroApi(409, 'A conversa já continuou: encerre a entrevista para gerar o resultado novo.');
   await salvar(id, { status: 'concluida', complemento: null });
   return { ok: true as const };
@@ -238,18 +245,18 @@ export async function perfilConhecido(entrevistadoId: string | null | undefined)
  * administradores, todas. Cada uma vem com o processo (e a área dele) e as datas do convite e da conversa.
  */
 export async function listar(pessoa?: Pessoa | null) {
-  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
+  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
     .eq('tenant_id', TENANT_PADRAO);
   if (!ehGestor(pessoa)) consulta = consulta.eq('entrevistado_id', pessoa!.id);
   const { data, error } = await consulta.order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
   const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
-  return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, processo, complemento, ...e }) => {
+  return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, processo, complemento, em_ligacao_ate, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
-      ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
+      ...e, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
       convidado_por: nomes.get(convidado_por as string) ?? null,
       processo: (processo as unknown as (ProcessoEmbutido & { area: { id: string; nome: string } | null })) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
@@ -271,7 +278,7 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const db = supabase();
   const [proc, conv] = await Promise.all([
     db.from('processos').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
-    db.from('entrevistas').select('id, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
+    db.from('entrevistas').select('id, status, em_ligacao_ate, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
   ]);
   for (const r of [proc, conv]) if (r.error) throw r.error;
   if (!proc.data) throw new ErroApi(404, 'Processo não encontrado');
@@ -282,6 +289,7 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const blocos = linhas.map((l, i) => {
     const turnos = (l.turnos as Turno[] | null) ?? [];
     const quem = nomes.get(l.entrevistado_id as string) ?? 'pessoa entrevistada';
+    if (emLigacao({ status: l.status as string, em_ligacao_ate: l.em_ligacao_ate as string | null })) throw new ErroApi(409, `${quem} está conversando com a Maia agora. A conversa entra no fluxograma quando a ligação terminar.`, 'em_ligacao');
     if (!turnos.some((t) => t.quem !== 'ia' && !t.apoio)) throw new ErroApi(422, `A conversa de ${quem} ainda não tem falas para virar fluxograma.`);
     const r = (l.resultado as ResultadoEntrevista | null) ?? null;
     const f = r?.ficha;
@@ -312,27 +320,28 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
 /** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
 export async function listarDoProcesso(processoId: string) {
   if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');
-  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, complemento, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, criado_em, encerrado_em')
     .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
   const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null]));
-  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, complemento, ...e }) => {
+  return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, complemento, em_ligacao_ate, ...e }) => {
     const r = (resultado as ResultadoEntrevista | null) ?? null;
+    const em_ligacao = emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null });
     return {
-      ...e, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
+      ...e, em_ligacao, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
       entrevistado_area: perfilDe(r)?.area || null,
       tem_resultado: !!r, pendencias: r?.pendencias?.length ?? 0,
-      pendencias_outra_pessoa: r?.pendencias_outra_pessoa ?? [], // perguntas para outras pessoas (decisão 58)
+      pendencias_outra_pessoa: em_ligacao ? [] : r?.pendencias_outra_pessoa ?? [], // perguntas para outras pessoas (decisão 58); nada durante a ligação (decisão 69)
     };
   });
 }
 
 /** Painel da Maia (decisão 52, só administradores): como ela está configurada e cada entrevista com tempos, métricas e custos. */
 export async function painel() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, criado_em, encerrado_em, processo:processos(id, nome)')
+  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, em_ligacao_ate, criado_em, encerrado_em, processo:processos(id, nome)')
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
   const linhas = data ?? [];
@@ -342,11 +351,11 @@ export async function painel() {
       nome: NOME_IA, apresentacao: `Eu sou a ${NOME_IA}, trabalho ${COM_QUEM}`, modelo_voz: MODELO_VOZ, voz: VOZ, preco_voz_usd_min: PRECO_VOZ_USD_MIN,
       modelo_consulta: MODELO_CONSULTA, modelo_analise: MODELO_ANALISE, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA, ...LIMITES_ENTREVISTA,
     },
-    entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, processo, ...e }) => {
+    entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, processo, em_ligacao_ate, ...e }) => {
       const m = (metricas as Metricas | null) ?? {};
       const r = resumoMetricas(m);
       return {
-        ...e, entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
+        ...e, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
         duracao_s: m.duracao_s ?? 0, sessoes: m.sessoes ?? (m.duracao_s ? 1 : 0), pausas: m.pausas ?? 0, consultas: r.consultas,
         reacao_mediana_ms: r.reacao_mediana_ms ?? null, conexao_ms: m.conexao_ms ?? null,
         custo_voz_usd: r.custo_voz_usd, custo_consultas_usd: r.custo_consultas_usd, custo_analise_usd: r.custo_analise_usd, custo_total_usd: r.custo_total_usd,
@@ -356,10 +365,17 @@ export async function painel() {
   };
 }
 
-export async function obter(id: string) {
+/**
+ * A entrevista inteira. Enquanto a pessoa está na ligação com a Maia (decisão 69), só ela recebe a conversa: para
+ * os outros, inclusive o administrador, vêm os dados da entrevista sem as falas, as gravações e o resultado
+ * (`conteudo_oculto`), até a ligação terminar.
+ */
+export async function obter(id: string, pessoa?: Pessoa | null) {
   const linha = await carregar(id);
+  const em_ligacao = emLigacao(linha);
+  const oculto = em_ligacao && !!pessoa && linha.entrevistado_id !== pessoa.id;
   // Uma gravação por sessão de voz (quem continua a entrevista grava um arquivo novo).
-  const arquivos = await gravacoes(id);
+  const arquivos = oculto ? [] : await gravacoes(id);
   let audios: string[] = [];
   if (arquivos.length) {
     const { data } = await supabase().storage.from(BUCKET).createSignedUrls(arquivos, 60 * 60);
@@ -367,8 +383,12 @@ export async function obter(id: string) {
   }
   const nomes = await nomesDasPessoas([linha.entrevistado_id, linha.convidado_por]);
   const processo = linha.processo_id ? await processoDoConvite(linha.processo_id).catch(() => null) : null;
+  const { em_ligacao_ate: _prazo, ...dados } = linha;
+  void _prazo;
   return {
-    ...linha, entrevistado: nomes.get(linha.entrevistado_id ?? '') ?? null, convidador: nomes.get(linha.convidado_por ?? '') ?? null,
+    ...dados, ...(oculto ? { turnos: [] as Turno[], resultado: null, falas_ocultas: linha.turnos.filter((t) => !t.apoio).length } : {}),
+    em_ligacao, conteudo_oculto: oculto,
+    entrevistado: nomes.get(linha.entrevistado_id ?? '') ?? null, convidador: nomes.get(linha.convidado_por ?? '') ?? null,
     processo: processo ? { id: processo.id, nome: processo.nome, area: processo.area } : null,
     audios, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA,
   };
@@ -384,7 +404,7 @@ export async function excluir(id: string, quem?: Pessoa | null) {
   const linha = await carregar(id);
   if (linha.status !== 'convidada' && quem && quem.nivel !== 'admin') throw new ErroApi(403, 'Só administradores excluem entrevistas que já começaram. Gestores cancelam convites pendentes.');
   const desde = Date.now() - new Date(linha.atualizado_em).getTime();
-  if (linha.status === 'em_andamento' && desde < EM_LIGACAO_MS) throw new ErroApi(409, 'A pessoa está conversando com a Maia agora. Tente de novo em alguns minutos.', 'em_ligacao');
+  if (emLigacao(linha)) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
   if (linha.status === 'processando' && desde < 3 * 60_000) throw new ErroApi(409, 'O resultado desta entrevista está sendo gerado. Tente de novo em alguns minutos.', 'processando');
   const arquivos = await gravacoes(id);
   if (arquivos.length) await supabase().storage.from(BUCKET).remove(arquivos);
@@ -515,6 +535,7 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | nul
     ...(pessoa && !linha.entrevistado_id ? { entrevistado_id: pessoa.id } : {}),
     ...(linha.status === 'convidada' ? { status: 'em_andamento' as const } : {}),
     iniciada_em: linha.iniciada_em ?? agora(),
+    em_ligacao_ate: prazoDaLigacao(), // a ligação começou (decisão 69)
   });
   return { sdp: j.transport.sdp, continuando, openai_ms, complemento: !!complemento };
 }
@@ -565,6 +586,8 @@ const TurnoSchema = z.object({
 export const ConsultaPedidoSchema = z.object({ turnos: z.array(TurnoSchema).max(60) });
 
 export const ConversaSchema = z.object({
+  /** true: a ligação continua (renova o sinal); false: a ligação terminou (pausa ou fim). Sem o campo, não mexe. */
+  em_ligacao: z.boolean().optional(),
   turnos: z.array(TurnoSchema).max(2000),
   metricas: z.object({
     duracao_s: z.number().min(0).optional(),
@@ -607,8 +630,23 @@ export async function salvarConversa(id: string, c: z.infer<typeof ConversaSchem
   exigirEntrevistado(linha, pessoa);
   // Os erros somam (os do navegador e os já guardados); o resto é o valor mais novo.
   const erros = [...new Set([...(linha.metricas?.erros ?? []), ...(c.metricas?.erros ?? [])])].slice(-30);
-  await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas, erros } } : {}) });
+  const ligacao = c.em_ligacao === undefined ? {} : { em_ligacao_ate: c.em_ligacao ? prazoDaLigacao() : null };
+  await salvar(id, { turnos: c.turnos, ...(c.metricas ? { metricas: { ...linha.metricas, ...c.metricas, erros } } : {}), ...ligacao });
   return { ok: true };
+}
+
+/**
+ * O pulso da ligação (decisão 69): enquanto a pessoa conversa com a Maia e não há fala nova para guardar, o
+ * navegador dela avisa a cada 15 s que a ligação continua; ao fechar a página, avisa que acabou (`ligada` falso).
+ * Leve: uma atualização, sem carregar a conversa.
+ */
+export async function pulsoDaLigacao(id: string, pessoa?: Pessoa | null, ligada = true) {
+  if (!UUID.test(id)) throw new ErroApi(404, 'Entrevista não encontrada');
+  let q = supabase().from('entrevistas').update({ em_ligacao_ate: ligada ? prazoDaLigacao() : null }).eq('tenant_id', TENANT_PADRAO).eq('id', id).eq('status', 'em_andamento');
+  if (pessoa) q = q.eq('entrevistado_id', pessoa.id);
+  const { data, error } = await q.select('id');
+  if (error) throw error;
+  return { ok: (data ?? []).length > 0 };
 }
 
 // Preços da Anthropic por milhão de tokens (tabela de 06/10/2026): entrada, saída, leitura de cache.
@@ -744,17 +782,17 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
     if (!ehGestor(pessoa)) exigirEntrevistado(linha, pessoa);
     if (linha.status === 'em_andamento') {
       if (pessoa.nivel !== 'admin') throw new ErroApi(403, 'Só a pessoa entrevistada ou um administrador encerra a conversa.', 'outra_pessoa');
-      if (Date.now() - new Date(linha.atualizado_em).getTime() < EM_LIGACAO_MS) throw new ErroApi(409, 'A pessoa está conversando com a Maia agora. Tente de novo em alguns minutos.', 'em_ligacao');
+      if (emLigacao(linha)) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
     }
   }
   if (linha.status === 'concluida') return { status: 'concluida' as const };
   if (linha.status === 'processando' && Date.now() - new Date(linha.atualizado_em).getTime() < 3 * 60_000) return { status: 'processando' as const };
   const encerrado_em = linha.encerrado_em ?? agora();
   if (!linha.turnos.some((t) => t.quem === 'pessoa' && t.texto.trim())) {
-    await salvar(id, { status: 'concluida', encerrado_em, resultado: null });
+    await salvar(id, { status: 'concluida', encerrado_em, resultado: null, em_ligacao_ate: null });
     return { status: 'concluida' as const };
   }
-  await salvar(id, { status: 'processando', encerrado_em, erro: null });
+  await salvar(id, { status: 'processando', encerrado_em, erro: null, em_ligacao_ate: null });
   try {
     const inicio = Date.now();
     let uso: UsoIa | undefined;

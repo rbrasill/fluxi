@@ -927,6 +927,20 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
 .selo-concluida { background: #e7f5ec; color: #1f6b3a; }
 .selo-erro { background: #fdecec; color: #912018; }
 
+/* Entrevista em ligação agora (decisão 69): o selo "Em andamento", com o microfone e o ponto que pulsa, e o
+   cartão de quem tenta abrir a conversa de outra pessoa durante a ligação. */
+.selo-ao-vivo { background: #0f7a55; color: #fff; }
+.selo-ao-vivo::before { animation: pisca 1.2s ease-in-out infinite; }
+.selo-ao-vivo svg { flex: none; }
+.nota-ao-vivo { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.cartao-em-ligacao { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding-top: 32px; padding-bottom: 28px; }
+.cartao-em-ligacao .notice { max-width: 520px; margin: 0; }
+.em-ligacao-icone { position: relative; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 999px; background: #e3f6ea; color: #0f7a55; }
+.em-ligacao-icone::after { content: ''; position: absolute; inset: 0; border-radius: 999px; border: 2px solid #0f7a55; opacity: 0; animation: onda-ligacao 1.8s ease-out infinite; }
+@keyframes onda-ligacao { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.55); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .selo-ao-vivo::before, .em-ligacao-icone::after { animation: none; } }
+@media (max-width: 640px) { .nota-ao-vivo { white-space: normal; } }
+
 /* Voltar para fechar pontos em aberto (decisão 56) */
 .lista-pendencias, .lista-pendencias-escolhidas { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .lista-pendencias .check { align-items: flex-start; font-weight: 500; line-height: 1.45; }

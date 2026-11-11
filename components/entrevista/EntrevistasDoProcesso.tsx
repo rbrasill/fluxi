@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Convidar } from '@/components/entrevista/Convidar';
+import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, perguntasParaOutrasPessoas, reenviarConvite, situacaoDaEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
+import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, perguntasParaOutrasPessoas, reenviarConvite, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
 // conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites;
 // administradores também excluem entrevistas que já começaram (decisão 54); a pessoa convidada liga daqui.
+// Enquanto a pessoa está na ligação, a linha mostra "Em andamento" e ninguém mais abre a conversa (decisão 69).
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
-const CLASSE_SITUACAO: Record<string, string> = { convidada: 'selo-convidada', em_andamento: 'selo-andamento', processando: 'selo-processando', concluida: 'selo-concluida', erro: 'selo-erro' };
 
 export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
   const eu = useEu();
@@ -27,6 +29,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
 
   const carregar = () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => setLista([]));
   useEffect(() => { void carregar(); }, [processoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useAcompanharEntrevistas(lista, () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => {})); // se falhar, fica a lista que já estava
 
   function convidou(r: ResultadoConvite) {
     setConvidando(false);
@@ -73,8 +76,9 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
             const minha = souEu(eu, x.entrevistado_id);
             const pendente = x.status === 'convidada';
             const aberta = pendente || x.status === 'em_andamento';
+            const fechada = x.em_ligacao && !minha; // a pessoa está na ligação: só ela entra na conversa
             return (
-              <article key={x.id} className="linha-pop" data-status={x.status}>
+              <article key={x.id} className="linha-pop" data-status={x.status} data-em-ligacao={x.em_ligacao ? 'sim' : undefined}>
                 <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
                 <div className="pop-nome">
                   <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}</strong>
@@ -84,14 +88,16 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                     {x.status === 'concluida' && x.pendencias > 0 ? ` · ${x.pendencias} em aberto` : ''}
                   </span>
                 </div>
-                <span className={`selo-status ${CLASSE_SITUACAO[x.status] ?? ''}`}>{situacaoDaEntrevista(x)}</span>
+                <SeloSituacao entrevista={x} />
                 {gestor && pendente && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void reenviar(x)} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
-                {((gestor && pendente) || (admin && !pendente)) && (
+                {!fechada && ((gestor && pendente) || (admin && !pendente)) && (
                   <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title={pendente ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{pendente ? 'Cancelar' : 'Excluir'}</button>
                 )}
-                {aberta && minha
-                  ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
-                  : <Link className={`btn ${x.tem_resultado ? 'btn-primary' : ''}`} href={`/app/entrevistas/${x.id}`}>{x.tem_resultado ? 'Ver resultado' : 'Abrir'}</Link>}
+                {fechada
+                  ? <span className="nota-ao-vivo">Abre quando a ligação terminar</span>
+                  : aberta && minha
+                    ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
+                    : <Link className={`btn ${x.tem_resultado ? 'btn-primary' : ''}`} href={`/app/entrevistas/${x.id}`}>{x.tem_resultado ? 'Ver resultado' : 'Abrir'}</Link>}
               </article>
             );
           })}

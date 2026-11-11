@@ -3,15 +3,17 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistas, quandoFoiAEntrevista, situacaoDaEntrevista, type EntrevistaResumo } from '@/lib/entrevistas';
+import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
+import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistas, quandoFoiAEntrevista, type EntrevistaResumo } from '@/lib/entrevistas';
 
 // Conversas com a Maia (decisões 41, 53 e 60): as entrevistas nascem por convite, dentro do processo. Quem é comum
 // vê só as suas conversas; gestores e administradores veem as suas e as das outras pessoas. Cada linha diz de que
-// processo é a entrevista e quando ela foi (data e hora). Sem custos nem indicadores (decisão 52).
+// processo é a entrevista e quando ela foi (data e hora). Sem custos nem indicadores (decisão 52). Enquanto a
+// pessoa está na ligação, a linha mostra "Em andamento" e ninguém mais abre a conversa (decisão 69).
 
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
-const CLASSE_SITUACAO: Record<string, string> = { convidada: 'selo-convidada', em_andamento: 'selo-andamento', processando: 'selo-processando', concluida: 'selo-concluida', erro: 'selo-erro' };
 
 export default function EntrevistasPage() {
   const eu = useEu();
@@ -21,6 +23,7 @@ export default function EntrevistasPage() {
 
   const carregar = () => listarEntrevistas().then(setLista).catch(() => setLista([]));
   useEffect(() => { void carregar(); }, []);
+  useAcompanharEntrevistas(lista, () => listarEntrevistas().then(setLista).catch(() => {})); // se falhar, fica a lista que já estava
 
   async function excluir(x: EntrevistaResumo) {
     if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
@@ -34,21 +37,25 @@ export default function EntrevistasPage() {
 
   const linha = (x: EntrevistaResumo) => {
     const minha = souEu(eu, x.entrevistado_id);
+    const fechada = x.em_ligacao && !minha; // a pessoa está na ligação: só ela entra na conversa
+    const Nome = fechada ? 'div' : Link;
     return (
-      <article key={x.id} className="linha-pop" data-status={x.status}>
+      <article key={x.id} className="linha-pop" data-status={x.status} data-em-ligacao={x.em_ligacao ? 'sim' : undefined}>
         <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
-        <Link href={`/app/entrevistas/${x.id}`} className="pop-nome">
+        <Nome href={`/app/entrevistas/${x.id}`} className="pop-nome">
           <span className="rotulo-processo">{x.processo ? `Processo${x.processo.area ? ` · ${x.processo.area.nome}` : ''}` : 'Sem processo'}</span>
           <strong>{x.processo?.nome ?? x.tema ?? 'Entrevista'}</strong>
           <span>{!minha && x.entrevistado ? `${x.entrevistado} · ` : ''}{quandoFoiAEntrevista(x)}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}{x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}</span>
-        </Link>
-        <span className={`selo-status ${CLASSE_SITUACAO[x.status] ?? ''}`}>{situacaoDaEntrevista(x)}</span>
-        {((gestor && x.status === 'convidada') || (admin && x.status !== 'convidada')) && (
+        </Nome>
+        <SeloSituacao entrevista={x} />
+        {!fechada && ((gestor && x.status === 'convidada') || (admin && x.status !== 'convidada')) && (
           <button type="button" className="btn btn-ghost btn-excluir" onClick={() => excluir(x)} title={x.status === 'convidada' ? 'Cancela o convite' : 'Exclui a entrevista inteira: conversa, áudio e resultado'}><Icone nome="lixo" tamanho={16} />{x.status === 'convidada' ? 'Cancelar' : 'Excluir'}</button>
         )}
-        {aberta(x) && minha
-          ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
-          : <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>Abrir</Link>}
+        {fechada
+          ? <span className="nota-ao-vivo">Abre quando a ligação terminar</span>
+          : aberta(x) && minha
+            ? <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}><Icone nome="microfone" tamanho={16} />{x.falas > 0 ? 'Continuar' : 'Ligar para a Maia'}</Link>
+            : <Link className="btn btn-primary" href={`/app/entrevistas/${x.id}`}>Abrir</Link>}
       </article>
     );
   };

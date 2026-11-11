@@ -5,7 +5,7 @@
 // cada um); daqui sai a conversa, as métricas (reação, falas sobrepostas, duração) e a gravação.
 // Quando a IA quer verificar algo ("deixa eu ver aqui"), o GPT-Live avisa e o app pergunta ao Claude,
 // devolvendo a resposta para ela falar (decisão 44).
-import { abrirSessaoDeVoz, consultarDuranteEntrevista, salvarConversa } from '@/lib/entrevistas';
+import { abrirSessaoDeVoz, consultarDuranteEntrevista, pulsoDaLigacao, salvarConversa } from '@/lib/entrevistas';
 import { Conversa, metricasDaConversa } from './conversa';
 import { LIMITES_ENTREVISTA, type Consulta, type Metricas, type Turno } from './topicos';
 
@@ -23,7 +23,7 @@ type Mensagem = { type: string; delta?: string; start_ms?: number; end_ms?: numb
 
 /** O microfone como a ligação precisa: mono, com cancelamento de eco (a voz da Maia sai pela caixa de som). */
 export const RESTRICOES_MICROFONE: MediaTrackConstraints = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar)
+const SALVAR_MS = 15_000; // guarda a conversa durante a sessão (nada se perde se a página fechar) e avisa que a ligação continua (decisão 69)
 const LIMITE_MS = LIMITES_ENTREVISTA.sessao_min * 60_000; // teto de uma sessão (custo): pausa sozinha
 const INATIVIDADE_MS = LIMITES_ENTREVISTA.inatividade_min * 60_000; // ninguém falou nesse tempo: pausa sozinha (a sessão parada também é cobrada)
 const NIVEL_VOZ = 0.02; // volume (RMS) a partir do qual alguém está falando
@@ -73,7 +73,10 @@ export class MotorEntrevista {
   private timers: ReturnType<typeof setInterval>[] = [];
   private fechada: (() => void) | null = null;
   private ultimoSalvo = '';
-  private aoSair = () => { this.enviar({ type: 'session.close' }); void this.salvar(); };
+  // A página está fechando: desliga a sessão, avisa que a ligação acabou (pedido leve, que sai mesmo com a página
+  // indo embora) e guarda o que faltava da conversa.
+  private saindo = false;
+  private aoSair = () => { this.enviar({ type: 'session.close' }); this.saindo = true; void pulsoDaLigacao(this.id, false).catch(() => {}); void this.salvar(); };
 
   constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Vamos concluir por aqui', private frasePausa = 'A gente continua depois') {
     // Ao continuar, a sessão nova começa depois do fim da conversa já salva.
@@ -345,9 +348,14 @@ export class MotorEntrevista {
     const metricas = this.metricas();
     this.aoEvento({ tipo: 'metricas', metricas, duracao_s: metricas.duracao_s ?? 0 });
     const chave = JSON.stringify(turnos);
-    if (!forcar && chave === this.ultimoSalvo) return;
+    if (!forcar && chave === this.ultimoSalvo) {
+      // Nada novo para guardar: só o pulso, para a entrevista seguir aparecendo como "em andamento" (decisão 69).
+      if (this.ativo && !this.saindo) await pulsoDaLigacao(this.id).catch(() => {});
+      return;
+    }
     this.ultimoSalvo = chave;
-    await salvarConversa(this.id, { turnos, metricas }).catch((e) => console.warn('salvar conversa:', e));
+    // Enquanto a ligação está ativa, cada gravação renova o sinal; a última (pausa, fim ou página fechando) apaga.
+    await salvarConversa(this.id, { turnos, metricas, em_ligacao: this.ativo && !this.saindo }).catch((e) => console.warn('salvar conversa:', e));
   }
 
   // --- gravação da conversa (os dois lados) ---

@@ -35,12 +35,13 @@ Regras da análise: corrige nomes pela transcrição sem inventar; falas ditas p
 | Pronúncia | O modelo fala do jeito que lê: tudo o que ela lê traz "Ínqui" escrito (instruções, tema, contexto, histórico); nada de "INC" |
 | Pesquisa | `session.delegation.created` → o navegador manda o fim da conversa para `POST /api/entrevistas/:id/consulta` → Claude Sonnet 5.5 → a resposta volta por `session.commentary.append` |
 | Conversa e métricas | Os pedaços de transcrição dos dois lados viram a conversa no navegador (`lib/entrevista/conversa.ts`), guardada a cada 15 s e no fim (`PUT …/conversa`) |
+| Em andamento | Enquanto a pessoa está na ligação, o navegador dela renova o prazo `em_ligacao_ate` a cada 15 s (na conversa guardada ou no pulso `POST …/pulso`) e apaga ao pausar, encerrar ou fechar a página. Com o prazo valendo, a entrevista aparece como "Em andamento" e só a própria pessoa recebe a conversa; os outros, inclusive o administrador, esperam a ligação terminar (decisão 69) |
 | Gravação | Os dois lados num arquivo por sessão, no Storage (`tenants/<t>/entrevistas/<id>/conversa-<n>.webm`) |
 | Resultado | `POST …/encerrar`: Claude Sonnet 5.5 com saída estruturada |
 | Tela | Esfera animada (`components/entrevista/Orbe.tsx`), legenda fixa, tempo, oito indicadores, botões Pausar e Encerrar |
 | Servidor | Vercel em São Paulo (`gru1`), junto do Supabase (`sa-east-1`) |
 
-Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consulta, análise), `lib/entrevista/motor.ts` (WebRTC, eventos, pausa, proteções de custo), `lib/entrevista/conversa.ts` (transcrição e métricas), `lib/entrevista/topicos.ts` (tópicos, tipos, custos), `app/app/entrevistas/` (telas), `app/api/entrevistas/` (rotas). Banco: tabela `entrevistas` (migrações 0016 e 0017).
+Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consulta, análise), `lib/entrevista/motor.ts` (WebRTC, eventos, pausa, proteções de custo), `lib/entrevista/conversa.ts` (transcrição e métricas), `lib/entrevista/topicos.ts` (tópicos, tipos, custos), `app/app/entrevistas/` (telas), `app/api/entrevistas/` (rotas). Banco: tabela `entrevistas` (migrações 0016 a 0021).
 
 ## Custos
 
@@ -94,7 +95,7 @@ Decidido em 09/11, a implementar depois do login:
 - Motivos: **custo** (só o convidado abre sessão de voz) e **saber exatamente quem** foi entrevistado.
 - Só o convidado, logado, abre a sessão da sua entrevista; o servidor confere antes de chamar a OpenAI.
 - A Maia **chama a pessoa pelo nome** (e pode usar cargo e área, se vierem no convite).
-- O administrador acompanha os status: pendente, em andamento, pausada, concluída; o resultado mostra quem foi entrevistado.
+- O administrador acompanha os status: pendente, em andamento, pausada, concluída; o resultado mostra quem foi entrevistado. ("Em andamento" é só com a pessoa na ligação, e aí ninguém mais abre a conversa: decisão 69.)
 - A definir junto com o login: serviço e texto do e-mail, validade do convite, lembretes e se o convidado vê o resultado.
 - **Login feito (decisão 50, `docs/login.md`):** código por e-mail, só para quem está em "Pessoas e acessos". A entrevista já guarda quem foi entrevistado e a Maia já chama pelo nome. Falta o convite em si.
 

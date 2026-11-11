@@ -9,7 +9,8 @@ import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
 import { ROTULO_STATUS, limparMarcasDeSom, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
-import { aquecerSessaoDeVoz, confirmacaoDeExclusao, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, reenviarConvite, retomarEntrevista, situacaoDaEntrevista, type Entrevista } from '@/lib/entrevistas';
+import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
+import { aquecerSessaoDeVoz, confirmacaoDeExclusao, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, reenviarConvite, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
 // é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera reagindo
@@ -48,7 +49,7 @@ function EntrevistaPage() {
   const carregar = () => obterEntrevista(id).then((d) => {
     setE(d);
     if (d.status !== 'em_andamento' && d.status !== 'convidada') setTela('resultado');
-    else aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
+    else if (!d.conteudo_oculto) aquecerSessaoDeVoz(id); // enquanto a pessoa lê a abertura, a função que abre a sessão já acorda
     return d;
   }).catch(() => { setE(null); return null; });
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -77,6 +78,17 @@ function EntrevistaPage() {
     const t = setTimeout(() => void carregar(), 5000);
     return () => clearTimeout(t);
   }, [tela, e]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A pessoa está na ligação com a Maia e a conversa está fechada para os outros (decisão 69): consulta de novo
+  // até a ligação terminar, e aí a entrevista abre sozinha.
+  useEffect(() => {
+    if (!e?.conteudo_oculto) return;
+    const t = setTimeout(() => {
+      obterEntrevista(id)
+        .then((d) => { setE(d); if (d.status !== 'em_andamento' && d.status !== 'convidada') setTela('resultado'); })
+        .catch(() => setE((x) => (x ? { ...x } : x))); // falhou: fica o aviso e tenta de novo
+    }, 10_000);
+    return () => clearTimeout(t);
+  }, [e, id]);
 
   function aoEvento(ev: Evento) {
     if (ev.tipo === 'fase') setFase(ev.fase);
@@ -195,6 +207,25 @@ function EntrevistaPage() {
       </div>
     </div>
   );
+
+  // Enquanto a pessoa conversa com a Maia, ninguém mais entra na entrevista, nem o administrador (decisão 69).
+  if (e.conteudo_oculto) {
+    const nome = e.entrevistado ?? 'A pessoa';
+    return (
+      <div className="page page-estreita">
+        {cabecalho}
+        <div className="cartao cartao-em-ligacao" role="status">
+          <span className="em-ligacao-icone" aria-hidden="true"><Icone nome="microfone" tamanho={26} /></span>
+          <SeloSituacao entrevista={{ status: e.status, falas: 1, em_ligacao: true, entrevistado: e.entrevistado }} />
+          <h3 className="sem-margem">{nome} está conversando com a Maia agora</h3>
+          <p className="notice">Enquanto a ligação está em andamento, a conversa fica fechada para todo mundo além de {e.entrevistado ?? 'quem está sendo entrevistado'}, inclusive administradores. Quando a ligação for pausada ou encerrada, a entrevista abre aqui sozinha.</p>
+          <div className="fluxo-acoes">
+            <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (tela === 'inicio') {
     const retomando = e.turnos.length > 0;
@@ -490,7 +521,7 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, aoMudar, aoEncerrar, ao
       <div className="cartao gestao-entrevista">
         <div className="gestao-topo">
           <h3 className="sem-margem">Entrevista de {nome}</h3>
-          <span className={`selo-status ${pendente ? 'selo-convidada' : 'selo-andamento'}`}>{situacaoDaEntrevista({ status: e.status, falas, convite_enviado_em: e.convite_enviado_em, complemento_pendencias: complemento?.pendencias.length ?? null })}</span>
+          <SeloSituacao entrevista={{ status: e.status, falas, em_ligacao: e.em_ligacao, entrevistado: e.entrevistado, convite_enviado_em: e.convite_enviado_em, complemento_pendencias: complemento?.pendencias.length ?? null }} />
         </div>
         <dl className="ficha-resumo">
           {e.convidado_em && <><dt>Convite</dt><dd>{dataHora(e.convidado_em)}{e.convidador ? `, por ${e.convidador}` : ''}{e.convite_enviado_em ? ` · e-mail enviado em ${dataHora(e.convite_enviado_em)}` : ' · o e-mail não foi enviado'}</dd></>}
