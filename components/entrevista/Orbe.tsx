@@ -64,7 +64,7 @@ export function Orbe({ modo, niveis, tamanho = 260 }: { modo: ModoOrbe; niveis?:
       const m = modoRef.current;
       const n = niveis?.current ?? { ia: 0, pessoa: 0 };
       const alvoIa = m === 'conversa' ? n.ia : m === 'processando' ? 0.3 + 0.25 * Math.sin(t * 2.4) : 0.05;
-      const alvoPessoa = m === 'conversa' ? n.pessoa : 0;
+      const alvoPessoa = 0; // a esfera vibra só com a voz da Maia; a voz de quem é entrevistado não mexe nela (decisão 86)
       ia = suav(ia, alvoIa, alvoIa > ia ? 0.3 : 0.07);
       pessoa = suav(pessoa, alvoPessoa, alvoPessoa > pessoa ? 0.3 : 0.07);
       const amp = (reduzido ? 0.03 : 0.065) + 0.22 * ia + 0.03 * pessoa;

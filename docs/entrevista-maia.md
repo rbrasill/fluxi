@@ -40,7 +40,7 @@ Regras da análise: corrige nomes pela transcrição sem inventar; falas ditas p
 | Arquivar | A entrevista passa por três estados: ativa, arquivada e excluída (decisão 72). Arquivar é dentro da entrevista (gestores e administradores); a arquivada sai do processo, do fluxograma e das perguntas para outras pessoas, fica na aba Arquivadas e pode ser restaurada; excluir definitivamente, só a arquivada e só o administrador |
 | Gravação | Os dois lados num arquivo por sessão, no Storage (`tenants/<t>/entrevistas/<id>/conversa-<n>.webm`) |
 | Resultado | `POST …/encerrar`: Claude Sonnet 5.5 com saída estruturada |
-| Tela | Esfera animada (`components/entrevista/Orbe.tsx`), legenda fixa, tempo, oito indicadores, botões Pausar e Encerrar |
+| Tela | Tela inteira, sem o menu (decisão 86): esfera animada (`components/entrevista/Orbe.tsx`) que vibra só com a voz da Maia, o que a Maia está fazendo, o tempo, a transcrição ao vivo e os botões de microfone, Pausar e Encerrar. Os indicadores ficam no Painel da Maia |
 | Servidor | Vercel em São Paulo (`gru1`), junto do Supabase (`sa-east-1`) |
 
 Arquivos principais: `lib/server/entrevistas.ts` (instruções, sessão, consulta, análise), `lib/entrevista/motor.ts` (WebRTC, eventos, pausa, proteções de custo), `lib/entrevista/conversa.ts` (transcrição e métricas), `lib/entrevista/topicos.ts` (tópicos, tipos, custos), `app/app/entrevistas/` (telas), `app/api/entrevistas/` (rotas). Banco: tabela `entrevistas` (migrações 0016 a 0022).

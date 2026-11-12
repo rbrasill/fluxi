@@ -85,6 +85,16 @@ export class MotorEntrevista {
     this.duracaoAnterior_s = metricasAnteriores.duracao_s ?? 0;
   }
 
+  /** A conversa até agora, para a transcrição ao vivo da tela (decisão 86). */
+  turnosAtuais(): Turno[] {
+    return this.conversa.turnos();
+  }
+
+  /** Desliga ou religa o microfone durante a ligação (decisão 86): com ele desligado, a Maia não ouve nada. */
+  silenciarMicrofone(mudo: boolean) {
+    this.stream?.getAudioTracks().forEach((t) => { t.enabled = !mudo; });
+  }
+
   /** Liga. O microfone pode vir pronto da tela (pedido quando a pessoa marcou a ciência, decisão 55): aí a ligação não espera a permissão. */
   async iniciar(microfone?: MediaStream | null) {
     const clique = performance.now();
