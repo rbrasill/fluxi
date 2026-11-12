@@ -30,7 +30,7 @@
 ┌──────────────┐  ┌──────────────────────────┐
 │  PostgreSQL  │◀─│          WORKER          │  Railway/Render/Fly
 │  (Supabase,  │  │  ffmpeg, transcrição,    │
-│   RLS)       │  │  IA, POP (DOCX), draw.io │
+│   RLS)       │  │  IA, POP (PDF), draw.io │
 └──────────────┘  └────────────┬─────────────┘
                                ▼
                      Serviços externos

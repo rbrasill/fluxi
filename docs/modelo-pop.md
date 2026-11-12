@@ -41,24 +41,9 @@ const PopSchema = z.object({
 })
 ```
 
-## Mapeamento para o template (docxtemplater)
-
-| Onde | Marcador |
-|---|---|
-| Cabeçalho | `{area}`, logo `{%logo}` |
-| Procedimento | `{nomeProcedimento}`, `{mesAno}` (derivado de `dataCriacao`), `Versão: {versao}` |
-| Identificação | `{dataCriacao}`, `{codigoProcesso}`, `{identificacaoPop}` |
-| Executor | `{executor}` |
-| Objetivo | `{@objetivo}` (parágrafos e listas com formatação, ver decisão 29) |
-| Envolvidos | `{#envolvidos}{area} · {cargo}{/envolvidos}` |
-| Recursos | `{linkFluxograma}` |
-| Procedimentos | `{#itens}{@bloco}{/itens}` (cada bloco é XML pronto: subtítulo, print ou caixa do passo) |
-| Históricos de Revisões | `{#historico}{data} · {elaboradoPor} · {revisao}{/historico}` |
-
 ## Implementação (MVP)
-- **Template:** `templates/pop/modelo-pop-v3.template.docx` é gerado a partir do original por `npm run modelo-pop` (`scripts/preparar-modelo-pop.mjs`), que troca os textos de exemplo pelos marcadores, tira o print e a caixa de amostra e exporta a logo, os ícones e a decoração para `templates/pop/imagens/` (usados no PDF). Não editar o template à mão: ajustar o script e gerar de novo. Quando chegar um modelo novo, basta trocar o `.docx` original e rodar o script.
-- **DOCX:** `lib/pop/docx.ts` (docxtemplater, sem módulos pagos). Imagens das telas, caixas dos passos e o hiperlink "Abrir diagrama" são inseridos como XML próprio.
-- **PDF:** `lib/pop/pdf.ts` (pdfmake, JavaScript puro, roda na Vercel sem binário externo) reproduz o modelo com os mesmos dados, parágrafo por parágrafo: espaçadores, entrelinhas, margens e alturas de célula e posições das âncoras iguais às do DOCX, com as regras de linha do Word (decisão 24). Fonte Roboto (`templates/pop/fontes/`) no lugar da Aptos; print e caixa do passo sempre juntos na mesma página. Não é uma conversão do DOCX: os dois são gerados do mesmo conteúdo (`DadosPop`), então mudança de layout no modelo pede ajuste nos dois geradores. Os efeitos de cor das imagens do modelo (ex.: duotone da faixa) são aplicados no PNG pelo `npm run modelo-pop`.
+- **Só PDF (decisão 79):** o POP sai apenas em PDF; a geração em DOCX foi retirada da plataforma (botões, rotas, gerador, o template com marcadores e o script que o gerava). O `Modelo_POP_v3.docx` original fica como referência do layout.
+- **PDF:** `lib/pop/pdf.ts` (pdfmake, JavaScript puro, roda na Vercel sem binário externo) reproduz o modelo, parágrafo por parágrafo: espaçadores, entrelinhas, margens, alturas de célula e posições das âncoras do modelo, com as regras de linha do Word (decisão 24). Os dados, as cores, o cabeçalho e a sequência de passos ficam em `lib/pop/documento.ts`. Fonte Roboto (`templates/pop/fontes/`) no lugar da Aptos; logo, ícones e decoração em `templates/pop/imagens/` (já extraídos do modelo, com os efeitos de cor aplicados); print e caixa do passo sempre juntos na mesma página.
 - **Procedimentos:** os passos são numerados do início ao fim do POP ("Passo 1:", "Passo 2:"…), com o print (se houver) e o texto numa caixa de destaque logo abaixo (fundo creme #FFF4E0, barra laranja #F28C28 à esquerda, mesma largura do print). Passo sem print mostra só a caixa; passo sem texto, só o print. O nome do grupo de passos (quando preenchido) aparece como subtítulo.
 - **Elaborado por:** campo `pops.autor` (migração `0010_pop_autor.sql`), preenchido pela pessoa enquanto não há login; depois virá do usuário logado. As linhas do histórico sem nome usam esse valor.
 - **Dados:** tabela `pops` (migração `0003_pops.sql`): código do processo (o mesmo do fluxograma, se vinculado), identificação, versão, autor, `conteudo` (área, executor, objetivo, envolvidos, procedimentos com passos) e `historico`.
@@ -67,7 +52,6 @@ const PopSchema = z.object({
 ## Notas técnicas
 
 - Layout construído com tabelas; blocos repetíveis viram linhas com loop.
-- Texto do DOCX está fragmentado em vários trechos internos (revisão ortográfica/formatação). Ao criar a versão com marcadores, cada marcador precisa ficar em um trecho contínuo.
 - 11 imagens no modelo (logo, faixa decorativa, ícones das seções e decoração). A logo será substituível por tenant.
 
 ## Regras de identificação

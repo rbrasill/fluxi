@@ -1267,11 +1267,6 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .sem-codigo { display: inline-flex; align-items: center; gap: 5px; color: #C2410C; font-weight: 500; }
 .sem-codigo a { color: var(--indigo-700); font-weight: 600; }
 .pop-linha-acoes { flex: none; display: flex; align-items: center; gap: 10px; }
-.grupo-baixar { display: inline-flex; align-items: center; height: 42px; padding-left: 14px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--neutro-superficie); color: var(--neutro-rotulo); }
-.grupo-baixar a { display: inline-flex; align-items: center; height: 100%; padding: 0 12px; color: var(--neutro-texto); font-size: 14px; font-weight: 600; text-decoration: none; }
-.grupo-baixar a + a { border-left: 1px solid var(--neutro-borda); }
-.grupo-baixar a:hover { color: var(--indigo-700); background: var(--indigo-50); }
-.grupo-baixar a:last-child { border-radius: 0 11px 11px 0; }
 .lista-pops-rodape { margin: 0; padding: 16px 24px; font-size: 14px; color: var(--neutro-texto-2); }
 @media (max-width: 760px) {
   .pop-linha { flex-wrap: wrap; padding: 16px; }

@@ -20,7 +20,7 @@ import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlDocx, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
 import type { ResultadoBusca } from '@/lib/referencias';
@@ -190,10 +190,11 @@ function EditorPop() {
   };
   const setHist = (h: Historico[]) => alterar({ historico: h });
 
-  async function baixar(formato: 'docx' | 'pdf') {
+  // O POP só sai em PDF (decisão 79). Salva o que estiver pendente antes, para o PDF ter a última versão.
+  async function baixarPdf() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
-    window.location.href = formato === 'pdf' ? urlPdf(id) : urlDocx(id);
+    window.location.href = urlPdf(id);
   }
 
   /** Salva tudo, guarda onde parou e volta ao processo. Retomar = "Continuar" no processo ou no Início. */
@@ -420,8 +421,7 @@ function EditorPop() {
           )}
           {!arquivado && <button className="btn btn-ghost" onClick={abrirMover} title="Mover para outro processo ou criar uma cópia"><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn btn-ghost btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
-          <button className="btn" onClick={() => baixar('docx')}><Icone nome="baixar" tamanho={16} />DOCX</button>
-          <button className="btn btn-primary" onClick={() => baixar('pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
+          <button className="btn btn-primary" onClick={() => void baixarPdf()}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
         </div>
       </div>
 
@@ -496,8 +496,8 @@ function EditorPop() {
                 <span>{pop.fluxograma.origem === 'ia' ? 'Gerado com IA' : 'Desenhado à mão'} · atualizado em {new Date(pop.fluxograma.atualizado_em).toLocaleDateString('pt-BR')}</span>
                 <span>
                   {pop.fluxograma.tem_svg
-                    ? 'Aparece na página pública deste POP e vai no PDF e no DOCX como o link "Abrir diagrama".'
-                    : 'Vai no PDF e no DOCX como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
+                    ? 'Aparece na página pública deste POP e vai no PDF como o link "Abrir diagrama".'
+                    : 'Vai no PDF como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
                   {' '}É do processo: o que você mudar nele vale para todos os POPs do processo.
                 </span>
               </div>
@@ -505,7 +505,7 @@ function EditorPop() {
             </div>
           ) : (
             <p className="notice">
-              O processo <strong>{onde.nome}</strong> ainda não tem fluxograma. Ele é desenhado ou gerado com IA na <Link href={`/app/processos/${onde.id}`}>página do processo</Link> e, depois, aparece aqui, na página pública e no PDF e no DOCX.
+              O processo <strong>{onde.nome}</strong> ainda não tem fluxograma. Ele é desenhado ou gerado com IA na <Link href={`/app/processos/${onde.id}`}>página do processo</Link> e, depois, aparece aqui, na página pública e no PDF.
             </p>
           )}
         </section>

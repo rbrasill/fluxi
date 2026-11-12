@@ -265,7 +265,7 @@ function ProcessoPage() {
                   <div className="proc-fluxo-acoes">
                     <Link href={`/app/fluxogramas/${fluxo.id}`} className="btn btn-primary" title={arquivado ? undefined : 'Abre o editor: mude o desenho, os textos e as setas; salva sozinho'}><Icone nome={arquivado ? 'fluxo' : 'marcar'} tamanho={16} />{arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'}</Link>
                     {!arquivado && <button className="btn btn-ia" onClick={() => setFluxoDialogo('substituir')} title="A IA gera outro desenho no lugar do atual"><Icone nome="ia" tamanho={16} />Gerar de novo com IA</button>}
-                    {fluxo.tem_svg && !arquivado && <a className="link-acao" href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" title="Página pública só do fluxograma (o link do PDF e do DOCX)">Ver na página pública<Icone nome="externo" tamanho={15} /></a>}
+                    {fluxo.tem_svg && !arquivado && <a className="link-acao" href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" title="Página pública só do fluxograma (o link do PDF)">Ver na página pública<Icone nome="externo" tamanho={15} /></a>}
                   </div>
                 </div>
               </>
@@ -407,11 +407,7 @@ function ProcessoPage() {
                       !arquivado && <button type="button" className="btn" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>
                     ) : (
                       <>
-                        <span className="grupo-baixar">
-                          <Icone nome="baixar" tamanho={16} />
-                          <a href={`/api/pops/${o.id}/pdf`} title="Baixar PDF">PDF</a>
-                          <a href={`/api/pops/${o.id}/docx`} title="Baixar DOCX">DOCX</a>
-                        </span>
+                        <a className="btn" href={`/api/pops/${o.id}/pdf`} title="Baixar o POP em PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
                         {rascunho && !arquivado
                           ? <Link className="btn btn-primary" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou"><Icone nome="marcar" tamanho={16} />Continuar edição</Link>
                           : <Link className="btn" href={`/app/pops/${o.id}`}>Abrir POP<Icone nome="avancar" tamanho={16} /></Link>}

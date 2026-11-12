@@ -43,7 +43,7 @@ editor → {event:'export', data:'data:...', xml}
 | `load` | abrir o XML da versão |
 | `merge` | aplicar um ajuste da IA sem recarregar o editor (inserir/alterar elementos) |
 | `export` `xmlsvg` | SVG com o diagrama embutido: imagem para o POP/Notion que continua editável |
-| `export` `png` (`scale`, `border`) | imagem para o DOCX do POP |
+| `export` `png` (`scale`, `border`) | imagem para o PDF do POP |
 | `layout` (`horizontalFlow`…) | botão "Reorganizar layout" |
 | `viewbox` / `fit` | "Ir para o 1º" alerta: centraliza o elemento problemático |
 | `status`, `spinner`, `dialog` | mensagens do Fluxi dentro do editor ("Salvo", "Aplicando ajuste…") |

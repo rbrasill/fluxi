@@ -598,10 +598,19 @@ Segunda tela do redesign (referência em `docs/design/referencias/processo.webp`
 Referência em `docs/design/referencias/processo-pops.webp`. Só com o que já temos, sem mudar o banco.
 
 - **Um cartão** com "POPs do processo", a explicação e o botão "Novo POP"; embaixo, o filtro por situação (**Todos**, **Rascunhos**, **Publicados**, cada um com a contagem; **Arquivados** só aparece quando há algum) e a busca por nome ou identificação. No rodapé, "Mostrando X de Y POPs".
-- **Cada linha:** ícone na cor da situação (pêssego no rascunho, verde no publicado, cinza no arquivado), nome com o selo (Rascunho, Publicado ou Publicado · offline), e a linha de dados: identificação (ou **"Sem identificação · Definir"**, em pêssego, que leva ao campo no POP), versão e data. À direita, PDF e DOCX juntos num grupo e a ação: **"Continuar edição"** (índigo, retoma onde parou) no rascunho, **"Abrir POP"** no publicado, **"Restaurar"** no arquivado.
+- **Cada linha:** ícone na cor da situação (pêssego no rascunho, verde no publicado, cinza no arquivado), nome com o selo (Rascunho, Publicado ou Publicado · offline), e a linha de dados: identificação (ou **"Sem identificação · Definir"**, em pêssego, que leva ao campo no POP), versão e data. À direita, o botão PDF (o DOCX saiu na decisão 79) e a ação: **"Continuar edição"** (índigo, retoma onde parou) no rascunho, **"Abrir POP"** no publicado, **"Restaurar"** no arquivado.
 - **"Sem código" virou "Sem identificação"**: no INCFlow o "código" é o identificador interno; o que falta preencher é a "Identificação POP" (ex.: POP-001), que é o que a linha mostra.
 - **Selos no sistema de cores** (vale para o app todo): Rascunho em pêssego, Publicado em verde, Publicado · offline em rosa.
 - **Não entrou:** a aba "Regras de negócio" da imagem (mesma avaliação da decisão 77).
+
+## 79. O POP sai só em PDF: o DOCX saiu da plataforma (12/11/2026)
+
+**Pedido do Rafael:** não ter mais a opção de baixar o POP em DOCX; agora é somente PDF. Não é só um ajuste de tela: a plataforma deixa de ter a funcionalidade.
+
+- **Telas:** saíram os botões DOCX do editor do POP, da lista de POPs, da aba POPs do processo e da página pública do POP. Os textos que citavam "o PDF e o DOCX" passaram a citar só o PDF.
+- **Servidor:** saíram as rotas `/api/pops/<id>/docx` e `/api/publico/pops/<link>/docx` (respondem 404), o gerador `lib/pop/docx.ts`, o template com marcadores (`modelo-pop-v3.template.docx`), o script que o gerava (`npm run modelo-pop`) e as bibliotecas `docxtemplater` e `pizzip`. O que o PDF aproveitava do gerador antigo (dados, cores, cabeçalho e sequência de passos) foi para `lib/pop/documento.ts`.
+- **Fica:** o `Modelo_POP_v3.docx` original, como referência do layout, e as imagens já extraídas dele (`templates/pop/imagens/`), que o PDF usa. Se o modelo mudar, as imagens novas precisam ser extraídas à mão (o script saiu junto com o DOCX).
+- Muda o que dizem as decisões anteriores que falam do DOCX (entre elas, 18, 19, 21, 24, 28, 29, 31, 32, 34, 35 e 37): onde citam os dois formatos, vale só o PDF.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

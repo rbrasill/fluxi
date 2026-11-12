@@ -75,7 +75,6 @@ export type PedidoMelhoria = {
 };
 export const melhorarTextoComIa = (dados: PedidoMelhoria) =>
   api<SugestaoIa>('/api/ia/melhorar-texto', { method: 'POST', body: JSON.stringify(dados) });
-export const urlDocx = (id: string) => `/api/pops/${id}/docx`;
 export const urlPdf = (id: string) => `/api/pops/${id}/pdf`;
 
 /** "Organização · Área · Processo" de um POP (ou aviso de que está sem processo). */

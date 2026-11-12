@@ -142,7 +142,7 @@ export async function referenciadoEm(destino: Doc): Promise<ReferenciadoEm[]> {
     .sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
 }
 
-/** Para o PDF e o DOCX: rótulo atual e endereço absoluto da página pública de cada destino. */
+/** Para o PDF: rótulo atual e endereço absoluto da página pública de cada destino. */
 export function paraDocumento(resolvidas: Record<string, ReferenciaResolvida>, origem: string) {
   const saida: Record<string, { rotulo?: string; url: string | null }> = {};
   for (const [k, r] of Object.entries(resolvidas)) saida[k] = { rotulo: r.rotulo || undefined, url: r.url_publica ? `${origem}${r.url_publica}` : null };

@@ -5,8 +5,8 @@ import { Icone } from '@/components/Icone';
 import { CabecalhoPublico, Indisponivel } from '@/components/publico/CabecalhoPublico';
 import { dataBr, obterFluxogramaPublico, urlSvg, type FluxogramaPublico } from '@/lib/publico';
 
-// Página pública só do fluxograma do processo (decisão 32): é para onde o "Abrir diagrama" do PDF e
-// do DOCX leva. O desenho é o SVG exportado pelo editor: vetor (nítido em qualquer zoom) e com a
+// Página pública só do fluxograma do processo (decisão 32): é para onde o "Abrir diagrama" do PDF
+// leva. O desenho é o SVG exportado pelo editor: vetor (nítido em qualquer zoom) e com a
 // animação das setas.
 
 export default function FluxogramaPublicoPage() {
