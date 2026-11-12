@@ -19,7 +19,7 @@ import { ReferenciadoEm } from '@/components/publico/Referencias';
 import type { ResultadoBusca } from '@/lib/referencias';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { ehGestor, useEu } from '@/lib/auth/eu';
-import { corDoAvatar, iniciais } from '@/lib/iniciais';
+import { corDoAvatar, sigla } from '@/lib/iniciais';
 import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
 import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
 
@@ -209,7 +209,7 @@ function ProcessoPage() {
       </nav>
 
       <div className="page-head proc-cabecalho">
-        <span className={`proc-avatar avatar-${corDoAvatar(p.codigo)}`} aria-hidden="true">{iniciais(p.nome)}</span>
+        <span className={`proc-avatar avatar-${corDoAvatar(p.codigo)}`} aria-hidden="true">{sigla(p.nome)}</span>
         <div className="proc-titulo">
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />

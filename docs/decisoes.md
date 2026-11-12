@@ -632,6 +632,15 @@ Referência em `docs/design/referencias/pessoas.webp`. Só com o que já temos, 
 - **Três níveis, não dois:** a imagem mostra só Comum e Administrador, mas o INCFlow tem também o **Gestor** (convida pessoas para conversas com a Maia, decisão 53). O Gestor foi mantido no filtro, na lista e no cadastro.
 - **Botão principal desabilitado** fica cinza (vale para o app todo), como na imagem.
 
+## 82. Redesign: página da organização, com as áreas em pastas (12/11/2026)
+
+Referência em `docs/design/referencias/organizacao.webp`. Só com o que já temos, sem mudar o banco.
+
+- **Cabeçalho:** voltar para Organizações, a sigla da organização num quadrado índigo escuro, o nome (editável, como antes) e "Organização · N áreas · N processos". À direita, o menu "…" (onde ficou "Excluir organização") e "Nova área".
+- **Áreas em pastas:** cada área é uma pasta com a sigla colorida, o nome e, embaixo, a quantidade de processos. **O ícone da quantidade é uma engrenagem, não uma pasta** (pedido do Rafael: representa melhor "processos"). A pasta inteira abre a área. No fim, a pasta tracejada "Nova área".
+- **Busca, ordem e vista:** busca por nome, ordem (A–Z, Z–A, mais processos) e a troca entre pastas e lista. A escolha vale enquanto a página está aberta; não fica guardada.
+- **Siglas dos avatares:** organização, área e processo usam a primeira palavra quando ela já é uma sigla ("INC", "SST"); senão, a inicial das duas primeiras palavras, pulando "de", "da", "e" ("Baú da Felicidade" → BF). Pessoas usam a inicial do primeiro e do último nome.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
