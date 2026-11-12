@@ -1138,13 +1138,14 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .pagina-processo .select-area { height: 32px; padding: 0 8px; border: 1px solid var(--neutro-borda); border-radius: 10px; background: var(--neutro-superficie); color: var(--neutro-texto); font: inherit; font-size: 14px; font-weight: 500; max-width: 260px; }
 .pagina-processo .select-area:hover, .pagina-processo .select-area:focus { border-color: var(--indigo-300); }
 
-/* Abas: a ativa em texto escuro com o sublinhado índigo. */
-.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--neutro-borda); overflow-x: auto; }
-.abas button { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 14px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--neutro-texto-2); font-size: 15px; font-weight: 500; white-space: nowrap; }
-.abas button:hover { color: var(--neutro-texto); }
-.abas button[aria-selected='true'] { color: var(--neutro-texto); font-weight: 600; border-bottom-color: var(--indigo-700); }
-.aba-conta { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: inline-grid; place-items: center; background: #EEF0F3; color: var(--neutro-texto-2); font-size: 12px; font-weight: 600; }
-.abas button[aria-selected='true'] .aba-conta { background: var(--indigo-100); color: var(--indigo-700); }
+/* Abas: a ativa em índigo (texto 700, fundo 100, sublinhado 700 e contagem sólida); as outras em cinza, com hover branco. */
+.abas { display: flex; gap: 6px; border-bottom: 1px solid var(--neutro-borda); overflow-x: auto; }
+.abas button { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; margin-bottom: -1px; border: 0; border-bottom: 3px solid transparent; border-radius: 10px 10px 0 0; background: none; color: var(--neutro-texto-2); font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
+.abas button:hover { color: var(--indigo-700); background: var(--neutro-superficie); }
+.abas button[aria-selected='true'] { color: var(--indigo-700); font-weight: 700; background: var(--indigo-100); border-bottom-color: var(--indigo-700); }
+.aba-conta { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--neutro-borda); color: var(--neutro-texto-2); font-size: 12px; font-weight: 700; }
+.abas button:hover .aba-conta { background: var(--indigo-100); color: var(--indigo-700); }
+.abas button[aria-selected='true'] .aba-conta { background: var(--indigo-700); color: #fff; }
 .pagina-processo .secao-processo { margin-top: 4px; }
 
 .proc-grade { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr); gap: 24px; align-items: start; margin-top: 4px; }
