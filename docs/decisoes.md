@@ -641,6 +641,16 @@ Referência em `docs/design/referencias/organizacao.webp`. Só com o que já tem
 - **Busca, ordem e vista:** busca por nome, ordem (A–Z, Z–A, mais processos) e a troca entre pastas e lista. A escolha vale enquanto a página está aberta; não fica guardada.
 - **Siglas dos avatares:** organização, área e processo usam a primeira palavra quando ela já é uma sigla ("INC", "SST"); senão, a inicial das duas primeiras palavras, pulando "de", "da", "e" ("Baú da Felicidade" → BF). Pessoas usam a inicial do primeiro e do último nome.
 
+## 83. Redesign: gravação de tela, com player próprio (12/11/2026)
+
+Referências em `docs/design/referencias/gravando.webp` e `gravacao.webp`. Sem mudar o banco nem a forma de gravar.
+
+- **Player próprio, sem biblioteca.** O vídeo da gravação tocava com os controles do navegador. Agora o player é nosso (`components/gravacao/PlayerSegmentos.tsx`): moldura índigo escura, vídeo arredondado, botão de tocar, tempo e a **linha do tempo com cada tela marcada como um número; clicar no número leva até a tela**. Também dá para clicar ou arrastar na linha, usar as setas do teclado (5 s), tirar o som e abrir em tela cheia.
+- **Por que sem biblioteca:** o que a imagem pede (controles e marcadores sobre a linha do tempo) se faz com o `<video>` do navegador e pouco código. Uma biblioteca de player (Vidstack, Plyr, Video.js) traria peso e tema próprios, e nenhuma resolve o que temos de particular: a gravação é salva em várias partes (uma a cada 3 minutos, ou uma por retomada) que precisam tocar em sequência numa linha do tempo só. Isso já era código nosso e continua sendo.
+- **Tela da gravação:** caminho (processo › POP › Gravação), cabeçalho com o resumo (tempo, telas marcadas, quantas no POP), "Continuar gravando", "Abrir POP" e o menu "…" com "Excluir gravação". A faixa pêssego avisa das telas novas, com "Levar N telas para o POP". Cada tela tem o número, o tempo (leva ao vídeo), "Marcar na tela", "Incluir no POP", a lixeira e a instrução do passo.
+- **Tela "Gravando":** título com o selo REC, o cartão com o tempo grande, pausar, Encerrar, o botão "Incluir esta tela no POP" e a instrução do passo; embaixo, as telas marcadas. Ao lado, os cartões "Janela flutuante" e "Para uma boa gravação". O painel da janela flutuante usa o mesmo desenho.
+- **Não mudou:** a tela de preparar a gravação (nome, microfone e áudio), que só herdou as cores novas.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

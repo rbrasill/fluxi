@@ -11,7 +11,7 @@ import { ROTULO_STATUS, atualizarGravacao, atualizarMarcacao, confirmacaoExcluir
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
-function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao; n: number; gravacaoId: string; noPop?: boolean; aoIr: () => void; aoExcluir: () => void }) {
+function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir, aoIncluir }: { m: Marcacao; n: number; gravacaoId: string; noPop?: boolean; aoIr: () => void; aoExcluir: () => void; aoIncluir: (incluir: boolean) => void }) {
   const [instrucao, setInstrucao] = useState(m.instrucao ?? '');
   const [incluir, setIncluir] = useState(m.incluir_no_pop);
   const [salvo, setSalvo] = useState<'' | 'salvando' | 'ok' | 'erro'>('');
@@ -39,25 +39,25 @@ function CartaoTela({ m, n, gravacaoId, noPop, aoIr, aoExcluir }: { m: Marcacao;
       </button>
       <div className="tela-corpo">
         <div className="tela-meta">
-          <button className="btn btn-ghost" onClick={aoIr} title="Ver este momento no vídeo"><Icone nome="play" tamanho={14} />{formatarTempo(m.tempo_ms)}</button>
-          <button className="btn btn-ghost" onClick={() => setMarcando(true)} disabled={!m.imagem_url} title="Desenhar caixa, seta, número ou texto, e recortar"><Icone nome="marcar" tamanho={14} />Marcar</button>
+          <button className="chip-tempo" onClick={aoIr} title="Ver este momento no vídeo"><Icone nome="play" tamanho={12} />{formatarTempo(m.tempo_ms)}</button>
+          <button className="btn btn-ghost" onClick={() => setMarcando(true)} disabled={!m.imagem_url} title="Desenhar caixa, seta, número ou texto, e recortar"><Icone nome="marcar" tamanho={15} />Marcar na tela</button>
           <label className="check">
-            <input type="checkbox" checked={incluir} onChange={(e) => { setIncluir(e.target.checked); void salvar({ incluir_no_pop: e.target.checked }); }} />
+            <input type="checkbox" checked={incluir} onChange={(e) => { setIncluir(e.target.checked); aoIncluir(e.target.checked); void salvar({ incluir_no_pop: e.target.checked }); }} />
             Incluir no POP
           </label>
-          <button className="btn btn-ghost btn-icon" aria-label="Excluir tela" title="Excluir tela" onClick={aoExcluir}><Icone nome="lixo" tamanho={16} /></button>
+          <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Excluir tela" title="Excluir tela" onClick={aoExcluir}><Icone nome="lixo" tamanho={16} /></button>
         </div>
         <label className="field">
           Instrução do passo
           <textarea
-            rows={3}
+            rows={2}
             value={instrucao}
             onChange={(e) => setInstrucao(e.target.value)}
             onBlur={() => instrucao !== (m.instrucao ?? '') && void salvar({ instrucao: instrucao.trim() || null })}
             placeholder={m.instrucao_ia ?? 'Descreva o que fazer nesta tela. O texto vai junto quando a tela for levada para o POP.'}
           />
         </label>
-        {salvo && <span className={`salvo salvo-${salvo}`}>{salvo === 'salvando' ? 'Salvando…' : salvo === 'ok' ? 'Salvo' : 'Erro ao salvar'}</span>}
+        {salvo && salvo !== 'ok' && <span className={`salvo salvo-${salvo}`}>{salvo === 'salvando' ? 'Salvando…' : 'Erro ao salvar'}</span>}
       </div>
       {marcando && m.imagem_url && (
         <EditorMarcacao
@@ -84,6 +84,7 @@ function Detalhe() {
   const [irPara, setIrPara] = useState<{ ms: number; n: number } | null>(null);
   const [levando, setLevando] = useState<'' | 'enviando' | 'ok'>('');
   const [excluindo, setExcluindo] = useState(false);
+  const [menu, setMenu] = useState(false);
   const router = useRouter();
 
   const recarregar = useCallback(() => obterGravacao(id).then((d) => { setG(d); setNome(d.nome); }).catch(() => setG(null)), [id]);
@@ -140,15 +141,20 @@ function Detalhe() {
     setG({ ...g!, marcacoes: g!.marcacoes.filter((x) => x.id !== m.id) });
   }
 
+  const noPop = g.pop ? g.marcacoes.filter((m) => g.pop!.telas.includes(m.id)).length : 0;
+  const contar = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+
   return (
-    <div className="page">
-      <div className="page-head">
-        <div>
-          {g.pop
-            ? <Link href={`/app/pops/${g.pop.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />POP {g.pop.nome}</Link>
-            : g.processo
-              ? <Link href={`/app/processos/${g.processo.id}`} className="voltar"><Icone nome="voltar" tamanho={16} />{g.processo.nome}</Link>
-              : <Link href="/app/inicio" className="voltar"><Icone nome="voltar" tamanho={16} />Início</Link>}
+    <div className="page pagina-gravacao">
+      <nav className="trilha" aria-label="Caminho">
+        {g.processo && <><Link href={`/app/processos/${g.processo.id}`}>{g.processo.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+        {g.pop && <><Link href={`/app/pops/${g.pop.id}`}>POP {g.pop.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+        {!g.processo && !g.pop && <><Link href="/app/inicio">Início</Link><Icone nome="avancar" tamanho={14} /></>}
+        <span aria-current="page">Gravação</span>
+      </nav>
+      <div className="page-head proc-cabecalho">
+        <span className="proc-avatar avatar-neutro" aria-hidden="true"><Icone nome="tela-video" tamanho={26} /></span>
+        <div className="proc-titulo">
           <input
             className="titulo-editavel"
             value={nome}
@@ -156,16 +162,21 @@ function Detalhe() {
             onBlur={() => nome.trim() && nome !== g.nome && void atualizarGravacao(g.id, { nome: nome.trim() })}
             aria-label="Nome da gravação"
           />
-          <p>{gravado ? formatarTempo(gravado) : '--:--'} de gravação · {g.marcacoes.length} telas marcadas · {incluidas} para o POP{emAberto && <> · <b>{ROTULO_STATUS[g.status]}</b></>}</p>
+          <p className="page-meta org-meta">Gravação de tela<span>{gravado ? formatarTempo(gravado) : '--:--'}</span><span>{contar(g.marcacoes.length, 'tela marcada', 'telas marcadas')}</span>{g.pop && <span>{noPop} no POP</span>}{emAberto && <span><b>{ROTULO_STATUS[g.status]}</b></span>}</p>
         </div>
         <div className="actions">
           {g.status === 'pronta' && (
-            <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn btn-ghost" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
+            <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn" title="Grava mais uma parte, em sequência, sem perder nada do que já foi gravado"><span className="rec-dot" />Continuar gravando</Link>
           )}
           {g.pop && <Link href={`/app/pops/${g.pop.id}`} className="btn"><Icone nome="pop" tamanho={16} />Abrir POP</Link>}
-          <button type="button" className="btn btn-ghost btn-excluir" onClick={excluirTudo} disabled={excluindo} title="Apaga o vídeo e as telas marcadas para sempre (as telas que já estão no POP continuam lá)">
-            <Icone nome="lixo" tamanho={16} />{excluindo ? 'Excluindo…' : 'Excluir gravação'}
-          </button>
+          <div className="menu">
+            <button className="btn btn-icon" aria-label="Mais ações" title="Mais ações" aria-haspopup="true" aria-expanded={menu} onClick={() => setMenu((x) => !x)} onBlur={(e) => { if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setMenu(false); }}><Icone nome="mais-acoes" /></button>
+            {menu && (
+              <div className="menu-list" role="menu">
+                <button type="button" role="menuitem" className="menu-perigo" disabled={excluindo} onClick={() => { setMenu(false); void excluirTudo(); }} onBlur={() => setMenu(false)} title="Apaga o vídeo e as telas marcadas para sempre (as telas que já estão no POP continuam lá)"><Icone nome="lixo" tamanho={16} />Excluir gravação</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {emAberto && (
@@ -181,14 +192,14 @@ function Detalhe() {
         </div>
       )}
       {g.pop && (telasNovas.length > 0 || levando === 'ok') && (
-        <div className="aviso">
+        <div className={`faixa-telas${levando === 'ok' ? ' feito' : ''}`} role="status">
+          <span className="faixa-telas-icone"><Icone nome={levando === 'ok' ? 'check' : 'camera'} tamanho={20} /></span>
           {levando === 'ok'
-            ? <span>As telas novas entraram no POP <b>{g.pop.nome}</b>, num procedimento novo no fim. Revise e organize lá.</span>
-            : <span><b>{telasNovas.length} {telasNovas.length === 1 ? 'tela nova' : 'telas novas'}</b> ainda não {telasNovas.length === 1 ? 'está' : 'estão'} no POP <b>{g.pop.nome}</b>.</span>}
-          <span className="aviso-acoes">
-            <Link href={`/app/pops/${g.pop.id}`} className="btn">Abrir POP</Link>
-            {levando !== 'ok' && <button className="btn btn-primary" onClick={levarTelasAoPop} disabled={levando === 'enviando'}><Icone nome="pop" tamanho={16} />{levando === 'enviando' ? 'Levando…' : 'Levar as telas para o POP'}</button>}
-          </span>
+            ? <span>As telas novas entraram no POP <b>{g.pop.nome}</b>, numa etapa nova no fim. Revise e organize lá.</span>
+            : <span><b>{contar(telasNovas.length, 'tela nova', 'telas novas')}</b> ainda não {telasNovas.length === 1 ? 'está' : 'estão'} no POP {g.pop.nome}.</span>}
+          {levando === 'ok'
+            ? <Link href={`/app/pops/${g.pop.id}`} className="btn">Abrir POP</Link>
+            : <button className="btn btn-primary" onClick={levarTelasAoPop} disabled={levando === 'enviando'}><Icone nome="seta-direita" tamanho={16} />{levando === 'enviando' ? 'Levando…' : `Levar ${contar(telasNovas.length, 'tela', 'telas')} para o POP`}</button>}
         </div>
       )}
       {(falhas || g.status === 'erro') && <div className="aviso erro">Parte dos arquivos não foi enviada (conexão instável). O que foi salvo está abaixo.</div>}
@@ -196,10 +207,14 @@ function Detalhe() {
       <div className="grav-layout">
         <PlayerSegmentos segmentos={g.segmentos} irPara={irPara} marcacoes={g.marcacoes.map((m) => m.tempo_ms)} />
         <section className="grav-telas">
-          <h2>Telas para o POP</h2>
+          <div className="grav-telas-topo">
+            <h2>Telas para o POP</h2>
+            {g.marcacoes.length > 0 && <span>{incluidas} de {g.marcacoes.length} incluídas</span>}
+          </div>
           {g.marcacoes.length === 0 && <p className="notice">Nenhuma tela foi marcada nesta gravação.</p>}
           {g.marcacoes.map((m, i) => (
-            <CartaoTela key={m.id} m={m} n={i + 1} gravacaoId={g.id} noPop={g.pop?.telas.includes(m.id)} aoIr={() => setIrPara({ ms: m.tempo_ms, n: Date.now() })} aoExcluir={() => remover(m)} />
+            <CartaoTela key={m.id} m={m} n={i + 1} gravacaoId={g.id} noPop={g.pop?.telas.includes(m.id)} aoIr={() => setIrPara({ ms: m.tempo_ms, n: Date.now() })} aoExcluir={() => remover(m)}
+              aoIncluir={(v) => setG((x) => x && { ...x, marcacoes: x.marcacoes.map((y) => (y.id === m.id ? { ...y, incluir_no_pop: v } : y)) })} />
           ))}
         </section>
       </div>
