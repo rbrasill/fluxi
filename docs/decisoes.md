@@ -651,6 +651,16 @@ Referências em `docs/design/referencias/gravando.webp` e `gravacao.webp`. Sem m
 - **Tela "Gravando":** título com o selo REC, o cartão com o tempo grande, pausar, Encerrar, o botão "Incluir esta tela no POP" e a instrução do passo; embaixo, as telas marcadas. Ao lado, os cartões "Janela flutuante" e "Para uma boa gravação". O painel da janela flutuante usa o mesmo desenho.
 - **Não mudou:** a tela de preparar a gravação (nome, microfone e áudio), que só herdou as cores novas.
 
+## 84. Meu perfil (12/11/2026)
+
+Tela nova do redesign (referência em `docs/design/referencias/perfil.webp`): não existia. Avaliação do que a imagem pede e o que entrou.
+
+- **Entrou agora:** a página **Meu perfil** (`/app/perfil`), aberta pelo cartão da conta no rodapé do menu. Cada pessoa vê e muda só o próprio perfil: nome, **cargo**, **área** (uma das áreas cadastradas), **gestor(a) direto(a)** e **"O que você faz"**, com "Melhorar com IA". Salva sozinho. No topo, quanto do perfil está preenchido (nome, e-mail, cargo, área e atividades; o gestor é opcional). Ao lado, o cartão **Acesso** (tipo de acesso, e-mail de entrada e organização), só para ver: e-mail e nível continuam com os administradores, em Pessoas e acessos.
+- **A Maia usa o perfil:** quando a pessoa preencheu a área, o cargo ou as atividades, a Maia já abre a entrevista sabendo quem ela é e não pergunta de novo (a mesma regra da decisão 67, que antes só valia para o que a pessoa contou numa conversa anterior). O perfil vale mais que a conversa antiga.
+- **Banco:** migração `0023_perfil.sql` (colunas `cargo`, `area_id`, `gestor` e `atividades` em `pessoas`, todas opcionais). Antes da migração, a página abre, avisa e não deixa salvar; o resto do app e a Maia seguem como antes.
+- **"Processos em que você participa"** mostra só o papel que o INCFlow sabe de verdade: **Entrevistado** (os processos sobre os quais a pessoa conversou com a Maia). Os outros papéis da imagem ficaram para depois, porque hoje não há esse dado: **Responsável** (o processo não tem um responsável cadastrado), **Elaborador** ("Elaborado por" no POP é texto livre, não a pessoa) e **Executor** ("Executor" no POP é um cargo em texto livre). Para tê-los, é preciso ligar processos e POPs a pessoas, o que é uma entrega própria.
+- **Ficou para depois:** a foto do perfil (a imagem tem o botão de câmera; pede envio e armazenamento de imagem).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

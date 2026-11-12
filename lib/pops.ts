@@ -69,7 +69,7 @@ export const copiarPop = (id: string, dados: { processo_id: string; nome?: strin
 /** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
 export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
 export type PedidoMelhoria = {
-  campo: 'passo' | 'objetivo' | 'descricao'; texto: string;
+  campo: 'passo' | 'objetivo' | 'descricao' | 'atividades'; texto: string;
   pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string; // POP
   processo?: string; area?: string; organizacao?: string; // descrição do processo
 };

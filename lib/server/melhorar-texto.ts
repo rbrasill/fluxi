@@ -11,7 +11,7 @@ import { ErroApi } from './http';
 // sugestão e decide se usa (decisão 30).
 
 export type PedidoMelhoria = {
-  campo: 'passo' | 'objetivo' | 'descricao';
+  campo: 'passo' | 'objetivo' | 'descricao' | 'atividades';
   texto: string;
   processo?: string; // nome do processo (descrição)
   area?: string; // área do processo (descrição)
@@ -50,6 +50,7 @@ const REGRAS_CAMPO = {
 - Títulos e subtítulos dentro do texto (ex.: "Validação da Assinatura Digital", "Resultado da Validação") continuam em linha própria; se o texto começa com um título, deixe-o em negrito.
 - Referências ao print ("na tela abaixo", "ícones destacados", "na aba sinalizada") continuam no texto.`,
   objetivo: `É o OBJETIVO do processo: para que serve o procedimento e qual resultado ele garante. Escreva em frases completas, sem descrever os passos. Não resuma nem encurte um objetivo longo: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
+  atividades: `É o texto em que UMA PESSOA conta o que faz no trabalho, com as palavras dela, no perfil dela (decisão 84). Mantenha a primeira pessoa ("mapeio", "reviso", "atendo") e o jeito dela de falar; só corrija e deixe mais claro, em frases curtas. Não invente atividades, sistemas, áreas nem responsabilidades que ela não escreveu, não transforme em lista se ela escreveu em frases e não use tom de currículo.`,
   descricao: `É a DESCRIÇÃO de um PROCESSO (não de um POP): o que o processo é, para que serve, onde começa e onde termina, os sistemas e as áreas envolvidos e o resultado. Escreva em frases completas e bem pontuadas; se for uma frase longa demais, divida em frases menores na mesma ordem. Não transforme em lista de passos, não resuma nem encurte: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
 };
 

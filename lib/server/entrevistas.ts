@@ -6,6 +6,7 @@ import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
 import { chamarEstruturado, type UsoIa } from './ia';
 import { emProducao, type Pessoa } from './login';
+import { perfilParaAMaia } from './perfil';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Entrevista por voz com a Maia, só com o GPT-Live da OpenAI (decisão 41). Nasce dentro do processo, por
@@ -306,6 +307,9 @@ const perfilDe = (r: unknown): PerfilEntrevistado | null => {
  */
 export async function perfilConhecido(entrevistadoId: string | null | undefined): Promise<PerfilEntrevistado | null> {
   if (!entrevistadoId) return null;
+  // O que a própria pessoa escreveu em "Meu perfil" (decisão 84) vale mais que o que ela contou numa conversa antiga.
+  const doCadastro = await perfilParaAMaia(entrevistadoId).catch(() => null);
+  if (doCadastro) return doCadastro;
   const { data, error } = await supabase().from('entrevistas').select('resultado, encerrado_em').eq('tenant_id', TENANT_PADRAO).eq('entrevistado_id', entrevistadoId)
     .not('resultado', 'is', null).is('arquivado_em', null).order('encerrado_em', { ascending: false }).limit(10);
   if (error) return null;
@@ -515,7 +519,7 @@ export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continua
   // Quem é a pessoa (decisão 67): a Maia pergunta a área e o que ela faz antes de entrar no processo; se a
   // pessoa já contou em outra conversa, a Maia já sabe e não pergunta de novo.
   const sobreAPessoa = perfil
-    ? `O que você já sabe sobre ${primeiro || 'a pessoa'}, de outra conversa: ${[perfil.area && `é da área ${comoSeFala(perfil.area)}`, perfil.funcao && `o que faz: ${comoSeFala(perfil.funcao)}`].filter(Boolean).join('; ')}. Não pergunte isso de novo.\n`
+    ? `O que você já sabe sobre ${primeiro || 'a pessoa'}, do perfil dela ou de outra conversa: ${[perfil.area && `é da área ${comoSeFala(perfil.area)}`, perfil.funcao && `o que faz: ${comoSeFala(perfil.funcao)}`].filter(Boolean).join('; ')}. Não pergunte isso de novo.\n`
     : '';
   const abertura = perfil
     ? `Abra curto, em no máximo duas frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha e que a conversa fica gravada. Por exemplo: "${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Pra começar, me conta: para que serve esse processo?"`
