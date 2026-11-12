@@ -661,6 +661,15 @@ Tela nova do redesign (referência em `docs/design/referencias/perfil.webp`): n�
 - **"Processos em que você participa"** mostra só o papel que o INCFlow sabe de verdade: **Entrevistado** (os processos sobre os quais a pessoa conversou com a Maia). Os outros papéis da imagem ficaram para depois, porque hoje não há esse dado: **Responsável** (o processo não tem um responsável cadastrado), **Elaborador** ("Elaborado por" no POP é texto livre, não a pessoa) e **Executor** ("Executor" no POP é um cargo em texto livre). Para tê-los, é preciso ligar processos e POPs a pessoas, o que é uma entrega própria.
 - **Ficou para depois:** a foto do perfil (a imagem tem o botão de câmera; pede envio e armazenamento de imagem).
 
+## 85. Redesign: resultado da entrevista (12/11/2026)
+
+Referência em `docs/design/referencias/entrevista.webp`. **Pedido do Rafael:** manter as informações que a tela já tem (ele gosta da estrutura atual) e só seguir o desenho da imagem; a quantidade de falas não precisa aparecer.
+
+- **As mesmas informações, no desenho novo.** À esquerda, a **Ficha do processo** (os destaques Objetivo, Começa quando e Termina com; as etapas numeradas, com o responsável, o que entra, o que sai, as ferramentas, as regras de negócio em teal e as exceções em pêssego; as dificuldades relatadas), a **Descrição do processo** e a **Conversa transcrita**. Ao lado, **Ficou em aberto** (cada dúvida num cartão com a caixa de marcar; o botão fica travado até marcar alguma), **Quem foi entrevistado** e **Para outra pessoa responder**.
+- **Cabeçalho:** caminho, o ícone da Maia, o tema com o selo "Entrevista concluída" e "Entrevista com Fulano · convite de Sicrano em data". O mesmo cabeçalho vale para as outras telas da entrevista.
+- **Saiu a quantidade de falas** do título da conversa transcrita. (Nas outras telas da entrevista, onde ela explica o estado da conversa pausada, continua.)
+- **Não entrou o que a imagem tem e o INCFlow não tem:** "Gerar POP com esta ficha", "Ouvir conversa" com o player em ondas, a busca na conversa, "Carregar mais falas" e "Regras encontradas". A conversa continua recolhida, abrindo ao clicar, com os áudios no player do navegador.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

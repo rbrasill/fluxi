@@ -1633,3 +1633,82 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .nota-acesso { margin: 0; display: flex; gap: 10px; padding: 14px 16px; border: 1px solid var(--verde-100); border-radius: 14px; background: var(--verde-50); font-size: 14px; line-height: 1.55; color: var(--neutro-texto); }
 .nota-acesso svg { flex: none; margin-top: 2px; color: var(--verde-700); }
 .nota-acesso a { color: var(--indigo-700); font-weight: 500; }
+
+/* ===== Redesign do resultado da entrevista (decisão 85) =====
+   As mesmas informações de antes, no desenho novo: a ficha e a descrição à esquerda, com a conversa; ao lado,
+   o que ficou em aberto e quem foi entrevistado. */
+.entrevista-cabecalho h1 { margin: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 30px; font-weight: 700; }
+.entrevista-cabecalho .page-meta { margin: 0; font-size: 15px; }
+.entrevista-cabecalho .page-meta strong { color: var(--neutro-texto); font-weight: 600; }
+.avatar-maia { background: #0E1525; }
+.avatar-maia span { width: 30px; height: 30px; border-radius: 999px; border: 3px solid transparent; background: linear-gradient(#0E1525, #0E1525) padding-box, conic-gradient(from 200deg, var(--teal-500), var(--indigo-500), var(--rosa-pink-400), var(--teal-500)) border-box; }
+.selo-concluida { background: var(--verde-100); color: var(--verde-700); }
+.pagina-entrevista { gap: 20px; }
+.entrevista-grade { grid-template-columns: minmax(0, 1.9fr) minmax(300px, 1fr); }
+@media (max-width: 1100px) { .entrevista-grade { grid-template-columns: minmax(0, 1fr); } }
+.pagina-entrevista .cartao h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.selo-maia { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; background: var(--teal-100); color: var(--teal-900); font-size: 12px; font-weight: 700; }
+.ficha-destaques { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .ficha-destaques { grid-template-columns: minmax(0, 1fr); } }
+.ficha-destaque { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--neutro-borda); border-radius: 14px; background: #FAFBFC; }
+.ficha-destaque > span { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--neutro-texto-2); }
+.ficha-destaque p { margin: 0; font-size: 14px; font-weight: 300; line-height: 1.55; color: var(--neutro-texto); }
+.fd-objetivo { border-color: var(--indigo-100); background: var(--indigo-50); }
+.fd-objetivo > span { color: var(--indigo-700); }
+.fd-fim { border-color: var(--verde-100); background: var(--verde-50); }
+.fd-fim > span { color: var(--verde-700); }
+.ficha-subtitulo { margin: 4px 0 0; font-size: 15px; font-weight: 700; }
+.pagina-entrevista .ficha-etapas { list-style: none; padding: 0; gap: 20px; }
+.pagina-entrevista .ficha-etapas > li { display: flex; align-items: flex-start; gap: 14px; }
+.ficha-numero { flex: none; width: 32px; height: 32px; border-radius: 999px; display: grid; place-items: center; background: var(--indigo-700); color: #fff; font-size: 14px; font-weight: 700; }
+.pagina-entrevista .ficha-etapa { flex: 1; min-width: 0; gap: 10px; padding: 3px 0 0; border: 0; border-radius: 0; }
+.pagina-entrevista .ficha-etapa h4 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 16px; font-weight: 600; }
+.pagina-entrevista .ficha-resp { padding: 3px 10px; border-radius: 999px; background: #EEF0F3; color: var(--neutro-texto-2); font-size: 12px; font-weight: 500; }
+.pagina-entrevista .ficha-etapa > p { font-size: 14px; line-height: 1.6; color: var(--neutro-texto-2); }
+.ficha-entra-sai { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.ficha-caixa { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--neutro-borda); border-radius: 12px; background: #fff; min-width: 0; }
+.ficha-caixa p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--neutro-texto); }
+.ficha-caixa .ficha-lista { margin: 0; color: var(--neutro-texto); }
+.pagina-entrevista .ficha-rotulo { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: .08em; color: var(--neutro-texto-2); }
+.fc-regra { border-color: var(--teal-100); background: var(--teal-50); }
+.fc-regra .ficha-rotulo { color: var(--teal-700); }
+.fc-excecao { border-color: #FED7AA; background: #FFF7EE; }
+.fc-excecao .ficha-rotulo { color: #9A3412; }
+.pagina-entrevista .descricao-sugerida { font-size: 15px; line-height: 1.75; color: var(--neutro-texto); }
+.pagina-entrevista .descricao-sugerida p { margin-bottom: 14px; }
+/* Ficou em aberto */
+.cartao-em-aberto { border-color: var(--pessego); }
+.lateral-icone.icone-pessego { background: #FFEDD5; color: #9A3412; }
+.pagina-entrevista .lista-pendencias { margin: 0; gap: 10px; }
+.pagina-entrevista .lista-pendencias .check, .pagina-entrevista .lista-pendencias.so-leitura li { display: flex; gap: 12px; padding: 12px 14px; border: 1px solid var(--neutro-borda); border-radius: 12px; background: #fff; font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--neutro-texto); }
+.pagina-entrevista .lista-pendencias.so-leitura li { display: block; }
+.pagina-entrevista .lista-pendencias .check:hover { border-color: var(--teal-300); }
+.pagina-entrevista .lista-pendencias .check.marcada { border-color: var(--teal-500); background: var(--teal-50); }
+.pagina-entrevista .lista-pendencias .check input { width: 18px; height: 18px; accent-color: var(--teal-700); }
+.pagina-entrevista .lista-pendencias small { color: var(--neutro-texto-2); }
+.btn-maia:disabled { background: var(--neutro-borda); border-color: var(--neutro-borda); color: var(--neutro-rotulo); opacity: 1; }
+/* Quem foi entrevistado */
+.quem-pessoa { display: flex; align-items: center; gap: 12px; }
+.quem-pessoa strong { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.pagina-entrevista .cartao-lateral .ficha-resumo { gap: 8px 16px; font-size: 14px; }
+.pagina-entrevista .cartao-lateral .ficha-resumo dt { font-weight: 400; color: var(--neutro-texto-2); }
+.pagina-entrevista .cartao-lateral .ficha-resumo dd { font-weight: 500; color: var(--neutro-texto); }
+/* Conversa transcrita: tempo, quem falou e a fala, em linhas. */
+.conversa-detalhes summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; font-size: 18px; font-weight: 700; }
+.conversa-detalhes summary::-webkit-details-marker { display: none; }
+.conversa-detalhes summary svg { color: var(--neutro-rotulo); transition: transform .15s; }
+.conversa-detalhes[open] summary svg { transform: rotate(180deg); }
+.conversa-lida { gap: 0; font-size: 15px; line-height: 1.6; }
+.conversa-lida p { display: grid; grid-template-columns: 58px 84px minmax(0, 1fr); gap: 12px; align-items: baseline; padding: 12px 0; border-top: 1px solid var(--neutro-borda); }
+.conversa-lida p:first-child { border-top: 0; }
+.conversa-lida p.conversa-divisor { display: block; margin: 0; padding: 12px 0; border-top: 1px dashed var(--line-strong); }
+.conversa-tempo { min-width: 0; margin: 0; padding: 3px 0; border-radius: 7px; background: var(--neutro-fundo); text-align: center; font-size: 12px; color: var(--neutro-texto-2); }
+.conversa-tempo:empty { background: none; }
+.conversa-lida b { font-size: 14px; font-weight: 600; color: var(--indigo-700); overflow-wrap: anywhere; }
+.conversa-lida .ia b { color: var(--teal-700); }
+.conversa-lida b small { display: block; font-size: 11px; font-weight: 400; color: var(--neutro-texto-2); }
+.conversa-fala { min-width: 0; color: var(--neutro-texto); overflow-wrap: anywhere; }
+.conversa-lida .sobreposta { padding-left: 0; border-left: 0; }
+.conversa-lida p.apoio .conversa-fala { font-size: 13px; color: var(--neutro-texto-2); }
+@media (max-width: 560px) { .conversa-lida p { grid-template-columns: 52px minmax(0, 1fr); } .conversa-lida p .conversa-fala { grid-column: 1 / -1; } }
+.entrevista-erro { border-color: var(--rosa-100); background: var(--rosa-50); color: #9F1239; }

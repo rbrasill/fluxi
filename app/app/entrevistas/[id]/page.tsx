@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Fragment, Suspense, useEffect, useRef, useState } from 'react';
+import { corDoAvatar, iniciais } from '@/lib/iniciais';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
@@ -234,20 +235,21 @@ function EntrevistaPage() {
   const podeArquivar = ehGestor(eu) && !arquivada && !e.conteudo_oculto && !e.em_ligacao && e.status !== 'convidada' && e.status !== 'processando' && (tela === 'inicio' || tela === 'resultado');
   const cabecalho = (
     <>
-    <div className="page-head">
-      <div>
-        <nav className="migalha" aria-label="Caminho">
-          {e.processo
-            ? <><Link href={`/app/processos/${e.processo.id}`}>{e.processo.nome}</Link><span>›</span><Link href="/app/entrevistas">Conversas com a Maia</Link></>
-            : <Link href="/app/entrevistas">Conversas com a Maia</Link>}
-        </nav>
-        <h1>{e.tema || 'Entrevista'}</h1>
+    <nav className="trilha" aria-label="Caminho">
+      {e.processo && <><Link href={`/app/processos/${e.processo.id}#entrevistas`}>{e.processo.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+      <Link href="/app/entrevistas">Conversas com a Maia</Link><Icone nome="avancar" tamanho={14} />
+      <span aria-current="page">{e.tema || 'Entrevista'}</span>
+    </nav>
+    <div className="page-head proc-cabecalho entrevista-cabecalho">
+      <span className="proc-avatar avatar-maia" aria-hidden="true"><span /></span>
+      <div className="proc-titulo">
+        <h1>{e.tema || 'Entrevista'}{e.status === 'concluida' && !arquivada && <span className="selo-status selo-concluida">Entrevista concluída</span>}</h1>
         {!e.processo && e.contexto && <p>{e.contexto}</p>}
-        {e.entrevistado && <p className="page-meta">Entrevistado: <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
+        {e.entrevistado && <p className="page-meta">Entrevista com <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
       </div>
       {podeArquivar && (
         <div className="actions">
-          <button type="button" className="btn btn-ghost" disabled={ocupadoArquivo} onClick={() => void arquivar()} title="Tira a entrevista do processo. A conversa e o resultado ficam guardados, e dá para restaurar depois"><Icone nome="arquivar" tamanho={16} />Arquivar</button>
+          <button type="button" className="btn" disabled={ocupadoArquivo} onClick={() => void arquivar()} title="Tira a entrevista do processo. A conversa e o resultado ficam guardados, e dá para restaurar depois"><Icone nome="arquivar" tamanho={16} />Arquivar</button>
         </div>
       )}
     </div>
@@ -404,7 +406,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
   }
 
   return (
-    <div className="page page-estreita">
+    <div className="page pagina-entrevista">
       {cabecalho}
       {aviso && <p className="notice">{aviso}</p>}
       {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span>{erro.repetir && <button className="btn" onClick={erro.repetir}>Tentar de novo</button>}</div>}
@@ -425,83 +427,110 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
         <div className="cartao"><h3 className="sem-margem">Entrevista encerrada sem respostas</h3><p className="notice">Nada do que você falou chegou a ser transcrito, então não há o que gerar. Abra uma nova entrevista.</p></div>
       )}
 
-      {r && (
-        <>
-          {r.entrevistado && (r.entrevistado.area || r.entrevistado.funcao) && (
-            <div className="cartao" id="quem-foi-entrevistado">
-              <h3 className="sem-margem">{minha ? 'Sobre você' : 'Quem foi entrevistado'}</h3>
-              <dl className="ficha-resumo">
-                {!minha && e.entrevistado && <><dt>Nome</dt><dd>{e.entrevistado}</dd></>}
-                {r.entrevistado.area && <><dt>Área</dt><dd>{r.entrevistado.area}</dd></>}
-                {r.entrevistado.funcao && <><dt>O que faz</dt><dd>{r.entrevistado.funcao}</dd></>}
-              </dl>
-            </div>
-          )}
-          <div className="cartao">
-            <h3 className="sem-margem">Descrição do processo</h3>
-            <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />
-          </div>
-
-          <div className="cartao">
-            <h3 className="sem-margem">Ficha do processo</h3>
-            <dl className="ficha-resumo">
-              <dt>Objetivo</dt><dd>{r.ficha.objetivo || '—'}</dd>
-              <dt>Início</dt><dd>{r.ficha.gatilho || '—'}</dd>
-              <dt>Resultado</dt><dd>{r.ficha.resultado || '—'}</dd>
-            </dl>
-            {r.ficha.etapas.length > 0 && (
-              <ol className="ficha-etapas">
-                {r.ficha.etapas.map((et, i) => <li key={i}><FichaEtapa etapa={et} /></li>)}
-              </ol>
-            )}
-            {r.ficha.dificuldades.length > 0 && (
-              <div><span className="ficha-rotulo">Dificuldades relatadas</span><ul className="ficha-lista">{r.ficha.dificuldades.map((d, i) => <li key={i}>{d}</li>)}</ul></div>
-            )}
-          </div>
-
-          {(r.pendencias_outra_pessoa?.length ?? 0) > 0 && (
-            <div className="cartao" id="para-outra-pessoa">
-              <h3 className="sem-margem">Para outra pessoa responder</h3>
-              <p className="notice">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo && !arquivada ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
-              <ul className="ficha-lista">{r.pendencias_outra_pessoa!.map((x, i) => <li key={i}>{x.pergunta} <small>· quem sabe: {x.quem_sabe}</small></li>)}</ul>
-              {gestor && e.processo && !arquivada && (
-                <div className="fluxo-acoes"><Link className="btn" href={`/app/processos/${e.processo.id}#perguntas-para-outros`}><Icone nome="mais" tamanho={16} />Convidar alguém para responder</Link></div>
-              )}
-            </div>
-          )}
-
-          {r.pendencias.length > 0 && (
-            <div className="cartao" id="em-aberto">
-              <h3 className="sem-margem">Ficou em aberto</h3>
-              {podeEscolher ? (
-                <>
-                  <p className="notice">{minha
-                    ? 'Marque o que você quer responder e volte à ligação: a Maia pergunta só esses pontos e o resultado é refeito com a conversa inteira.'
-                    : `Marque o que ${primeiroNome} deve responder: quando abrir a entrevista, a Maia pergunta só esses pontos e o resultado é refeito.`}</p>
-                  <ul className="ficha-lista lista-pendencias">
-                    {r.pendencias.map((p, i) => (
-                      <li key={i}><label className="check"><input type="checkbox" checked={escolhidas.includes(p)} onChange={() => setEscolhidas((x) => (x.includes(p) ? x.filter((y) => y !== p) : [...x, p]))} />{p}</label></li>
-                    ))}
-                  </ul>
-                  {erroRetomar && <div className="entrevista-erro" role="alert"><span>{erroRetomar}</span></div>}
-                  <div className="fluxo-acoes">
-                    <button className="btn btn-primary" disabled={!escolhidas.length || marcando} onClick={() => void retomar()}>
-                      <Icone nome="microfone" tamanho={16} />{marcando ? 'Marcando…' : minha ? 'Voltar à ligação para responder' : `Pedir para ${primeiroNome} responder`}
-                    </button>
+      <div className={r ? 'proc-grade entrevista-grade' : 'proc-coluna'}>
+        <div className="proc-coluna">
+          {r && (
+            <>
+              <section className="cartao" aria-labelledby="titulo-ficha">
+                <div className="sec-titulo">
+                  <div className="sec-cabeca">
+                    <h3 id="titulo-ficha">Ficha do processo</h3>
+                    <p>Montada pela Maia a partir da conversa.</p>
                   </div>
-                </>
-              ) : (
-                <>
-                  <p className="notice">{arquivada ? 'Com a entrevista arquivada, não dá para pedir complemento destes pontos. Restaure a entrevista para isso.' : 'Perguntas para uma próxima conversa.'}</p>
-                  <ul className="ficha-lista">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
-                </>
-              )}
-            </div>
-          )}
-        </>
-      )}
+                  <span className="selo-maia"><Icone nome="ia" tamanho={14} />Gerada pela Maia</span>
+                </div>
+                <div className="ficha-destaques">
+                  <div className="ficha-destaque fd-objetivo"><span><Icone nome="alvo" tamanho={14} />Objetivo</span><p>{r.ficha.objetivo || '—'}</p></div>
+                  <div className="ficha-destaque fd-inicio"><span><Icone nome="seta-direita" tamanho={14} />Começa quando</span><p>{r.ficha.gatilho || '—'}</p></div>
+                  <div className="ficha-destaque fd-fim"><span><Icone nome="check" tamanho={14} />Termina com</span><p>{r.ficha.resultado || '—'}</p></div>
+                </div>
+                {r.ficha.etapas.length > 0 && (
+                  <>
+                    <h4 className="ficha-subtitulo">Etapas</h4>
+                    <ol className="ficha-etapas">
+                      {r.ficha.etapas.map((et, i) => <li key={i}><span className="ficha-numero" aria-hidden="true">{i + 1}</span><FichaEtapa etapa={et} /></li>)}
+                    </ol>
+                  </>
+                )}
+                {r.ficha.dificuldades.length > 0 && (
+                  <div className="ficha-caixa fc-excecao"><span className="ficha-rotulo">Dificuldades relatadas</span><ul className="ficha-lista">{r.ficha.dificuldades.map((d, i) => <li key={i}>{d}</li>)}</ul></div>
+                )}
+              </section>
 
-      <ConversaTranscrita e={e} minha={minha} aberta={!r} />
+              <section className="cartao" aria-labelledby="titulo-descricao">
+                <div className="sec-titulo">
+                  <h3 id="titulo-descricao">Descrição do processo</h3>
+                  <span className="sec-conta">Texto corrido escrito pela Maia</span>
+                </div>
+                <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />
+              </section>
+            </>
+          )}
+          <ConversaTranscrita e={e} minha={minha} aberta={!r} />
+        </div>
+
+        {r && (
+          <aside className="proc-coluna">
+            {r.pendencias.length > 0 && (
+              <section className="cartao cartao-lateral cartao-em-aberto" id="em-aberto" aria-labelledby="titulo-em-aberto">
+                <div className="lateral-topo">
+                  <span className="lateral-icone icone-pessego"><Icone nome="duvida" tamanho={20} /></span>
+                  <div className="lateral-titulo">
+                    <h3 id="titulo-em-aberto">Ficou em aberto</h3>
+                    <span>{r.pendencias.length} {r.pendencias.length === 1 ? 'dúvida da Maia' : 'dúvidas da Maia'}</span>
+                  </div>
+                </div>
+                {podeEscolher ? (
+                  <>
+                    <p className="lateral-texto">{minha
+                      ? 'Marque o que você quer responder e volte à ligação: a Maia pergunta só esses pontos e o resultado é refeito com a conversa inteira.'
+                      : `Marque o que ${primeiroNome} deve responder: quando abrir a entrevista, a Maia pergunta só esses pontos e o resultado é refeito.`}</p>
+                    <ul className="ficha-lista lista-pendencias">
+                      {r.pendencias.map((p, i) => (
+                        <li key={i}><label className={`check${escolhidas.includes(p) ? ' marcada' : ''}`}><input type="checkbox" checked={escolhidas.includes(p)} onChange={() => setEscolhidas((x) => (x.includes(p) ? x.filter((y) => y !== p) : [...x, p]))} />{p}</label></li>
+                      ))}
+                    </ul>
+                    {erroRetomar && <div className="entrevista-erro" role="alert"><span>{erroRetomar}</span></div>}
+                    <button className="btn btn-maia btn-largo" disabled={!escolhidas.length || marcando} onClick={() => void retomar()}>
+                      <Icone nome="microfone" tamanho={16} />{marcando ? 'Marcando…' : !escolhidas.length ? 'Marque ao menos uma dúvida' : minha ? 'Voltar à ligação para responder' : `Pedir para ${primeiroNome} responder`}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="lateral-texto">{arquivada ? 'Com a entrevista arquivada, não dá para pedir complemento destes pontos. Restaure a entrevista para isso.' : 'Perguntas para uma próxima conversa.'}</p>
+                    <ul className="ficha-lista lista-pendencias so-leitura">{r.pendencias.map((p, i) => <li key={i}>{p}</li>)}</ul>
+                  </>
+                )}
+              </section>
+            )}
+
+            {r.entrevistado && (r.entrevistado.area || r.entrevistado.funcao) && (
+              <section className="cartao cartao-lateral" id="quem-foi-entrevistado" aria-labelledby="titulo-quem">
+                <h3 id="titulo-quem">{minha ? 'Sobre você' : 'Quem foi entrevistado'}</h3>
+                {!minha && e.entrevistado && (
+                  <div className="quem-pessoa"><span className={`avatar avatar-${corDoAvatar(e.entrevistado)}`} aria-hidden="true">{iniciais(e.entrevistado)}</span><strong>{e.entrevistado}</strong></div>
+                )}
+                <dl className="ficha-resumo">
+                  {r.entrevistado.area && <><dt>Área</dt><dd>{r.entrevistado.area}</dd></>}
+                  {r.entrevistado.funcao && <><dt>O que faz</dt><dd>{r.entrevistado.funcao}</dd></>}
+                  {e.convidador && e.convidado_em && <><dt>Convidado por</dt><dd>{e.convidador} · {new Date(e.convidado_em).toLocaleDateString('pt-BR')}</dd></>}
+                </dl>
+              </section>
+            )}
+
+            {(r.pendencias_outra_pessoa?.length ?? 0) > 0 && (
+              <section className="cartao cartao-lateral" id="para-outra-pessoa" aria-labelledby="titulo-outra-pessoa">
+                <h3 id="titulo-outra-pessoa">Para outra pessoa responder</h3>
+                <p className="lateral-texto">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo && !arquivada ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
+                <ul className="ficha-lista lista-pendencias so-leitura">{r.pendencias_outra_pessoa!.map((x, i) => <li key={i}>{x.pergunta} <small>· quem sabe: {x.quem_sabe}</small></li>)}</ul>
+                {gestor && e.processo && !arquivada && (
+                  <Link className="btn btn-largo" href={`/app/processos/${e.processo.id}#perguntas-para-outros`}><Icone nome="mais" tamanho={16} />Convidar alguém para responder</Link>
+                )}
+              </section>
+            )}
+          </aside>
+        )}
+      </div>
 
       <div className="fluxo-acoes">
         <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar às entrevistas'}</Link>
@@ -517,7 +546,7 @@ function ConversaTranscrita({ e, minha, aberta, titulo = 'Conversa transcrita' }
   const quem = minha ? 'Você' : e.entrevistado?.trim().split(/\s+/)[0] ?? 'Entrevistado';
   return (
     <details className="cartao conversa-detalhes" open={aberta}>
-      <summary>{titulo} ({e.turnos.length} falas)</summary>
+      <summary><span>{titulo}</span><Icone nome="seta-baixo" tamanho={18} /></summary>
       {e.audios.map((u, i) => <audio key={u} controls src={u} className="conversa-audio" preload="none" aria-label={`Gravação ${i + 1}`} />)}
       <div className="conversa-lida">
         {e.turnos.map((t, i) => (
@@ -526,8 +555,9 @@ function ConversaTranscrita({ e, minha, aberta, titulo = 'Conversa transcrita' }
               <p className="conversa-divisor">Continuação para fechar {e.complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${e.complemento.pendencias.length} pontos que ficaram`} em aberto · {new Date(e.complemento.escolhidas_em).toLocaleDateString('pt-BR')}</p>
             )}
             <p className={`${t.quem}${t.sobreposta ? ' sobreposta' : ''}${t.apoio ? ' apoio' : ''}`}>
-              {t.inicio_ms !== undefined && <span className="conversa-tempo">{mmss(t.inicio_ms / 1000)}</span>}
-              <b>{t.quem === 'ia' ? 'Maia' : quem}{t.sobreposta ? ' (por cima da Maia)' : ''}:</b> {limparMarcasDeSom(t.texto)}
+              <span className="conversa-tempo">{t.inicio_ms !== undefined ? mmss(t.inicio_ms / 1000) : ''}</span>
+              <b>{t.quem === 'ia' ? 'Maia' : quem}{t.sobreposta ? <small> (por cima da Maia)</small> : null}</b>
+              <span className="conversa-fala">{limparMarcasDeSom(t.texto)}</span>
             </p>
           </Fragment>
         ))}
@@ -608,14 +638,20 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
 }
 
 function FichaEtapa({ etapa }: { etapa: Etapa }) {
-  const listas: [string, string[]][] = [['Ferramentas', etapa.ferramentas], ['Entradas', etapa.entradas], ['Saídas', etapa.saidas], ['Regras', etapa.regras], ['Exceções', etapa.excecoes]];
+  const lista = (v: string[]) => (v.length === 1 ? <p>{v[0]}</p> : <ul className="ficha-lista">{v.map((x, i) => <li key={i}>{x}</li>)}</ul>);
   return (
     <div className="ficha-etapa">
-      <h4>{etapa.nome}{etapa.responsavel && <span className="ficha-resp"> · {etapa.responsavel}</span>}</h4>
+      <h4>{etapa.nome}{etapa.responsavel && <span className="ficha-resp">{etapa.responsavel}</span>}</h4>
       {etapa.descricao && <p>{etapa.descricao}</p>}
-      {listas.filter(([, v]) => v.length).map(([rotulo, v]) => (
-        <div key={rotulo}><span className="ficha-rotulo">{rotulo}</span><ul className="ficha-lista">{v.map((x, i) => <li key={i}>{x}</li>)}</ul></div>
-      ))}
+      {(etapa.entradas.length > 0 || etapa.saidas.length > 0) && (
+        <div className="ficha-entra-sai">
+          {etapa.entradas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo"><Icone nome="entra" tamanho={13} />Entra</span>{lista(etapa.entradas)}</div>}
+          {etapa.saidas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo"><Icone nome="sai" tamanho={13} />Sai</span>{lista(etapa.saidas)}</div>}
+        </div>
+      )}
+      {etapa.ferramentas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo">Ferramentas</span>{lista(etapa.ferramentas)}</div>}
+      {etapa.regras.length > 0 && <div className="ficha-caixa fc-regra"><span className="ficha-rotulo"><Icone nome="balanca" tamanho={14} />{etapa.regras.length === 1 ? 'Regra de negócio' : 'Regras de negócio'}</span>{lista(etapa.regras)}</div>}
+      {etapa.excecoes.length > 0 && <div className="ficha-caixa fc-excecao"><span className="ficha-rotulo">{etapa.excecoes.length === 1 ? 'Exceção' : 'Exceções'}</span>{lista(etapa.excecoes)}</div>}
     </div>
   );
 }
