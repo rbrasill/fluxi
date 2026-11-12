@@ -37,6 +37,13 @@ const abaDoEndereco = (): Aba => {
   return h === 'pops' || h === 'entrevistas' ? h : 'visao';
 };
 
+// Filtro da aba POPs (decisão 78). "Arquivados" só aparece quando há algum.
+type FiltroPop = 'todos' | 'rascunhos' | 'publicados' | 'arquivados';
+const FILTROS_POP: { id: FiltroPop; rotulo: string }[] = [
+  { id: 'todos', rotulo: 'Todos' }, { id: 'rascunhos', rotulo: 'Rascunhos' }, { id: 'publicados', rotulo: 'Publicados' }, { id: 'arquivados', rotulo: 'Arquivados' },
+];
+const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 /** O desenho de enfeite do cartão do fluxograma, para quando ainda não há miniatura. */
 function FluxoIlustrado() {
   return (
@@ -68,6 +75,8 @@ function ProcessoPage() {
   const [entrevistas, setEntrevistas] = useState<number | null>(null); // quantas entrevistas ativas (vem da seção)
   const [pedidoDeConvite, setPedidoDeConvite] = useState(0);
   const [codigoCopiado, setCodigoCopiado] = useState(false);
+  const [filtroPop, setFiltroPop] = useState<FiltroPop>('todos');
+  const [buscaPop, setBuscaPop] = useState('');
   const gestor = ehGestor(useEu());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -177,6 +186,15 @@ function ProcessoPage() {
   const fluxo = p.fluxograma;
 
   const semEntrevistas = entrevistas === 0;
+  const contagemPops: Record<FiltroPop, number> = {
+    todos: pops.length, rascunhos: pops.filter((o) => o.status === 'rascunho').length,
+    publicados: pops.filter((o) => o.status === 'publicado').length, arquivados: popsArquivados.length,
+  };
+  const filtroAtual: FiltroPop = filtroPop === 'arquivados' && !popsArquivados.length ? 'todos' : filtroPop;
+  const termoPop = semAcento(buscaPop.trim());
+  const popsVisiveis = (filtroAtual === 'arquivados' ? popsArquivados : pops)
+    .filter((o) => filtroAtual === 'rascunhos' ? o.status === 'rascunho' : filtroAtual === 'publicados' ? o.status === 'publicado' : true)
+    .filter((o) => !termoPop || semAcento(`${o.nome} ${o.identificacao}`).includes(termoPop));
   // Resumo: "Atualizado" é a alteração mais recente entre o processo, o fluxograma e os POPs ativos.
   const publicados = pops.filter((o) => o.status === 'publicado').length;
   const atualizado = [p.atualizado_em, fluxo?.atualizado_em, ...pops.map((o) => o.atualizado_em)].filter((x): x is string => !!x).sort().at(-1)!;
@@ -334,43 +352,78 @@ function ProcessoPage() {
         </aside>
       </div>
 
-      {/* POPs: a visão micro, um POP por atividade. */}
-      <section className="secao-processo" role="tabpanel" id="painel-pops" aria-labelledby="aba-pops" hidden={aba !== 'pops'}>
-        <div className="secao-head">
-          <h2><Icone nome="pop" tamanho={18} />POPs do processo</h2>
+      {/* POPs (decisão 78): a visão micro, um POP por atividade. Filtro por situação, busca e, por linha, o que falta
+          (sem identificação), os downloads e a ação principal. */}
+      <section className="cartao lista-pops-cartao" role="tabpanel" id="painel-pops" aria-labelledby="aba-pops" hidden={aba !== 'pops'}>
+        <div className="lista-pops-topo">
+          <div>
+            <h2>POPs do processo</h2>
+            <p>Procedimentos operacionais padrão ligados a este processo.</p>
+          </div>
           {!arquivado && <button className="btn btn-primary" onClick={() => setCriandoPop(true)}><Icone nome="mais" />Novo POP</button>}
         </div>
-        {pops.length === 0 && (
-          <p className="notice">{arquivado ? 'Nenhum POP ativo neste processo.' : 'Nenhum POP ainda. Cada POP ensina a executar uma atividade do processo: crie um e escreva o passo a passo, gravando a tela se quiser.'}</p>
+        {p.pops.length > 0 && (
+          <div className="lista-pops-filtros">
+            <div className="segmented filtro-pops" role="tablist" aria-label="Filtrar POPs">
+              {FILTROS_POP.filter((f) => f.id !== 'arquivados' || popsArquivados.length > 0).map((f) => (
+                <button key={f.id} type="button" role="tab" aria-selected={filtroAtual === f.id} onClick={() => setFiltroPop(f.id)}>
+                  {f.rotulo}<span className="conta-aba">{contagemPops[f.id]}</span>
+                </button>
+              ))}
+            </div>
+            <label className="campo-busca busca-pops">
+              <Icone nome="busca" tamanho={18} />
+              <input value={buscaPop} onChange={(e) => setBuscaPop(e.target.value)} placeholder="Buscar POP" aria-label="Buscar POP" />
+            </label>
+          </div>
         )}
-        <div className="lista-pops">
-          {pops.map((o) => (
-            <article key={o.id} className="linha-pop pop-destaque">
-              <span className="pop-icone"><Icone nome="rota" tamanho={22} /></span>
-              <Link href={`/app/pops/${o.id}`} className="pop-nome">
-                <strong>{o.nome}</strong>
-                <span>{o.identificacao || 'Sem identificação'} · Versão {o.versao} · atualizado em {data(o.atualizado_em)}</span>
-              </Link>
-              <SeloStatus status={o.status as StatusPop} offline={!o.link_publico_ativo} />
-              <a className="btn btn-ghost" href={`/api/pops/${o.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
-              <a className="btn btn-ghost" href={`/api/pops/${o.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
-              {o.status === 'rascunho' && !arquivado
-                ? <Link className="btn" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou">Continuar</Link>
-                : <Link className="btn" href={`/app/pops/${o.id}`}>Abrir POP</Link>}
-            </article>
-          ))}
-          {popsArquivados.map((o) => (
-            <article key={o.id} className="linha-pop arquivada">
-              <span className="pop-icone"><Icone nome="arquivar" tamanho={20} /></span>
-              <Link href={`/app/pops/${o.id}`} className="pop-nome">
-                <strong>{o.nome}</strong>
-                <span>Arquivado em {data(o.arquivado_em!)} · Versão {o.versao}</span>
-              </Link>
-              <SeloStatus status={o.status as StatusPop} offline={!o.link_publico_ativo} />
-              {!arquivado && <button type="button" className="btn btn-ghost" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
-            </article>
-          ))}
-        </div>
+        {p.pops.length === 0 ? (
+          <p className="lista-pops-vazia">{arquivado ? 'Nenhum POP neste processo.' : 'Nenhum POP ainda. Cada POP ensina a executar uma atividade do processo: crie um e escreva o passo a passo, gravando a tela se quiser.'}</p>
+        ) : popsVisiveis.length === 0 ? (
+          <p className="lista-pops-vazia">{buscaPop.trim() ? `Nenhum POP com “${buscaPop.trim()}”.` : 'Nenhum POP nesta situação.'}</p>
+        ) : (
+          <ul className="pops-linhas">
+            {popsVisiveis.map((o) => {
+              const arq = !!o.arquivado_em;
+              const rascunho = o.status === 'rascunho';
+              return (
+                <li key={o.id} className={`pop-linha${arq ? ' arquivada' : ''}`}>
+                  <span className={`pop-linha-icone ${arq ? 'pi-arquivado' : rascunho ? 'pi-rascunho' : 'pi-publicado'}`}><Icone nome={arq ? 'arquivar' : 'pop'} tamanho={20} /></span>
+                  <div className="pop-linha-info">
+                    <div className="pop-linha-nome">
+                      <Link href={`/app/pops/${o.id}`}>{o.nome}</Link>
+                      {arq ? <span className="selo-status selo-arquivada">Arquivado</span> : <SeloStatus status={o.status as StatusPop} offline={!o.link_publico_ativo} />}
+                    </div>
+                    <p className="pop-linha-meta">
+                      {o.identificacao
+                        ? <span className="pop-linha-codigo">{o.identificacao}</span>
+                        : <span className="sem-codigo"><Icone nome="alerta" tamanho={15} />Sem identificação{!arquivado && !arq && <> <Link href={`/app/pops/${o.id}#identificacao`}>Definir</Link></>}</span>}
+                      <span>v{o.versao}</span>
+                      <span>{arq ? `arquivado em ${data(o.arquivado_em!)}` : `atualizado em ${data(o.atualizado_em)}`}</span>
+                    </p>
+                  </div>
+                  <div className="pop-linha-acoes">
+                    {arq ? (
+                      !arquivado && <button type="button" className="btn" onClick={() => restaurarPopArquivado(o.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>
+                    ) : (
+                      <>
+                        <span className="grupo-baixar">
+                          <Icone nome="baixar" tamanho={16} />
+                          <a href={`/api/pops/${o.id}/pdf`} title="Baixar PDF">PDF</a>
+                          <a href={`/api/pops/${o.id}/docx`} title="Baixar DOCX">DOCX</a>
+                        </span>
+                        {rascunho && !arquivado
+                          ? <Link className="btn btn-primary" href={`/app/pops/${o.id}?retomar=1`} title="Abre o POP no ponto em que você parou"><Icone nome="marcar" tamanho={16} />Continuar edição</Link>
+                          : <Link className="btn" href={`/app/pops/${o.id}`}>Abrir POP<Icone nome="avancar" tamanho={16} /></Link>}
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {p.pops.length > 0 && <p className="lista-pops-rodape">Mostrando {popsVisiveis.length} de {contagemPops[filtroAtual]} {contagemPops[filtroAtual] === 1 ? 'POP' : 'POPs'}</p>}
       </section>
 
       {/* Entrevistas com a Maia sobre este processo (decisão 53): por convite, uma por pessoa. Fica sempre montada,

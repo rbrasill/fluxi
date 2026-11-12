@@ -593,6 +593,16 @@ Segunda tela do redesign (referência em `docs/design/referencias/processo.webp`
 - **Ficou de fora, a pedido do Rafael:** o cartão "Maturidade do processo".
 - **Ficou para depois:** "Regras de negócio" (aba e cartão). É funcionalidade nova: a Maia extrair regras das entrevistas para o gestor confirmar pede tabela, extração e tela próprias. A barra fixa de formatação da descrição também não entrou: a barra continua aparecendo ao clicar no texto.
 
+## 78. Redesign: aba POPs da página do processo (12/11/2026)
+
+Referência em `docs/design/referencias/processo-pops.webp`. Só com o que já temos, sem mudar o banco.
+
+- **Um cartão** com "POPs do processo", a explicação e o botão "Novo POP"; embaixo, o filtro por situação (**Todos**, **Rascunhos**, **Publicados**, cada um com a contagem; **Arquivados** só aparece quando há algum) e a busca por nome ou identificação. No rodapé, "Mostrando X de Y POPs".
+- **Cada linha:** ícone na cor da situação (pêssego no rascunho, verde no publicado, cinza no arquivado), nome com o selo (Rascunho, Publicado ou Publicado · offline), e a linha de dados: identificação (ou **"Sem identificação · Definir"**, em pêssego, que leva ao campo no POP), versão e data. À direita, PDF e DOCX juntos num grupo e a ação: **"Continuar edição"** (índigo, retoma onde parou) no rascunho, **"Abrir POP"** no publicado, **"Restaurar"** no arquivado.
+- **"Sem código" virou "Sem identificação"**: no INCFlow o "código" é o identificador interno; o que falta preencher é a "Identificação POP" (ex.: POP-001), que é o que a linha mostra.
+- **Selos no sistema de cores** (vale para o app todo): Rascunho em pêssego, Publicado em verde, Publicado · offline em rosa.
+- **Não entrou:** a aba "Regras de negócio" da imagem (mesma avaliação da decisão 77).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

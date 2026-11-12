@@ -114,6 +114,15 @@ function EditorPop() {
     setTimeout(() => setDestaque(null), 3000);
   }, []);
 
+  // "Definir" na lista de POPs do processo (decisão 78) traz para cá com #identificacao: vai direto ao campo.
+  const foiParaIdentificacao = useRef(false);
+  useEffect(() => {
+    if (!pop || foiParaIdentificacao.current || location.hash !== '#identificacao') return;
+    foiParaIdentificacao.current = true;
+    const t = setTimeout(() => { const el = document.getElementById('identificacao'); el?.scrollIntoView({ block: 'center' }); el?.focus(); }, 150);
+    return () => clearTimeout(t);
+  }, [pop]);
+
   useEffect(() => {
     if (!pop?.posicao || !retomar || restaurado.current) return;
     restaurado.current = true;
@@ -441,7 +450,7 @@ function EditorPop() {
         <h2>Procedimento</h2>
         <div className="grade-3">
           <label className="field">Área<input value={c.area} onChange={(e) => setConteudo({ area: e.target.value })} placeholder="Área responsável" /></label>
-          <label className="field">Identificação POP<input value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Sigla da área + número (XXXX-001)" /></label>
+          <label className="field">Identificação POP<input id="identificacao" value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Sigla da área + número (XXXX-001)" /></label>
           <label className="field">Versão<input value={pop.versao} onChange={(e) => alterar({ versao: e.target.value })} /></label>
           <label className="field">Código do processo<input value={pop.codigo} readOnly className="somente-leitura" /></label>
           <label className="field">Data de criação<input value={new Date(pop.criado_em).toLocaleDateString('pt-BR')} readOnly className="somente-leitura" /></label>
