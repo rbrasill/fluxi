@@ -559,6 +559,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Logo:** o logo do menu tem o nome em branco, para fundo escuro. No cartão branco entra `public/logo-incflow-escuro.png`, o mesmo logo com o nome na cor do texto, gerado por `scripts/gerar-logo-escuro.mjs`.
 - **Celular:** o painel com a ilustração vai para cima, menor, e o formulário ocupa a largura toda.
 - **A ilustração** (`public/login-ilustracao.png`) tem 450 × 450 px: em telas de alta densidade fica um pouco suave. Uma versão com 900 px ou mais deixaria mais nítida, é só trocar o arquivo.
+- **Substituída pela decisão 76** (o login do redesign).
 
 ## 74. Entrevista imediata: o administrador abre a sua na hora, sem convite (12/11/2026)
 - **Pedido do Rafael:** quem já conhece o processo e quer ser entrevistado pela Maia precisava se convidar, abrir o e-mail do convite e só então entrar. O fluxo tem que ser instantâneo, sem o autoconvite. Por enquanto, só para administradores.
@@ -573,6 +574,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **O sistema:** quatro famílias com papel fixo (**índigo** = ação e marca, **teal** = Maia e IA, **verde** = concluído e no ar, **rosa e pêssego** = atenção) sobre uma base de neutros (80% da tela). Seis regras de uso (um só botão índigo sólido por área, teal só para IA, verde, rosa e pêssego só para estado, texto sempre em tom 700 ou mais escuro, selos com fundo 100, texto 700 e ponto 500, botão sólido teal ou rosa só nos tons 700/600). Tudo em `docs/design/sistema-de-cores.md`, com a referência em `docs/design/referencias/`.
 - **O que muda em relação a hoje:** a cor de ação deixa de ser o azul-petróleo (`#005f73`) e passa a ser o índigo (`#4338CA`); o teal fica reservado ao que a Maia e a IA fazem. O fluxograma continua com as cores da biblioteca (decisão 62) e a fonte continua a Plus Jakarta Sans (decisão 71).
 - **Como entra:** as cores estão como variáveis em `app/globals.css` e são aplicadas tela a tela, à medida que as telas do redesign chegam e são validadas.
+
+## 76. Redesign: tela de login (12/11/2026)
+- **Pedido do Rafael:** a tela de login do redesign, no sistema de cores novo (decisão 75), com a ilustração que ele mandou (`docs/design/referencias/login.webp` é a referência), ajustada às cores do sistema; **o logo continua o original** (o símbolo em degradê com o nome), não o quadrado índigo com "∞" do desenho.
+- **Como ficou:** fundo neutro (`#F6F7F9`) e um cartão branco em duas partes. À esquerda, o logo, "Entrar no INCFlow", a explicação, o campo "E-mail corporativo" com borda, o botão índigo na largura toda (cinza enquanto o e-mail está vazio), a caixa "Acesso sem senha" com o escudo e, embaixo, a ajuda "Não consegue entrar? Só pessoas cadastradas têm acesso. Fale com um administrador da sua empresa." À direita, o painel índigo-claro (`#E0E7FF`) com a ilustração e a frase "Gestão de conhecimento do estratégico ao operacional". Foco dos campos com o anel índigo (`#A5B4FC`), erros em rosa 600, links em índigo 700. A etapa do código segue o mesmo desenho.
+- **A ilustração** (`public/login-ilustracao.svg`, vetorial, nítida em qualquer tela) é a do Rafael com as cores trocadas pelas do sistema por `scripts/recolorir-ilustracao-login.py`: contornos e moldura em índigo 950, círculos e roupas em índigo 700 e 500, detalhes em índigo 300 e 100, o diamante, os terminais, a lâmpada e as placas em pêssego e rosa 400, e sem o fundo branco. A imagem 3D da decisão 73 saiu.
+- **O que não muda:** o fluxo (e-mail, código de 6 dígitos, reenviar e trocar e-mail) e a fonte (Plus Jakarta Sans). No celular, o painel com a ilustração e a frase vai para cima.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

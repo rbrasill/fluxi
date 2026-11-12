@@ -6,8 +6,9 @@ import { destinoSeguro } from '@/lib/auth/sessao';
 
 // Login sem senha (decisão 50): e-mail corporativo → código de 6 dígitos por e-mail → entra por 6 horas.
 // Duas etapas na mesma página. Depois de entrar, recarga completa para o porteiro enxergar o cookie novo.
-// O desenho (decisão 73): um cartão em duas partes sobre um fundo em degradê; à esquerda, o logo e o formulário;
-// à direita, um painel lilás com a ilustração 3D do processo, que avança sobre a parte branca.
+// O desenho (decisão 76, no sistema de cores da decisão 75): um cartão em duas partes sobre o fundo neutro. À esquerda,
+// o logo, o formulário, o aviso de acesso sem senha e a ajuda; à direita, o painel índigo-claro com a ilustração e a
+// frase do INCFlow.
 
 const CARENCIA_S = 60;
 
@@ -74,22 +75,26 @@ export default function Login() {
           {etapa === 'email' ? (
             <form onSubmit={pedirCodigo} className="login-form">
               <div className="login-topo">
-                <p className="login-saudacao">Boas-vindas ao INCFlow</p>
-                <h1>Entrar</h1>
-                <p className="login-sub">Digite o seu e-mail corporativo. Vamos mandar um código de acesso.</p>
+                <h1>Entrar no INCFlow</h1>
+                <p className="login-sub">Digite seu e-mail corporativo. Vamos mandar um código de acesso.</p>
               </div>
               <label className="login-campo">
-                <span>E-mail</span>
+                <span>E-mail corporativo</span>
                 <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@meuinc.com.br" required autoFocus />
               </label>
               {erro && <p className="login-erro" role="alert">{erro}</p>}
               <button className="login-botao" disabled={enviando || !email.trim()}>{enviando ? 'Enviando…' : 'Enviar código'}<Icone nome="seta-direita" tamanho={18} /></button>
-              <p className="login-nota">Acesso sem senha: a cada entrada, você recebe um código no seu e-mail.</p>
+              <div className="login-seguro">
+                <span className="login-seguro-icone" aria-hidden="true"><Icone nome="escudo" tamanho={18} /></span>
+                <div>
+                  <strong>Acesso sem senha</strong>
+                  <p>A cada entrada, você recebe um código novo no seu e-mail.</p>
+                </div>
+              </div>
             </form>
           ) : (
             <form onSubmit={entrar} className="login-form">
               <div className="login-topo">
-                <p className="login-saudacao">Quase lá</p>
                 <h1>Digite o código</h1>
                 <p className="login-sub">{aviso} Ele vale por 10 minutos. Enviado para <strong>{email.trim().toLowerCase()}</strong>.</p>
               </div>
@@ -110,9 +115,11 @@ export default function Login() {
               </div>
             </form>
           )}
+          <p className="login-ajuda">Não consegue entrar? Só pessoas cadastradas têm acesso. Fale com um administrador da sua empresa.</p>
         </div>
-        <div className="login-painel" aria-hidden="true">
-          <Image src="/login-ilustracao.png" alt="" width={450} height={450} priority className="login-ilustracao" />
+        <div className="login-painel">
+          <Image src="/login-ilustracao.svg" alt="" width={2475} height={1650} priority unoptimized className="login-ilustracao" />
+          <p className="login-frase">Gestão de conhecimento do estratégico ao operacional</p>
         </div>
       </div>
     </main>
