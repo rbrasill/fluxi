@@ -1746,3 +1746,16 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
   .ligacao-topo { padding: 10px 16px; }
   .ligacao-palco { padding: 20px 16px 24px; }
 }
+
+/* Abas do editor do POP (decisão 87): Conteúdo e Recursos (o fluxograma do processo e as gravações de tela). */
+.abas button svg { flex: none; }
+.abas-resumo { margin-left: auto; align-self: center; padding-left: 16px; font-size: 14px; color: var(--neutro-texto-2); white-space: nowrap; }
+.pop-recursos { gap: 24px; }
+.pop-recursos .gravacoes-lista li { padding: 14px 0; }
+.pop-recursos .gravacao-linha { flex-wrap: wrap; }
+.pop-recursos .gravacao-linha .btn { height: 38px; padding: 0 14px; font-size: 14px; }
+.pop-recursos .gravacao-texto { flex: 1 1 220px; }
+.pop-recursos .gravacao-texto strong { font-size: 15px; }
+.recursos-vazio { margin: 0; padding: 22px; border: 1px dashed var(--line-strong); border-radius: 14px; text-align: center; font-size: 14px; font-weight: 300; color: var(--neutro-texto-2); }
+.pop-recursos .sec-titulo .rec-dot, .pop-recursos .gravacao-linha .rec-dot { width: 9px; height: 9px; background: var(--rosa-600); }
+@media (max-width: 700px) { .abas-resumo { display: none; } }

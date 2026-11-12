@@ -680,6 +680,14 @@ Referência em `docs/design/referencias/ligacao.webp`. Sem mudar o banco nem o j
 - **Microfone desligado:** a Maia não ouve nada e a tela avisa. As proteções de custo continuam valendo (muito tempo em silêncio, a ligação pausa sozinha).
 - **Não entrou, porque o INCFlow não tem esse dado ao vivo:** o **"Roteiro da conversa"** (os tópicos marcados conforme a conversa anda) e os selos **"Regra de negócio identificada"** nas falas. Os dois pedem que a Maia avise, durante a ligação, em que tópico está e o que reconheceu; é uma entrega própria, junto com as regras de negócio (decisão 77).
 
+## 87. Editor do POP em abas: Conteúdo e Recursos (12/11/2026)
+
+- O editor do POP ganhou duas abas, no mesmo estilo das abas do processo: **Conteúdo** (identificação, objetivo, envolvidos, procedimentos, referências, histórico e a coluna lateral) e **Recursos**.
+- **Recursos** reúne o que apoia o POP: o fluxograma do processo e as gravações de tela (gravar, abrir, continuar e levar as telas para os passos). O número na aba é a soma das gravações com o fluxograma, quando existe.
+- A aba fica no endereço (`#recursos`), então recarregar ou compartilhar o link abre no mesmo lugar. O índice "Nesta página" troca de aba sozinho quando o destino está na outra.
+- À direita das abas fica o resumo "N etapas · N passos".
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

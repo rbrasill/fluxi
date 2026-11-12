@@ -56,6 +56,7 @@ function EditorPop() {
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
+  const [aba, setAba] = useState<'conteudo' | 'recursos'>('conteudo'); // abas do editor (decisão 87)
   const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
   const [publicando, setPublicando] = useState(false);
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta sessão depois de publicar
@@ -103,9 +104,19 @@ function EditorPop() {
     return () => { window.removeEventListener('pagehide', aoSair); salvarPosicao(true); };
   }, [salvarPosicao]);
 
+  const irParaAba = useCallback((a: 'conteudo' | 'recursos') => {
+    setAba(a);
+    try { history.replaceState(null, '', a === 'conteudo' ? location.pathname + location.search : '#recursos'); } catch { /* sem histórico: a aba muda só na tela */ }
+  }, []);
+  useEffect(() => { if (location.hash === '#recursos') setAba('recursos'); }, []);
+
   const irParaPosicao = useCallback((p: Posicao) => {
     const el = document.getElementById(`pos-${p.chave}`);
     if (!el) return;
+    // As gravações ficam na aba Recursos; todo o resto, na aba Conteúdo. A aba certa vem para a frente antes de rolar.
+    const destino = p.chave === 'gravacoes' ? 'recursos' : 'conteudo';
+    setAba(destino);
+    if (el.closest('[hidden]')) { setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
     (el.querySelector('[contenteditable="true"], textarea, input:not([readonly])') as HTMLElement | null)?.focus({ preventScroll: true });
     setDestaque(p.chave);
@@ -377,6 +388,7 @@ function EditorPop() {
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
   // "Nesta página" (decisão 80): o índice das seções, com a marca de preenchido.
   const totalPassos = c.procedimentos.reduce((n, p) => n + p.passos.length, 0);
+  const totalRecursos = pop.gravacoes.length + (pop.fluxograma ? 1 : 0);
   const passosEscritos = c.procedimentos.reduce((n, p) => n + p.passos.filter((x) => textoPuro(x.texto) || x.imagem_caminho).length, 0);
   const indice: { alvo: string; nome: string; feito: boolean; conta?: string }[] = [
     { alvo: 'pos-cabecalho', nome: 'Identificação', feito: !!pop.identificacao.trim() },
@@ -449,7 +461,13 @@ function EditorPop() {
         </div>
       )}
 
-      <div className="proc-grade pop-grade">
+      <div className="abas" role="tablist" aria-label="Partes do POP">
+        <button type="button" role="tab" id="aba-conteudo" aria-controls="painel-conteudo" aria-selected={aba === 'conteudo'} onClick={() => irParaAba('conteudo')}><Icone nome="pop" tamanho={17} />Conteúdo</button>
+        <button type="button" role="tab" id="aba-recursos" aria-controls="painel-recursos" aria-selected={aba === 'recursos'} onClick={() => irParaAba('recursos')}><Icone nome="tela" tamanho={17} />Recursos<span className="aba-conta">{totalRecursos}</span></button>
+        <span className="abas-resumo">{c.procedimentos.length} {c.procedimentos.length === 1 ? 'etapa' : 'etapas'} · {totalPassos} {totalPassos === 1 ? 'passo' : 'passos'}</span>
+      </div>
+
+      <div className="proc-grade pop-grade" role="tabpanel" id="painel-conteudo" aria-labelledby="aba-conteudo" hidden={aba !== 'conteudo'}>
       {/* Arquivado: tudo fica visível, mas nada responde (inert) nem é salvo. */}
       <div inert={arquivado} className={`pop-conteudo${arquivado ? ' bloqueado' : ''}`}>
       <section className="cartao pop-sec" id="pos-cabecalho" data-pos="cabecalho" data-rotulo="Identificação">
@@ -566,6 +584,61 @@ function EditorPop() {
         <button className="btn btn-adicionar-proc" onClick={() => setConteudo({ procedimentos: [...c.procedimentos, { nome: '', passos: [{ texto: '' }] }] })}><Icone nome="mais" tamanho={16} />Adicionar etapa</button>
       </section>
 
+      {pop.referenciado_em.length > 0 && (
+        <section className="cartao pop-sec" id="pos-referenciado" aria-labelledby="titulo-referenciado">
+          <h2 id="titulo-referenciado">Referenciado em</h2>
+          <ReferenciadoEm itens={pop.referenciado_em} href={(x) => x.url_app || null} aviso="Estes documentos citam este POP. Na página pública deles, a referência leva à página pública deste POP." />
+        </section>
+      )}
+
+      <section className="cartao pop-sec" id="pos-historico" data-pos="historico" data-rotulo="Histórico de revisões">
+        <h2>Histórico de revisões</h2>
+        {pop.historico.length > 0 && <div className="hist-cab"><span>Data</span><span>Elaborado por</span><span>Revisão</span><span /></div>}
+        {pop.historico.map((h, i) => (
+          <div key={i} className="hist-linha">
+            <input value={h.data} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, data: e.target.value } : x)))} aria-label="Data" />
+            <input value={h.elaborado_por} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, elaborado_por: e.target.value } : x)))} placeholder="Nome" aria-label="Elaborado por" />
+            <input value={h.revisao} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, revisao: e.target.value } : x)))} aria-label="Revisão" />
+            <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Remover" title="Remover" onClick={() => setHist(pop.historico.filter((_, j) => j !== i))}><Icone nome="lixo" tamanho={16} /></button>
+          </div>
+        ))}
+        <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: pop.autor, revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
+      </section>
+      </div>
+
+      <aside className="proc-coluna pop-lateral" aria-label="Página pública e índice">
+        <PaginaPublica
+          variante="cartao"
+          estado={arquivado ? 'arquivado' : !publicado ? 'rascunho' : pop.link_publico_ativo ? 'online' : 'offline'}
+          publicadoEm={pop.publicado_em}
+          alteracoesNaoPublicadas={naoPublicadas}
+          url={`/p/${pop.link_publico}`}
+          alterando={alterandoLink}
+          copiado={copiado}
+          aoAlternar={alternarLink}
+          aoCopiar={copiarLink}
+        />
+
+        <nav className="cartao cartao-lateral" aria-labelledby="titulo-nesta-pagina">
+          <h3 id="titulo-nesta-pagina">Nesta página</h3>
+          <ul className="nesta-pagina">
+            {indice.map((x) => (
+              <li key={x.alvo}>
+                <button type="button" onClick={() => document.getElementById(x.alvo)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                  <span className={`indice-marca${x.feito ? ' feito' : ''}`} title={x.feito ? 'Preenchido' : 'Ainda vazio'}>{x.feito && <Icone nome="check" tamanho={13} />}</span>
+                  <span className="indice-nome">{x.nome}</span>
+                  {x.conta && <small>{x.conta}</small>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+      </div>
+
+      {/* Recursos (decisão 87): o que apoia o POP sem ser o texto dele. O fluxograma é do processo; as gravações de
+          tela são deste POP e dão os prints dos passos. */}
+      <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-recursos" aria-labelledby="aba-recursos" hidden={aba !== 'recursos'}>
       {onde && (
         <section className="cartao pop-sec" id="pos-fluxograma" aria-labelledby="titulo-fluxograma">
           <h2 id="titulo-fluxograma">Fluxograma do processo</h2>
@@ -596,63 +669,16 @@ function EditorPop() {
         </section>
       )}
 
-      {pop.referenciado_em.length > 0 && (
-        <section className="cartao pop-sec" id="pos-referenciado" aria-labelledby="titulo-referenciado">
-          <h2 id="titulo-referenciado">Referenciado em</h2>
-          <ReferenciadoEm itens={pop.referenciado_em} href={(x) => x.url_app || null} aviso="Estes documentos citam este POP. Na página pública deles, a referência leva à página pública deste POP." />
-        </section>
-      )}
-
-      <section className="cartao pop-sec" id="pos-historico" data-pos="historico" data-rotulo="Histórico de revisões">
-        <h2>Histórico de revisões</h2>
-        {pop.historico.length > 0 && <div className="hist-cab"><span>Data</span><span>Elaborado por</span><span>Revisão</span><span /></div>}
-        {pop.historico.map((h, i) => (
-          <div key={i} className="hist-linha">
-            <input value={h.data} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, data: e.target.value } : x)))} aria-label="Data" />
-            <input value={h.elaborado_por} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, elaborado_por: e.target.value } : x)))} placeholder="Nome" aria-label="Elaborado por" />
-            <input value={h.revisao} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, revisao: e.target.value } : x)))} aria-label="Revisão" />
-            <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Remover" title="Remover" onClick={() => setHist(pop.historico.filter((_, j) => j !== i))}><Icone nome="lixo" tamanho={16} /></button>
-          </div>
-        ))}
-        <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: pop.autor, revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
-      </section>
-      </div>
-
-      <aside className="proc-coluna pop-lateral" aria-label="Página pública, índice e gravações">
-        <PaginaPublica
-          variante="cartao"
-          estado={arquivado ? 'arquivado' : !publicado ? 'rascunho' : pop.link_publico_ativo ? 'online' : 'offline'}
-          publicadoEm={pop.publicado_em}
-          alteracoesNaoPublicadas={naoPublicadas}
-          url={`/p/${pop.link_publico}`}
-          alterando={alterandoLink}
-          copiado={copiado}
-          aoAlternar={alternarLink}
-          aoCopiar={copiarLink}
-        />
-
-        <nav className="cartao cartao-lateral" aria-labelledby="titulo-nesta-pagina">
-          <h3 id="titulo-nesta-pagina">Nesta página</h3>
-          <ul className="nesta-pagina">
-            {indice.map((x) => (
-              <li key={x.alvo}>
-                <button type="button" onClick={() => document.getElementById(x.alvo)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                  <span className={`indice-marca${x.feito ? ' feito' : ''}`} title={x.feito ? 'Preenchido' : 'Ainda vazio'}>{x.feito && <Icone nome="check" tamanho={13} />}</span>
-                  <span className="indice-nome">{x.nome}</span>
-                  {x.conta && <small>{x.conta}</small>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <section className={`cartao cartao-lateral ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela" inert={arquivado}>
-          <div className="lateral-topo">
-            <h3 className="titulo-com-conta">Gravações de tela{pop.gravacoes.length > 0 && <small>{pop.gravacoes.length}</small>}</h3>
-            <Link href={`/app/gravacoes/nova?pop=${id}`} className="btn btn-gravar-tela"><span className="rec-dot" />Gravar tela</Link>
+        <section className={`cartao pop-sec ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela" inert={arquivado}>
+          <div className="sec-titulo">
+            <div className="sec-cabeca">
+              <h2 className="titulo-com-conta">Gravações de tela{pop.gravacoes.length > 0 && <small>{pop.gravacoes.length}</small>}</h2>
+              <p>Grave a execução no sistema e marque as telas importantes: elas viram os prints dos passos.</p>
+            </div>
+            <Link href={`/app/gravacoes/nova?pop=${id}`} className="btn"><span className="rec-dot" />Gravar tela</Link>
           </div>
           {pop.gravacoes.length === 0
-            ? <p className="lateral-texto">Grave a execução no sistema narrando cada passo e marque as telas importantes: elas ficam disponíveis como print dos passos.</p>
+            ? <p className="recursos-vazio">Nenhuma gravação ainda. Clique em “Gravar tela”, faça o passo a passo no sistema narrando o que faz e inclua as telas importantes.</p>
             : (
               <ul className="gravacoes-lista">
                 {pop.gravacoes.map((g) => (
@@ -663,21 +689,19 @@ function EditorPop() {
                         <strong>{g.nome}</strong>
                         <small>{g.duracao_ms ? formatarTempo(g.duracao_ms) : '--:--'} · {g.total_marcacoes} {g.total_marcacoes === 1 ? 'tela marcada' : 'telas marcadas'}{EM_ABERTO.includes(g.status) ? ` · ${ROTULO_STATUS[g.status].toLowerCase()}` : ''}</small>
                       </Link>
-                      {EM_ABERTO.includes(g.status)
-                        ? <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="link-acao">Continuar</Link>
-                        : <Link href={`/app/gravacoes/${g.id}`} className="link-acao">Abrir</Link>}
+                      {g.telas_novas > 0 && (
+                        <button type="button" className="btn" onClick={() => void levarTelas(g.id)} disabled={levando === g.id} title="As telas marcadas que ainda não estão nos passos entram numa etapa nova, no fim">
+                          <Icone nome="pop" tamanho={16} />{levando === g.id ? 'Levando…' : `Levar ${g.telas_novas} ${g.telas_novas === 1 ? 'tela' : 'telas'} para os passos`}
+                        </button>
+                      )}
+                      {EM_ABERTO.includes(g.status) && <Link href={`/app/gravacoes/nova?continuar=${g.id}`} className="btn"><span className="rec-dot" />Continuar</Link>}
+                      <Link href={`/app/gravacoes/${g.id}`} className="btn">Abrir</Link>
                     </div>
-                    {g.telas_novas > 0 && (
-                      <button type="button" className="btn btn-largo" onClick={() => void levarTelas(g.id)} disabled={levando === g.id} title="As telas marcadas que ainda não estão nos passos entram numa etapa nova, no fim">
-                        <Icone nome="pop" tamanho={16} />{levando === g.id ? 'Levando…' : `Levar ${g.telas_novas} ${g.telas_novas === 1 ? 'tela' : 'telas'} para os passos`}
-                      </button>
-                    )}
                   </li>
                 ))}
               </ul>
             )}
         </section>
-      </aside>
       </div>
 
       {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
