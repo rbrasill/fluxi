@@ -14,6 +14,42 @@ export const TOPICOS = [
 ] as const;
 
 /**
+ * Para que serve a entrevista (decisão 89): 'processo' mapeia o processo (etapas, responsáveis, ferramentas);
+ * 'regras' levanta as regras de negócio e de comportamento. Cada finalidade tem a sua condução, a sua análise e
+ * o seu convite.
+ */
+export type Finalidade = 'processo' | 'regras';
+export const FINALIDADES: { id: Finalidade; rotulo: string; resumo: string }[] = [
+  { id: 'processo', rotulo: 'Mapeamento de processo', resumo: 'Como o processo funciona: etapas, quem faz, sistemas, entradas e saídas.' },
+  { id: 'regras', rotulo: 'Regras de negócio', resumo: 'O que vale no processo: condições, limites, prazos, obrigações, proibições e como as pessoas devem agir.' },
+];
+export const rotuloDaFinalidade = (f: Finalidade | null | undefined) => (f === 'regras' ? 'Regras de negócio' : 'Mapeamento de processo');
+
+/** O que a entrevista de regras de negócio precisa descobrir (decisão 89). */
+export const TOPICOS_REGRAS = [
+  { id: 'condicoes', nome: 'Condições e critérios', o_que: 'quando pode e quando não pode; o que precisa ser verdade para seguir, aprovar ou recusar' },
+  { id: 'limites', nome: 'Limites e alçadas', o_que: 'valores, quantidades e percentuais máximos ou mínimos, e quem pode autorizar o quê' },
+  { id: 'prazos', nome: 'Prazos', o_que: 'até quando, de quanto em quanto tempo, o que vence e o que acontece quando vence' },
+  { id: 'obrigacoes', nome: 'Obrigações', o_que: 'o que é sempre obrigatório fazer, conferir, registrar ou guardar' },
+  { id: 'proibicoes', nome: 'Proibições', o_que: 'o que nunca pode ser feito, e por quem' },
+  { id: 'calculos', nome: 'Cálculos', o_que: 'como se chega a um valor, a uma nota, a uma classificação ou a uma prioridade' },
+  { id: 'excecoes', nome: 'Exceções', o_que: 'quando a regra não vale, quem autoriza a exceção e como fica registrado' },
+  { id: 'comportamento', nome: 'Comportamento', o_que: 'como as pessoas devem agir ao executar: postura, comunicação, cuidado, sigilo' },
+  { id: 'origem', nome: 'Origem', o_que: 'de onde a regra vem: lei, norma, contrato, política interna ou costume' },
+  { id: 'consequencias', nome: 'Consequências', o_que: 'o que acontece quando a regra não é cumprida' },
+] as const;
+
+/** Os tipos de regra (decisão 89): de negócio (o que a empresa exige) e de comportamento (como as pessoas devem agir). */
+export type TipoRegra = 'negocio' | 'comportamento';
+export const TIPOS_REGRA: { id: TipoRegra; sigla: string; rotulo: string; o_que: string }[] = [
+  { id: 'negocio', sigla: 'RN', rotulo: 'Regra de negócio', o_que: 'O que a empresa exige: condições, prazos, limites e cálculos.' },
+  { id: 'comportamento', sigla: 'RC', rotulo: 'Regra de comportamento', o_que: 'Como as pessoas devem agir ao executar o processo.' },
+];
+export const rotuloDoTipo = (t: TipoRegra) => (t === 'comportamento' ? 'Regra de comportamento' : 'Regra de negócio');
+/** O código da regra confirmada: RN-01, RC-02. */
+export const codigoDaRegra = (tipo: TipoRegra, numero: number | null | undefined) => (numero ? `${tipo === 'comportamento' ? 'RC' : 'RN'}-${String(numero).padStart(2, '0')}` : '');
+
+/**
  * Um trecho de fala. `inicio_ms`/`fim_ms`: posição na linha do tempo da conversa (desde o começo da
  * primeira sessão de voz). `sobreposta`: a pessoa falou enquanto a IA ainda falava (ou numa pausa curta
  * de uma fala dela). `apoio`: "aham", "sei", "uhum" da IA enquanto a pessoa explica.
@@ -49,6 +85,9 @@ export type Metricas = {
   analise?: { modelo: string; entrada_tokens: number; saida_tokens: number; cache_tokens?: number; custo_usd: number; demora_ms?: number; vezes?: number };
   consultas?: Consulta[]; // o que a IA foi verificar durante a conversa (Claude), com demora e custo
   sessoes?: number;
+  // Onde cada sessão de voz começa na linha do tempo da conversa (uma por sessão, na ordem): serve para achar,
+  // na gravação daquela sessão, o ponto de uma fala (decisão 89).
+  bases_ms?: number[];
   eventos?: Record<string, number>; // contagem por tipo de evento do GPT-Live (diagnóstico)
   desconhecidos?: string[]; // tipos de evento que o app não trata (diagnóstico)
   erros?: string[];
@@ -84,6 +123,9 @@ export type ResultadoEntrevista = {
   ficha: { objetivo: string; gatilho: string; resultado: string; etapas: Etapa[]; dificuldades: string[] };
   pendencias: string[]; // o que a própria pessoa pode responder (dá para voltar à ligação; decisão 56)
   pendencias_outra_pessoa?: PendenciaOutraPessoa[]; // o que precisa de outra pessoa (resultados antigos não têm)
+  // Só na entrevista de regras de negócio (decisão 89): quantas regras a Maia sugeriu. A descrição traz o resumo
+  // da conversa e a ficha vem vazia; as regras em si ficam na tabela `regras`, à espera de confirmação.
+  regras?: { sugeridas: number };
 };
 
 const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
@@ -103,6 +145,18 @@ export const transcricaoDaConversa = (turnos: Turno[]) =>
     const texto = limparMarcasDeSom(t.texto);
     if (t.quem === 'ia') return `${tempo}Entrevistador: ${texto}`;
     return `${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${texto}`;
+  }).join('\n');
+
+/**
+ * A conversa com cada fala numerada (o índice dela na conversa), para a análise de regras apontar de que fala
+ * saiu cada regra (decisão 89).
+ */
+export const transcricaoNumerada = (turnos: Turno[]) =>
+  turnos.map((t, i) => ({ t, i })).filter(({ t }) => !t.apoio).map(({ t, i }) => {
+    const tempo = t.inicio_ms !== undefined ? `[${mmss(t.inicio_ms)}] ` : '';
+    const texto = limparMarcasDeSom(t.texto);
+    if (t.quem === 'ia') return `${tempo}Entrevistador: ${texto}`;
+    return `#${i} ${tempo}Entrevistado${t.sobreposta ? ' (falou junto com o entrevistador)' : ''}: ${texto}`;
   }).join('\n');
 
 const mediana = (xs: number[]) => {

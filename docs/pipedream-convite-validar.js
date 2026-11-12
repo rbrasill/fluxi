@@ -7,8 +7,10 @@ import crypto from "node:crypto";
  * Project → Variables, marcada como Secret) e só entrega convites.
  *
  * Entrada : o POST do servidor do INCFlow, com o cabeçalho x-inc-secret e o corpo
- *           { tipo: "convite", email, nome, processo, convidado_por, nota, link }.
- * Saída   : { email, nome, processo, convidado_por, nota, link } para o step `enviar_convite`,
+ *           { tipo: "convite", email, nome, processo, convidado_por, nota, link, finalidade }.
+ *           `finalidade` (decisão 89): "processo" (mapear o processo) ou "regras" (levantar as regras de negócio);
+ *           sem o campo, ou com outro valor, vale "processo".
+ * Saída   : { email, nome, processo, convidado_por, nota, link, finalidade } para o step `enviar_convite`,
  *           ou a recusa (401 segredo inválido; 400 dados fora do esperado), sem enviar nada.
  *
  * O link só pode apontar para o próprio app (https, host em HOSTS_DO_APP, caminho /app/entrevistas/…):
@@ -43,6 +45,8 @@ export default defineComponent({
     if (link.protocol !== "https:" || !HOSTS_DO_APP.includes(link.hostname) || !link.pathname.startsWith("/app/entrevistas/")) return recusar(400, "Link fora do app.");
     if (!processo) return recusar(400, "Convite sem processo.");
 
-    return { email, nome, processo, convidado_por, nota, link: link.href };
+    const finalidade = corpo.finalidade === "regras" ? "regras" : "processo";
+
+    return { email, nome, processo, convidado_por, nota, link: link.href, finalidade };
   },
 });

@@ -4,19 +4,23 @@ import { createPortal } from 'react-dom';
 import { Icone } from '@/components/Icone';
 import { ehAdmin, useEu } from '@/lib/auth/eu';
 import { corDoAvatar, iniciais } from '@/lib/iniciais';
-import { MAX_CONVITES } from '@/lib/entrevista/topicos';
+import { FINALIDADES, MAX_CONVITES, type Finalidade } from '@/lib/entrevista/topicos';
 import { convidarParaEntrevista, type ResultadoConvite } from '@/lib/entrevistas';
 import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
 
 // Convidar para entrevista com a Maia (decisão 53): quem é gestor ou administrador escolhe até três pessoas
 // cadastradas e, se quiser, diz o que a Maia deve focar. Cada pessoa recebe um e-mail e ganha a sua entrevista.
+// O convite tem uma finalidade (decisão 89): mapear o processo ou levantar as regras de negócio dele. A Maia
+// conduz cada uma de um jeito e o e-mail avisa a pessoa de qual se trata.
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function Convidar({ processoId, processoNome, indisponiveis, notaInicial = '', dica, aoConvidar, aoFechar }: {
+export function Convidar({ processoId, processoNome, indisponiveis, finalidadeInicial = 'processo', regrasDisponiveis = false, notaInicial = '', dica, aoConvidar, aoFechar }: {
   processoId: string; processoNome: string;
-  indisponiveis: string[]; // quem já tem entrevista aberta neste processo
+  indisponiveis: { id: string; finalidade: Finalidade }[]; // quem já tem entrevista aberta neste processo, e de que finalidade
+  finalidadeInicial?: Finalidade;
+  regrasDisponiveis?: boolean; // o ambiente já tem a entrevista de regras de negócio: mostra a escolha da finalidade
   notaInicial?: string; // o pedido já escrito (perguntas para outra pessoa, decisão 58)
   dica?: string; // por exemplo, "Escolha alguém de Financeiro."
   aoConvidar: (r: ResultadoConvite) => void; aoFechar: () => void;
@@ -26,6 +30,9 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
   const [busca, setBusca] = useState('');
   const [marcadas, setMarcadas] = useState<string[]>([]);
   const [nota, setNota] = useState(notaInicial);
+  const [finalidade, setFinalidade] = useState<Finalidade>(regrasDisponiveis ? finalidadeInicial : 'processo');
+  const regras = finalidade === 'regras';
+  const abertas = indisponiveis.filter((x) => x.finalidade === finalidade).map((x) => x.id);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
@@ -35,6 +42,13 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
     return (pessoas ?? []).filter((p) => !q || normalizar(`${p.nome} ${p.email}`).includes(q));
   }, [pessoas, busca]);
   const cheio = marcadas.length >= MAX_CONVITES;
+
+  // Quem já tem entrevista aberta nesta finalidade sai da escolha ao trocar de finalidade.
+  function trocarFinalidade(f: Finalidade) {
+    setFinalidade(f);
+    const ocupados = indisponiveis.filter((x) => x.finalidade === f).map((x) => x.id);
+    setMarcadas((m) => m.filter((id) => !ocupados.includes(id)));
+  }
 
   function alternar(id: string) {
     setMarcadas((m) => (m.includes(id) ? m.filter((x) => x !== id) : m.length < MAX_CONVITES ? [...m, id] : m));
@@ -46,7 +60,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
     setEnviando(true);
     setErro('');
     try {
-      aoConvidar(await convidarParaEntrevista(processoId, { pessoas: marcadas, nota: nota.trim() || undefined }));
+      aoConvidar(await convidarParaEntrevista(processoId, { pessoas: marcadas, nota: nota.trim() || undefined, finalidade }));
     } catch (err) {
       setErro(msg(err));
       setEnviando(false);
@@ -61,10 +75,23 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
           <span className="lateral-icone icone-maia"><Icone nome="microfone" tamanho={20} /></span>
           <div className="dialogo-topo-texto">
             <h2 id="convidar-titulo">Convidar para entrevista com a Maia</h2>
-            <p className="notice">Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre <b>{processoNome}</b> quando puder. Até {MAX_CONVITES} pessoas por vez, uma entrevista para cada uma.</p>
+            <p className="notice">{regras
+              ? <>Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre as <b>regras de negócio</b> de <b>{processoNome}</b>: o que pode, o que não pode e em que condições. Não é uma conversa sobre as etapas do processo.</>
+              : <>Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre <b>{processoNome}</b> quando puder.</>} Até {MAX_CONVITES} pessoas por vez, uma entrevista para cada uma.</p>
           </div>
           <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={enviando} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
         </div>
+        {regrasDisponiveis && (
+          <fieldset className="opcoes-acesso opcoes-finalidade">
+            <legend>Finalidade da entrevista</legend>
+            {FINALIDADES.map((f) => (
+              <label key={f.id} className={`opcao-acesso${finalidade === f.id ? ' marcada' : ''}`}>
+                <input type="radio" name="finalidade" value={f.id} checked={finalidade === f.id} onChange={() => trocarFinalidade(f.id)} />
+                <span><strong>{f.rotulo}</strong><small>{f.resumo}</small></span>
+              </label>
+            ))}
+          </fieldset>
+        )}
         {dica && <p className="notice convite-dica">{dica}</p>}
         <label className="campo-busca">
           <span className="sr-only">Buscar pessoa</span>
@@ -76,7 +103,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
           {pessoas && filtradas.length === 0 && <p className="notice">{pessoas.length ? 'Ninguém com esse nome.' : (admin ? 'Nenhuma pessoa cadastrada ainda. Cadastre em Pessoas e acessos.' : 'Nenhuma pessoa cadastrada ainda. Peça a um administrador para cadastrar em Pessoas e acessos.')}</p>}
           {filtradas.map((p) => {
             const marcada = marcadas.includes(p.id);
-            const aberta = indisponiveis.includes(p.id);
+            const aberta = abertas.includes(p.id);
             return (
               <label key={p.id} className={`pessoa-opcao${marcada ? ' marcada' : ''}${aberta ? ' indisponivel' : ''}`}>
                 <span className={`avatar avatar-${corDoAvatar(p.email || p.nome)}`} aria-hidden="true">{iniciais(p.nome)}</span>
@@ -89,7 +116,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
         </div>
         <label className="field">
           <span>O que a Maia deve focar <span className="opcional">(opcional)</span></span>
-          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={3} placeholder="Ex.: concentre nas aprovações e no que acontece quando o pedido é negado." />
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={3} placeholder={regras ? 'Ex.: concentre nos limites de valor e em quem pode autorizar exceções.' : 'Ex.: concentre nas aprovações e no que acontece quando o pedido é negado.'} />
         </label>
         {erro && <p className="form-erro" role="alert">{erro}</p>}
         <div className="dialog-actions">

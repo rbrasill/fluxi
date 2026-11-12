@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { mmss, seg, usd } from '@/components/entrevista/Metricas';
 import { ROTULO_STATUS } from '@/lib/entrevista/topicos';
@@ -103,7 +103,7 @@ function ConteudoPainel() {
               <tbody>
                 {entrevistas.map((x) => (
                   <tr key={x.id}>
-                    <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}{x.processo && x.processo !== x.tema ? ` · ${x.processo}` : ''}</small></td>
+                    <td><Link href={`/app/maia/${x.id}`}>{x.tema || 'Entrevista'}</Link><small>{x.entrevistado ?? 'sem entrevistado'}{x.processo && x.processo !== x.tema ? ` · ${x.processo}` : ''}{x.finalidade === 'regras' ? ' · regras de negócio' : ''}</small></td>
                     <td>{data(x.criado_em)}</td>
                     <td>{x.em_ligacao ? <SeloSituacao entrevista={x} /> : situacao(x)}{x.arquivada ? <small>arquivada</small> : null}{x.erros ? <small>{plural(x.erros, 'erro', 'erros')}</small> : null}</td>
                     <td className="col-num">{x.duracao_s ? mmss(x.duracao_s) : '—'}<small>{plural(x.sessoes, 'sessão', 'sessões')}{x.pausas ? ` · ${plural(x.pausas, 'pausa', 'pausas')}` : ''}</small></td>
@@ -127,7 +127,10 @@ function ConteudoPainel() {
           <dt>Nome e apresentação</dt><dd>{c.apresentacao}. O nome da empresa é dito como se fala: “Ínqui”.</dd>
           <dt>Voz</dt><dd>{c.modelo_voz} (OpenAI), voz “{c.voz}” · {usd(c.preco_voz_usd_min)} por minuto de ligação, cobrado por segundo, com ou sem alguém falando.</dd>
           <dt>Consultas durante a conversa</dt><dd>{c.modelo_consulta} (Anthropic), quando ela diz “deixa eu ver aqui” · até {c.max_consultas} por sessão.</dd>
-          <dt>Análise no fim</dt><dd>{c.modelo_analise} (Anthropic): a descrição do processo, a ficha e o que ficou em aberto.</dd>
+          <dt>Análise no fim</dt><dd>{c.modelo_analise} (Anthropic): no mapeamento, a descrição do processo, a ficha e o que ficou em aberto; nas regras de negócio, as regras sugeridas, com o trecho de cada uma.</dd>
+          {(c.finalidades ?? []).map((f) => (
+            <Fragment key={f.id}><dt>Finalidade: {f.rotulo}{f.ligada ? '' : ' (ainda desligada)'}</dt><dd>{f.resumo} A Maia cobre: {f.topicos.join(', ').toLowerCase()}.</dd></Fragment>
+          ))}
           <dt>Limites da ligação</dt><dd>Até {c.sessao_min} minutos por sessão. Pausa sozinha depois de {c.inatividade_min} minutos sem ninguém falar ou se a conexão cair; pausar e encerrar fecham a sessão na hora, e sair da página também.</dd>
           <dt>Frases que a tela reconhece</dt><dd>“{c.frase_final}” encerra a entrevista e gera o resultado; “{c.frase_pausa}” pausa para continuar depois.</dd>
         </dl>

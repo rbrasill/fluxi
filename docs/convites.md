@@ -9,7 +9,7 @@ O e-mail do convite sai por um **workflow próprio do Pipedream**, separado do q
 | Parte | Faz |
 |---|---|
 | Servidor (`lib/server/entrevistas.ts`) | cria a entrevista `convidada` para cada pessoa, com o tema (o nome do processo) e o contexto (organização, área, descrição do processo e a nota de quem convidou), e pede ao carteiro para entregar o convite; se o carteiro falhar ou não estiver configurado, o convite fica criado "sem e-mail" e dá para reenviar |
-| Carteiro (`lib/server/carteiro.ts`) | manda `{ tipo: "convite", email, nome, processo, convidado_por, nota, link }` para `CONVITE_MAILER_URL`, com `CONVITE_MAILER_SECRET` no cabeçalho `x-inc-secret` |
+| Carteiro (`lib/server/carteiro.ts`) | manda `{ tipo: "convite", email, nome, processo, convidado_por, nota, link, finalidade }` para `CONVITE_MAILER_URL`, com `CONVITE_MAILER_SECRET` no cabeçalho `x-inc-secret` |
 | Workflow do Pipedream | confere o segredo, o domínio do e-mail e o link (só https, só para o host do app, só `/app/entrevistas/…`), e entrega o e-mail pelo Outlook (Graph API) |
 | Link | `https://incflow.vercel.app/app/entrevistas/<id>`: a pessoa entra com o código de login e cai direto na entrevista; o endereço do app vem de `INC_APP_URL` ou da origem do pedido |
 
@@ -27,6 +27,14 @@ Sem isso, em produção os convites são criados mas ficam como "Convite sem e-m
    - Em *Settings → Data Retention*, reduza a retenção ao mínimo.
 3. **Na Vercel** (Settings → Environment Variables, em *Production* e *Preview*): `CONVITE_MAILER_URL` e `CONVITE_MAILER_SECRET`. Depois, Redeploy e promover.
 4. **Testar:** abra um processo, clique em **Convidar para entrevista** e convide você mesmo. O e-mail chega em segundos, com o botão "Abrir a entrevista"; o Início passa a mostrar "A Maia está esperando você…".
+
+## Finalidade do convite (decisão 89)
+
+A entrevista tem uma finalidade, escolhida no diálogo do convite: **mapeamento de processo** (a de sempre) ou **regras de negócio**. O servidor manda `finalidade` (`"processo"` ou `"regras"`) junto com os dados do convite, e o workflow escolhe o texto do e-mail por ela: no convite de regras, o assunto e o corpo deixam claro que a conversa não é para mapear o passo a passo, e sim para entender e documentar as regras que valem no processo.
+
+Para o e-mail de regras sair com o texto certo, **atualize os dois passos do workflow** com os arquivos deste repositório: `validar_convite` (`docs/pipedream-convite-validar.js`, que passa a repassar a `finalidade`) e `enviar_convite` (`docs/pipedream-convite-enviar.js`, modelo `convite-v2`, com os dois textos). Sem atualizar, nada quebra: o convite de regras chega com o texto do convite de mapeamento. Não há segredo nem variável nova.
+
+Uma pessoa pode ter uma entrevista aberta de cada finalidade no mesmo processo.
 
 ## Regras
 

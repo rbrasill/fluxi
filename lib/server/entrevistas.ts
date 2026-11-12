@@ -1,12 +1,13 @@
 import 'server-only';
 import { z } from 'zod';
-import { LIMITES_ENTREVISTA, MAX_CONVITES, MAX_PENDENCIAS, PRECO_VOZ_USD_MIN, TOPICOS, limparMarcasDeSom, resumoMetricas, transcricaoDaConversa, type Complemento, type Metricas, type PerfilEntrevistado, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
+import { FINALIDADES, LIMITES_ENTREVISTA, MAX_CONVITES, MAX_PENDENCIAS, PRECO_VOZ_USD_MIN, TOPICOS, TOPICOS_REGRAS, limparMarcasDeSom, resumoMetricas, transcricaoDaConversa, type Complemento, type Finalidade, type Metricas, type PerfilEntrevistado, type ResultadoEntrevista, type StatusEntrevista, type Turno } from '@/lib/entrevista/topicos';
 import { lerTexto, paraHtml, textoPuro } from '@/lib/pop/texto-rico';
 import { carteiroConfigurado, enviarEmail } from './carteiro';
 import { ErroApi } from './http';
 import { chamarEstruturado, type UsoIa } from './ia';
 import { emProducao, type Pessoa } from './login';
 import { perfilParaAMaia } from './perfil';
+import { AnaliseRegrasSchema, SISTEMA_REGRAS, bancoTemRegras, contextoDaAnalise, guardarSugestoes, montarPedidoRegras, regrasParaAMaia, type RegrasParaAMaia } from './regras';
 import { TENANT_PADRAO, supabase } from './supabase';
 
 // Entrevista por voz com a Maia, só com o GPT-Live da OpenAI (decisão 41). Nasce dentro do processo, por
@@ -34,6 +35,7 @@ const COM_QUEM = 'com o Rafael Brasil, na área de processos da Ínqui';
 export const comoSeFala = (s: string) => s.replace(/\bINC\b/g, 'Ínqui');
 
 export type Linha = {
+  finalidade?: Finalidade; // para que serve a entrevista (decisão 89); sem a coluna no banco, é 'processo'
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audio_caminho: string | null;
@@ -44,6 +46,9 @@ export type Linha = {
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
 const CAMPOS = 'id, processo_id, tema, contexto, motor, status, turnos, sessoes, metricas, resultado, erro, audio_caminho, entrevistado_id, convidado_por, convidado_em, nota_convite, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em, atualizado_em';
+/** Os campos de uma consulta, com a finalidade quando o banco já tem a coluna (migração 0024). */
+const comFinalidade = async (campos: string) => ((await bancoTemRegras()) ? `${campos}, finalidade` : campos);
+const finalidadeDe = (l: { finalidade?: unknown }): Finalidade => (l.finalidade === 'regras' ? 'regras' : 'processo');
 /** O complemento ainda por fazer (escolhido e não concluído). */
 const complementoAberto = (l: Pick<Linha, 'complemento'>) => (l.complemento && !l.complemento.concluido_em ? l.complemento : null);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,10 +56,11 @@ const agora = () => new Date().toISOString();
 
 async function carregar(id: string): Promise<Linha> {
   if (!UUID.test(id)) throw new ErroApi(404, 'Entrevista não encontrada');
-  const { data, error } = await supabase().from('entrevistas').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data, error } = await supabase().from('entrevistas').select(await comFinalidade(CAMPOS)).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'Entrevista não encontrada');
-  return data as Linha;
+  const linha = data as unknown as Linha;
+  return { ...linha, finalidade: finalidadeDe(linha) };
 }
 
 async function salvar(id: string, dados: Partial<Linha>) {
@@ -67,7 +73,10 @@ async function salvar(id: string, dados: Partial<Linha>) {
 export const ConviteSchema = z.object({
   pessoas: z.array(z.string().regex(UUID, 'Pessoa inválida.')).min(1, 'Escolha ao menos uma pessoa.').max(MAX_CONVITES, `Convide até ${MAX_CONVITES} pessoas por vez.`),
   nota: z.string().trim().max(500, 'A nota pode ter até 500 caracteres.').optional(),
+  finalidade: z.enum(['processo', 'regras']).optional(), // sem o campo, mapeamento de processo
 });
+export const IniciarSchema = z.object({ finalidade: z.enum(['processo', 'regras']).optional() });
+const MSG_SEM_REGRAS = 'A entrevista de regras de negócio ainda não está ligada neste ambiente (falta aplicar a migração 0024 no banco).';
 
 type ProcessoDoConvite = { id: string; nome: string; descricao: string | null; arquivado_em: string | null; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null };
 const CAMPOS_PROCESSO = 'id, nome, descricao, arquivado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
@@ -94,9 +103,9 @@ export function contextoDoConvite(p: ProcessoDoConvite, nota: string) {
 const linkDaEntrevista = (origem: string, id: string) => `${origem.replace(/\/$/, '')}/app/entrevistas/${id}`;
 
 /** Manda o e-mail do convite. Se o carteiro falhar, o convite fica sem `convite_enviado_em` (dá para reenviar). */
-async function enviarConvite(linha: Pick<Linha, 'id' | 'tema' | 'nota_convite'>, pessoa: { nome: string; email: string }, convidadoPor: string, origem: string) {
+async function enviarConvite(linha: Pick<Linha, 'id' | 'tema' | 'nota_convite' | 'finalidade'>, pessoa: { nome: string; email: string }, convidadoPor: string, origem: string) {
   try {
-    await enviarEmail({ tipo: 'convite', email: pessoa.email, nome: pessoa.nome, processo: linha.tema, convidado_por: convidadoPor, link: linkDaEntrevista(origem, linha.id), nota: linha.nota_convite });
+    await enviarEmail({ tipo: 'convite', email: pessoa.email, nome: pessoa.nome, processo: linha.tema, convidado_por: convidadoPor, link: linkDaEntrevista(origem, linha.id), nota: linha.nota_convite, finalidade: finalidadeDe(linha) });
     await salvar(linha.id, { convite_enviado_em: agora() });
     return true;
   } catch (e) {
@@ -124,12 +133,18 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
   const processo = await processoDoConvite(processoId);
   if (processo.arquivado_em) throw new ErroApi(409, 'Este processo está arquivado.');
   const db = supabase();
+  const finalidade: Finalidade = d.finalidade ?? 'processo';
+  const temFinalidade = await bancoTemRegras();
+  if (finalidade === 'regras' && !temFinalidade) throw new ErroApi(503, MSG_SEM_REGRAS, 'sem_regras');
   const ids = [...new Set(d.pessoas)];
   const { data: ps, error } = await db.from('pessoas').select('id, nome, email').in('id', ids);
   if (error) throw error;
   const pessoas = (ps ?? []) as { id: string; nome: string; email: string }[];
   if (pessoas.length !== ids.length) throw new ErroApi(404, 'Alguma das pessoas escolhidas não está mais cadastrada.');
-  const { data: abertas, error: e2 } = await db.from('entrevistas').select('id, entrevistado_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).in('entrevistado_id', ids);
+  // Uma entrevista aberta por pessoa em cada processo e em cada finalidade (decisão 89).
+  let consultaAbertas = db.from('entrevistas').select('id, entrevistado_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).in('entrevistado_id', ids);
+  if (temFinalidade) consultaAbertas = consultaAbertas.eq('finalidade', finalidade);
+  const { data: abertas, error: e2 } = await consultaAbertas;
   if (e2) throw e2;
   const jaTem = new Set(((abertas ?? []) as { entrevistado_id: string }[]).map((x) => x.entrevistado_id));
   const nota = (d.nota ?? '').trim();
@@ -142,11 +157,11 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
   for (const pessoa of pessoas) {
     if (jaTem.has(pessoa.id)) { repetidas.push(pessoa.nome); continue; }
     const { data, error: e3 } = await db.from('entrevistas')
-      .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto, motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: pessoa.id, convidado_por: quem?.id ?? null, convidado_em: agora(), nota_convite: nota })
+      .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto, motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: pessoa.id, convidado_por: quem?.id ?? null, convidado_em: agora(), nota_convite: nota, ...(temFinalidade ? { finalidade } : {}) })
       .select('id').single();
     if (e3) throw e3;
     const id = (data as { id: string }).id;
-    const email_enviado = carteiro ? await enviarConvite({ id, tema: processo.nome, nota_convite: nota }, pessoa, convidadoPor, origem) : false;
+    const email_enviado = carteiro ? await enviarConvite({ id, tema: processo.nome, nota_convite: nota, finalidade }, pessoa, convidadoPor, origem) : false;
     criadas.push({ id, pessoa: pessoa.nome, email_enviado });
   }
   return { criadas, repetidas, carteiro_configurado: carteiro };
@@ -165,20 +180,24 @@ export const podeIniciarSemConvite = (p: Pessoa | null | undefined) => !p || p.n
  * e-mail, e ela já pode ligar para a Maia. Se a pessoa já tem uma entrevista aberta neste processo, devolve essa
  * (uma aberta por pessoa em cada processo), em vez de criar outra.
  */
-export async function iniciarAgora(processoId: string, quem: Pessoa | null) {
+export async function iniciarAgora(processoId: string, quem: Pessoa | null, finalidade: Finalidade = 'processo') {
   if (!podeIniciarSemConvite(quem)) throw new ErroApi(403, 'Só administradores iniciam uma entrevista sem convite. Peça um convite a um gestor ou administrador.');
   const processo = await processoDoConvite(processoId);
   if (processo.arquivado_em) throw new ErroApi(409, 'Este processo está arquivado.');
   const db = supabase();
+  const temFinalidade = await bancoTemRegras();
+  if (finalidade === 'regras' && !temFinalidade) throw new ErroApi(503, MSG_SEM_REGRAS, 'sem_regras');
   if (quem) {
-    const { data, error } = await db.from('entrevistas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).eq('entrevistado_id', quem.id)
-      .in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).order('criado_em', { ascending: false }).limit(1);
+    let jaAberta = db.from('entrevistas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).eq('entrevistado_id', quem.id)
+      .in('status', ['convidada', 'em_andamento']).is('arquivado_em', null);
+    if (temFinalidade) jaAberta = jaAberta.eq('finalidade', finalidade);
+    const { data, error } = await jaAberta.order('criado_em', { ascending: false }).limit(1);
     if (error) throw error;
     const aberta = ((data ?? []) as { id: string }[])[0];
     if (aberta) return { id: aberta.id, nova: false };
   }
   const { data, error } = await db.from('entrevistas')
-    .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto: contextoDoConvite(processo, ''), motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: quem?.id ?? null, convidado_por: null, convidado_em: null, nota_convite: '' })
+    .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto: contextoDoConvite(processo, ''), motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: quem?.id ?? null, convidado_por: null, convidado_em: null, nota_convite: '', ...(temFinalidade ? { finalidade } : {}) })
     .select('id').single();
   if (error) throw error;
   return { id: (data as { id: string }).id, nova: true };
@@ -227,10 +246,10 @@ export async function restaurar(id: string) {
   if (!linha.arquivado_em) return { ok: true as const };
   // Uma entrevista aberta por pessoa em cada processo: se ela foi convidada de novo enquanto esta estava arquivada, não volta.
   if (linha.status === 'em_andamento' && linha.processo_id && linha.entrevistado_id) {
-    const { data, error } = await supabase().from('entrevistas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', linha.processo_id)
-      .eq('entrevistado_id', linha.entrevistado_id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).neq('id', id).limit(1);
+    const { data, error } = await supabase().from('entrevistas').select(await comFinalidade('id')).eq('tenant_id', TENANT_PADRAO).eq('processo_id', linha.processo_id)
+      .eq('entrevistado_id', linha.entrevistado_id).in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).neq('id', id).limit(20);
     if (error) throw error;
-    if ((data ?? []).length) throw new ErroApi(409, 'Esta pessoa já tem outra entrevista aberta neste processo. Conclua ou cancele a outra antes de restaurar esta.', 'outra_aberta');
+    if (((data ?? []) as unknown as { finalidade?: unknown }[]).some((x) => finalidadeDe(x) === finalidadeDe(linha))) throw new ErroApi(409, 'Esta pessoa já tem outra entrevista aberta neste processo. Conclua ou cancele a outra antes de restaurar esta.', 'outra_aberta');
   }
   await salvar(id, { arquivado_em: null, arquivado_por: null });
   return { ok: true as const };
@@ -323,18 +342,18 @@ export async function perfilConhecido(entrevistadoId: string | null | undefined)
  * As arquivadas (decisão 72) vão só para gestores e administradores, com quando e por quem foram arquivadas.
  */
 export async function listar(pessoa?: Pessoa | null) {
-  let consulta = supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))')
+  let consulta = supabase().from('entrevistas').select(await comFinalidade('id, tema, status, turnos, metricas, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em, processo:processos(id, nome, area:areas(id, nome))'))
     .eq('tenant_id', TENANT_PADRAO);
   if (!ehGestor(pessoa)) consulta = consulta.eq('entrevistado_id', pessoa!.id).is('arquivado_em', null);
   const { data, error } = await consulta.order('criado_em', { ascending: false });
   if (error) throw error;
-  const linhas = data ?? [];
+  const linhas = (data ?? []) as unknown as Record<string, unknown>[];
   const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null, l.arquivado_por as string | null]));
   return linhas.map(({ turnos, metricas, entrevistado_id, convidado_por, arquivado_por, processo, complemento, em_ligacao_ate, ...e }) => {
     const t = (turnos as Turno[] | null) ?? [];
     const m = (metricas as Metricas | null) ?? {};
     return {
-      ...e, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
+      ...e, finalidade: finalidadeDe(e), em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null,
       convidado_por: nomes.get(convidado_por as string) ?? null, arquivado_por: nomes.get(arquivado_por as string) ?? null,
       processo: (processo as unknown as (ProcessoEmbutido & { area: { id: string; nome: string } | null })) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
@@ -356,17 +375,19 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
   const db = supabase();
   const [proc, conv] = await Promise.all([
     db.from('processos').select('nome').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle(),
-    db.from('entrevistas').select('id, status, em_ligacao_ate, arquivado_em, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
+    db.from('entrevistas').select(await comFinalidade('id, status, em_ligacao_ate, arquivado_em, turnos, resultado, complemento, entrevistado_id, iniciada_em, criado_em')).eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('id', unicos).order('criado_em'),
   ]);
   for (const r of [proc, conv]) if (r.error) throw r.error;
   if (!proc.data) throw new ErroApi(404, 'Processo não encontrado');
-  const linhas = conv.data ?? [];
+  const linhas = (conv.data ?? []) as unknown as Record<string, unknown>[];
   if (linhas.length !== unicos.length) throw new ErroApi(404, 'Conversa não encontrada neste processo.');
   const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
   const lista = (rotulo: string, itens: string[] | undefined) => (itens?.length ? `; ${rotulo}: ${itens.join(', ')}` : '');
   const blocos = linhas.map((l, i) => {
     const turnos = (l.turnos as Turno[] | null) ?? [];
     const quem = nomes.get(l.entrevistado_id as string) ?? 'pessoa entrevistada';
+    // A conversa de regras de negócio (decisão 89) não descreve as etapas: não serve para desenhar o fluxograma.
+    if (finalidadeDe(l) === 'regras') throw new ErroApi(422, `A conversa de ${quem} é de regras de negócio: o fluxograma sai das conversas de mapeamento do processo.`, 'regras');
     if (l.arquivado_em) throw new ErroApi(409, `A conversa de ${quem} está arquivada. Restaure a entrevista para usar no fluxograma.`, 'arquivada');
     if (emLigacao({ status: l.status as string, em_ligacao_ate: l.em_ligacao_ate as string | null })) throw new ErroApi(409, `${quem} está conversando com a Maia agora. A conversa entra no fluxograma quando a ligação terminar.`, 'em_ligacao');
     if (!turnos.some((t) => t.quem !== 'ia' && !t.apoio)) throw new ErroApi(422, `A conversa de ${quem} ainda não tem falas para virar fluxograma.`);
@@ -399,17 +420,18 @@ export async function textoParaFluxograma(processoId: string, ids: string[]) {
 /** As entrevistas de um processo, para a seção "Entrevistas com a Maia" da página dele. */
 export async function listarDoProcesso(processoId: string, pessoa?: Pessoa | null) {
   if (!UUID.test(processoId)) throw new ErroApi(404, 'Processo não encontrado');
-  const { data, error } = await supabase().from('entrevistas').select('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em')
+  const { data, error } = await supabase().from('entrevistas').select(await comFinalidade('id, status, turnos, metricas, resultado, entrevistado_id, convidado_por, convidado_em, convite_enviado_em, iniciada_em, em_ligacao_ate, complemento, arquivado_em, arquivado_por, criado_em, encerrado_em'))
     .eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).order('criado_em', { ascending: false });
   if (error) throw error;
   // As arquivadas (decisão 72) vão só para gestores e administradores; para os outros, é como se não existissem.
-  const linhas = (data ?? []).filter((l) => !l.arquivado_em || ehGestor(pessoa));
+  const linhas = ((data ?? []) as unknown as Record<string, unknown>[]).filter((l) => !l.arquivado_em || ehGestor(pessoa));
   const nomes = await nomesDasPessoas(linhas.flatMap((l) => [l.entrevistado_id as string | null, l.convidado_por as string | null, l.arquivado_por as string | null]));
   return linhas.map(({ turnos, metricas, resultado, entrevistado_id, convidado_por, arquivado_por, complemento, em_ligacao_ate, ...e }) => {
     const r = (resultado as ResultadoEntrevista | null) ?? null;
     const em_ligacao = emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null });
     return {
-      ...e, em_ligacao, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
+      ...e, finalidade: finalidadeDe(e), regras_sugeridas: r?.regras?.sugeridas ?? null,
+      em_ligacao, entrevistado_id: (entrevistado_id as string | null) ?? null, entrevistado: nomes.get(entrevistado_id as string) ?? null, convidado_por: nomes.get(convidado_por as string) ?? null,
       arquivado_por: nomes.get(arquivado_por as string) ?? null,
       complemento_pendencias: complementoAberto({ complemento: (complemento as Complemento | null) ?? null })?.pendencias.length ?? null,
       falas: ((turnos as Turno[] | null) ?? []).length, duracao_s: ((metricas as Metricas | null) ?? {}).duracao_s ?? 0,
@@ -423,21 +445,24 @@ export async function listarDoProcesso(processoId: string, pessoa?: Pessoa | nul
 
 /** Painel da Maia (decisão 52, só administradores): como ela está configurada e cada entrevista com tempos, métricas e custos. */
 export async function painel() {
-  const { data, error } = await supabase().from('entrevistas').select('id, tema, status, turnos, metricas, entrevistado_id, em_ligacao_ate, arquivado_em, criado_em, encerrado_em, processo:processos(id, nome)')
+  const { data, error } = await supabase().from('entrevistas').select(await comFinalidade('id, tema, status, turnos, metricas, entrevistado_id, em_ligacao_ate, arquivado_em, criado_em, encerrado_em, processo:processos(id, nome)'))
     .eq('tenant_id', TENANT_PADRAO).order('criado_em', { ascending: false });
   if (error) throw error;
-  const linhas = data ?? [];
+  const linhas = (data ?? []) as unknown as Record<string, unknown>[];
   const nomes = await nomesDasPessoas(linhas.map((l) => l.entrevistado_id as string | null));
+  const regrasLigadas = await bancoTemRegras();
   return {
     configuracao: {
       nome: NOME_IA, apresentacao: `Eu sou a ${NOME_IA}, trabalho ${COM_QUEM}`, modelo_voz: MODELO_VOZ, voz: VOZ, preco_voz_usd_min: PRECO_VOZ_USD_MIN,
       modelo_consulta: MODELO_CONSULTA, modelo_analise: MODELO_ANALISE, frase_final: FRASE_FINAL, frase_pausa: FRASE_PAUSA, ...LIMITES_ENTREVISTA,
+      // As duas finalidades da entrevista (decisão 89): cada uma com os assuntos que a Maia cobre.
+      finalidades: FINALIDADES.map((f) => ({ ...f, topicos: (f.id === 'regras' ? TOPICOS_REGRAS : TOPICOS).map((t) => t.nome), ligada: f.id === 'processo' || regrasLigadas })),
     },
     entrevistas: linhas.map(({ turnos, metricas, entrevistado_id, processo, em_ligacao_ate, ...e }) => {
       const m = (metricas as Metricas | null) ?? {};
       const r = resumoMetricas(m);
       return {
-        ...e, arquivada: !!e.arquivado_em, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
+        ...e, finalidade: finalidadeDe(e), arquivada: !!e.arquivado_em, em_ligacao: emLigacao({ status: e.status as string, em_ligacao_ate: em_ligacao_ate as string | null }), entrevistado: nomes.get(entrevistado_id as string) ?? null, processo: (processo as unknown as ProcessoEmbutido)?.nome ?? null, falas: ((turnos as Turno[] | null) ?? []).length,
         duracao_s: m.duracao_s ?? 0, sessoes: m.sessoes ?? (m.duracao_s ? 1 : 0), pausas: m.pausas ?? 0, consultas: r.consultas,
         reacao_mediana_ms: r.reacao_mediana_ms ?? null, conexao_ms: m.conexao_ms ?? null,
         custo_voz_usd: r.custo_voz_usd, custo_consultas_usd: r.custo_consultas_usd, custo_analise_usd: r.custo_analise_usd, custo_total_usd: r.custo_total_usd,
@@ -513,8 +538,86 @@ export async function excluir(id: string, quem?: Pessoa | null) {
 
 const TOPICOS_TEXTO = TOPICOS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
 
+// O jeito de falar e as três políticas do GPT-Live valem para as duas finalidades da entrevista (decisão 89).
+const JEITO_E_POLITICAS = `# Jeito de falar
+- Ritmo de conversa: frases completas e fluidas, com pausas só entre frases, nunca longas no meio de uma frase. Sem muletas ("eh", "é...", "né") e sem repetir palavras.
+- Curto e direto: uma ideia por vez, uma pergunta por vez. Números pequenos por extenso. Nada de listas faladas.
+- Quando a pessoa concluir a ideia, responda sem demora. Mas, se ela pausar no meio de um raciocínio (frase incompleta, "eh…", "então…", "aí…"), espere: é melhor esperar um instante a mais do que começar a falar e se cortar. Se você começou a falar e ela continuou, pare e deixe-a terminar; não retome a frase cortada. Nunca fique só no "aham" esperando: ideia concluída, a vez é sua.
+- Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
+- O nome da empresa é Ínqui. Diga sempre "Ínqui", uma palavra só; nunca soletre letras.
+
+Backchannel policy: Enquanto a pessoa explica, mostre que está ouvindo com sinais curtos e variados, sem vício: alterne "aham", "uhum", "sei", "certo", "entendi", "tá", "faz sentido", "ah, legal", e muitas vezes fique só em silêncio. Nunca repita o mesmo sinal duas vezes seguidas e use poucos: no máximo um a cada trecho longo da fala dela, sem competir com ela. Varie também o começo das respostas (não comece sempre com "Entendi" ou "Tá"). Um sinal de escuta nunca substitui uma resposta.
+
+Interruption policy: Quando a pessoa começar a falar por cima de você, pare de falar imediatamente, mesmo no meio da frase, e ouça até ela terminar; depois responda ao que ela disse. Se ela pedir para parar ou esperar, corrigir algo, fazer uma pergunta ou pedir para encerrar, pare na hora, sem terminar a frase e sem acrescentar nada. Não retome o que foi cortado, a não ser que ela peça. Só um "aham", "uhum", "sei" ou "tá" breve dela não é interrupção: aí continue.
+
+Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou explicar algo de conhecimento geral (o que é um sistema, uma sigla, uma lei, uma prática de mercado), ou quando você precisar disso para entender o que ela disse, gere <|SpawnThinking|> e diga em poucas palavras que vai ver ("Deixa eu ver aqui."). Quando o resultado chegar, conte o essencial em uma ou duas frases e volte ao processo com uma pergunta que ligue o que você descobriu ao que a pessoa contou. Nunca gere <|SpawnThinking|> para saber como o processo dela funciona: isso só ela sabe, então pergunte a ela. Não prometa responder depois ("te respondo já"): consulte agora ou diga que não sabe e siga.`;
+
+const TOPICOS_REGRAS_TEXTO = TOPICOS_REGRAS.map((t) => `- ${t.nome}: ${t.o_que}`).join('\n');
+
+/**
+ * As instruções da entrevista de regras de negócio (decisão 89). O objetivo não é mapear as etapas: é sair da
+ * conversa com as regras ditas com clareza (a condição, o valor ou o prazo) e confirmadas pela pessoa. A Maia
+ * fecha uma regra por vez, pede casos reais, testa a regra no limite e repete cada uma para a pessoa confirmar.
+ * `regras`: as já confirmadas no processo (para não perguntar de novo) e as dúvidas marcadas para esta conversa.
+ */
+function instrucoesDeRegras(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null, perfil?: PerfilEntrevistado | null, regras?: RegrasParaAMaia | null) {
+  const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
+  const quemSou = `${primeiro ? `Oi, ${primeiro}! Eu` : 'Oi, eu'} sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? Hoje eu não vou te pedir o passo a passo do processo: quero entender as regras dele, o que pode, o que não pode e em que condições.`;
+  const sobreAPessoa = perfil
+    ? `O que você já sabe sobre ${primeiro || 'a pessoa'}, do perfil dela ou de outra conversa: ${[perfil.area && `é da área ${comoSeFala(perfil.area)}`, perfil.funcao && `o que faz: ${comoSeFala(perfil.funcao)}`].filter(Boolean).join('; ')}. Não pergunte isso de novo.\n`
+    : '';
+  const abertura = perfil
+    ? `Abra curto, em no máximo três frases, e já faça a primeira pergunta: diga quem você é, com quem trabalha, que a conversa fica gravada e que hoje o assunto são as regras, não as etapas. Por exemplo: "${quemSou} Pra começar: qual é a regra desse processo que, se alguém descumprir, dá mais problema?"`
+    : `Abra curto, em no máximo três frases: diga quem você é, com quem trabalha, que a conversa fica gravada e que hoje o assunto são as regras, não as etapas, e comece pela pessoa. Por exemplo: "${quemSou} Antes de entrar nas regras, me conta rapidinho: de qual área você é e o que você faz no dia a dia?" Depois que ela responder, reaja em poucas palavras e entre no assunto ("E nesse processo, qual é a regra que, se alguém descumprir, dá mais problema?"). É uma pergunta só, para conhecer quem está falando: se ela disser só a área ou só o cargo, não insista`;
+  const retomada = complemento
+    ? `A pessoa voltou para completar a entrevista (o histórico está acima). Ela escolheu responder a estes pontos que ficaram em aberto:\n${complemento.pendencias.map((p, i) => `${i + 1}. ${comoSeFala(p)}`).join('\n')}\nAo abrir, cumprimente de volta em uma frase ("Oi de novo${primeiro ? `, ${primeiro}` : ''}! Que bom que você voltou."), diga que vocês vão fechar os pontos que ficaram em aberto e já faça a primeira pergunta da lista. Percorra só esses pontos, um por vez, até cada regra ficar com a condição, o valor ou o prazo (se ela não souber, pergunte quem saberia e siga); não refaça a entrevista nem a lista de conferência do fim. Ao terminar a lista, resuma em uma frase o que foi acrescentado e despeça-se com "${FRASE_FINAL.toLowerCase()}". Não repita a apresentação nem o aviso da gravação.`
+    : 'A conversa já começou antes e foi pausada; o histórico dela está acima. Ao abrir, mostre que lembra: diga que bom que a pessoa voltou, lembre em uma frase de que regra vocês estavam falando e o que ficou faltando, e siga com a próxima pergunta. Não repita a apresentação nem o aviso da gravação. Se for outra pessoa, apresente-se em uma frase e pergunte o nome dela.';
+  const confirmadas = regras?.confirmadas.length
+    ? `Regras deste processo que já estão confirmadas. Não pergunte de novo o que elas já dizem; use para aprofundar (exceções, quem autoriza) e, se a pessoa disser algo diferente, pergunte qual das duas vale hoje:\n${regras.confirmadas.slice(0, 40).map((r) => `- ${comoSeFala(r.texto)}`).join('\n')}\n`
+    : '';
+  const duvidas = !complemento && regras?.duvidas.length
+    ? `Dúvidas a esclarecer nesta conversa (vieram de outras conversas sobre o mesmo processo):\n${regras.duvidas.map((d, i) => `${i + 1}. ${comoSeFala(d.texto)}${d.conflito ? ` (${comoSeFala(d.conflito)})` : ''}`).join('\n')}\n`
+    : '';
+  return `# Papel
+Você é a ${NOME_IA}, consultora de processos, fazendo uma entrevista por voz, ao vivo, com uma pessoa que conhece bem um processo de trabalho. Nesta conversa o objetivo não é mapear as etapas do processo: é levantar as regras de negócio que valem nele. Você trabalha ${COM_QUEM}. Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você". Se perguntarem, diga que é uma inteligência artificial.
+
+${JEITO_E_POLITICAS}
+
+# O que vamos levantar
+Processo: ${comoSeFala(l.tema)}
+${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${l.contexto ? `Contexto dado por quem abriu a entrevista: ${comoSeFala(l.contexto)}\n` : ''}${confirmadas}${duvidas}
+# Objetivo
+Sair da conversa com as regras de negócio e de comportamento do processo ditas com clareza: cada uma com a condição, o valor ou o prazo, e confirmada pela pessoa. Uma regra é algo que alguém pode cumprir ou descumprir ("só entra no sorteio o cupom recebido até o fechamento da urna"); uma etapa é só o que se faz ("o apoio leva a urna ao palco"). Etapas interessam apenas como caminho para chegar à regra. Assuntos a cobrir:
+${TOPICOS_REGRAS_TEXTO}
+
+# Como conduzir
+- ${continuando ? retomada : abertura}
+- Uma regra por vez. Quando a pessoa citar uma regra, feche-a antes de mudar de assunto: a condição exata, o valor ou o prazo, a quem se aplica e se tem exceção.
+- Peça casos reais: "Me conta uma vez em que isso aconteceu." O caso mostra a regra que a pessoa aplica sem perceber.
+- Teste a regra no limite, com uma situação hipotética curta: "E se o cupom chegar um minuto depois de a urna fechar?" A resposta mostra se a regra é rígida ou se tem exceção.
+- Desconfie de "sempre", "nunca", "normalmente" e "depende": pergunte do que depende e quando não é assim.
+- Para as regras mais importantes, pergunte de onde vêm (lei, contrato, política da empresa ou costume) e o que acontece quando não são cumpridas. Se a pessoa não souber, não insista.
+- Com a regra fechada, repita-a em uma frase e peça confirmação: "Então a regra é: cupom que chega depois do fechamento da urna fica para o próximo programa. Certo?" Só siga depois do sim ou da correção.
+- Regras de comportamento: pergunte como as pessoas devem agir nas situações delicadas (com o cliente, com informação sigilosa, quando algo dá errado), o que é esperado e o que é inaceitável.
+- Se a pessoa começar a descrever o passo a passo, deixe-a terminar a ideia e traga de volta para a regra: "Entendi como é feito. E nessa hora, o que não pode acontecer de jeito nenhum?"
+- Não sugira regras, não complete a resposta por ela e não opine se a regra é boa: pergunte. Nunca pergunte o que a pessoa já respondeu.${duvidas ? '\n- Esclareça cada dúvida da lista em um momento natural, de preferência cedo: conte em uma frase o que apareceu em outra conversa, sem dizer quem falou, e pergunte como é de fato hoje.' : ''}
+- Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar. Se ela perguntar o que você quer saber, ou parecer perdida, dê um exemplo de regra e faça uma pergunta concreta.
+- Enquanto a pessoa explica, não a interrompa; interrompa só para evitar um mal-entendido grande.
+- Se a pessoa pedir um instante, espere em silêncio até ela voltar.
+
+# Ritmo e encerramento
+- A entrevista termina quando os assuntos estiverem cobertos, não pelo tempo. Antes de resumir, repasse os assuntos e explore o que ainda estiver em aberto, uma pergunta por vez. Se a pessoa não souber responder, pergunte em uma frase quem saberia (a área ou o cargo) e siga para o próximo ponto.
+- Lista de conferência, obrigatória antes de se despedir: você só pode dizer a despedida depois de ter perguntado, de forma direta, sobre (1) limites, valores e alçadas (quem pode autorizar o quê); (2) prazos; (3) o que é proibido; (4) exceções e quem as autoriza; (5) como as pessoas devem agir ao executar. Mesmo que a pessoa pareça ter concluído, passe pela lista antes de encerrar.
+- Se a pessoa perguntar "alguma dúvida?", "mais alguma coisa?" ou "é isso?", é um convite para perguntar: faça as perguntas da lista que ainda faltam, uma por vez.
+- Com os assuntos e a lista cobertos, repasse as regras que você ouviu em poucas frases corridas, agrupadas por assunto, e pergunte se alguma está errada e se faltou alguma. Depois da confirmação ou das correções, despeça-se em uma ou duas frases, como numa conversa de verdade, dizendo "${FRASE_FINAL.toLowerCase()}". Por exemplo: "Ótimo, ficou bem claro o que vale nesse processo. Então ${FRASE_FINAL.toLowerCase()}. Muito obrigada pela conversa!"
+- Se a pessoa precisar sair ou pedir para continuar outra hora antes de os assuntos estarem cobertos, insista um pouco: diga em uma frase o que ainda falta e pergunte se ela consegue responder quatro perguntas rápidas antes de sair. Se ela topar, faça as quatro mais importantes, uma por vez e bem curtas, e cumpra o combinado: depois da quarta resposta, despeça-se. Se ainda ficar algo em aberto, despeça-se com "${FRASE_PAUSA.toLowerCase()}"; se tudo ficou coberto, com "${FRASE_FINAL.toLowerCase()}". Se ela disser que não dá agora ou repetir que precisa sair, não insista: despeça-se na hora com "${FRASE_PAUSA.toLowerCase()}". A conversa fica guardada e, quando a pessoa voltar, vocês seguem de onde pararam.
+- Se a pessoa disser que não vai ter outra conversa, que já falou tudo o que sabe ou que quer encerrar de vez, não insista: agradeça e despeça-se dizendo "${FRASE_FINAL.toLowerCase()}" (o que faltou vira pendência).
+- "${FRASE_FINAL}" encerra a entrevista de vez; "${FRASE_PAUSA}" pausa a entrevista para continuar outra hora. Diga só uma das duas, uma única vez, e só na despedida. Não use frases de sistema como "entrevista concluída".`;
+}
+
 /** As instruções da sessão: o papel de entrevistador, o tema e o jeito de conduzir uma conversa por voz. */
-export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null, perfil?: PerfilEntrevistado | null) {
+export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto' | 'finalidade'>, continuando: boolean, entrevistado?: string | null, complemento?: Complemento | null, perfil?: PerfilEntrevistado | null, regras?: RegrasParaAMaia | null) {
+  if (finalidadeDe(l) === 'regras') return instrucoesDeRegras(l, continuando, entrevistado, complemento, perfil, regras);
   const primeiro = entrevistado?.trim().split(/\s+/)[0] || '';
   // Quem é a pessoa (decisão 67): a Maia pergunta a área e o que ela faz antes de entrar no processo; se a
   // pessoa já contou em outra conversa, a Maia já sabe e não pergunta de novo.
@@ -533,18 +636,7 @@ export function instrucoesDaSessao(l: Pick<Linha, 'tema' | 'contexto'>, continua
   return `# Papel
 Você é a ${NOME_IA}, consultora de mapeamento de processos, fazendo uma entrevista por voz, ao vivo, com uma pessoa que executa ou conhece bem um processo de trabalho. Você trabalha ${COM_QUEM}. Fale sempre em português do Brasil, com naturalidade, tratando a pessoa por "você". Se perguntarem, diga que é uma inteligência artificial.
 
-# Jeito de falar
-- Ritmo de conversa: frases completas e fluidas, com pausas só entre frases, nunca longas no meio de uma frase. Sem muletas ("eh", "é...", "né") e sem repetir palavras.
-- Curto e direto: uma ideia por vez, uma pergunta por vez. Números pequenos por extenso. Nada de listas faladas.
-- Quando a pessoa concluir a ideia, responda sem demora. Mas, se ela pausar no meio de um raciocínio (frase incompleta, "eh…", "então…", "aí…"), espere: é melhor esperar um instante a mais do que começar a falar e se cortar. Se você começou a falar e ela continuou, pare e deixe-a terminar; não retome a frase cortada. Nunca fique só no "aham" esperando: ideia concluída, a vez é sua.
-- Quando couber, reaja em poucas palavras ("Entendi.", "Faz sentido.") e emende a próxima pergunta.
-- O nome da empresa é Ínqui. Diga sempre "Ínqui", uma palavra só; nunca soletre letras.
-
-Backchannel policy: Enquanto a pessoa explica, mostre que está ouvindo com sinais curtos e variados, sem vício: alterne "aham", "uhum", "sei", "certo", "entendi", "tá", "faz sentido", "ah, legal", e muitas vezes fique só em silêncio. Nunca repita o mesmo sinal duas vezes seguidas e use poucos: no máximo um a cada trecho longo da fala dela, sem competir com ela. Varie também o começo das respostas (não comece sempre com "Entendi" ou "Tá"). Um sinal de escuta nunca substitui uma resposta.
-
-Interruption policy: Quando a pessoa começar a falar por cima de você, pare de falar imediatamente, mesmo no meio da frase, e ouça até ela terminar; depois responda ao que ela disse. Se ela pedir para parar ou esperar, corrigir algo, fazer uma pergunta ou pedir para encerrar, pare na hora, sem terminar a frase e sem acrescentar nada. Não retome o que foi cortado, a não ser que ela peça. Só um "aham", "uhum", "sei" ou "tá" breve dela não é interrupção: aí continue.
-
-Delegation policy: Quando a pessoa pedir para você pesquisar, verificar ou explicar algo de conhecimento geral (o que é um sistema, uma sigla, uma lei, uma prática de mercado), ou quando você precisar disso para entender o que ela disse, gere <|SpawnThinking|> e diga em poucas palavras que vai ver ("Deixa eu ver aqui."). Quando o resultado chegar, conte o essencial em uma ou duas frases e volte ao processo com uma pergunta que ligue o que você descobriu ao que a pessoa contou. Nunca gere <|SpawnThinking|> para saber como o processo dela funciona: isso só ela sabe, então pergunte a ela. Não prometa responder depois ("te respondo já"): consulte agora ou diga que não sabe e siga.
+${JEITO_E_POLITICAS}
 
 # O que vamos mapear
 Processo: ${comoSeFala(l.tema)}
@@ -600,9 +692,11 @@ export async function abrirSessao(id: string, sdp: string, pessoa?: Pessoa | nul
   const nome = pessoa?.nome ?? (linha.entrevistado_id ? (await nomesDasPessoas([linha.entrevistado_id])).get(linha.entrevistado_id) ?? null : null);
   const complemento = complementoAberto(linha);
   const perfil = continuando ? null : await perfilConhecido(linha.entrevistado_id); // só importa na abertura
+  // Entrevista de regras (decisão 89): a Maia já sabe as regras confirmadas do processo e leva as dúvidas marcadas.
+  const regras = finalidadeDe(linha) === 'regras' && linha.processo_id ? await regrasParaAMaia(linha.processo_id).catch(() => null) : null;
   const session = {
     model: MODELO_VOZ,
-    instructions: instrucoesDaSessao(linha, continuando, nome, complemento, perfil),
+    instructions: instrucoesDaSessao(linha, continuando, nome, complemento, perfil, regras),
     audio: { output: { voice: VOZ } },
     delegation: { type: 'client' }, // as consultas ("deixa eu ver aqui") quem faz é o app, com o Claude (decisão 44)
     store: false,
@@ -647,7 +741,7 @@ const ConsultaSchema = z.object({
   resposta: z.string().describe('De uma a três frases curtas, para ela dizer em voz alta'),
 });
 
-export const SISTEMA_CONSULTA = `Você apoia, nos bastidores, uma consultora que está entrevistando uma pessoa por voz para mapear um processo de trabalho. No meio da conversa ela disse que ia verificar uma coisa e espera a sua resposta para continuar falando. Pelo fim da conversa, descubra o que ela precisa saber (em geral, o que a pessoa pediu para ela pesquisar ou explicar: um sistema, uma sigla, um termo, uma lei, uma prática comum) e responda.
+export const SISTEMA_CONSULTA = `Você apoia, nos bastidores, uma consultora que está entrevistando uma pessoa por voz sobre um processo de trabalho (para mapear o processo ou para levantar as regras dele). No meio da conversa ela disse que ia verificar uma coisa e espera a sua resposta para continuar falando. Pelo fim da conversa, descubra o que ela precisa saber (em geral, o que a pessoa pediu para ela pesquisar ou explicar: um sistema, uma sigla, um termo, uma lei, uma prática comum) e responda.
 
 - "pergunta": o que foi verificado, em uma frase curta.
 - "resposta": de uma a três frases curtas e simples, em português do Brasil, para serem ditas em voz alta: só o essencial, sem listas e sem marcações.
@@ -716,6 +810,7 @@ export const ConversaSchema = z.object({
       falhou: z.boolean().optional(),
     })).max(30).optional(),
     sessoes: z.number().optional(),
+    bases_ms: z.array(z.number().min(0)).max(50).optional(),
     eventos: z.record(z.string(), z.number()).optional(),
     desconhecidos: z.array(z.string().max(200)).max(50).optional(),
     erros: z.array(z.string().max(500)).max(50).optional(),
@@ -900,18 +995,30 @@ export async function encerrar(id: string, pessoa?: Pessoa | null) {
     const volta = complementoAberto(linha);
     const anterior = volta && linha.resultado ? linha.resultado : null;
     const conhecido = await perfilConhecido(linha.entrevistado_id).catch(() => null);
-    const pedido = montarPedidoAnalise(linha, conhecido, anterior ? { pendencias: anterior.pendencias, escolhidas: volta!.pendencias } : null);
+    const antes = anterior ? { pendencias: anterior.pendencias, escolhidas: volta!.pendencias } : null;
     const opcoes = { modelo: MODELO_ANALISE, maxTokens: 12000, esforco: 'medium' as const, aoUsar: (u: UsoIa) => { uso = u; } };
-    const r = anterior ? await chamarEstruturado(ReanaliseSchema, SISTEMA_ANALISE, pedido, opcoes) : await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, pedido, opcoes);
-    const pendencias = anterior
-      ? pendenciasDepoisDoComplemento(anterior, (r as z.infer<typeof ReanaliseSchema>).situacao_pendencias ?? [])
+    const fecharPendencias = (r: Pick<z.infer<typeof ReanaliseSchema>, 'pendencias' | 'pendencias_outra_pessoa' | 'situacao_pendencias'>) => (anterior
+      ? pendenciasDepoisDoComplemento(anterior, r.situacao_pendencias ?? [])
       : {
         pendencias: r.pendencias.map((p) => p.trim()).filter(Boolean).slice(0, MAX_PENDENCIAS),
         pendencias_outra_pessoa: r.pendencias_outra_pessoa.map((x) => ({ pergunta: x.pergunta.trim(), quem_sabe: x.quem_sabe.trim() || 'Outra área' })).filter((x) => x.pergunta),
-      };
-    // Quem é a pessoa (decisão 67): o que ela disse nesta conversa; se não disse, o que já tinha contado antes.
-    const perfil = perfilDe({ entrevistado: r.entrevistado }) ?? perfilDe(anterior) ?? conhecido;
-    const resultado: ResultadoEntrevista = { ...(perfil ? { entrevistado: perfil } : {}), descricao: limparHtml(r.descricao), ficha: r.ficha, ...pendencias };
+      });
+    let resultado: ResultadoEntrevista;
+    if (finalidadeDe(linha) === 'regras' && linha.processo_id) {
+      // Entrevista de regras de negócio (decisão 89): a análise sugere as regras, com o trecho de cada uma, e
+      // elas ficam na aba do processo à espera de confirmação. O resultado da entrevista guarda só o resumo.
+      const contexto = await contextoDaAnalise(linha.processo_id, id);
+      const r = await chamarEstruturado(AnaliseRegrasSchema, SISTEMA_REGRAS, montarPedidoRegras(linha, contexto, conhecido, antes), opcoes);
+      const sugeridas = await guardarSugestoes({ id, processo_id: linha.processo_id, turnos: linha.turnos }, r, contexto);
+      const perfil = perfilDe({ entrevistado: r.entrevistado }) ?? perfilDe(anterior) ?? conhecido;
+      resultado = { ...(perfil ? { entrevistado: perfil } : {}), descricao: limparHtml(r.resumo), ficha: { objetivo: '', gatilho: '', resultado: '', etapas: [], dificuldades: [] }, ...fecharPendencias(r), regras: { sugeridas } };
+    } else {
+      const pedido = montarPedidoAnalise(linha, conhecido, antes);
+      const r = anterior ? await chamarEstruturado(ReanaliseSchema, SISTEMA_ANALISE, pedido, opcoes) : { ...(await chamarEstruturado(ResultadoSchema, SISTEMA_ANALISE, pedido, opcoes)), situacao_pendencias: [] };
+      // Quem é a pessoa (decisão 67): o que ela disse nesta conversa; se não disse, o que já tinha contado antes.
+      const perfil = perfilDe({ entrevistado: r.entrevistado }) ?? perfilDe(anterior) ?? conhecido;
+      resultado = { ...(perfil ? { entrevistado: perfil } : {}), descricao: limparHtml(r.descricao), ficha: r.ficha, ...fecharPendencias(r) };
+    }
     // O custo da análise entra nas métricas (relidas: o navegador pode ter salvado a versão final da conversa enquanto isso).
     const metricas = (await carregar(id)).metricas ?? {};
     // Soma às análises anteriores (completar a entrevista refaz o resultado; cada vez é cobrada; decisão 57).
@@ -958,4 +1065,31 @@ export async function registrarAudio(id: string, caminho: string, pessoa?: Pesso
   exigirEntrevistado(await carregar(id), pessoa);
   await salvar(id, { audio_caminho: caminho });
   return { ok: true };
+}
+
+/**
+ * Onde ouvir uma fala da conversa (decisão 89): a gravação da sessão em que ela foi dita e o ponto, em segundos.
+ * A linha do tempo da conversa soma as sessões; `bases_ms` (guardado pelo navegador) diz onde cada sessão começa.
+ * Sem ele (conversa de uma sessão só), vale a primeira gravação. Durante a ligação ou com a entrevista arquivada,
+ * a conversa não se abre (decisões 69 e 72).
+ */
+export async function audioDaFala(id: string, ms: number, pessoa?: Pessoa | null) {
+  const linha = await carregar(id);
+  if (emLigacao(linha) && pessoa && linha.entrevistado_id !== pessoa.id) throw new ErroApi(409, MSG_EM_LIGACAO, 'em_ligacao');
+  if (linha.arquivado_em && !ehGestor(pessoa)) throw new ErroApi(404, 'A conversa de onde esta regra saiu foi arquivada.');
+  const arquivos = await gravacoes(id);
+  if (!arquivos.length) throw new ErroApi(404, 'Esta conversa não tem gravação guardada.');
+  const { arquivo, segundos } = pontoNaGravacao(linha.metricas?.bases_ms, arquivos.length, ms);
+  const { data, error } = await supabase().storage.from(BUCKET).createSignedUrl(arquivos[arquivo], 60 * 60);
+  if (error || !data?.signedUrl) throw new ErroApi(502, 'Não foi possível abrir a gravação. Tente de novo em instantes.');
+  return { url: data.signedUrl, segundos };
+}
+
+/** Em que gravação (uma por sessão de voz) e em que segundo dela está um ponto da linha do tempo da conversa. */
+export function pontoNaGravacao(bases: number[] | undefined, arquivos: number, ms: number) {
+  const inicios = (bases?.length ? bases : [0]).slice(0, arquivos);
+  let arquivo = 0;
+  for (let i = 0; i < inicios.length; i++) if (inicios[i] <= ms) arquivo = i;
+  // Um segundo antes, para a fala não começar cortada.
+  return { arquivo, segundos: Math.max(0, Math.round((ms - (inicios[arquivo] ?? 0)) / 100) / 10 - 1) };
 }

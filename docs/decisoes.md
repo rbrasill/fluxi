@@ -695,6 +695,21 @@ Referência em `docs/design/referencias/ligacao.webp`. Sem mudar o banco nem o j
 - A cor do quadrado sai da paleta dos avatares, fixa por área.
 - Nada muda no banco.
 
+## 89. Regras de negócio: uma segunda finalidade para a Maia (12/11/2026)
+
+A entrevista com a Maia passa a ter uma **finalidade**: mapeamento de processo (a de sempre) ou **regras de negócio**. Cada uma tem a sua condução, a sua análise e o seu convite.
+
+- **Escopo:** as regras são do processo. Cada regra se aplica ao processo inteiro ou a um POP dele. Regras de uma área inteira ficam para depois.
+- **Condução da entrevista de regras** (`instrucoesDeRegras`, em `lib/server/entrevistas.ts`): a Maia avisa, na abertura, que não vai pedir o passo a passo. Fecha uma regra por vez (a condição, o valor ou o prazo, a quem se aplica, a exceção), pede casos reais, testa a regra com uma situação no limite, desconfia de "sempre" e "nunca", pergunta de onde a regra vem e o que acontece quando não é cumprida, e repete cada regra para a pessoa confirmar. Se a pessoa começa a descrever etapas, traz de volta para a regra. Antes de se despedir, confere limites e alçadas, prazos, proibições, exceções e comportamento. O jeito de falar e as políticas de voz são os mesmos do mapeamento. A Maia já entra sabendo as regras confirmadas do processo e as dúvidas marcadas para a conversa.
+- **Análise** (`lib/server/regras.ts`): no fim, o Claude separa as regras que a pessoa afirmou ou confirmou. Cada sugestão vem com o tipo (**RN**, regra de negócio, ou **RC**, regra de comportamento), o trecho da fala e o número da fala (que vira o ponto da gravação), o POP a que se aplica e, se for o caso, o possível conflito com uma regra já confirmada. A análise recebe as regras confirmadas, as sugestões em revisão e as descartadas, para não repetir.
+- **Nada entra sem confirmação.** As sugestões ficam na aba **Regras de negócio** do processo. Quem confirma, edita e descarta é **a pessoa escolhida para o processo** por um gestor ou administrador (pode ser a própria pessoa entrevistada) e os administradores. Só a regra confirmada ganha código (RN-01, RC-01: sequência por processo e por tipo). Regra escrita à mão por quem confirma já nasce confirmada. Quem confirma vê, no Início, o aviso das regras à espera.
+- **Conflito e dúvida:** quando a sugestão pode conflitar com uma regra confirmada, a aba avisa e oferece "Perguntar na próxima entrevista". A dúvida vai para as instruções da Maia na próxima entrevista de regras do processo; o que a pessoa responder fica anotado na sugestão, e quem confirma decide.
+- **Ouvir o trecho:** o botão toca a gravação a partir da fala. O navegador passa a guardar onde cada sessão de voz começa na linha do tempo (`bases_ms`), para achar a fala quando a conversa teve pausas.
+- **Convite:** o diálogo pede a finalidade e o e-mail muda com ela (`finalidade` nos dados do carteiro; os dois passos do workflow do Pipedream precisam ser atualizados, ver `docs/convites.md`). Uma pessoa pode ter uma entrevista aberta de cada finalidade no mesmo processo.
+- **Fontes:** só as entrevistas de regras. A conversa de regras não entra no fluxograma. Ler também os POPs e as fichas das entrevistas de mapeamento fica para depois.
+- **Banco:** migração 0024 (`entrevistas.finalidade`, `processos.confirmador_regras_id` e a tabela `regras`). Enquanto ela não está aplicada, o app segue como antes: a aba não aparece e o convite não mostra a finalidade.
+- **Ficou para a segunda entrega:** as regras confirmadas na página pública do processo e numa seção do PDF dos POPs.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

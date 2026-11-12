@@ -132,7 +132,8 @@ function EntrevistaPage() {
 
   async function encerrar(perguntar: boolean) {
     if (encerrando.current) return;
-    if (perguntar && !(await confirmar({ titulo: 'Encerrar a entrevista agora?', mensagem: 'A Maia escreve a descrição e a ficha do processo com o que já foi conversado.', acao: 'Encerrar' }))) return;
+    const deRegras = e?.finalidade === 'regras'; // entrevista de regras de negócio (decisão 89)
+    if (perguntar && !(await confirmar({ titulo: 'Encerrar a entrevista agora?', mensagem: deRegras ? 'A Maia separa as regras de negócio do que já foi conversado, para revisão.' : 'A Maia escreve a descrição e a ficha do processo com o que já foi conversado.', acao: 'Encerrar' }))) return;
     encerrando.current = true;
     setTela('processando');
     setErro(null);
@@ -143,7 +144,7 @@ function EntrevistaPage() {
     const envio = blob && blob.size > 0
       ? enviarAudioDaEntrevista(id, blob).catch(() => setAviso('O áudio da conversa não pôde ser guardado; o resultado sai mesmo assim.'))
       : Promise.resolve();
-    setEtapaFim('Gerando a descrição e a ficha do processo… Pode levar um minuto.');
+    setEtapaFim(deRegras ? 'Separando as regras de negócio da conversa… Pode levar um minuto.' : 'Gerando a descrição e a ficha do processo… Pode levar um minuto.');
     try { await encerrarEntrevista(id); } catch (err) { setErro({ texto: `Não foi possível gerar o resultado (${msg(err)}).`, repetir: () => void reprocessar() }); }
     await envio;
     await carregar();
@@ -237,6 +238,7 @@ function EntrevistaPage() {
   if (e === null) return <div className="page"><div className="empty"><h2>Entrevista não encontrada</h2><Link href="/app/entrevistas" className="btn btn-primary">Voltar</Link></div></div>;
 
   const arquivada = !!e.arquivado_em;
+  const regras = e.finalidade === 'regras'; // entrevista de regras de negócio (decisão 89): outra condução e outro resultado
   // Arquivar fica aqui dentro, no alto da entrevista (decisão 72): fora da ligação e com a entrevista já começada.
   const podeArquivar = ehGestor(eu) && !arquivada && !e.conteudo_oculto && !e.em_ligacao && e.status !== 'convidada' && e.status !== 'processando' && (tela === 'inicio' || tela === 'resultado');
   const cabecalho = (
@@ -249,7 +251,7 @@ function EntrevistaPage() {
     <div className="page-head proc-cabecalho entrevista-cabecalho">
       <span className="proc-avatar avatar-maia" aria-hidden="true"><span /></span>
       <div className="proc-titulo">
-        <h1>{e.tema || 'Entrevista'}{e.status === 'concluida' && !arquivada && <span className="selo-status selo-concluida">Entrevista concluída</span>}</h1>
+        <h1>{e.tema || 'Entrevista'}{regras && <span className="chip-regra chip-maia chip-finalidade">Regras de negócio</span>}{e.status === 'concluida' && !arquivada && <span className="selo-status selo-concluida">Entrevista concluída</span>}</h1>
         {!e.processo && e.contexto && <p>{e.contexto}</p>}
         {e.entrevistado && <p className="page-meta">Entrevista com <strong>{e.entrevistado}</strong>{e.convidador && e.convidado_em ? ` · convite de ${e.convidador} em ${new Date(e.convidado_em).toLocaleDateString('pt-BR')}` : ''}</p>}
       </div>
@@ -331,7 +333,16 @@ function EntrevistaPage() {
               <ul className="ficha-lista lista-pendencias-escolhidas">{complemento.pendencias.map((x, i) => <li key={i}>{x}</li>)}</ul>
             </>
           )}
-          {!complemento && <ul className="dicas">
+          {!complemento && regras && <ul className="dicas">
+            <li>A Maia, a entrevistadora por voz do INCFlow, quer entender as <strong>regras de negócio</strong> deste processo: o que pode, o que não pode, os limites, os prazos e em que condições. Você responde falando, como numa ligação.</li>
+            <li>Não é uma conversa sobre o passo a passo do processo. A Maia pergunta sobre as regras, pede exemplos de casos reais e repete cada regra para você confirmar.</li>
+            <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
+            <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
+            <li>No fim, ela separa as regras que ouviu, cada uma com o trecho da sua fala. Nada passa a valer sozinho: as regras ficam no processo à espera da confirmação de quem cuida dele.</li>
+            <li>Dura o necessário para cobrir as regras. A Maia se despede sozinha quando não há mais o que perguntar; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
+            <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
+          </ul>}
+          {!complemento && !regras && <ul className="dicas">
             <li>A Maia, a entrevistadora por voz do INCFlow, faz perguntas sobre o processo e você responde falando, como numa ligação.</li>
             <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
             <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
@@ -367,7 +378,7 @@ function EntrevistaPage() {
         <header className="ligacao-topo">
           <Image src="/logo-incflow-marca.png" alt="INCFlow" width={40} height={40} />
           <div className="ligacao-titulo">
-            <strong>Entrevista sobre {e.tema || 'o processo'}</strong>
+            <strong>{regras ? `Regras de negócio de ${e.tema || 'um processo'}` : `Entrevista sobre ${e.tema || 'o processo'}`}</strong>
             <span>{[e.convidador && `Convite de ${e.convidador}`, e.processo?.area?.nome].filter(Boolean).join(' · ')}</span>
           </div>
           {!processando && <span className="ligacao-tempo" title="Tempo de conversa"><span className="rec-dot" />{mmss(segundos)}</span>}
@@ -411,6 +422,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
   aoReprocessar: () => Promise<void>; aoRetomar: (pendencias: string[]) => Promise<void>;
 }) {
   const r = e.resultado;
+  const regras = e.finalidade === 'regras'; // entrevista de regras de negócio (decisão 89)
   const parado = e.status === 'processando' && Date.now() - new Date(e.atualizado_em).getTime() > 3 * 60_000;
   // Voltar para fechar pontos em aberto (decisão 56): a própria pessoa escolhe e liga; gestores marcam para ela.
   const [escolhidas, setEscolhidas] = useState<string[]>([]);
@@ -431,7 +443,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
       {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span>{erro.repetir && <button className="btn" onClick={erro.repetir}>Tentar de novo</button>}</div>}
 
       {e.status === 'processando' && !parado && (
-        <div className="cartao entrevista-vivo escuro"><Orbe modo="processando" /><h2 className="entrevista-estado">Gerando a descrição e a ficha do processo…</h2><p className="entrevista-sub">Pode levar um minuto. A página atualiza sozinha.</p></div>
+        <div className="cartao entrevista-vivo escuro"><Orbe modo="processando" /><h2 className="entrevista-estado">{regras ? 'Separando as regras de negócio da conversa…' : 'Gerando a descrição e a ficha do processo…'}</h2><p className="entrevista-sub">Pode levar um minuto. A página atualiza sozinha.</p></div>
       )}
       {(e.status === 'erro' || parado) && (
         <div className="cartao">
@@ -448,7 +460,22 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
 
       <div className={r ? 'proc-grade entrevista-grade' : 'proc-coluna'}>
         <div className="proc-coluna">
-          {r && (
+          {r && regras && (
+            <section className="cartao regras-da-conversa" aria-labelledby="titulo-regras-conversa">
+              <div className="sec-titulo">
+                <div className="sec-cabeca">
+                  <h3 id="titulo-regras-conversa">Regras encontradas nesta conversa</h3>
+                  <p>{(r.regras?.sugeridas ?? 0) > 0
+                    ? `A Maia sugeriu ${r.regras!.sugeridas} ${r.regras!.sugeridas === 1 ? 'regra' : 'regras'}, cada uma com o trecho da fala de onde saiu. Elas ficam no processo à espera de confirmação: nada passa a valer sozinho.`
+                    : 'A Maia não encontrou nenhuma regra dita com clareza nesta conversa.'}</p>
+                </div>
+                <span className="selo-maia"><Icone nome="ia" tamanho={14} />Gerado pela Maia</span>
+              </div>
+              {r.descricao && <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />}
+              {e.processo && <div className="fluxo-acoes"><Link className="btn btn-primary" href={`/app/processos/${e.processo.id}#regras`}><Icone nome="balanca" tamanho={16} />Ver as regras no processo</Link></div>}
+            </section>
+          )}
+          {r && !regras && (
             <>
               <section className="cartao" aria-labelledby="titulo-ficha">
                 <div className="sec-titulo">
@@ -540,9 +567,9 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
             {(r.pendencias_outra_pessoa?.length ?? 0) > 0 && (
               <section className="cartao cartao-lateral" id="para-outra-pessoa" aria-labelledby="titulo-outra-pessoa">
                 <h3 id="titulo-outra-pessoa">Para outra pessoa responder</h3>
-                <p className="lateral-texto">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo && !arquivada ? ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.' : ''}</p>
+                <p className="lateral-texto">{minha ? 'Você disse que não sabe responder: quem sabe é de outra área.' : `${primeiroNome} não soube responder: quem sabe é de outra área.`}{gestor && e.processo && !arquivada ? (regras ? ' Convide alguém de lá para uma entrevista de regras, pela aba Regras de negócio do processo.' : ' Na página do processo dá para convidar alguém de lá, já com estas perguntas.') : ''}</p>
                 <ul className="ficha-lista lista-pendencias so-leitura">{r.pendencias_outra_pessoa!.map((x, i) => <li key={i}>{x.pergunta} <small>· quem sabe: {x.quem_sabe}</small></li>)}</ul>
-                {gestor && e.processo && !arquivada && (
+                {gestor && e.processo && !arquivada && !regras && (
                   <Link className="btn btn-largo" href={`/app/processos/${e.processo.id}#perguntas-para-outros`}><Icone nome="mais" tamanho={16} />Convidar alguém para responder</Link>
                 )}
               </section>

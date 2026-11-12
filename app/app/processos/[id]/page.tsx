@@ -9,6 +9,8 @@ import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
 import { EntrevistasDoProcesso } from '@/components/entrevista/EntrevistasDoProcesso';
+import { RegrasDoProcesso } from '@/components/regra/RegrasDoProcesso';
+import type { Finalidade } from '@/lib/entrevista/topicos';
 import { SeloStatus } from '@/components/SeloStatus';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
@@ -30,11 +32,12 @@ import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, exclui
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
 // As abas da página (redesign, decisão 77). A aba fica no endereço (#pops, #entrevistas) para o link levar direto a ela.
-type Aba = 'visao' | 'pops' | 'entrevistas';
-const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'entrevistas', rotulo: 'Entrevistas' }];
+// "Regras de negócio" (decisão 89) só aparece quando o banco já tem as regras (migração 0024).
+type Aba = 'visao' | 'pops' | 'entrevistas' | 'regras';
+const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'entrevistas', rotulo: 'Entrevistas' }, { id: 'regras', rotulo: 'Regras de negócio' }];
 const abaDoEndereco = (): Aba => {
   const h = typeof location === 'undefined' ? '' : location.hash.slice(1);
-  return h === 'pops' || h === 'entrevistas' ? h : 'visao';
+  return h === 'pops' || h === 'entrevistas' || h === 'regras' ? h : 'visao';
 };
 
 // Filtro da aba POPs (decisão 78). "Arquivados" só aparece quando há algum.
@@ -74,6 +77,8 @@ function ProcessoPage() {
   const [aba, setAba] = useState<Aba>('visao');
   const [entrevistas, setEntrevistas] = useState<number | null>(null); // quantas entrevistas ativas (vem da seção)
   const [pedidoDeConvite, setPedidoDeConvite] = useState(0);
+  const [finalidadeDoConvite, setFinalidadeDoConvite] = useState<Finalidade>('processo');
+  const [regras, setRegras] = useState<{ disponivel: boolean; confirmadas: number; sugeridas: number } | null>(null);
   const [codigoCopiado, setCodigoCopiado] = useState(false);
   const [filtroPop, setFiltroPop] = useState<FiltroPop>('todos');
   const [buscaPop, setBuscaPop] = useState('');
@@ -82,7 +87,13 @@ function ProcessoPage() {
 
   const carregar = () => obterProcesso(id).then((d) => { setP(d); setNome(d.nome); setDescricao(d.descricao ?? ''); }).catch(() => setP(null));
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  useEffect(() => { setAba(abaDoEndereco()); }, []);
+  // A aba segue o endereço: ao abrir e quando só o "#" muda (um link para outra aba do mesmo processo).
+  useEffect(() => {
+    const seguir = () => setAba(abaDoEndereco());
+    seguir();
+    window.addEventListener('hashchange', seguir);
+    return () => window.removeEventListener('hashchange', seguir);
+  }, []);
   function irPara(a: Aba) {
     setAba(a);
     try { history.replaceState(null, '', a === 'visao' ? location.pathname + location.search : `#${a}`); } catch { /* sem histórico: a aba muda só na tela */ }
@@ -238,11 +249,12 @@ function ProcessoPage() {
       {arquivado && <FaixaArquivado tipo="processo" desde={p.arquivado_em!} aoRestaurar={restaurar} aoExcluir={excluir} ocupado={ocupado} />}
 
       <div className="abas" role="tablist" aria-label="Seções do processo">
-        {ABAS.map((a) => (
+        {ABAS.filter((a) => a.id !== 'regras' || regras?.disponivel).map((a) => (
           <button key={a.id} type="button" role="tab" id={`aba-${a.id}`} aria-controls={`painel-${a.id}`} aria-selected={aba === a.id} onClick={() => irPara(a.id)}>
             {a.rotulo}
             {a.id === 'pops' && <span className="aba-conta">{pops.length}</span>}
             {a.id === 'entrevistas' && entrevistas !== null && <span className="aba-conta">{entrevistas}</span>}
+            {a.id === 'regras' && regras && <span className="aba-conta" title={regras.sugeridas ? `${regras.confirmadas} confirmadas · ${regras.sugeridas} para revisar` : undefined}>{regras.confirmadas}{regras.sugeridas > 0 && <i className="aba-ponto" aria-label="há regras para revisar" />}</span>}
           </button>
         ))}
       </div>
@@ -346,7 +358,7 @@ function ProcessoPage() {
             <p className="lateral-texto">{semEntrevistas || entrevistas === null
               ? 'Convide quem executa o processo para conversar com a Maia por voz, no seu tempo.'
               : 'Cada pessoa conversa com a Maia por voz, no seu tempo, e o que ela contar fica registrado no processo.'}</p>
-            {gestor && !arquivado && <button type="button" className="btn btn-maia btn-largo" onClick={() => setPedidoDeConvite((n) => n + 1)}><Icone nome="mais" />Convidar pessoa</button>}
+            {gestor && !arquivado && <button type="button" className="btn btn-maia btn-largo" onClick={() => { setFinalidadeDoConvite('processo'); setPedidoDeConvite((n) => n + 1); }}><Icone nome="mais" />Convidar pessoa</button>}
             {(!semEntrevistas || !gestor || arquivado) && entrevistas !== null && <button type="button" className="btn btn-largo" onClick={() => irPara('entrevistas')}>Ver entrevistas</button>}
           </section>
         </aside>
@@ -425,8 +437,15 @@ function ProcessoPage() {
       {/* Entrevistas com a Maia sobre este processo (decisão 53): por convite, uma por pessoa. Fica sempre montada,
           mesmo com a aba escondida: é ela que conta as entrevistas e abre o diálogo de convite. */}
       <div role="tabpanel" id="painel-entrevistas" aria-labelledby="aba-entrevistas" hidden={aba !== 'entrevistas'}>
-        <EntrevistasDoProcesso processoId={p.id} processoNome={p.nome} arquivado={arquivado} pedidoDeConvite={pedidoDeConvite}
-          aoContar={setEntrevistas} aoChamarAtencao={() => irPara('entrevistas')} />
+        <EntrevistasDoProcesso processoId={p.id} processoNome={p.nome} arquivado={arquivado} pedidoDeConvite={pedidoDeConvite} finalidadeDoPedido={finalidadeDoConvite}
+          regrasDisponiveis={!!regras?.disponivel} aoContar={setEntrevistas} aoChamarAtencao={() => irPara('entrevistas')} />
+      </div>
+
+      {/* Regras de negócio (decisão 89): as sugestões da Maia para revisar e as regras confirmadas. Também fica sempre
+          montada: é ela que diz se a aba existe e quantas regras há. */}
+      <div role="tabpanel" id="painel-regras" aria-labelledby="aba-regras" hidden={aba !== 'regras' || !regras?.disponivel}>
+        <RegrasDoProcesso processoId={p.id} arquivado={arquivado} visivel={aba === 'regras'} aoCarregar={setRegras}
+          aoConvidar={() => { setFinalidadeDoConvite('regras'); setPedidoDeConvite((n) => n + 1); }} />
       </div>
 
       {fluxoDialogo && (
