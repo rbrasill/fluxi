@@ -11,6 +11,7 @@ const caminhos: Record<string, string> = {
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
   empresa: 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
   check: 'M5 12.5l4.5 4.5L19 7',
+  'pessoa-mais': 'M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M8.500 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
   cadeado: 'M6 11h12v9H6zM8.5 11V8a3.500 3.500 0 0 1 7 0v3',
   'seta-cima': 'M12 19V5M6 11l6-6 6 6',
   'seta-para-baixo': 'M12 5v14M6 13l6 6 6-6',

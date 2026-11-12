@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Icone } from '@/components/Icone';
 import { SoAdministradores } from '@/components/SoAdministradores';
+import { corDoAvatar, iniciais } from '@/lib/iniciais';
 import { ROTULO_NIVEL, alterarPessoa, criarPessoa, excluirPessoa, listarPessoas, type Nivel, type PessoaResumo } from '@/lib/pessoas';
 
 // Pessoas e acessos (decisão 50): quem pode entrar no INCFlow. Só administradores cadastram pessoas e mudam
@@ -10,10 +11,13 @@ import { ROTULO_NIVEL, alterarPessoa, criarPessoa, excluirPessoa, listarPessoas,
 // Entrar é sem senha: a pessoa digita o e-mail corporativo e recebe um código.
 
 const NIVEIS: Nivel[] = ['comum', 'gestor', 'admin'];
+type Filtro = 'todos' | Nivel;
+const FILTROS: { id: Filtro; rotulo: string }[] = [{ id: 'todos', rotulo: 'Todos' }, { id: 'admin', rotulo: 'Administradores' }, { id: 'gestor', rotulo: 'Gestores' }, { id: 'comum', rotulo: 'Comuns' }];
+const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const AJUDA_NIVEL: Record<Nivel, string> = {
   comum: 'Usa o INCFlow e conversa com a Maia quando é convidado. Não cadastra pessoas.',
-  gestor: 'Também convida pessoas para conversas com a Maia. Não cadastra pessoas nem muda acessos.',
-  admin: 'Também cadastra pessoas, muda acessos e vê o Painel da Maia.',
+  gestor: 'Tudo do acesso comum, e também convida pessoas para conversas com a Maia.',
+  admin: 'Tudo do gestor, e também cadastra pessoas, muda acessos e vê o Painel da Maia.',
 };
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 
@@ -29,6 +33,8 @@ function Pessoas() {
   const [email, setEmail] = useState('');
   const [nivel, setNivel] = useState<Nivel>('comum');
   const [salvando, setSalvando] = useState(false);
+  const [busca, setBusca] = useState('');
+  const [filtro, setFiltro] = useState<Filtro>('todos');
 
   const carregar = () => listarPessoas().then(setLista).catch((e) => { setErro(msg(e)); setLista([]); });
   useEffect(() => {
@@ -60,49 +66,91 @@ function Pessoas() {
     try { await excluirPessoa(p.id); await carregar(); } catch (err) { void avisar('Não foi possível remover.', msg(err)); }
   }
 
+  const termo = semAcento(busca.trim());
+  const contagem: Record<Filtro, number> = { todos: lista?.length ?? 0, admin: 0, gestor: 0, comum: 0 };
+  for (const p of lista ?? []) contagem[p.nivel]++;
+  const visiveis = (lista ?? []).filter((p) => (filtro === 'todos' || p.nivel === filtro) && (!termo || semAcento(`${p.nome} ${p.email}`).includes(termo)));
+
   return (
-    <div className="page page-estreita">
+    <div className="page pagina-pessoas">
+      <nav className="trilha" aria-label="Caminho"><span>Conta</span><Icone nome="avancar" tamanho={14} /><span aria-current="page">Pessoas e acessos</span></nav>
       <div className="page-head">
         <div>
           <h1>Pessoas e acessos</h1>
-          <p>Só quem está nesta lista consegue entrar no INCFlow. O acesso é sem senha: a pessoa digita o e-mail corporativo e recebe um código na hora.</p>
+          <p>Só quem está nesta lista entra no INCFlow.</p>
         </div>
       </div>
 
-      <form className="cartao" onSubmit={adicionar}>
-        <h3 className="sem-margem">Cadastrar pessoa</h3>
-        <div className="pessoa-campos">
-          <label className="field"><span>Nome</span><input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} required minLength={2} placeholder="Ex.: Ana Souza" /></label>
-          <label className="field"><span>E-mail corporativo</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required placeholder="ana.souza@meuinc.com.br" /></label>
-          <label className="field"><span>Acesso</span>
-            <select value={nivel} onChange={(e) => setNivel(e.target.value as Nivel)}>
-              {NIVEIS.map((n) => <option key={n} value={n}>{ROTULO_NIVEL[n]}</option>)}
-            </select>
-          </label>
-        </div>
-        <p className="notice">{AJUDA_NIVEL[nivel]}</p>
-        <div className="fluxo-acoes"><button className="btn btn-primary" disabled={salvando || nome.trim().length < 2 || !email.trim()}><Icone nome="mais" tamanho={16} />{salvando ? 'Cadastrando…' : 'Cadastrar'}</button></div>
-      </form>
+      <div className="proc-grade pessoas-grade">
+        <section className="cartao lista-pops-cartao" aria-labelledby="titulo-pessoas">
+          <div className="lista-pops-topo pessoas-topo">
+            <h2 id="titulo-pessoas" className="titulo-com-conta">Pessoas com acesso{lista && <small>{lista.length} {lista.length === 1 ? 'pessoa' : 'pessoas'}</small>}</h2>
+            <label className="campo-busca busca-pops">
+              <Icone nome="busca" tamanho={18} />
+              <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar pessoa" />
+            </label>
+          </div>
+          <div className="lista-pops-filtros">
+            <div className="segmented filtro-pops" role="tablist" aria-label="Filtrar por acesso">
+              {FILTROS.map((f) => (
+                <button key={f.id} type="button" role="tab" aria-selected={filtro === f.id} onClick={() => setFiltro(f.id)}>{f.rotulo}<span className="conta-aba">{contagem[f.id]}</span></button>
+              ))}
+            </div>
+          </div>
+          {erro && <p className="lista-pops-vazia form-erro" role="alert">{erro}</p>}
+          {lista === null && <p className="lista-pops-vazia">Carregando…</p>}
+          {lista && visiveis.length === 0 && !erro && <p className="lista-pops-vazia">{busca.trim() ? `Ninguém com “${busca.trim()}”.` : 'Ninguém com esse acesso.'}</p>}
+          {visiveis.length > 0 && (
+            <ul className="pops-linhas pessoas-linhas">
+              {visiveis.map((p) => (
+                <li key={p.id} className="pop-linha pessoa-linha">
+                  <span className={`avatar avatar-grande avatar-${corDoAvatar(p.email)}`} aria-hidden="true">{iniciais(p.nome)}</span>
+                  <div className="pop-linha-info">
+                    <strong className="pessoa-nome">{p.nome}{p.id === eu ? <span className="chip-voce">você</span> : null}</strong>
+                    <span className="pessoa-email">{p.email}</span>
+                  </div>
+                  <label className={`pessoa-nivel nivel-${p.nivel}`}>
+                    <span className="sr-only">Acesso de {p.nome}</span>
+                    <select value={p.nivel} onChange={(e) => void mudarNivel(p, e.target.value as Nivel)} disabled={p.id === eu} title={p.id === eu ? 'Você não pode mudar o próprio acesso' : undefined}>
+                      {NIVEIS.map((n) => <option key={n} value={n}>{ROTULO_NIVEL[n]}</option>)}
+                    </select>
+                  </label>
+                  <button type="button" className="btn btn-ghost btn-icon btn-lixo" onClick={() => void remover(p)} disabled={p.id === eu} aria-label={`Remover ${p.nome}`} title={p.id === eu ? 'Você não pode remover a si mesmo' : 'Remover o acesso'}><Icone nome="lixo" tamanho={18} /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      {erro && <div className="aviso erro">{erro}</div>}
-      {lista === null && <p className="notice">Carregando…</p>}
-      {lista && lista.length > 0 && (
-        <div className="lista-pops lista-pessoas">
-          {lista.map((p) => (
-            <article key={p.id} className="linha-pop">
-              <span className="pop-icone"><Icone nome="pessoas" tamanho={20} /></span>
-              <div className="pop-nome"><strong>{p.nome}{p.id === eu ? ' (você)' : ''}</strong><span>{p.email}</span></div>
-              <label className="pessoa-nivel">
-                <span className="sr-only">Acesso de {p.nome}</span>
-                <select value={p.nivel} onChange={(e) => void mudarNivel(p, e.target.value as Nivel)} disabled={p.id === eu}>
-                  {NIVEIS.map((n) => <option key={n} value={n}>{ROTULO_NIVEL[n]}</option>)}
-                </select>
-              </label>
-              <button type="button" className="btn btn-ghost btn-excluir" onClick={() => void remover(p)} disabled={p.id === eu} title={p.id === eu ? 'Você não pode remover a si mesmo' : 'Remover o acesso'}><Icone nome="lixo" tamanho={16} />Remover</button>
-            </article>
-          ))}
-        </div>
-      )}
+        <aside className="proc-coluna">
+          <form className="cartao cartao-lateral" onSubmit={adicionar} aria-labelledby="titulo-cadastrar">
+            <div className="lateral-topo">
+              <span className="lateral-icone icone-indigo"><Icone nome="pessoa-mais" tamanho={20} /></span>
+              <h3 id="titulo-cadastrar">Cadastrar pessoa</h3>
+            </div>
+            <label className="field"><span>Nome</span><input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} required minLength={2} placeholder="Ex.: Ana Souza" /></label>
+            <label className="field"><span>E-mail corporativo</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required placeholder="ana.souza@meuinc.com.br" /></label>
+            <fieldset className="opcoes-acesso">
+              <legend>Acesso</legend>
+              {NIVEIS.map((n) => (
+                <label key={n} className={`opcao-acesso${nivel === n ? ' marcada' : ''}`}>
+                  <input type="radio" name="nivel" value={n} checked={nivel === n} onChange={() => setNivel(n)} />
+                  <span><strong>{ROTULO_NIVEL[n]}</strong><small>{AJUDA_NIVEL[n]}</small></span>
+                </label>
+              ))}
+            </fieldset>
+            <button className="btn btn-primary btn-largo" disabled={salvando || nome.trim().length < 2 || !email.trim()}><Icone nome="mais" tamanho={16} />{salvando ? 'Cadastrando…' : 'Cadastrar pessoa'}</button>
+          </form>
+
+          <section className="cartao cartao-lateral" aria-labelledby="titulo-sem-senha">
+            <div className="lateral-topo">
+              <span className="lateral-icone icone-verde"><Icone nome="escudo" tamanho={20} /></span>
+              <h3 id="titulo-sem-senha">Acesso sem senha</h3>
+            </div>
+            <p className="lateral-texto">A pessoa digita o e-mail corporativo na tela de entrada e recebe um código na hora. Ao remover alguém daqui, o acesso deixa de funcionar.</p>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

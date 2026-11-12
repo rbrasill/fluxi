@@ -623,6 +623,15 @@ Referência em `docs/design/referencias/pop.webp`. Só com o que já temos, sem 
 - **Atenção:** no PDF os passos continuam numerados do início ao fim do POP (Passo 1, 2, 3…), como no modelo; só o editor mostra etapa.passo.
 - **Ficou como está hoje:** "Área" continua campo de texto (na imagem é uma lista); "Adicionar passo com print", "Levar telas para os passos" e o histórico de revisões, que a imagem não mostra, foram mantidos. O botão DOCX da imagem não existe (decisão 79).
 
+## 81. Redesign: Pessoas e acessos (12/11/2026)
+
+Referência em `docs/design/referencias/pessoas.webp`. Só com o que já temos, sem mudar o banco nem as regras de acesso.
+
+- **Lista "Pessoas com acesso"** num cartão: contagem, busca por nome ou e-mail e filtro por acesso com a contagem (**Todos**, **Administradores**, **Gestores**, **Comuns**). Cada linha tem o avatar de iniciais, nome, e-mail, a lista para mudar o acesso (em índigo quando é Administrador) e a lixeira para remover. Quem está logado aparece com o selo "você" e não pode mudar o próprio acesso nem se remover, como já era.
+- **"Cadastrar pessoa"** foi para a coluna lateral, com o acesso escolhido em cartões que explicam cada nível; embaixo, o cartão "Acesso sem senha".
+- **Três níveis, não dois:** a imagem mostra só Comum e Administrador, mas o INCFlow tem também o **Gestor** (convida pessoas para conversas com a Maia, decisão 53). O Gestor foi mantido no filtro, na lista e no cadastro.
+- **Botão principal desabilitado** fica cinza (vale para o app todo), como na imagem.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
