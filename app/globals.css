@@ -19,6 +19,14 @@
   --radius: 12px;
   /* Uma fonte só, a Plus Jakarta Sans (decisão 71): os títulos usam a mesma do texto. */
   --font-display: var(--font-body);
+
+  /* Sistema de cores do redesign (decisão 75, docs/design/sistema-de-cores.md): índigo é ação, teal é a Maia,
+     verde é concluído, rosa e pêssego pedem atenção; neutros em 80% da tela. Guardado aqui e aplicado tela a tela. */
+  --indigo-950: #1E1B4B; --indigo-700: #4338CA; --indigo-500: #6366F1; --indigo-300: #A5B4FC; --indigo-100: #E0E7FF; --indigo-50: #F8FAFF;
+  --teal-900: #0F4C5C; --teal-700: #187C81; --teal-500: #2A9D8F; --teal-300: #A8DADC; --teal-100: #E0F7F4; --teal-50: #F7FFFD;
+  --verde-900: #0F3D2E; --verde-700: #166534; --verde-500: #4C956C; --verde-300: #A8D5BA; --verde-100: #E6F2EA; --verde-50: #F9FCF8;
+  --rosa-600: #E11D48; --rosa-pink-400: #F472B6; --rosa-400: #FB7185; --pessego: #FDBA74; --rosa-100: #FDE1E7; --rosa-50: #FFF7F9;
+  --neutro-texto: #0E1525; --neutro-texto-2: #5A6372; --neutro-rotulo: #6B7280; --neutro-borda: #E6E8EC; --neutro-fundo: #F6F7F9; --neutro-superficie: #FFFFFF;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }

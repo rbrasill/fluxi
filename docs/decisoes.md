@@ -568,6 +568,12 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Como aparece:** a entrevista nasce sem convite (`convidado_em` vazio, sem `convidado_por`). Enquanto a ligação não começa, a linha mostra "Aberta sem convite em …" e o selo "Ainda não começou", sem "Reenviar convite" (não há e-mail); "Cancelar" apaga a entrevista vazia. Depois da primeira ligação, ela segue igual às outras (pausar, concluir, complemento, arquivar).
 - **Sem migração:** usa as colunas que já existem.
 
+## 75. Redesign: sistema de cores novo (12/11/2026)
+- **Pedido do Rafael:** reformular o design de toda a plataforma a partir de telas desenhadas com uma IA, enviadas aos poucos. A primeira entrega foi o **sistema de cores** e a **tela de login**; as cores ficam guardadas para todas as telas seguintes.
+- **O sistema:** quatro famílias com papel fixo (**índigo** = ação e marca, **teal** = Maia e IA, **verde** = concluído e no ar, **rosa e pêssego** = atenção) sobre uma base de neutros (80% da tela). Seis regras de uso (um só botão índigo sólido por área, teal só para IA, verde, rosa e pêssego só para estado, texto sempre em tom 700 ou mais escuro, selos com fundo 100, texto 700 e ponto 500, botão sólido teal ou rosa só nos tons 700/600). Tudo em `docs/design/sistema-de-cores.md`, com a referência em `docs/design/referencias/`.
+- **O que muda em relação a hoje:** a cor de ação deixa de ser o azul-petróleo (`#005f73`) e passa a ser o índigo (`#4338CA`); o teal fica reservado ao que a Maia e a IA fazem. O fluxograma continua com as cores da biblioteca (decisão 62) e a fonte continua a Plus Jakarta Sans (decisão 71).
+- **Como entra:** as cores estão como variáveis em `app/globals.css` e são aplicadas tela a tela, à medida que as telas do redesign chegam e são validadas.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
