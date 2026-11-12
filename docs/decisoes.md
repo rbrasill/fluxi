@@ -612,6 +612,17 @@ Referência em `docs/design/referencias/processo-pops.webp`. Só com o que já t
 - **Fica:** o `Modelo_POP_v3.docx` original, como referência do layout, e as imagens já extraídas dele (`templates/pop/imagens/`), que o PDF usa. Se o modelo mudar, as imagens novas precisam ser extraídas à mão (o script saiu junto com o DOCX).
 - Muda o que dizem as decisões anteriores que falam do DOCX (entre elas, 18, 19, 21, 24, 28, 29, 31, 32, 34, 35 e 37): onde citam os dois formatos, vale só o PDF.
 
+## 80. Redesign: editor do POP (12/11/2026)
+
+Referência em `docs/design/referencias/pop.webp`. Só com o que já temos, sem mudar o banco; o que o editor salva continua igual.
+
+- **Esqueleto igual ao da página do processo:** caminho no topo (termina em "POP <identificação>"), cabeçalho com o ícone na cor da situação, o selo "POP", a situação, a data da publicação e "Tudo salvo"; à direita, mover e arquivar como ícones e "Baixar PDF". Para o rascunho continuam "Pausar e sair" e "Publicar" (e "Publicar alterações", em pêssego, quando há alteração não publicada). O fundo pêssego da página saiu: fundo neutro.
+- **Coluna principal:** Identificação (com a faixa "Preenchidos automaticamente": código do processo e data de criação), Objetivo, Envolvidos (com os títulos Área e Cargo), Procedimentos, Fluxograma do processo, Referenciado em e Histórico de revisões.
+- **Coluna lateral** (acompanha a rolagem): Página pública (o mesmo cartão do processo), **"Nesta página"** (índice das seções, com a marca verde no que já está preenchido e as contagens) e Gravações de tela.
+- **Procedimentos em etapas e passos:** o que o editor chamava de "procedimento" passou a se chamar **etapa** ("Etapa 1", "Adicionar etapa"), e o passo aparece como "Passo 1.2" (etapa.passo). O número do passo continua editável para mover de posição. O print fica ao lado das ações (Marcar tela, Trocar print, Remover imagem).
+- **Atenção:** no PDF os passos continuam numerados do início ao fim do POP (Passo 1, 2, 3…), como no modelo; só o editor mostra etapa.passo.
+- **Ficou como está hoje:** "Área" continua campo de texto (na imagem é uma lista); "Adicionar passo com print", "Levar telas para os passos" e o histórico de revisões, que a imagem não mostra, foram mantidos. O botão DOCX da imagem não existe (decisão 79).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
