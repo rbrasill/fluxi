@@ -1714,8 +1714,8 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .entrevista-erro { border-color: var(--rosa-100); background: var(--rosa-50); color: #9F1239; }
 
 /* ===== Tela da ligação com a Maia (decisão 86) =====
-   Ocupa a janela inteira, por cima do menu: quem está na ligação não tem para onde se distrair. À esquerda, a
-   esfera (que vibra só com a voz da Maia), o que a Maia está fazendo e os controles; à direita, a transcrição. */
+   Ocupa a janela inteira, por cima do menu: quem está na ligação não tem para onde se distrair. No centro, a
+   esfera (que vibra só com a voz da Maia), o que a Maia está fazendo e os controles. Sem texto da conversa. */
 .ligacao { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; background: var(--neutro-fundo); overflow-y: auto; }
 .ligacao-topo { flex: none; display: flex; align-items: center; gap: 14px; padding: 14px 40px; background: var(--neutro-superficie); border-bottom: 1px solid var(--neutro-borda); }
 .ligacao-topo img { flex: none; width: 40px; height: 40px; }
@@ -1724,7 +1724,7 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .ligacao-titulo span { font-size: 14px; color: var(--neutro-texto-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ligacao-tempo { flex: none; display: inline-flex; align-items: center; gap: 9px; height: 40px; padding: 0 16px; border-radius: 999px; background: #EEF0F3; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 15px; font-variant-numeric: tabular-nums; color: var(--neutro-texto); }
 .ligacao-tempo .rec-dot { width: 9px; height: 9px; background: var(--rosa-600); }
-.ligacao-corpo { flex: 1; width: 100%; max-width: 1320px; margin: 0 auto; padding: 32px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr); gap: 28px; align-items: start; }
+.ligacao-corpo { flex: 1; width: 100%; max-width: 980px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; }
 .ligacao-palco { align-items: center; gap: 18px; padding: 44px 44px 40px; border-radius: 28px; text-align: center; }
 .ligacao-esfera { width: 100%; display: grid; place-items: center; padding: 28px 0; border-radius: 24px; background: #0A0D1F; }
 .ligacao-estado { margin: 6px 0 0; padding: 6px 16px; border-radius: 999px; background: var(--teal-100); color: var(--teal-900); font-size: 15px; font-weight: 600; }
@@ -1741,22 +1741,8 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .ligacao-pausar:hover { background: #E3E6EB; }
 .ligacao-encerrar { border-color: var(--rosa-600); background: var(--rosa-600); color: #fff; }
 .ligacao-encerrar:hover { background: #BE123C; border-color: #BE123C; }
-.ligacao-transcricao { padding: 0; gap: 0; border-radius: 24px; overflow: hidden; max-height: calc(100dvh - 140px); }
-.ligacao-transcricao-topo { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--neutro-borda); }
-.ligacao-transcricao-topo h2 { margin: 0; font-size: 18px; font-weight: 700; }
-.ligacao-transcricao-topo span { font-size: 14px; color: var(--neutro-texto-2); }
-.ligacao-falas { flex: 1; min-height: 160px; overflow-y: auto; padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 18px; scroll-behavior: smooth; }
-.ligacao-falas-vazio { margin: auto 0; text-align: center; font-size: 14px; font-weight: 300; color: var(--neutro-texto-2); }
-.fala { display: flex; flex-direction: column; gap: 6px; max-width: 92%; }
-.fala-quem { font-size: 13px; color: var(--neutro-texto-2); }
-.fala p { margin: 0; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
-.fala-maia { align-self: flex-start; }
-.fala-maia p { background: #F1F2F5; color: var(--neutro-texto); border-top-left-radius: 6px; }
-.fala-voce { align-self: flex-end; align-items: flex-end; }
-.fala-voce p { background: var(--indigo-700); color: #fff; border-top-right-radius: 6px; }
 @media (max-width: 960px) {
-  .ligacao-corpo { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 16px; }
+  .ligacao-corpo { padding: 16px; }
   .ligacao-topo { padding: 10px 16px; }
   .ligacao-palco { padding: 20px 16px 24px; }
-  .ligacao-transcricao { max-height: 60dvh; }
 }

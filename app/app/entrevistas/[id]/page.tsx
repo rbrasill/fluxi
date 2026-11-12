@@ -9,7 +9,7 @@ import { avisar, confirmar } from '@/components/Dialogos';
 import { mmss } from '@/components/entrevista/Metricas';
 import { Orbe, type Niveis } from '@/components/entrevista/Orbe';
 import { ehAdmin, ehGestor, souEu, useEu } from '@/lib/auth/eu';
-import { ROTULO_STATUS, limparMarcasDeSom, type Etapa, type Turno } from '@/lib/entrevista/topicos';
+import { ROTULO_STATUS, limparMarcasDeSom, type Etapa } from '@/lib/entrevista/topicos';
 import { MotorEntrevista, RESTRICOES_MICROFONE, type Evento, type Fase } from '@/lib/entrevista/motor';
 import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
@@ -19,7 +19,7 @@ import { aquecerSessaoDeVoz, arquivarEntrevista, confirmacaoDeArquivamento, conf
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
 // é uma ligação (decisão 52): a abertura (o que vai acontecer e o microfone), a conversa (a esfera vibrando com
-// a voz da Maia, o que ela está fazendo e a transcrição ao vivo; decisão 86) e o resultado (a descrição, a ficha
+// a voz da Maia e o que ela está fazendo, sem texto da conversa; decisão 86) e o resultado (a descrição, a ficha
 // e a conversa). Custos e
 // indicadores ficam no Painel da Maia, só para administradores. O administrador tem acesso total a qualquer
 // entrevista (decisão 65): vê a conversa mesmo antes de terminar e gerencia; só não fala no lugar da pessoa.
@@ -48,9 +48,7 @@ function EntrevistaPage() {
   const microfone = useRef<MediaStream | null>(null);
   const motor = useRef<MotorEntrevista | null>(null);
   const encerrando = useRef(false);
-  const [falasVivo, setFalasVivo] = useState<Turno[]>([]); // a transcrição ao vivo da ligação (decisão 86)
   const [mudo, setMudo] = useState(false);
-  const fimDasFalas = useRef<HTMLDivElement>(null);
   const niveis = useRef<Niveis>({ ia: 0, pessoa: 0 }); // volume das duas vozes, para a esfera (fora do estado do React)
 
   const carregar = () => obterEntrevista(id).then((d) => {
@@ -79,16 +77,6 @@ function EntrevistaPage() {
     const t = setInterval(() => setSegundos((s) => s + 1), 1000);
     return () => clearInterval(t);
   }, [tela]);
-  // A transcrição ao vivo: a tela lê do motor, algumas vezes por segundo, o que já foi dito.
-  useEffect(() => {
-    if (tela !== 'conversa') return;
-    const ler = () => { const m = motor.current; if (m) setFalasVivo((antes) => { const agora = m.turnosAtuais(); return JSON.stringify(agora) === JSON.stringify(antes) ? antes : agora; }); };
-    ler();
-    const t = setInterval(ler, 600);
-    return () => clearInterval(t);
-  }, [tela]);
-  // A fala nova fica sempre à vista: a lista rola sozinha para o fim.
-  useEffect(() => { const el = fimDasFalas.current; if (el) el.scrollTop = el.scrollHeight; }, [falasVivo]);
   function alternarMicrofone() {
     const novo = !mudo;
     setMudo(novo);
@@ -125,7 +113,6 @@ function EntrevistaPage() {
     setErro(null);
     setAviso('');
     setMudo(false);
-    setFalasVivo(e.turnos);
     setSegundos(Math.round(e.metricas?.duracao_s ?? 0));
     encerrando.current = false;
     const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final, e.frase_pausa);
@@ -375,7 +362,6 @@ function EntrevistaPage() {
     const processando = tela === 'processando';
     const estado = processando ? etapaFim : ESTADO_DA_LIGACAO[fase] ?? 'Maia está ouvindo';
     const travado = fase === 'conectando' || fase === 'encerrando';
-    const falas = falasVivo.filter((t) => !t.apoio && t.texto.trim());
     return (
       <div className="ligacao">
         <header className="ligacao-topo">
@@ -412,21 +398,6 @@ function EntrevistaPage() {
             )}
           </section>
 
-          <section className="cartao ligacao-transcricao" aria-labelledby="titulo-transcricao">
-            <div className="ligacao-transcricao-topo">
-              <h2 id="titulo-transcricao">Transcrição</h2>
-              <span>{processando ? 'Conversa encerrada' : 'Ao vivo'}</span>
-            </div>
-            <div className="ligacao-falas" ref={fimDasFalas}>
-              {falas.length === 0 && <p className="ligacao-falas-vazio">{fase === 'conectando' ? 'A conversa aparece aqui assim que a Maia atender.' : 'O que vocês falarem aparece aqui.'}</p>}
-              {falas.map((t, i) => (
-                <div key={i} className={`fala ${t.quem === 'ia' ? 'fala-maia' : 'fala-voce'}`}>
-                  <span className="fala-quem">{t.quem === 'ia' ? 'Maia' : 'Você'}{t.inicio_ms !== undefined ? ` · ${mmss(t.inicio_ms / 1000)}` : ''}</span>
-                  <p>{limparMarcasDeSom(t.texto)}</p>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       </div>
     );

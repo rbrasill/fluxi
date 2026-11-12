@@ -676,7 +676,7 @@ Referência em `docs/design/referencias/ligacao.webp`. Sem mudar o banco nem o j
 
 - **Tela inteira, sem o menu:** quem está na ligação vê só a entrevista. No topo, "Entrevista sobre <processo>", quem convidou e a área, o tempo de conversa e **Sair** (pausa a entrevista e sai; a conversa fica guardada).
 - **A esfera vibra só com a voz da Maia** (pedido do Rafael): a voz de quem é entrevistado não mexe mais nela. Embaixo, o que a Maia está fazendo ("Maia está ouvindo", "Maia está falando", "Chamando a Maia…") e os controles: **microfone** (desliga e religa), **Pausar** e **Encerrar entrevista**.
-- **Transcrição ao vivo**, ao lado: o que já foi dito aparece em balões (a Maia à esquerda, a pessoa à direita, em índigo), com o tempo, e a lista acompanha a fala nova. Muda a decisão 52, que deixava a tela da conversa sem texto: o desenho novo traz a transcrição, e ela já existia no motor (era só guardada).
+- **Sem transcrição ao vivo.** A imagem traz a transcrição ao lado e ela chegou a entrar, mas o Rafael pediu para tirar: a tela da ligação continua sem o texto da conversa, como na decisão 52. A conversa transcrita aparece depois, no resultado.
 - **Microfone desligado:** a Maia não ouve nada e a tela avisa. As proteções de custo continuam valendo (muito tempo em silêncio, a ligação pausa sozinha).
 - **Não entrou, porque o INCFlow não tem esse dado ao vivo:** o **"Roteiro da conversa"** (os tópicos marcados conforme a conversa anda) e os selos **"Regra de negócio identificada"** nas falas. Os dois pedem que a Maia avise, durante a ligação, em que tópico está e o que reconheceu; é uma entrega própria, junto com as regras de negócio (decisão 77).
 
