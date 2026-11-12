@@ -1243,3 +1243,8 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .dialogo-convite .convite-contagem b { color: var(--neutro-texto); }
 .dialogo-convite .convite-dica { padding: 10px 14px; border-radius: 12px; background: var(--teal-50); border: 1px solid var(--teal-300); color: var(--teal-900); }
 @media (max-width: 560px) { .dialog { padding: 20px; border-radius: 20px; } .dialogo-convite .convite-contagem { flex-basis: 100%; } }
+/* Resumo do processo: rótulo à esquerda, valor à direita. */
+.resumo-processo { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.resumo-processo div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.resumo-processo dt { flex: none; font-size: 14px; color: var(--neutro-rotulo); }
+.resumo-processo dd { margin: 0; min-width: 0; font-size: 14px; font-weight: 500; color: var(--neutro-texto); text-align: right; overflow-wrap: anywhere; }

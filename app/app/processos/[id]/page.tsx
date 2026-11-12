@@ -184,6 +184,9 @@ function ProcessoPage() {
     ...pops.map((o) => ({ chave: o.id, tipo: o.status === 'publicado' ? 'publicado' as const : 'rascunho' as const, titulo: `POP “${o.nome}”`, detalhe: o.status === 'publicado' ? `Publicado · v${o.versao}` : 'Rascunho editado', quando: o.atualizado_em, href: `/app/pops/${o.id}` })),
   ].sort((a, b) => b.quando.localeCompare(a.quando)).slice(0, 4);
   const semEntrevistas = entrevistas === 0;
+  // Resumo: "Atualizado" é a alteração mais recente entre o processo, o fluxograma e os POPs ativos.
+  const publicados = pops.filter((o) => o.status === 'publicado').length;
+  const atualizado = [p.atualizado_em, fluxo?.atualizado_em, ...pops.map((o) => o.atualizado_em)].filter((x): x is string => !!x).sort().at(-1)!;
 
   return (
     <ReferenciasContext.Provider value={p.referencias}>
@@ -343,6 +346,17 @@ function ProcessoPage() {
                 </ul>
               )}
             <button type="button" className="link-acao" onClick={() => irPara('pops')}>Ver todos os POPs<Icone nome="avancar" tamanho={15} /></button>
+          </section>
+
+          <section className="cartao cartao-lateral" aria-labelledby="titulo-resumo">
+            <h3 id="titulo-resumo">Resumo</h3>
+            <dl className="resumo-processo">
+              {p.area?.organizacao && <div><dt>Organização</dt><dd>{p.area.organizacao.nome}</dd></div>}
+              {p.area && <div><dt>Área</dt><dd>{p.area.nome}</dd></div>}
+              <div><dt>POPs</dt><dd>{pops.length}{publicados > 0 ? ` (${publicados} ${publicados === 1 ? 'publicado' : 'publicados'})` : ''}</dd></div>
+              <div><dt>Entrevistas</dt><dd>{entrevistas ?? '…'}</dd></div>
+              <div><dt>Atualizado</dt><dd>{data(atualizado)}</dd></div>
+            </dl>
           </section>
         </aside>
       </div>

@@ -589,6 +589,7 @@ Segunda tela do redesign (referência em `docs/design/referencias/processo.webp`
 - **Menu lateral** branco, com o logo original (nome escuro), item ativo em índigo claro, botão de recolher ao lado do logo e o cartão da conta (iniciais, nome, nível e sair) no rodapé.
 - **Página do processo:** caminho no topo, cabeçalho com avatar de iniciais, selo "Processo", código com copiar e a área; abas **Visão geral**, **POPs** e **Entrevistas** (a aba fica no endereço: `#pops`, `#entrevistas`). Na visão geral, o fluxograma e a descrição à esquerda; à direita, os cartões Página pública (chave em índigo), Entrevistas com a Maia (botão teal "Convidar pessoa") e Atividade recente.
 - **Atividade recente** é montada com o que a página já tem (fluxograma e POPs ativos, por data de alteração); não há tabela nova nem histórico de quem fez o quê.
+- **Resumo** (cartão na coluna lateral, pedido depois): organização, área, POPs (com quantos publicados), entrevistas ativas e a data da alteração mais recente entre o processo, o fluxograma e os POPs.
 - **Diálogo de convite** no estilo novo: ícone da Maia, busca, pessoas com avatar, botão teal. Os demais diálogos herdam a moldura nova (cantos, borda, foco).
 - **Ficou de fora, a pedido do Rafael:** o cartão "Maturidade do processo".
 - **Ficou para depois:** "Regras de negócio" (aba e cartão). É funcionalidade nova: a Maia extrair regras das entrevistas para o gestor confirmar pede tabela, extração e tela próprias. A barra fixa de formatação da descrição também não entrou: a barra continua aparecendo ao clicar no texto.
