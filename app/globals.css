@@ -17,6 +17,8 @@
   --side-ink: #c9d6d8;
   --danger: #b42318;
   --radius: 12px;
+  /* Uma fonte só, a Plus Jakarta Sans (decisão 71): os títulos usam a mesma do texto. */
+  --font-display: var(--font-body);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -52,7 +54,7 @@ input { font-family: inherit; }
   display: flex; flex-direction: column; gap: 20px; padding: 20px 14px;
 }
 .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px; color: #fff; text-decoration: none; }
-.brand-logo { width: 158px; height: 40px; flex: none; }
+.brand-logo { width: 199px; height: 32px; flex: none; }
 .brand-marca { display: none; width: 36px; height: 36px; flex: none; }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #6f8a8f; padding: 10px 12px 6px; }
@@ -438,6 +440,7 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .secao-processo { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
 .secao-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .secao-head h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0; }
+.secao-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .linha-pop .tag-status { position: static; }
 .tag-status.st-transcrevendo, .tag-status.st-analisando { background: #eef2ff; color: #3538cd; }
 .migalha { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
@@ -448,6 +451,11 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .card-area { display: flex; flex-direction: column; gap: 8px; padding: 20px; text-decoration: none; color: var(--ink); }
 .card-area strong { font-size: 16px; }
 .card-area:hover { border-color: var(--line-strong); }
+/* Áreas agrupadas por organização (só quando há mais de uma). */
+.secao-areas + .secao-areas { margin-top: 8px; }
+.secao-areas-titulo { margin: 0 0 12px; font-size: 15px; color: var(--muted); }
+.secao-areas-titulo a { color: inherit; text-decoration: none; }
+.secao-areas-titulo a:hover { color: var(--ink); text-decoration: underline; }
 .select-area { border: 1px solid transparent; border-radius: 8px; padding: 2px 6px; background: transparent; color: var(--muted); font-size: 14px; }
 .select-area:hover, .select-area:focus { border-color: var(--line-strong); color: var(--ink); }
 .migalha { display: flex; width: fit-content; margin-bottom: 8px; font-weight: 600; }
@@ -531,7 +539,7 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .barra-filtros { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .barra-filtros .search { flex: 1; min-width: 260px; }
 .barra-filtros .segmented { width: auto; }
-.segmented .conta { font-size: 11px; color: var(--muted); margin-left: 4px; }
+.segmented .conta-aba { font-size: 11px; color: var(--muted); margin-left: 4px; }
 .linha-pop .pop-nome span + span { font-size: 12px; }
 button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
 .barra-filtros .segmented button { padding: 0 14px; display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
@@ -600,7 +608,7 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 /* Páginas públicas: POP publicado (/p/<link>) e só o fluxograma (/f/<link>) */
 .pub { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; }
 .pub-topo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 24px; background: var(--side); color: var(--side-ink); }
-.pub-logo { width: 126px; height: 32px; }
+.pub-logo { width: 199px; height: 32px; }
 .pub-caminho { font-size: 13px; color: var(--side-ink); }
 .pub-corpo { width: 100%; max-width: 920px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 20px; }
 .pub-titulo { display: flex; flex-direction: column; gap: 10px; }
@@ -699,9 +707,13 @@ button.link-sec { background: none; border: 0; padding: 0; font: inherit; cursor
 .recolher-menu { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: #9db3b7; font: inherit; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
 .recolher-menu:hover { background: var(--side-2); color: #fff; }
 @media (min-width: 901px) {
-  /* O menu acompanha a rolagem: o botão de recolher fica sempre à vista. */
-  .side { position: sticky; top: 0; height: 100vh; overflow-y: auto; transition: width .18s ease, padding .18s ease; }
+  /* O menu é fixo na tela (decisão 70): ocupa sempre a altura da janela, do topo ao rodapé, e não depende da altura
+     da página. Assim nenhuma tela, de hoje ou futura, faz ele sair de vista ao rolar ou deixa um vão embaixo dele.
+     O conteúdo começa depois dele (a margem acompanha o menu recolhido). */
+  .side { position: fixed; top: 0; left: 0; bottom: 0; height: 100vh; height: 100dvh; overflow-y: auto; transition: width .18s ease, padding .18s ease; }
+  .main { margin-left: 248px; transition: margin-left .18s ease; }
   html[data-menu='recolhido'] .side { width: 72px; padding: 20px 10px; }
+  html[data-menu='recolhido'] .main { margin-left: 72px; }
   html[data-menu='recolhido'] .side .brand { justify-content: center; padding: 4px 0; }
   html[data-menu='recolhido'] .side .brand-logo { display: none; }
   html[data-menu='recolhido'] .side .brand-marca { display: block; }
@@ -792,3 +804,272 @@ a.ref-origem:hover strong { text-decoration: underline; }
 .sec-titulo-acoes { display: flex; align-items: center; gap: 10px; margin-left: auto; }
 .descricao-processo .notice.erro { color: var(--danger); }
 .descricao-processo[inert] { opacity: .7; }
+
+/* Entrevista por voz com a IA (decisão 39) */
+.sem-margem { margin: 0; }
+.pop-icone.icone-entrevista { background: #e6f1f3; color: var(--primary); }
+.entrevista-vivo { align-items: center; gap: 14px; padding: 40px 24px; text-align: center; }
+.entrevista-estado { margin: 8px 0 0; font-size: 22px; font-weight: 600; }
+.entrevista-sub { margin: 0; color: var(--muted); font-size: 14px; }
+.entrevista-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.entrevista-erro { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border: 1px solid #f5b5b0; border-radius: 12px; background: #fdecec; color: #912018; font-size: 14px; }
+.descricao-sugerida { font-size: 15px; line-height: 1.55; }
+.descricao-sugerida p { margin: 0 0 10px; }
+.descricao-sugerida p:last-child { margin-bottom: 0; }
+.descricao-sugerida ul, .descricao-sugerida ol { margin: 0 0 10px; padding-left: 22px; }
+.ficha-resumo { display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; margin: 0; font-size: 14px; }
+.ficha-resumo dt { font-weight: 700; color: var(--muted); }
+.ficha-resumo dd { margin: 0; }
+.ficha-etapas { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; }
+.ficha-etapa { display: flex; flex-direction: column; gap: 6px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; }
+.ficha-etapa h4 { margin: 0; font-size: 15px; }
+.ficha-etapa p { margin: 0; font-size: 14px; }
+.ficha-resp { font-weight: 500; color: var(--muted); }
+.ficha-rotulo { display: block; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.ficha-lista { margin: 2px 0 0; padding-left: 18px; font-size: 14px; }
+.conversa-detalhes summary { cursor: pointer; font-weight: 600; }
+.conversa-audio { width: 100%; }
+.conversa-lida { display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; }
+.conversa-lida p { margin: 0; }
+.conversa-lida .ia b { color: var(--primary-dark); }
+
+/* Entrevista só com o GPT-Live, fora do processo (decisão 41) */
+.field textarea { padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 10px; font: inherit; font-size: 14px; font-weight: 500; resize: vertical; }
+.metricas-entrevista { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; width: 100%; max-width: 640px; }
+.metricas-entrevista > div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; }
+.metricas-entrevista dt { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.metricas-entrevista dd { margin: 2px 0 0; font-size: 17px; font-weight: 600; }
+@media (max-width: 640px) { .metricas-entrevista { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.conversa-lida .sobreposta { padding-left: 10px; border-left: 3px solid #b45309; }
+.conversa-tempo { display: inline-block; min-width: 44px; margin-right: 6px; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 12px; color: var(--muted); }
+.diagnostico summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+
+/* A esfera da IA e o cartão escuro da conversa (decisão 42) */
+.orbe { display: block; max-width: 100%; }
+.entrevista-vivo.escuro { background: radial-gradient(120% 90% at 50% 0%, #1b1550 0%, #0c0d2e 55%, #07081d 100%); border-color: #1f2152; color: #eef0fa; }
+.entrevista-vivo.escuro .entrevista-estado { color: #fff; }
+.entrevista-vivo.escuro .entrevista-sub, .entrevista-vivo.escuro .notice { color: #aab1d8; }
+.entrevista-vivo.escuro .metricas-entrevista > div { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); }
+.entrevista-vivo.escuro .metricas-entrevista dt { color: #aab1d8; }
+.entrevista-vivo.escuro .metricas-entrevista dd { color: #fff; }
+.entrevista-vivo.escuro .entrevista-erro { background: rgba(180, 35, 24, .25); border-color: rgba(245, 181, 176, .35); color: #ffd6d2; }
+.entrevista-vivo.escuro .entrevista-erro .btn, .entrevista-vivo.escuro .btn:not(.btn-parar) { background: rgba(255, 255, 255, .08); border-color: rgba(255, 255, 255, .22); color: #eef0fa; }
+.conversa-lida p.apoio { font-size: 12px; color: var(--muted); }
+.conversa-lida p.apoio b { color: var(--muted); font-weight: 600; }
+.metricas-entrevista dd small { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--muted); }
+.entrevista-legenda { max-width: 520px; }
+.entrevista-tempo { margin: 0; font-family: ui-monospace, 'JetBrains Mono', monospace; font-size: 20px; font-weight: 600; color: #fff; }
+.totais-entrevistas { max-width: none; }
+
+/* Login e conta (decisão 50) */
+.conta { display: flex; align-items: center; gap: 8px; margin-top: 6px; padding: 10px 12px 0; border-top: 1px solid var(--side-line); }
+.conta-nome { display: flex; flex-direction: column; min-width: 0; font-size: 13px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conta-nome small { font-size: 11px; font-weight: 500; color: #9db3b7; }
+.conta-sair { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; background: none; border: 1px solid var(--side-line); color: var(--side-ink); border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 12px; cursor: pointer; }
+.conta-sair:hover { background: var(--side-2); }
+html[data-menu='recolhido'] .side .conta { justify-content: center; padding: 10px 0 0; }
+html[data-menu='recolhido'] .side .conta-sair { margin: 0; padding: 6px; }
+@media (max-width: 900px) {
+  .conta { margin: 0; padding: 0 0 0 8px; border-top: 0; }
+  .conta-nome { display: none; }
+}
+/* Login (decisões 50 e 73): um cartão em duas partes sobre um fundo em degradê. À esquerda, o logo e o formulário;
+   à direita, o painel lilás com a ilustração 3D, que avança sobre a parte branca. No celular, o painel vai para cima. */
+.login { min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 32px 20px; background: linear-gradient(120deg, #bfe3ea 0%, #cdd5f3 52%, #dcc8f4 100%); }
+.login-cartao { position: relative; width: 100%; max-width: 980px; min-height: 560px; display: grid; grid-template-columns: minmax(0, 1fr) 36%; background: var(--surface); border-radius: 28px; box-shadow: 0 30px 80px rgba(34, 40, 90, .18); }
+.login-lado { display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 56px 64px; min-width: 0; }
+.login-logo { width: 174px; height: 28px; }
+.login-form { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 380px; }
+.login-topo { display: flex; flex-direction: column; gap: 6px; }
+.login-saudacao { margin: 0; font-size: 13px; font-weight: 600; color: var(--muted); }
+.login-form h1 { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -0.03em; }
+.login-sub { margin: 4px 0 0; font-size: 14px; font-weight: 300; color: var(--muted); line-height: 1.55; }
+.login-sub strong { font-weight: 600; color: var(--ink); }
+.login-campo { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; }
+.login-campo input { height: 50px; padding: 0 16px; border: 1px solid transparent; border-radius: 12px; background: #eaf2f5; color: var(--ink); font: inherit; font-size: 15px; font-weight: 500; outline: none; transition: border-color .15s, box-shadow .15s, background .15s; }
+.login-campo input::placeholder { color: #8a9a9f; font-weight: 400; }
+.login-campo input:focus { background: #fff; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.login-campo input.login-codigo { font-size: 24px; letter-spacing: 0.4em; text-align: center; font-variant-numeric: tabular-nums; }
+.login-erro { margin: 0; font-size: 13px; color: var(--danger); }
+.login-botao { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 48px; padding: 0 26px; border: 0; border-radius: 999px; background: var(--primary); color: #fff; font-size: 14px; font-weight: 700; letter-spacing: .02em; box-shadow: 0 10px 22px rgba(0, 95, 115, .25); transition: background .15s, transform .15s, box-shadow .15s; }
+.login-botao:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); }
+.login-botao:focus-visible { outline: 3px solid var(--primary-soft); outline-offset: 2px; }
+.login-botao:disabled { opacity: .5; cursor: default; box-shadow: none; }
+.login-nota { margin: 0; font-size: 12px; font-weight: 300; color: var(--muted); }
+.login-painel { position: relative; border-radius: 28px; background: linear-gradient(160deg, #ece7fc 0%, #d8cff6 100%); }
+.login-ilustracao { position: absolute; top: 50%; left: 0; width: 126%; max-width: none; height: auto; transform: translate(-31%, -50%); filter: drop-shadow(0 26px 28px rgba(70, 50, 140, .2)); animation: login-flutua 7s ease-in-out infinite; }
+@keyframes login-flutua { 0%, 100% { translate: 0 0; } 50% { translate: 0 -8px; } }
+@media (prefers-reduced-motion: reduce) { .login-ilustracao { animation: none; } .login-botao, .login-campo input { transition: none; } }
+@media (max-width: 900px) {
+  .login { padding: 20px 14px; }
+  .login-cartao { grid-template-columns: minmax(0, 1fr); min-height: 0; max-width: 480px; border-radius: 24px; }
+  .login-painel { order: -1; height: 190px; border-radius: 24px 24px 0 0; overflow: hidden; }
+  .login-ilustracao { left: 50%; width: 210px; transform: translate(-50%, -48%); }
+  .login-lado { padding: 28px 24px 32px; gap: 22px; }
+  .login-form h1 { font-size: 32px; }
+  .login-botao { align-self: stretch; }
+}
+.login-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.login-links .link-sec { font-size: 13px; font-weight: 600; color: var(--primary); }
+.login-links .link-sec:hover:not(:disabled) { text-decoration: underline; }
+.login-links .link-sec:disabled { color: var(--muted); font-weight: 500; cursor: default; }
+.pessoa-campos { display: grid; grid-template-columns: 1fr 1fr 180px; gap: 12px; }
+.pessoa-nivel select { height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; }
+.lista-pessoas .pop-nome span { word-break: break-all; }
+@media (max-width: 700px) { .pessoa-campos { grid-template-columns: 1fr; } }
+/* Descrições em Plus Jakarta Sans Light (decisão 71): o texto escrito sobre o processo (a descrição, os POPs, a
+   página pública e o que a Maia escreveu) e os textos que explicam a tela (o subtítulo da página, a explicação dos
+   cartões e os avisos). Dados e metadados (datas, contagens, nomes, a linha "Entrevistado: …") ficam no peso
+   normal: o subtítulo que é só dado leva a classe page-meta. O negrito dentro das descrições continua forte. */
+.tr-conteudo,
+.pub-texto,
+.descricao-sugerida,
+.cartao:not([id="quem-foi-entrevistado"]) .ficha-resumo dd,
+.ficha-etapa > p,
+.ficha-lista:not(.ficha-etapa *) > li,
+.pop-sec textarea,
+.passo-corpo textarea,
+.tela-corpo textarea,
+.page-head p:not(.page-meta),
+.pagina-publica-texto > span,
+.fluxo-info > span,
+.notice:not(.erro),
+.empty p,
+.dicas li { font-weight: 300; }
+.tr-conteudo :is(strong, b),
+.pub-texto :is(strong, b),
+.descricao-sugerida :is(strong, b),
+.cartao:not([id="quem-foi-entrevistado"]) .ficha-resumo dd :is(strong, b),
+.ficha-etapa > p :is(strong, b),
+.ficha-lista:not(.ficha-etapa *) > li :is(strong, b),
+.page-head p:not(.page-meta) :is(strong, b),
+.pagina-publica-texto > span :is(strong, b),
+.fluxo-info > span :is(strong, b),
+.notice:not(.erro) :is(strong, b),
+.empty p :is(strong, b),
+.dicas li :is(strong, b) { font-weight: 700; }
+/* Texto só para leitores de tela. Preso no canto (top/left): sem isso, o que fica escondido dentro de uma lista com
+   rolagem própria (como a de "Pessoas e acessos") esticava a página para baixo e criava um vão vazio (decisão 70). */
+.sr-only { position: absolute; top: 0; left: 0; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* Painel da Maia (decisão 52, só administradores): totais, tabelas e a configuração. */
+.totais-maia { grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: none; }
+.tabela-rolagem { overflow-x: auto; max-width: 100%; }
+.tabela-maia { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-maia th, .tabela-maia td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; vertical-align: top; }
+.tabela-entrevistas td:first-child { white-space: normal; min-width: 200px; }
+.cartao .metricas-entrevista { max-width: none; }
+.tabela-maia th { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.tabela-maia th.col-num, .tabela-maia td.col-num { text-align: right; font-variant-numeric: tabular-nums; }
+.tabela-maia tbody tr:hover { background: #f7f8f8; }
+.tabela-maia a { color: var(--ink); text-decoration: none; font-weight: 600; }
+.tabela-maia a:hover { text-decoration: underline; }
+.tabela-maia td small { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); font-weight: 400; }
+.tabela-entrevistas { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.tabela-entrevistas tbody tr:last-child td { border-bottom: 0; }
+.config-maia { display: grid; grid-template-columns: 200px 1fr; gap: 10px 16px; margin: 0; font-size: 14px; line-height: 1.5; }
+.config-maia dt { font-weight: 600; color: var(--muted); }
+.config-maia dd { margin: 0; }
+@media (max-width: 720px) {
+  .totais-maia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .config-maia { grid-template-columns: 1fr; gap: 2px; }
+  .config-maia dd { margin-bottom: 10px; }
+}
+
+/* Convites para entrevista com a Maia (decisão 53) */
+.lista-pessoas { display: flex; flex-direction: column; gap: 4px; max-height: 280px; overflow: auto; padding: 6px; border: 1px solid var(--line); border-radius: 12px; }
+.pessoa-opcao { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.pessoa-opcao:hover { background: #f7f8f8; }
+.pessoa-opcao.marcada { background: var(--primary-soft); }
+.pessoa-opcao.indisponivel { opacity: .6; cursor: default; }
+.pessoa-opcao input { width: 18px; height: 18px; accent-color: var(--primary); flex: none; margin: 0; }
+.pessoa-opcao-nome { display: flex; flex-direction: column; font-weight: 600; min-width: 0; }
+.pessoa-opcao-nome small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.pessoa-opcao-aviso { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.convite-contagem { margin-right: auto; align-self: center; font-size: 13px; color: var(--muted); }
+.dialog .field textarea { padding: 10px 14px; border: 1px solid var(--line-strong); border-radius: 10px; font-size: 14px; font-weight: 500; font-family: inherit; resize: vertical; }
+.entrevistas-pendentes { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 18px; border-radius: 14px; background: #eef4ff; border: 1px solid #c9d8f5; color: #15325e; font-size: 14px; }
+.entrevistas-pendentes .btn { margin-left: auto; }
+.lista-entrevistas .linha-pop .pop-nome { min-width: 0; }
+.pop-nome .rotulo-processo { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.selo-convidada { background: #fff3e0; color: #8a4b00; }
+.selo-andamento, .selo-processando { background: #eef2ff; color: #3b3fa3; }
+.selo-concluida { background: #e7f5ec; color: #1f6b3a; }
+.selo-erro { background: #fdecec; color: #912018; }
+/* Entrevistas arquivadas (decisão 72): o selo, as abas Ativas | Arquivadas e a faixa com o ícone ao lado do texto. */
+.selo-arquivada { background: #eceff0; color: #4a5a5f; }
+.abas-entrevistas { margin: -2px 0 2px; }
+.aviso.arquivado > span:first-of-type { flex: 1 1 300px; min-width: 0; }
+
+/* Entrevista em ligação agora (decisão 69): o selo "Em andamento", com o microfone e o ponto que pulsa, e o
+   cartão de quem tenta abrir a conversa de outra pessoa durante a ligação. */
+.selo-ao-vivo { background: #0f7a55; color: #fff; }
+.selo-ao-vivo::before { animation: pisca 1.2s ease-in-out infinite; }
+.selo-ao-vivo svg { flex: none; }
+.nota-ao-vivo { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.cartao-em-ligacao { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding-top: 32px; padding-bottom: 28px; }
+.cartao-em-ligacao .notice { max-width: 520px; margin: 0; }
+.em-ligacao-icone { position: relative; display: grid; place-items: center; width: 60px; height: 60px; border-radius: 999px; background: #e3f6ea; color: #0f7a55; }
+.em-ligacao-icone::after { content: ''; position: absolute; inset: 0; border-radius: 999px; border: 2px solid #0f7a55; opacity: 0; animation: onda-ligacao 1.8s ease-out infinite; }
+@keyframes onda-ligacao { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.55); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .selo-ao-vivo::before, .em-ligacao-icone::after { animation: none; } }
+@media (max-width: 640px) { .nota-ao-vivo { white-space: normal; } }
+
+/* Voltar para fechar pontos em aberto (decisão 56) */
+.lista-pendencias, .lista-pendencias-escolhidas { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.lista-pendencias .check { align-items: flex-start; font-weight: 500; line-height: 1.45; }
+.lista-pendencias .check input { margin-top: 2px; flex: none; }
+.lista-pendencias-escolhidas li { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font-size: 14px; }
+.conversa-divisor { margin: 12px 0 4px; padding-top: 10px; border-top: 1px dashed var(--line-strong); text-align: center; font-size: 12px; color: var(--muted); }
+
+/* Perguntas para outras pessoas (decisão 58) */
+.perguntas-outros { margin-top: 4px; }
+.perguntas-grupo { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.perguntas-grupo-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.perguntas-grupo small, #para-outra-pessoa small { color: var(--muted); font-size: 12px; }
+.convite-dica { margin: 0; font-weight: 600; color: var(--ink); }
+
+/* Processos em pastas (decisão 61): página da área e "Todos os processos". */
+.pastas-processos { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 16px; }
+.pasta-processo { --aba: 20px; --raio: 14px; --borda-pasta: #dfe5e4; --borda-pasta-forte: #9fbcc2; position: relative; min-width: 0; padding-top: var(--aba); min-height: 138px; display: flex; }
+.pasta-processo .pasta-aba { position: absolute; top: 0; left: 0; width: 38%; height: calc(var(--aba) + 1px); background: #fff; border: 1px solid var(--borda-pasta); border-right: 0; border-bottom: 0; border-radius: var(--raio) 0 0 0; z-index: 1; pointer-events: none; transition: border-color .15s; }
+.pasta-processo .pasta-aba::after { content: ''; position: absolute; top: -1px; right: -32px; width: 32px; height: calc(var(--aba) + 1px); background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 21' preserveAspectRatio='none'%3E%3Cpath d='M0 0.5 H3.5 C7 0.5 9 1.3 11.4 3.1 L24.8 17.6 C27.2 19.8 29 20.5 32 20.5 V21 H0 Z' fill='white'/%3E%3Cpath d='M0 0.5 H3.5 C7 0.5 9 1.3 11.4 3.1 L24.8 17.6 C27.2 19.8 29 20.5 32 20.5' fill='none' stroke='%23dfe5e4' stroke-width='1'/%3E%3C/svg%3E") no-repeat; background-size: 100% 100%; }
+.pasta-processo:hover .pasta-aba, .pasta-processo:focus-within .pasta-aba { border-color: var(--borda-pasta-forte); }
+.pasta-processo:hover .pasta-aba::after, .pasta-processo:focus-within .pasta-aba::after { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 21' preserveAspectRatio='none'%3E%3Cpath d='M0 0.5 H3.5 C7 0.5 9 1.3 11.4 3.1 L24.8 17.6 C27.2 19.8 29 20.5 32 20.5 V21 H0 Z' fill='white'/%3E%3Cpath d='M0 0.5 H3.5 C7 0.5 9 1.3 11.4 3.1 L24.8 17.6 C27.2 19.8 29 20.5 32 20.5' fill='none' stroke='%239fbcc2' stroke-width='1'/%3E%3C/svg%3E"); }
+.pasta-processo .pasta-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #fff; border: 1px solid var(--borda-pasta); border-radius: 0 var(--raio) var(--raio) var(--raio); padding: 14px 15px 12px; transition: border-color .15s, box-shadow .15s; }
+.pasta-processo:hover .pasta-corpo, .pasta-processo:focus-within .pasta-corpo { border-color: var(--borda-pasta-forte); box-shadow: 0 8px 20px -16px rgba(0, 67, 82, .5); }
+.pasta-processo .pasta-topo { display: flex; align-items: flex-start; gap: 10px; }
+.pasta-processo .pasta-cor { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+.pasta-processo .pasta-cor::before { content: ''; width: 9px; height: 9px; border-radius: 2px; background: var(--miolo, #fff); }
+.pasta-processo .pasta-nome { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-family: var(--font-display), system-ui, sans-serif; font-size: 14.5px; line-height: 1.32; font-weight: 600; color: #2f4046; letter-spacing: -0.01em; margin-top: 3px; text-decoration: none; }
+.pasta-processo .pasta-nome::after { content: ''; position: absolute; inset: 0; z-index: 2; border-radius: var(--raio); } /* a pasta inteira abre o processo */
+.pasta-processo .pasta-nome:focus-visible { outline: none; }
+.pasta-processo .pasta-nome:focus-visible::after { outline: 2px solid var(--accent); outline-offset: 3px; }
+.pasta-processo .pasta-rodape { margin-top: auto; padding-top: 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; }
+.pasta-processo .pasta-data { font-size: 11.5px; color: #8a999d; font-weight: 500; white-space: nowrap; }
+.pasta-pub { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 999px; white-space: nowrap; }
+.pasta-pub::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pasta-pub-online { background: #e8f5ec; color: #1d6b3a; }
+.pasta-pub-offline { background: #eef1f1; color: #6b7a7e; }
+.pasta-processo .pasta-restaurar { position: relative; z-index: 3; height: 28px; padding: 0 8px; margin-right: -6px; font-size: 12px; gap: 5px; color: var(--primary); }
+.pasta-processo.arquivada .pasta-cor { background: #e7ecec !important; --miolo: #b4c0c2 !important; }
+.pasta-processo.arquivada .pasta-nome { color: var(--muted); }
+@media (max-width: 520px) {
+  .pastas-processos { grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+  .pasta-processo { min-height: 128px; }
+  .pasta-processo .pasta-corpo { padding: 12px 12px 10px; }
+  .pasta-processo .pasta-topo { flex-direction: column; gap: 8px; }
+  .pasta-processo .pasta-cor { width: 24px; height: 24px; border-radius: 7px; }
+  .pasta-processo .pasta-cor::before { width: 8px; height: 8px; }
+  .pasta-processo .pasta-nome { font-size: 13.5px; margin-top: 0; }
+  .pasta-processo .pasta-rodape { flex-direction: column; align-items: flex-start; padding-top: 10px; }
+  .pasta-processo .pasta-restaurar { margin-left: -8px; }
+}
+/* Fontes do fluxograma por IA (decisão 63): quatro abas, cada uma do tamanho do seu nome. */
+.fontes-ia button { flex: 1 1 auto; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.conversas-fluxo { background: var(--surface); max-height: 240px; }
+@media (max-width: 560px) { .fontes-ia { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .fontes-ia button { padding: 6px; height: auto; min-height: 34px; white-space: normal; line-height: 1.2; } }
+/* A entrevista de outra pessoa vista pelo administrador (decisão 65). */
+.gestao-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gestao-entrevista .fluxo-acoes { flex-wrap: wrap; }
+.pop-nome .entrevistado-area { font-weight: 500; font-size: 13px; color: var(--muted); }

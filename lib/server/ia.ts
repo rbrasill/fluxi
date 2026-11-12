@@ -11,10 +11,11 @@ const MODELO = 'claude-sonnet-5-5';
 const SISTEMA = `Você é especialista em mapeamento de processos e notação BPMN.
 Recebe a descrição de um processo ou a transcrição de uma reunião em que pessoas explicam como trabalham, e devolve a estrutura do fluxograma.
 
-Elementos (biblioteca BPMN da INC):
+Elementos (Biblioteca de Processos da INC):
 - "inicio": gatilho que dá origem ao processo (ação, solicitação ou condição). Texto: o gatilho, em até 6 palavras.
 - "inicio_mensagem": o processo só começa quando chega uma mensagem (e-mail, pedido, chamado).
 - "inicio_condicional": o processo começa quando uma regra ou condição passa a valer (ex.: data, saldo mínimo).
+- "inicio_paralelo": o processo só começa depois que todos os eventos previstos aconteceram (ex.: contrato assinado e pagamento confirmado). Texto: os eventos, em até 6 palavras.
 - "fim": encerramento de um caminho. Texto: o resultado, em até 5 palavras. Pode haver mais de um.
 - "link_saida": o processo continua em outro processo (texto: nome desse processo). "link_entrada": o fluxo vem de outro processo.
 - "tarefa": atividade executada por uma área. Texto: verbo no infinitivo + objeto, até 8 palavras (ex.: "Analisar crédito do cliente").
@@ -25,7 +26,7 @@ Elementos (biblioteca BPMN da INC):
 
 Regras:
 - Uma raia por área ou papel que executa atividades (ex.: Comercial, Financeiro, Cliente). Use os nomes que aparecem no texto.
-- Exatamente um evento de início ("inicio", "inicio_mensagem" ou "inicio_condicional") e pelo menos um fim.
+- Exatamente um evento de início ("inicio", "inicio_mensagem", "inicio_condicional" ou "inicio_paralelo") e pelo menos um fim.
 - Rótulos das saídas: no máximo 4 palavras.
 - Todo nó, exceto o início, precisa ter uma conexão de entrada; todo nó, exceto o fim, uma de saída.
 - Ids curtos e únicos (r1, r2… para raias; n1, n2… para nós).
@@ -39,22 +40,38 @@ const claude = () =>
     process.env.ANTHROPIC_WORKSPACE_ID ? { defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID } } : {},
   ));
 
-async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, maxTokens = 16000): Promise<z.infer<T>> {
+export type OpcoesIa = {
+  modelo?: string;
+  maxTokens?: number;
+  esforco?: 'low' | 'medium' | 'high';
+  /** false: sem raciocínio estendido (respostas curtas que precisam sair rápido). No Sonnet 5.5 vira `between_tools` (ele recusa `disabled`). */
+  pensar?: boolean;
+  limiteMs?: number;
+  /** Recebe o uso de tokens da chamada (para medir custo). */
+  aoUsar?: (uso: UsoIa) => void;
+};
+export type UsoIa = { modelo: string; entrada: number; saida: number; cache_leitura: number; cache_escrita: number };
+
+/** Chama o Claude pedindo a resposta no formato do schema (Structured Outputs). */
+export async function chamarEstruturado<T extends z.ZodTypeAny>(schema: T, sistema: string, conteudo: string, opcoes: OpcoesIa = {}): Promise<z.infer<T>> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie manualmente por enquanto.');
   try {
+    const modelo = opcoes.modelo ?? MODELO;
+    // O Haiku 5.5 não tem fallback no servidor; os outros modelos trocam sozinhos se recusarem.
+    const fallback = modelo.startsWith('claude-haiku') ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const };
     const resposta = await claude().beta.messages.parse({
-      model: MODELO,
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      max_tokens: maxTokens,
-      thinking: { type: 'adaptive' },
-      output_config: { effort: 'medium', format: zodOutputFormat(schema) },
+      model: modelo,
+      ...fallback,
+      max_tokens: opcoes.maxTokens ?? 16000,
+      thinking: opcoes.pensar === false ? (modelo.startsWith('claude-sonnet-5-5') ? { type: 'between_tools' } : { type: 'disabled' }) : { type: 'adaptive' },
+      output_config: { effort: opcoes.esforco ?? 'medium', format: zodOutputFormat(schema) },
       system: [{ type: 'text', text: sistema, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: conteudo }],
-    }, { timeout: 290_000 }); // cabe no maxDuration (300 s) da rota
+    }, { timeout: opcoes.limiteMs ?? 290_000 }); // cabe no maxDuration (300 s) da rota
     if (resposta.stop_reason === 'refusal') throw new ErroApi(422, 'A IA não conseguiu processar este conteúdo.');
     if (resposta.stop_reason === 'max_tokens') throw new ErroApi(422, 'O processo ficou grande demais para gerar de uma vez. Tente uma gravação menor.');
     if (!resposta.parsed_output) throw new ErroApi(502, 'A IA devolveu uma resposta inválida. Tente novamente.');
+    opcoes.aoUsar?.({ modelo: resposta.model, entrada: resposta.usage.input_tokens, saida: resposta.usage.output_tokens, cache_leitura: resposta.usage.cache_read_input_tokens ?? 0, cache_escrita: resposta.usage.cache_creation_input_tokens ?? 0 });
     return resposta.parsed_output as z.infer<T>;
   } catch (e) {
     if (e instanceof ErroApi) throw e;
@@ -117,15 +134,25 @@ export async function analisarGravacao(transcricao: string, telas: { id: string;
     AnaliseGravacaoSchema,
     SISTEMA_GRAVACAO,
     `<transcricao>\n${transcricao}\n</transcricao>\n\n<telas_marcadas>\n${lista}\n</telas_marcadas>`,
-    32000,
+    { maxTokens: 32000 },
   );
 }
 
-export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao'): Promise<Fluxo> {
+// Conversas com a Maia (decisão 63): o resumo orienta, a transcrição é a fonte.
+const INTRO_ENTREVISTA = `Conversas de mapeamento do processo, feitas por voz: a Maia (entrevistadora, uma IA) perguntou e quem executa o processo respondeu. De cada conversa vem tudo o que foi gerado: quem é a pessoa, o resumo que a Maia escreveu no fim (a descrição do processo, as etapas com quem faz, ferramentas, entradas, saídas, regras e exceções, as dificuldades relatadas, o que ficou em aberto e as perguntas para outra pessoa) e a transcrição inteira.
+- Use todo esse material. A transcrição é a fonte; o resumo organiza o que foi dito e ajuda a não esquecer etapas, responsáveis e caminhos. Desenhe só o que a pessoa disse ou confirmou; o que o entrevistador explicou por conta própria é conhecimento geral, não etapa do processo.
+- O que foi dito depois vale sobre o que foi dito antes, inclusive quando a pessoa voltou à ligação para completar (está marcado na transcrição).
+- As raias são as áreas ou os papéis que a pessoa citou como responsáveis por cada etapa. A área da própria pessoa entrevistada ajuda a saber de quem é cada raia quando ela diz "a gente" ou "eu".
+- Com mais de uma conversa, junte tudo num fluxograma só. Se as pessoas se contradisserem, desenhe o que a maioria descreveu e registre um "alerta" no nó, dizendo a diferença.
+- Pontos em aberto e perguntas para outra pessoa: nunca invente a resposta. Quando o ponto é sobre uma etapa ou uma decisão do desenho, registre um "alerta" no nó a que ele se refere, com a pergunta em poucas palavras. Se a decisão existe mas um dos caminhos não foi explicado (o que acontece quando é negado, por exemplo), desenhe a decisão com o caminho conhecido e o alerta nela. Ponto em aberto que não muda o desenho não vira anotação.
+- Dificuldades relatadas viram "nota" curta no nó em que acontecem (no máximo uma por nó).
+- O nome da empresa se escreve INC (na transcrição pode aparecer "Ínqui", que é como se fala).`;
+
+export async function extrairFluxo(texto: string, origem: 'descricao' | 'transcricao' | 'entrevista'): Promise<Fluxo> {
   if (!process.env.ANTHROPIC_API_KEY) throw new ErroApi(503, 'A geração por IA ainda não está configurada (falta ANTHROPIC_API_KEY). Crie o fluxograma manualmente por enquanto.');
   const intro =
-    origem === 'transcricao'
-      ? 'Transcrição da reunião de mapeamento do processo:'
+    origem === 'entrevista' ? INTRO_ENTREVISTA
+      : origem === 'transcricao' ? 'Transcrição da reunião de mapeamento do processo:'
       : 'Descrição do processo:';
   try {
     const resposta = await claude().beta.messages.parse({

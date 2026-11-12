@@ -6,7 +6,7 @@ Regra: **no MVP entram as operações grandes, bem feitas.** Ajustes finos ficam
 
 ### 1. Fluxograma (prioridade máxima)
 Tem que estar muito funcional, com boa navegação e usabilidade.
-- Editor draw.io embutido, já com a biblioteca BPMN INC e as cores padrão.
+- Editor draw.io embutido, já com a Biblioteca de Processos e as cores padrão.
 - Abrir, editar, salvar (autosave) e exportar (PNG/SVG).
 - Navegação fluida: zoom, mover, reorganizar layout, tela cheia.
 - Gerar o fluxograma a partir da transcrição (IA → FluxoSchema → XML).

@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { IconeProcesso } from '@/components/IconeProcesso';
+import { PastaProcesso } from '@/components/PastaProcesso';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
@@ -47,23 +47,8 @@ export default function ProcessosPage() {
       )}
       {itens && itens.length > 0 && filtrados.length === 0 && <p className="notice">Nenhum resultado para “{busca}”.</p>}
 
-      <div className="lista-pops">
-        {filtrados.map((p) => (
-          <Link key={p.id} href={`/app/processos/${p.id}`} className="linha-pop linha-processo">
-            <IconeProcesso />
-            <span className="pop-nome">
-              <strong>{p.nome}</strong>
-              <span>{p.area?.organizacao?.nome} · {p.area?.nome}</span>
-            </span>
-            <span className="contagens">
-              <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>
-              <span title="Fluxogramas"><Icone nome="fluxo" tamanho={14} />{p.total.fluxogramas}</span>
-              <span title="POPs"><Icone nome="pop" tamanho={14} />{p.total.pops}</span>
-            </span>
-            <span className="code">{p.codigo}</span>
-            <span className="notice">{new Date(p.atualizado_em).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-          </Link>
-        ))}
+      <div className="pastas-processos">
+        {filtrados.map((p) => <PastaProcesso key={p.id} processo={p} />)}
       </div>
 
       {novo && <NovoProcesso aoFechar={() => setNovo(false)} />}

@@ -3,19 +3,11 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { IconeProcesso } from '@/components/IconeProcesso';
 import { confirmar } from '@/components/Dialogos';
 import { NovoProcesso } from '@/components/NovoProcesso';
+import { PastaProcesso } from '@/components/PastaProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
-import { textoPuro } from '@/lib/pop/texto-rico';
 import { restaurarProcesso } from '@/lib/processos';
-
-// Resumo da descrição na lista: só o texto (a descrição é texto rico), numa linha, até 120 caracteres.
-const LIMITE_RESUMO = 120;
-function resumo(descricao: string | null | undefined) {
-  const t = textoPuro(descricao).replace(/\s+/g, ' ').trim();
-  return { texto: t.length > LIMITE_RESUMO ? `${t.slice(0, LIMITE_RESUMO).trimEnd()}…` : t, completo: t };
-}
 
 export default function AreaPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +22,7 @@ export default function AreaPage() {
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (a === undefined) return <div className="page"><p className="notice">Carregando…</p></div>;
-  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/organizacoes" className="btn btn-primary">Voltar</Link></div></div>;
+  if (a === null) return <div className="page"><div className="empty"><h2>Área não encontrada</h2><Link href="/app/areas" className="btn btn-primary">Voltar</Link></div></div>;
 
   const ativos = a.processos.filter((p) => !p.arquivado_em);
   const arquivados = a.processos.filter((p) => p.arquivado_em);
@@ -61,7 +53,7 @@ export default function AreaPage() {
             {a.organizacao && <Link href={`/app/organizacoes/${a.organizacao.id}`}>{a.organizacao.nome}</Link>}
           </nav>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={renomear} aria-label="Nome da área" />
-          <p>{ativos.length} {ativos.length === 1 ? 'processo' : 'processos'}{arquivados.length ? ` · ${arquivados.length} ${arquivados.length === 1 ? 'arquivado' : 'arquivados'}` : ''}</p>
+          <p className="page-meta">{ativos.length} {ativos.length === 1 ? 'processo' : 'processos'}{arquivados.length ? ` · ${arquivados.length} ${arquivados.length === 1 ? 'arquivado' : 'arquivados'}` : ''}</p>
         </div>
         <div className="actions">
           <button className="btn btn-ghost btn-icon" aria-label="Excluir área" title="Excluir área" onClick={excluir}><Icone nome="lixo" tamanho={16} /></button>
@@ -72,8 +64,8 @@ export default function AreaPage() {
 
       {arquivados.length > 0 && (
         <div className="segmented abas-arquivo" role="tablist" aria-label="Processos">
-          <button type="button" role="tab" aria-selected={abaAtual === 'ativos'} onClick={() => setAba('ativos')}>Ativos <span className="conta">{ativos.length}</span></button>
-          <button type="button" role="tab" aria-selected={abaAtual === 'arquivados'} onClick={() => setAba('arquivados')}>Arquivados <span className="conta">{arquivados.length}</span></button>
+          <button type="button" role="tab" aria-selected={abaAtual === 'ativos'} onClick={() => setAba('ativos')}>Ativos <span className="conta-aba">{ativos.length}</span></button>
+          <button type="button" role="tab" aria-selected={abaAtual === 'arquivados'} onClick={() => setAba('arquivados')}>Arquivados <span className="conta-aba">{arquivados.length}</span></button>
         </div>
       )}
 
@@ -86,25 +78,8 @@ export default function AreaPage() {
       )}
       {a.processos.length > 0 && lista.length === 0 && <p className="notice">{abaAtual === 'ativos' ? 'Todos os processos desta área estão arquivados.' : 'Nenhum processo arquivado.'}</p>}
 
-      <div className="lista-pops">
-        {lista.map((p) => (
-          <article key={p.id} className={`linha-pop linha-processo ${p.arquivado_em ? 'arquivada' : ''}`}>
-            <IconeProcesso arquivado={!!p.arquivado_em} />
-            <Link href={`/app/processos/${p.id}`} className="pop-nome">
-              <strong>{p.nome}</strong>
-              {p.arquivado_em
-                ? <span>Arquivado em {new Date(p.arquivado_em).toLocaleDateString('pt-BR')}</span>
-                : <span className="resumo-descricao" title={resumo(p.descricao).completo || undefined}>{resumo(p.descricao).texto || ' '}</span>}
-            </Link>
-            <span className="contagens">
-              <span title="Gravações"><Icone nome="tela" tamanho={14} />{p.total.gravacoes}</span>
-              <span title="Fluxograma"><Icone nome="fluxo" tamanho={14} />{p.total.fluxogramas}</span>
-              <span title="POPs"><Icone nome="pop" tamanho={14} />{p.total.pops}</span>
-            </span>
-            <span className="code">{p.codigo}</span>
-            {p.arquivado_em && <button type="button" className="btn btn-ghost" onClick={() => restaurar(p.id)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}
-          </article>
-        ))}
+      <div className="pastas-processos">
+        {lista.map((p) => <PastaProcesso key={p.id} processo={p} aoRestaurar={p.arquivado_em ? () => restaurar(p.id) : undefined} />)}
       </div>
       {novo && <NovoProcesso areaId={a.id} aoFechar={() => setNovo(false)} />}
     </div>

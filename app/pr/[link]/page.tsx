@@ -99,7 +99,7 @@ function ProcessoPublicoPage() {
           </section>
         )}
 
-        <footer className="pub-rodape">Publicado com Fluxi</footer>
+        <footer className="pub-rodape">Publicado com INCFlow</footer>
       </main>
       <VoltarAoTopo />
     </div>

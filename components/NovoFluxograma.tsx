@@ -1,15 +1,25 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { MAX_CONVERSAS_FLUXO } from '@/lib/entrevista/topicos';
+import { listarEntrevistasDoProcesso, quandoFoiAEntrevista, type EntrevistaDoProcesso } from '@/lib/entrevistas';
 import { criar, gerarComIa, transcreverAudio } from '@/lib/fluxogramas';
 
 // Cria o fluxograma do processo (um por processo, decisão 31): desenhado à mão ou gerado com IA a
-// partir de uma descrição, da transcrição ou do áudio de uma reunião. Gravação de tela não vira
-// fluxograma (decisão 33): ela serve só ao POP. Com `substituir`, o processo já tem fluxograma e a IA
-// gera outro no lugar dele (o desenho atual é perdido; o aviso fica no diálogo).
+// partir de uma descrição, da transcrição ou do áudio de uma reunião, ou das conversas com a Maia sobre
+// o processo (decisão 63). Gravação de tela não vira fluxograma (decisão 33): ela serve só ao POP. Com
+// `substituir`, o processo já tem fluxograma e a IA gera outro no lugar dele (o desenho atual é perdido;
+// o aviso fica no diálogo).
 
 type Modo = 'manual' | 'ia';
-type Fonte = 'descricao' | 'transcricao' | 'audio';
+type Fonte = 'descricao' | 'transcricao' | 'audio' | 'maia';
+const FONTES: { id: Fonte; rotulo: string }[] = [
+  { id: 'descricao', rotulo: 'Descrever o processo' },
+  { id: 'transcricao', rotulo: 'Transcrição' },
+  { id: 'audio', rotulo: 'Áudio / vídeo' },
+  { id: 'maia', rotulo: 'Conversa com a Maia' },
+];
+const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
 
 const EXTENSOES_TEXTO = ['.txt', '.vtt', '.srt', '.md'];
 
@@ -26,9 +36,20 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
   const [fonte, setFonte] = useState<Fonte>('descricao');
   const [texto, setTexto] = useState('');
   const [audio, setAudio] = useState<File | null>(null);
+  // As conversas com a Maia deste processo que já têm resultado (null enquanto carrega) e as escolhidas.
+  const [conversas, setConversas] = useState<EntrevistaDoProcesso[] | null>(null);
+  const [marcadas, setMarcadas] = useState<string[]>([]);
   const [etapa, setEtapa] = useState('');
   const [erro, setErro] = useState('');
   const ocupado = etapa !== '';
+
+  // As conversas já vêm todas marcadas (até o limite): o fluxograma do processo junta o que cada pessoa contou.
+  useEffect(() => {
+    listarEntrevistasDoProcesso(processoId)
+      .then((l) => { const prontas = l.filter((x) => x.tem_resultado && !x.em_ligacao && !x.arquivado_em); /* sem a conversa em ligação (decisão 69) nem as arquivadas (decisão 72) */ setConversas(prontas); setMarcadas(prontas.slice(0, MAX_CONVERSAS_FLUXO).map((x) => x.id)); })
+      .catch(() => setConversas([]));
+  }, [processoId]);
+  const alternar = (id: string) => setMarcadas((m) => (m.includes(id) ? m.filter((x) => x !== id) : m.length < MAX_CONVERSAS_FLUXO ? [...m, id] : m));
 
   async function lerArquivoTexto(f: File) {
     setTexto(await f.text());
@@ -41,6 +62,11 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
       if (modo === 'manual') {
         setEtapa('Criando…');
         const f = await criar(nome.trim() || 'Fluxograma do processo', '', 'manual', processoId);
+        return aoCriar(f.id);
+      }
+      if (fonte === 'maia') {
+        setEtapa(`A IA está lendo ${marcadas.length === 1 ? 'a conversa' : `as ${marcadas.length} conversas`} e montando o fluxograma… (pode levar até 1 minuto)`);
+        const f = await gerarComIa({ entrevistas: marcadas, origem: 'entrevista', nome: nome.trim() || undefined, processo_id: processoId, substituir });
         return aoCriar(f.id);
       }
       let conteudo = texto;
@@ -57,7 +83,7 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
     }
   }
 
-  const podeEnviar = modo !== 'ia' || (fonte === 'audio' ? !!audio : texto.trim().length >= 30);
+  const podeEnviar = modo !== 'ia' || (fonte === 'maia' ? marcadas.length > 0 : fonte === 'audio' ? !!audio : texto.trim().length >= 30);
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="novo-titulo" onClick={() => !ocupado && aoFechar()}>
@@ -72,25 +98,47 @@ export function NovoFluxograma({ processoId, substituir = false, modoInicial = '
         {!substituir && (
           <div className="options">
             <button type="button" className="option" aria-pressed={modo === 'manual'} onClick={() => setModo('manual')} disabled={ocupado}>
-              <strong>Desenhar</strong><span>Do zero, com a biblioteca BPMN INC.</span>
+              <strong>Desenhar</strong><span>Do zero, com a Biblioteca de Processos.</span>
             </button>
             <button type="button" className="option" aria-pressed={modo === 'ia'} onClick={() => setModo('ia')} disabled={ocupado}>
               <strong><Icone nome="ia" tamanho={14} /> Gerar com IA</strong>
-              <span>A partir de uma descrição, ou da transcrição ou do áudio de uma reunião.</span>
+              <span>A partir de uma descrição, de uma reunião (transcrição ou áudio) ou das conversas com a Maia.</span>
             </button>
           </div>
         )}
 
         {modo === 'ia' && (
           <div className="ia-box">
-            <div className="segmented" role="tablist">
-              {(['descricao', 'transcricao', 'audio'] as Fonte[]).map((f) => (
-                <button key={f} type="button" role="tab" aria-selected={fonte === f} onClick={() => setFonte(f)} disabled={ocupado}>
-                  {f === 'descricao' ? 'Descrever o processo' : f === 'transcricao' ? 'Transcrição de reunião' : 'Áudio / vídeo de reunião'}
+            <div className="segmented fontes-ia" role="tablist">
+              {FONTES.map((f) => (
+                <button key={f.id} type="button" role="tab" aria-selected={fonte === f.id} onClick={() => setFonte(f.id)} disabled={ocupado}>
+                  {f.id === 'maia' && <Icone nome="microfone" tamanho={14} />}{f.rotulo}
                 </button>
               ))}
             </div>
-            {fonte !== 'audio' ? (
+            {fonte === 'maia' ? (
+              <>
+                {conversas === null && <p className="notice">Carregando as conversas…</p>}
+                {conversas?.length === 0 && <p className="notice">Este processo ainda não tem conversa concluída com a Maia. Convide quem executa o processo na seção “Entrevistas com a Maia”; quando a conversa terminar, ela aparece aqui.</p>}
+                {conversas && conversas.length > 0 && (
+                  <>
+                    <p className="notice">A IA lê o que cada pessoa contou à Maia (a conversa inteira e o resumo) e desenha o fluxograma. {conversas.length > 1 ? `Com mais de uma conversa marcada, junta tudo num desenho só (até ${MAX_CONVERSAS_FLUXO}).` : ''}</p>
+                    <div className="lista-pessoas conversas-fluxo" role="group" aria-label="Conversas com a Maia deste processo">
+                      {conversas.map((c) => {
+                        const marcada = marcadas.includes(c.id);
+                        return (
+                          <label key={c.id} className={`pessoa-opcao${marcada ? ' marcada' : ''}`}>
+                            <input type="checkbox" checked={marcada} disabled={ocupado || (!marcada && marcadas.length >= MAX_CONVERSAS_FLUXO)} onChange={() => alternar(c.id)} />
+                            <span className="pessoa-opcao-nome">{c.entrevistado ?? 'Pessoa entrevistada'}<small>{quandoFoiAEntrevista(c)}{c.duracao_s ? ` · ${duracao(c.duracao_s)}` : ''}{c.falas ? ` · ${c.falas} falas` : ''}</small></span>
+                            {c.pendencias > 0 && <span className="pessoa-opcao-aviso">{c.pendencias} em aberto</span>}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : fonte !== 'audio' ? (
               <>
                 <textarea
                   className="texto-ia"

@@ -9,6 +9,7 @@ import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { NovoFluxograma } from '@/components/NovoFluxograma';
+import { EntrevistasDoProcesso } from '@/components/entrevista/EntrevistasDoProcesso';
 import { SeloStatus } from '@/components/SeloStatus';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { PaginaPublica } from '@/components/pop/PaginaPublica';
@@ -150,7 +151,7 @@ function ProcessoPage() {
           <SeloDocumento tipo="processo" />
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
-          <p className="processo-meta">
+          <p className="processo-meta page-meta">
             <span className="code">{p.codigo}</span>
             <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área" disabled={arquivado}>
               {areas.length
@@ -228,6 +229,9 @@ function ProcessoPage() {
           <p className="notice">Aparece na página pública do processo. As referências viram links para os documentos citados.</p>
         </div>
       </section>
+
+      {/* As entrevistas com a Maia sobre este processo (decisão 53): por convite, uma por pessoa. */}
+      <EntrevistasDoProcesso processoId={p.id} processoNome={p.nome} arquivado={arquivado} />
 
       {p.referenciado_em.length > 0 && (
         <section className="secao-processo" aria-labelledby="titulo-referenciado">

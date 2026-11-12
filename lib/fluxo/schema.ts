@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 // Estrutura semântica do fluxograma que a IA devolve (ver docs/fluxograma.md).
-// O código converte para o XML do draw.io com a biblioteca BPMN INC.
+// O código converte para o XML do draw.io com a Biblioteca de Processos (decisão 62).
 export const TIPOS_NO = [
   'inicio',
   'inicio_mensagem',
   'inicio_condicional',
+  'inicio_paralelo',
   'fim',
   'link_entrada',
   'link_saida',

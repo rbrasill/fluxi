@@ -5,6 +5,7 @@ const caminhos: Record<string, string> = {
   'zoom-mais': 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5M8 11h6M11 8v6',
   'zoom-menos': 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5M8 11h6',
   avancar: 'M9 6l6 6-6 6',
+  'seta-direita': 'M5 12h14M13 6l6 6-6 6',
   fluxo: 'M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM10 4h6v5h-6zM10 15h6v5h-6zM7 12h1.5a1.5 1.5 0 0 0 1.5-1.5V6.5M7 12h1.5a1.5 1.5 0 0 1 1.5 1.5v4',
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
   empresa: 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
@@ -28,6 +29,7 @@ const caminhos: Record<string, string> = {
   refazer: 'M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3',
   marcar: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4',
   areas: 'M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6',
+  pessoas: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
   baixar: 'M12 4v12M7 11l5 5 5-5M5 20h14',
   expandir: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   ajustar: 'M4 4h6M4 4v6M20 4h-6M20 4v6M4 20h6M4 20v-6M20 20h-6M20 20v-6M9 9h6v6H9z',
@@ -53,6 +55,9 @@ const caminhos: Record<string, string> = {
   'lista-numerada': 'M10 6h10M10 12h10M10 18h10M4 4.5h1.5V9M4 9h3M4 14.6c.6-.9 3-.9 3 .7 0 1.2-3 2-3 3.7h3',
   'marca-texto': 'M9 11l-5 5v3h3l5-5M9 11l6-6 4 4-6 6zM14 20h6',
   'limpar-formato': 'M6 5h12M12 5l-3 14M4 4l16 16',
+  microfone: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
+  conversa: 'M4 5h16v11h-9l-5 4v-4H4zM8 9h8M8 12h5',
+  'alto-falante': 'M4 10v4h3l5 4V6l-5 4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10',
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {

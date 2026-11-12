@@ -37,7 +37,7 @@ export default function OrganizacaoPage() {
         <div>
           <Link href="/app/organizacoes" className="voltar"><Icone nome="voltar" tamanho={16} />Organizações</Link>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={renomear} aria-label="Nome da organização" />
-          <p>{o.areas.length} {o.areas.length === 1 ? 'área' : 'áreas'}</p>
+          <p className="page-meta">{o.areas.length} {o.areas.length === 1 ? 'área' : 'áreas'}</p>
         </div>
         <div className="actions">
           <button className="btn btn-ghost btn-icon" aria-label="Excluir organização" title="Excluir organização" onClick={excluir}><Icone nome="lixo" tamanho={16} /></button>

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { ContaMenu } from '@/components/ContaMenu';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
 import { RecolherMenu } from '@/components/RecolherMenu';
@@ -16,16 +17,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="side">
         <Link href="/app/inicio" className="brand" title="Início">
           {/* Logo completo (símbolo + nome); no celular e com o menu recolhido, só o símbolo. */}
-          <Image src="/logo-fluxi.png" alt="Fluxi" width={158} height={40} className="brand-logo" priority />
-          <Image src="/logo-fluxi-marca.png" alt="Fluxi" width={36} height={36} className="brand-marca" priority />
+          <Image src="/logo-incflow.png" alt="INCFlow" width={199} height={32} className="brand-logo" priority />
+          <Image src="/logo-incflow-marca.png" alt="INCFlow" width={36} height={36} className="brand-marca" priority />
         </Link>
         <nav className="nav" aria-label="Principal">
           <NavLink href="/app/inicio" titulo="Início"><Icone nome="inicio" /><span className="nav-texto">Início</span></NavLink>
-          <NavLink href="/app/pops" titulo="POPs"><Icone nome="pop" /><span className="nav-texto">POPs</span></NavLink>
+          <NavLink href="/app/areas" tambem={["/app/processos", "/app/pops", "/app/fluxogramas", "/app/gravacoes"]} titulo="Áreas"><Icone nome="areas" /><span className="nav-texto">Áreas</span></NavLink>
           <span className="nav-label">ESTRUTURA</span>
-          <NavLink href="/app/organizacoes" tambem={["/app/areas", "/app/processos"]} titulo="Organizações"><Icone nome="empresa" /><span className="nav-texto">Organizações</span></NavLink>
+          <NavLink href="/app/organizacoes" titulo="Organizações"><Icone nome="empresa" /><span className="nav-texto">Organizações</span></NavLink>
+          <span className="nav-label">LABORATÓRIO</span>
+          <NavLink href="/app/entrevistas" titulo="Conversas com a Maia"><Icone nome="microfone" /><span className="nav-texto">Conversas com a Maia</span></NavLink>
           <span className="nav-label">CONTA</span>
-          <a href="#" aria-disabled="true" title="Pessoas e acessos (em breve)"><Icone nome="areas" /><span className="nav-texto">Pessoas e acessos</span><span className="soon">EM BREVE</span></a>
+          <ContaMenu />
         </nav>
         <RecolherMenu />
       </aside>

@@ -15,8 +15,14 @@ export const DRAWIO_URL =
 
 type ItemBiblioteca = { xml: string; w: number; h: number; title: string };
 
-// Cores da biblioteca BPMN INC (sem '#', formato do draw.io).
-const CORES = ['005F73', '415A77', '13AE84', 'F14F21', 'FAD7AC', 'B46504', 'DB2843', '9FA1FF', '76ABAE', 'FF3399', 'FFE6CC', 'D79B00'];
+// Cores da Biblioteca de Processos (decisão 62), sem '#', no formato do draw.io: verde, vermelho, azul e
+// amarelo (borda, texto e fundo de cada um), os cinza-azulados das caixas de apoio e o azul-escuro dos títulos.
+const CORES = [
+  '1EA65A', '178A4A', 'E7F6EE', 'E5484D', 'D3383E', 'FDEDED',
+  '12A3EB', '0B86C6', 'E6F6FE', 'F2BE22', 'B88A00', 'FFF8E3',
+  'A9BCD0', '7B8CA4', '52637A', 'D3DEE8', 'F4F8FB', '1F1D5C',
+];
+const FONTE = { fontFamily: 'Poppins', fontSource: 'https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DPoppins' };
 
 export function configuracao(biblioteca: ItemBiblioteca[]) {
   return {
@@ -25,27 +31,37 @@ export function configuracao(biblioteca: ItemBiblioteca[]) {
     defaultLibraries: 'fluxi-bpmn-inc;general',
     libraries: [
       {
-        title: { main: 'Fluxi' },
+        title: { main: 'INCFlow' },
         entries: [
           {
             id: 'fluxi-bpmn-inc',
-            title: { main: 'BPMN INC' },
-            desc: { main: 'Biblioteca de estilos BPMN da INC' },
-            libs: [{ title: { main: 'BPMN INC' }, data: biblioteca }],
+            title: { main: 'Biblioteca de Processos' },
+            desc: { main: 'Elementos de fluxograma da INC' },
+            libs: [{ title: { main: 'Biblioteca de Processos' }, data: biblioteca }],
           },
         ],
       },
     ],
     customPresetColors: CORES,
+    // O que a pessoa desenha fora da biblioteca já sai no mesmo estilo: a seta principal e a caixa de texto.
     defaultEdgeStyle: {
       edgeStyle: 'orthogonalEdgeStyle',
       rounded: '1',
-      strokeColor: '#415A77',
-      strokeWidth: '2',
-      endArrow: 'classic',
+      curved: '0',
+      strokeColor: '#12A3EB',
+      strokeWidth: '1.5',
+      startArrow: 'oval',
+      startFill: '1',
+      startSize: '6',
+      endArrow: 'block',
       endFill: '1',
+      endSize: '5',
+      fontColor: '#52637A',
+      fontSize: '11',
+      ...FONTE,
     },
-    defaultVertexStyle: { strokeColor: '#005F73', fontColor: '#0E1A1F' },
+    defaultVertexStyle: { strokeColor: '#A9BCD0', strokeWidth: '1.5', fontColor: '#52637A', ...FONTE },
+    customFonts: [{ fontFamily: 'Poppins', fontUrl: 'https://fonts.googleapis.com/css?family=Poppins' }],
   };
 }
 

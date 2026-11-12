@@ -1,5 +1,7 @@
-# fluxi
+# INCFlow
 aplicação para mapeamento de processos end-to-end (de ponta a ponta)
+
+> Antes chamada **Fluxi** (decisão 37). O repositório, o pacote e os nomes internos (variável `FLUXI_TENANT_ID`, chaves no navegador, caminhos no Storage) continuam como `fluxi`.
 
 ## Rodar localmente
 ```bash
@@ -8,3 +10,4 @@ npm run dev   # http://localhost:3000
 ```
 - `npm run biblioteca`: regenera `public/drawio/biblioteca-inc.json` a partir de `templates/drawio/biblioteca-estilos.xml`.
 - Banco: aplique `supabase/migrations/0001_fluxogramas.sql` no Supabase (SQL Editor) e configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY` e `ASSEMBLYAI_API_KEY` (ver `.env.example`).
+- Login: em `npm run dev` sem `INC_AUTH_SECRET` o app abre sem login; com ele (e em produção, sempre), só entra quem está em "Pessoas e acessos", com código por e-mail. Configuração em `docs/login.md`.

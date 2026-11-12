@@ -10,7 +10,7 @@ iframe apontando para `https://embed.diagrams.net/` (o único domínio que aceit
 | `embed=1` | obrigatório |
 | `proto=json` | mensagens em JSON via `postMessage` |
 | `configure=1` | o editor espera nossa configuração (biblioteca, cores) antes de iniciar |
-| `libraries=1` | mostra o painel de formas (com a biblioteca BPMN INC) |
+| `libraries=1` | mostra o painel de formas (com a Biblioteca de Processos) |
 | `noExitBtn=1` | sem botão "Sair": a tela do Fluxi controla a navegação |
 | `spin=1` | spinner enquanto carrega |
 | `lang=pt-br` | interface em português |
@@ -29,10 +29,11 @@ editor → {event:'export', data:'data:...', xml}
 ```
 
 ## Configuração enviada (`configure`)
-- **`libraries`**: a biblioteca `templates/drawio/biblioteca-estilos.xml` (formato `<mxlibrary>`), convertida para o formato `{title, entries:[{id, title, libs:[{title, data:[{xml,w,h}]}]}]}`. Carregada como biblioteca "BPMN INC", aberta por padrão (`defaultLibraries`).
-- **`defaultEdgeStyle`**: conector ortogonal, largura 2, `#415A77` (padrão da biblioteca).
-- **`defaultVertexStyle`**: fonte e borda `#005F73` das tarefas.
-- **`customPresetColors`**: cores da biblioteca + cores fixas das raias do tenant.
+- **`libraries`**: a biblioteca `templates/drawio/biblioteca-estilos.xml` (formato `<mxlibrary>`), convertida para o formato `{title, entries:[{id, title, libs:[{title, data:[{xml,w,h}]}]}]}`. Carregada como "Biblioteca de Processos", aberta por padrão (`defaultLibraries`).
+- **`defaultEdgeStyle`**: a seta principal da biblioteca (ortogonal, 1,5, `#12A3EB`, bolinha na saída e ponta cheia na chegada, Poppins).
+- **`defaultVertexStyle`**: borda `#A9BCD0` de 1,5, texto `#52637A` e fonte Poppins, como a caixa de texto.
+- **`customFonts`**: Poppins na lista de fontes do editor.
+- **`customPresetColors`**: as cores da biblioteca (verde, vermelho, azul, amarelo, os cinza-azulados e o azul-escuro dos títulos).
 - **`compressXml: false`**: o XML fica legível no banco, para indexar os nós (`fluxograma_nos`) e comparar revisões.
 - **`css`**: ajustes visuais para combinar com o tema do Fluxi.
 

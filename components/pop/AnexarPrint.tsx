@@ -115,7 +115,7 @@ export function AnexarPrint({ titulo, aoAnexar, aoFechar, telasDaGravacao, aoEsc
               )}
               <button type="button" className="option" onClick={() => obter(capturarTela)} disabled={!temCaptura || !!ocupado}>
                 <strong><Icone nome="camera" tamanho={14} /> {ocupado === 'capturando' ? 'Escolha a janela…' : 'Capturar uma janela agora'}</strong>
-                <span>Deixe a tela que faltou aberta no sistema, escolha a janela e o Fluxi tira o print.</span>
+                <span>Deixe a tela que faltou aberta no sistema, escolha a janela e o INCFlow tira o print.</span>
               </button>
               <button type="button" className="option" onClick={() => obter(lerPrintDaAreaDeTransferencia)} disabled={!!ocupado}>
                 <strong><Icone nome="copiar" tamanho={14} /> Colar print copiado</strong>

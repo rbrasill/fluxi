@@ -109,7 +109,7 @@ function ListaPops() {
         <div className="segmented" role="tablist" aria-label="Status">
           {FILTROS.map((f) => (
             <button key={f.id} type="button" role="tab" aria-selected={filtro === f.id} onClick={() => setFiltro(f.id)}>
-              {f.rotulo} <span className="conta">{conta(f.id)}</span>
+              {f.rotulo} <span className="conta-aba">{conta(f.id)}</span>
             </button>
           ))}
         </div>

@@ -5,6 +5,7 @@ import { Icone } from '@/components/Icone';
 import { IconeProcesso } from '@/components/IconeProcesso';
 import { NovoProcesso } from '@/components/NovoProcesso';
 import { SeloStatus } from '@/components/SeloStatus';
+import { EntrevistasPendentes } from '@/components/entrevista/EntrevistasPendentes';
 import { ROTULO_STATUS, formatarTempo, listarGravacoes, type GravacaoResumo } from '@/lib/gravacoes';
 import { listarOrganizacoes } from '@/lib/organizacoes';
 import { dataCurta, listarPops, ondeEsta, type PopResumo } from '@/lib/pops';
@@ -47,6 +48,7 @@ export default function InicioPage() {
         </div>
       </div>
       {erro && <div className="aviso erro">{erro}</div>}
+      <EntrevistasPendentes />
 
       {semOrganizacao ? (
         <div className="empty">
