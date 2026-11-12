@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { CartaoArea } from '@/components/CartaoArea';
 import { DialogoNome } from '@/components/DialogoNome';
 import { confirmar } from '@/components/Dialogos';
 import { Icone } from '@/components/Icone';
@@ -9,7 +10,7 @@ import { criarArea } from '@/lib/areas';
 import { corDoAvatar, sigla } from '@/lib/iniciais';
 import { atualizarOrganizacao, excluirOrganizacao, obterOrganizacao, type Organizacao } from '@/lib/organizacoes';
 
-// Página da organização (redesign, decisão 82): as áreas como pastas, com busca, ordem e a opção de ver em lista.
+// Página da organização (redesign, decisão 82): as áreas em cartões (sem pasta, decisão 88), com busca, ordem e a opção de ver em lista.
 type Ordem = 'az' | 'za' | 'processos';
 const semAcento = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
@@ -22,7 +23,7 @@ export default function OrganizacaoPage() {
   const [erro, setErro] = useState('');
   const [busca, setBusca] = useState('');
   const [ordem, setOrdem] = useState<Ordem>('az');
-  const [vista, setVista] = useState<'pastas' | 'lista'>('pastas');
+  const [vista, setVista] = useState<'cartoes' | 'lista'>('cartoes');
   const [menu, setMenu] = useState(false);
 
   useEffect(() => { obterOrganizacao(id).then((d) => { setO(d); setNome(d.nome); }).catch(() => setO(null)); }, [id]);
@@ -84,7 +85,7 @@ export default function OrganizacaoPage() {
               <option value="processos">Mais processos</option>
             </select>
             <div className="segmented alternar-vista" role="group" aria-label="Como mostrar as áreas">
-              <button type="button" aria-pressed={vista === 'pastas'} aria-selected={vista === 'pastas'} onClick={() => setVista('pastas')} aria-label="Em pastas" title="Em pastas"><Icone nome="grade" tamanho={18} /></button>
+              <button type="button" aria-pressed={vista === 'cartoes'} aria-selected={vista === 'cartoes'} onClick={() => setVista('cartoes')} aria-label="Em cartões" title="Em cartões"><Icone nome="grade" tamanho={18} /></button>
               <button type="button" aria-pressed={vista === 'lista'} aria-selected={vista === 'lista'} onClick={() => setVista('lista')} aria-label="Em lista" title="Em lista"><Icone nome="lista" tamanho={18} /></button>
             </div>
           </div>
@@ -100,23 +101,12 @@ export default function OrganizacaoPage() {
       )}
       {o.areas.length > 0 && areas.length === 0 && <p className="notice">Nenhuma área com “{busca.trim()}”.</p>}
 
-      {o.areas.length > 0 && vista === 'pastas' && (
-        <div className="pastas-areas">
-          {areas.map((a) => (
-            <article key={a.id} className="pasta-processo pasta-area" title={a.nome}>
-              <span className="pasta-aba" aria-hidden="true" />
-              <div className="pasta-corpo">
-                <span className={`avatar avatar-quadrado avatar-${corDoAvatar(a.id)}`} aria-hidden="true">{sigla(a.nome)}</span>
-                <Link href={`/app/areas/${a.id}`} className="pasta-nome">{a.nome}</Link>
-                <div className="pasta-area-rodape">
-                  <Icone nome="engrenagem" tamanho={17} /><span>{processos(a.total_processos)}</span><Icone nome="avancar" tamanho={16} />
-                </div>
-              </div>
-            </article>
-          ))}
+      {o.areas.length > 0 && vista === 'cartoes' && (
+        <div className="grade-areas">
+          {areas.map((a) => <CartaoArea key={a.id} id={a.id} nome={a.nome} totalProcessos={a.total_processos} />)}
           {!termo && (
-            <button type="button" className="pasta-nova" onClick={() => setNova(true)}>
-              <span className="avatar avatar-quadrado avatar-indigo"><Icone nome="mais" tamanho={20} /></span>
+            <button type="button" className="cartao-area-nova" onClick={() => setNova(true)}>
+              <span className="cartao-area-icone avatar-indigo"><Icone nome="mais" tamanho={20} /></span>
               Nova área
             </button>
           )}

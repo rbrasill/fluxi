@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { CartaoArea } from '@/components/CartaoArea';
 import { DialogoNome } from '@/components/DialogoNome';
 import { Icone } from '@/components/Icone';
 import { criarArea, listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
@@ -64,14 +65,8 @@ export default function AreasPage() {
                 {orgId ? <Link href={`/app/organizacoes/${orgId}`}>{org}</Link> : org}
               </h2>
             )}
-            <div className="grid grid-areas">
-              {lista.map((a) => (
-                <Link key={a.id} href={`/app/areas/${a.id}`} className="card card-area">
-                  <span className="pop-icone"><Icone nome="areas" tamanho={22} /></span>
-                  <strong>{a.nome}</strong>
-                  <span className="notice">{a.total_processos} {a.total_processos === 1 ? 'processo' : 'processos'}</span>
-                </Link>
-              ))}
+            <div className="grade-areas">
+              {lista.map((a) => <CartaoArea key={a.id} id={a.id} nome={a.nome} totalProcessos={a.total_processos} />)}
             </div>
           </section>
         );

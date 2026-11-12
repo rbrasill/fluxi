@@ -688,6 +688,13 @@ Referência em `docs/design/referencias/ligacao.webp`. Sem mudar o banco nem o j
 - À direita das abas fica o resumo "N etapas · N passos".
 - Nada muda no banco.
 
+## 88. Áreas em cartões, sem forma de pasta (12/11/2026)
+
+- Corrige a decisão 82: a forma de pasta é só dos **processos**. As áreas voltam a ser cartões simples: ícone da área num quadrado colorido, nome e "N processos".
+- O mesmo cartão (`components/CartaoArea.tsx`) vale na lista de Áreas e na página da organização; nesta, a busca, a ordem, a vista em lista, o menu "…" e o cartão tracejado "Nova área" continuam.
+- A cor do quadrado sai da paleta dos avatares, fixa por área.
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
