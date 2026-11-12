@@ -24,11 +24,10 @@ import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
 import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
 
 // Página do processo (decisão 31, redesenhada na decisão 77): a visão geral traz o fluxograma (um por processo) e a
-// descrição, com a página pública, as entrevistas e a atividade recente ao lado; os POPs e as entrevistas com a
+// descrição, com o resumo, a página pública e as entrevistas ao lado; os POPs e as entrevistas com a
 // Maia têm cada um a sua aba. Gravações ficam dentro de cada POP.
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
-const diaMes = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 
 // As abas da página (redesign, decisão 77). A aba fica no endereço (#pops, #entrevistas) para o link levar direto a ela.
 type Aba = 'visao' | 'pops' | 'entrevistas';
@@ -177,12 +176,6 @@ function ProcessoPage() {
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
   const fluxo = p.fluxograma;
 
-  // Atividade recente (redesign, decisão 77): montada com o que a página já tem, sem tabela nova. Entram o
-  // fluxograma e os POPs ativos, do mais recente para o mais antigo.
-  const atividade = [
-    ...(fluxo ? [{ chave: 'fluxo', tipo: 'fluxo' as const, titulo: 'Fluxograma', detalhe: fluxo.origem === 'ia' ? 'Gerado com IA' : 'Atualizado à mão', quando: fluxo.atualizado_em, href: `/app/fluxogramas/${fluxo.id}` }] : []),
-    ...pops.map((o) => ({ chave: o.id, tipo: o.status === 'publicado' ? 'publicado' as const : 'rascunho' as const, titulo: `POP “${o.nome}”`, detalhe: o.status === 'publicado' ? `Publicado · v${o.versao}` : 'Rascunho editado', quando: o.atualizado_em, href: `/app/pops/${o.id}` })),
-  ].sort((a, b) => b.quando.localeCompare(a.quando)).slice(0, 4);
   const semEntrevistas = entrevistas === 0;
   // Resumo: "Atualizado" é a alteração mais recente entre o processo, o fluxograma e os POPs ativos.
   const publicados = pops.filter((o) => o.status === 'publicado').length;
@@ -236,7 +229,7 @@ function ProcessoPage() {
         ))}
       </div>
 
-      {/* Visão geral: à esquerda o processo em si (fluxograma e descrição); à direita, a página pública, as entrevistas e a atividade. */}
+      {/* Visão geral: à esquerda o processo em si (fluxograma e descrição); à direita, o resumo, a página pública e as entrevistas. */}
       <div className="proc-grade" role="tabpanel" id="painel-visao" aria-labelledby="aba-visao" hidden={aba !== 'visao'}>
         <div className="proc-coluna">
           <section className="cartao proc-fluxo" aria-label="Fluxograma do processo">
@@ -309,7 +302,18 @@ function ProcessoPage() {
           )}
         </div>
 
-        <aside className="proc-coluna" aria-label="Página pública, entrevistas e atividade">
+        <aside className="proc-coluna" aria-label="Resumo, página pública e entrevistas">
+          <section className="cartao cartao-lateral" aria-labelledby="titulo-resumo">
+            <h3 id="titulo-resumo">Resumo</h3>
+            <dl className="resumo-processo">
+              {p.area?.organizacao && <div><dt>Organização</dt><dd>{p.area.organizacao.nome}</dd></div>}
+              {p.area && <div><dt>Área</dt><dd>{p.area.nome}</dd></div>}
+              <div><dt>POPs</dt><dd>{pops.length}{publicados > 0 ? ` (${publicados} ${publicados === 1 ? 'publicado' : 'publicados'})` : ''}</dd></div>
+              <div><dt>Entrevistas</dt><dd>{entrevistas ?? '…'}</dd></div>
+              <div><dt>Atualizado</dt><dd>{data(atualizado)}</dd></div>
+            </dl>
+          </section>
+
           <PaginaPublica tipo="processo" variante="cartao" estado={arquivado ? 'arquivado' : p.link_publico_ativo ? 'online' : 'offline'} url={`/pr/${p.link_publico}`}
             alterando={alterandoLink} copiado={copiado} aoAlternar={alternarLink} aoCopiar={copiarLink} />
 
@@ -326,37 +330,6 @@ function ProcessoPage() {
               : 'Cada pessoa conversa com a Maia por voz, no seu tempo, e o que ela contar fica registrado no processo.'}</p>
             {gestor && !arquivado && <button type="button" className="btn btn-maia btn-largo" onClick={() => setPedidoDeConvite((n) => n + 1)}><Icone nome="mais" />Convidar pessoa</button>}
             {(!semEntrevistas || !gestor || arquivado) && entrevistas !== null && <button type="button" className="btn btn-largo" onClick={() => irPara('entrevistas')}>Ver entrevistas</button>}
-          </section>
-
-          <section className="cartao cartao-lateral" aria-labelledby="titulo-atividade">
-            <h3 id="titulo-atividade">Atividade recente</h3>
-            {atividade.length === 0
-              ? <p className="lateral-texto">Nada por aqui ainda. O fluxograma e os POPs do processo aparecem aqui quando forem criados ou alterados.</p>
-              : (
-                <ul className="atividade">
-                  {atividade.map((x) => (
-                    <li key={x.chave}>
-                      <Link href={x.href}>
-                        <span className={`atividade-icone at-${x.tipo}`}><Icone nome={x.tipo === 'fluxo' ? 'fluxo' : 'pop'} tamanho={18} /></span>
-                        <span className="atividade-texto"><strong>{x.titulo}</strong><small>{x.detalhe}</small></span>
-                        <time dateTime={x.quando}>{diaMes(x.quando)}</time>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            <button type="button" className="link-acao" onClick={() => irPara('pops')}>Ver todos os POPs<Icone nome="avancar" tamanho={15} /></button>
-          </section>
-
-          <section className="cartao cartao-lateral" aria-labelledby="titulo-resumo">
-            <h3 id="titulo-resumo">Resumo</h3>
-            <dl className="resumo-processo">
-              {p.area?.organizacao && <div><dt>Organização</dt><dd>{p.area.organizacao.nome}</dd></div>}
-              {p.area && <div><dt>Área</dt><dd>{p.area.nome}</dd></div>}
-              <div><dt>POPs</dt><dd>{pops.length}{publicados > 0 ? ` (${publicados} ${publicados === 1 ? 'publicado' : 'publicados'})` : ''}</dd></div>
-              <div><dt>Entrevistas</dt><dd>{entrevistas ?? '…'}</dd></div>
-              <div><dt>Atualizado</dt><dd>{data(atualizado)}</dd></div>
-            </dl>
           </section>
         </aside>
       </div>

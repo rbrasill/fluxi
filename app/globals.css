@@ -1111,7 +1111,7 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 
 /* ===== Redesign da página do processo (decisão 77) =====
    Caminho no topo, cabeçalho com avatar, abas e, na visão geral, duas colunas: o processo em si à esquerda
-   (fluxograma e descrição) e os cartões de apoio à direita (página pública, entrevistas com a Maia, atividade). */
+   (fluxograma e descrição) e os cartões de apoio à direita (resumo, página pública, entrevistas com a Maia). */
 .pagina-processo { gap: 20px; }
 .trilha { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--neutro-rotulo); }
 .trilha a { color: var(--neutro-rotulo); text-decoration: none; }
@@ -1206,18 +1206,6 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .publica-acoes { display: flex; gap: 10px; }
 .publica-acoes .btn:first-child { flex: 1; justify-content: center; height: 46px; }
 .publica-acoes .btn-icon { width: 46px; height: 46px; }
-/* Atividade recente */
-.atividade { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.atividade a { display: flex; align-items: center; gap: 12px; margin: 0 -8px; padding: 8px; border-radius: 12px; color: var(--neutro-texto); text-decoration: none; }
-.atividade a:hover { background: var(--neutro-fundo); }
-.atividade-icone { flex: none; width: 38px; height: 38px; border-radius: 999px; display: grid; place-items: center; }
-.at-fluxo { background: var(--indigo-100); color: var(--indigo-700); }
-.at-publicado { background: var(--verde-100); color: var(--verde-700); }
-.at-rascunho { background: #FFEDD5; color: #9A3412; }
-.atividade-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.atividade-texto strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.atividade-texto small { font-size: 13px; color: var(--neutro-texto-2); }
-.atividade time { flex: none; font-size: 13px; color: var(--neutro-texto-2); font-variant-numeric: tabular-nums; }
 
 /* Diálogo de convite para entrevista (decisão 53) no estilo do redesign: cabeçalho com o ícone da Maia, busca,
    pessoas com avatar e o botão teal de enviar. */
