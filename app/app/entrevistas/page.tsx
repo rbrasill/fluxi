@@ -31,7 +31,7 @@ export default function EntrevistasPage() {
   const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
   async function cancelar(x: EntrevistaResumo) {
     if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
-    try { await excluirEntrevista(x.id); setAviso(`Convite de ${x.entrevistado ?? 'a pessoa'} cancelado.`); await carregar(); } catch (e) { void avisar('Não foi possível cancelar o convite.', msg(e)); }
+    try { await excluirEntrevista(x.id); setAviso(x.convidado_em ? `Convite de ${x.entrevistado ?? 'a pessoa'} cancelado.` : `Entrevista de ${x.entrevistado ?? 'a pessoa'} cancelada.`); await carregar(); } catch (e) { void avisar('Não foi possível cancelar.', msg(e)); }
   }
   async function restaurar(x: EntrevistaResumo) {
     try { await restaurarEntrevista(x.id); setAviso(`Entrevista de ${x.entrevistado ?? 'a pessoa'} restaurada: voltou para a lista de entrevistas ativas do processo.`); await carregar(); } catch (e) { void avisar('Não foi possível restaurar a entrevista.', msg(e)); }
@@ -74,7 +74,7 @@ export default function EntrevistasPage() {
         </Nome>
         <SeloSituacao entrevista={x} />
         {gestor && x.status === 'convidada' && (
-          <button type="button" className="btn btn-ghost btn-excluir" onClick={() => void cancelar(x)} title="Cancela o convite"><Icone nome="lixo" tamanho={16} />Cancelar</button>
+          <button type="button" className="btn btn-ghost btn-excluir" onClick={() => void cancelar(x)} title={x.convidado_em ? 'Cancela o convite' : 'Cancela a entrevista que ainda não começou'}><Icone nome="lixo" tamanho={16} />Cancelar</button>
         )}
         {fechada
           ? <span className="nota-ao-vivo">Abre quando a ligação terminar</span>

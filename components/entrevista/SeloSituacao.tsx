@@ -7,7 +7,7 @@ import type { StatusEntrevista } from '@/lib/entrevista/topicos';
 
 const CLASSE: Record<string, string> = { convidada: 'selo-convidada', em_andamento: 'selo-andamento', processando: 'selo-processando', concluida: 'selo-concluida', erro: 'selo-erro' };
 
-export function SeloSituacao({ entrevista }: { entrevista: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; arquivado_em?: string | null; entrevistado?: string | null; convite_enviado_em?: string | null; complemento_pendencias?: number | null } }) {
+export function SeloSituacao({ entrevista }: { entrevista: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; arquivado_em?: string | null; convidado_em?: string | null; entrevistado?: string | null; convite_enviado_em?: string | null; complemento_pendencias?: number | null } }) {
   if (entrevista.arquivado_em) return <span className="selo-status selo-arquivada">{situacaoDaEntrevista(entrevista)}</span>;
   const aoVivo = entrevista.status === 'em_andamento' && !!entrevista.em_ligacao;
   if (aoVivo) {

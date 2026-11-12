@@ -58,6 +58,8 @@ export const listarEntrevistasDoProcesso = (processoId: string) => api<Entrevist
 /** Convida até três pessoas para entrevistas sobre o processo (gestores e administradores). */
 export const convidarParaEntrevista = (processoId: string, dados: { pessoas: string[]; nota?: string }) =>
   api<ResultadoConvite>(`/api/processos/${processoId}/entrevistas`, { method: 'POST', body: JSON.stringify(dados) });
+/** Entrevista imediata (decisão 74): abre na hora a entrevista de quem está logado sobre o processo, sem convite (só quem pode). */
+export const iniciarEntrevistaAgora = (processoId: string) => api<{ id: string; nova: boolean }>(`/api/processos/${processoId}/entrevistas/iniciar`, { method: 'POST' });
 /** Manda o e-mail do convite de novo. */
 export const reenviarConvite = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/convite`, { method: 'POST' });
 /** Aquece no servidor a rota que abre a sessão (sem custo: não chama a OpenAI). */
@@ -89,8 +91,10 @@ export async function enviarAudioDaEntrevista(id: string, blob: Blob) {
 }
 
 /** A confirmação antes de cancelar um convite ou excluir definitivamente uma entrevista arquivada (decisões 54 e 72). */
-export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: number; entrevistado: string | null }) {
+export function confirmacaoDeExclusao(e: { status: StatusEntrevista; falas: number; entrevistado: string | null; convidado_em?: string | null }) {
   const quem = e.entrevistado ?? 'esta pessoa';
+  // Aberta sem convite (decisão 74) e ainda não começada: não há convite para cancelar, só a entrevista vazia.
+  if (e.status === 'convidada' && e.convidado_em === null) return { titulo: `Cancelar a entrevista de ${quem}?`, mensagem: 'Ela foi aberta sem convite e ainda não começou: nada é perdido. Dá para abrir outra depois.', acao: 'Cancelar entrevista', perigo: true };
   if (e.status === 'convidada') return { titulo: `Cancelar o convite de ${quem}?`, mensagem: 'A pessoa não vai mais conseguir abrir esta entrevista. Dá para convidar de novo depois.', acao: 'Cancelar convite', perigo: true };
   return { titulo: `Excluir definitivamente a entrevista de ${quem}?`, mensagem: 'A conversa, o áudio e o resultado são apagados de vez. Não dá para desfazer.', acao: 'Excluir definitivamente', perigo: true };
 }
@@ -144,6 +148,7 @@ const dataHora = (iso: string) => { const d = new Date(iso); return `${d.toLocal
 export function quandoFoiAEntrevista(e: { status: StatusEntrevista; falas: number; convidado_por?: string | null; convidado_em: string | null; iniciada_em: string | null; criado_em: string }) {
   const comecou = e.status !== 'convidada' && (!!e.iniciada_em || e.falas > 0 || !e.convidado_em);
   if (comecou) return `Conversa em ${dataHora(e.iniciada_em ?? e.criado_em)}`;
+  if (!e.convidado_em) return `Aberta sem convite em ${dataHora(e.criado_em)} · ainda não começou`;
   return `Convite de ${dataHora(e.convidado_em ?? e.criado_em)}${e.convidado_por ? `, por ${e.convidado_por}` : ''} · ainda não começou`;
 }
 
@@ -152,8 +157,9 @@ export function quandoFoiAEntrevista(e: { status: StatusEntrevista; falas: numbe
  * (decisão 69); fora da ligação, a entrevista aberta está pausada (ou esperando o complemento). Um convite sem
  * e-mail fica avisado.
  */
-export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; arquivado_em?: string | null; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
+export function situacaoDaEntrevista(e: { status: StatusEntrevista; falas: number; em_ligacao?: boolean; arquivado_em?: string | null; convidado_em?: string | null; convite_enviado_em?: string | null; complemento_pendencias?: number | null }) {
   if (e.arquivado_em) return 'Arquivada';
+  if (e.status === 'convidada' && e.convidado_em === null) return 'Ainda não começou'; // aberta sem convite (decisão 74)
   if (e.status === 'convidada') return e.convite_enviado_em ? 'Convite enviado' : 'Convite sem e-mail';
   if (e.status === 'em_andamento' && e.em_ligacao) return 'Em andamento';
   if (e.status === 'em_andamento' && e.complemento_pendencias) return `Completar: ${e.complemento_pendencias} ${e.complemento_pendencias === 1 ? 'ponto' : 'pontos'}`;

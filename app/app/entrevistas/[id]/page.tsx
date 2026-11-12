@@ -563,8 +563,8 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
   }
   const reenviar = () => agir(async () => { await reenviarConvite(e.id); await aoMudar(`Convite reenviado para ${nome}.`); }, 'Não foi possível reenviar o convite.');
   async function excluir() {
-    if (!(await confirmar(confirmacaoDeExclusao({ status: e.status, falas, entrevistado: e.entrevistado })))) return;
-    await agir(async () => { await excluirEntrevista(e.id); aoExcluir(); }, 'Não foi possível cancelar o convite.');
+    if (!(await confirmar(confirmacaoDeExclusao({ status: e.status, falas, entrevistado: e.entrevistado, convidado_em: e.convidado_em })))) return;
+    await agir(async () => { await excluirEntrevista(e.id); aoExcluir(); }, 'Não foi possível cancelar.');
   }
   async function encerrar() {
     if (!(await confirmar({ titulo: `Encerrar a entrevista de ${nome}?`, mensagem: `A conversa termina como está, com ${falas} falas, e a Maia gera o resultado. ${primeiroNome} não continua mais esta ligação; se faltar algo, dá para pedir que responda os pontos em aberto depois.`, acao: 'Encerrar e gerar o resultado' }))) return;
@@ -579,9 +579,10 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
       <div className="cartao gestao-entrevista">
         <div className="gestao-topo">
           <h3 className="sem-margem">Entrevista de {nome}</h3>
-          <SeloSituacao entrevista={{ status: e.status, falas, em_ligacao: e.em_ligacao, entrevistado: e.entrevistado, convite_enviado_em: e.convite_enviado_em, complemento_pendencias: complemento?.pendencias.length ?? null }} />
+          <SeloSituacao entrevista={{ status: e.status, falas, em_ligacao: e.em_ligacao, entrevistado: e.entrevistado, convidado_em: e.convidado_em, convite_enviado_em: e.convite_enviado_em, complemento_pendencias: complemento?.pendencias.length ?? null }} />
         </div>
         <dl className="ficha-resumo">
+          {!e.convidado_em && <><dt>Convite</dt><dd>Não houve: {primeiroNome} abriu esta entrevista por conta própria em {dataHora(e.criado_em)}.</dd></>}
           {e.convidado_em && <><dt>Convite</dt><dd>{dataHora(e.convidado_em)}{e.convidador ? `, por ${e.convidador}` : ''}{e.convite_enviado_em ? ` · e-mail enviado em ${dataHora(e.convite_enviado_em)}` : ' · o e-mail não foi enviado'}</dd></>}
           {e.nota_convite && <><dt>Pedido</dt><dd>“{e.nota_convite}”</dd></>}
           <dt>Conversa</dt>
@@ -594,9 +595,9 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
           : `Como administrador, você vê e gerencia esta entrevista. Só ${primeiroNome} fala com a Maia nela: a conversa fica registrada no nome de quem foi convidado.`}</p>
         <div className="fluxo-acoes">
           <Link href={e.processo ? `/app/processos/${e.processo.id}` : '/app/entrevistas'} className="btn"><Icone nome="voltar" tamanho={16} />{e.processo ? 'Voltar ao processo' : 'Voltar'}</Link>
-          {pendente && <button type="button" className="btn" disabled={ocupado} onClick={() => void reenviar()} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
+          {pendente && e.convidado_em && <button type="button" className="btn" disabled={ocupado} onClick={() => void reenviar()} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
           {complemento && !arquivada && e.turnos.length === complemento.a_partir_do_turno && <button type="button" className="btn btn-ghost" disabled={ocupado} onClick={() => void agir(aoDesistir, 'Não foi possível desfazer.')} title="Fica com o resultado que já existe">Deixar como está</button>}
-          {pendente && <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado} onClick={() => void excluir()} title="Cancela o convite"><Icone nome="lixo" tamanho={16} />Cancelar convite</button>}
+          {pendente && <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado} onClick={() => void excluir()} title={e.convidado_em ? 'Cancela o convite' : 'Cancela a entrevista que ainda não começou'}><Icone nome="lixo" tamanho={16} />{e.convidado_em ? 'Cancelar convite' : 'Cancelar entrevista'}</button>}
           {!pendente && !arquivada && temFala && <button type="button" className="btn btn-primary" disabled={ocupado} onClick={() => void encerrar()} title="Termina a conversa como está e gera a descrição e a ficha"><Icone nome="ia" tamanho={16} />Encerrar e gerar o resultado</button>}
           <Link href={`/app/maia/${e.id}`} className="btn btn-ghost" title="Indicadores, custos e diagnóstico desta entrevista (só administradores)"><Icone nome="ia" tamanho={16} />Custos e métricas</Link>
         </div>

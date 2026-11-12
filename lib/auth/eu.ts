@@ -12,6 +12,8 @@ export type Eu = { enabled: false } | { enabled: true; name: string; email: stri
 export const ehAdmin = (eu: Eu | null | undefined) => !!eu && (!eu.enabled || eu.nivel === 'admin');
 /** Gestor ou administrador (ou o modo aberto de desenvolvimento). */
 export const ehGestor = (eu: Eu | null | undefined) => !!eu && (!eu.enabled || eu.nivel !== 'comum');
+/** Quem pode abrir a própria entrevista com a Maia na hora, sem convite (decisão 74): por enquanto, só administradores. */
+export const podeIniciarSemConvite = (eu: Eu | null | undefined) => ehAdmin(eu);
 /** A pessoa logada é esta (ou não há login: desenvolvimento). Sem resposta ainda, não. */
 export const souEu = (eu: Eu | null | undefined, personId: string | null | undefined) => !!eu && (!eu.enabled || eu.personId === personId);
 

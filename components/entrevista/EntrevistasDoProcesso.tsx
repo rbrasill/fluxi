@@ -1,20 +1,22 @@
 'use client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { Convidar } from '@/components/entrevista/Convidar';
 import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
-import { ehGestor, souEu, useEu } from '@/lib/auth/eu';
+import { ehGestor, podeIniciarSemConvite, souEu, useEu } from '@/lib/auth/eu';
 import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
-import { confirmacaoDeExclusao, excluirEntrevista, listarEntrevistasDoProcesso, notaParaOutraPessoa, pegarAvisoDeEntrevistas, perguntasParaOutrasPessoas, reenviarConvite, restaurarEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
+import { confirmacaoDeExclusao, excluirEntrevista, iniciarEntrevistaAgora, listarEntrevistasDoProcesso, notaParaOutraPessoa, pegarAvisoDeEntrevistas, perguntasParaOutrasPessoas, reenviarConvite, restaurarEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
 // conversa e o atalho para o resultado. Gestores e administradores convidam, reenviam e cancelam convites; a pessoa
 // convidada liga daqui. Enquanto a pessoa está na ligação, a linha mostra "Em andamento" e ninguém mais abre a
 // conversa (decisão 69). Aqui ficam só as entrevistas ativas: arquivar é dentro da entrevista, e as arquivadas
 // aparecem numa aba à parte (só para gestores e administradores), de onde dá para restaurar; excluir
-// definitivamente, só dentro da entrevista arquivada (decisão 72).
+// definitivamente, só dentro da entrevista arquivada (decisão 72). Quem pode (por enquanto, administradores) também
+// abre daqui a própria entrevista na hora, sem convite nem e-mail (decisão 74).
 
 const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
@@ -22,7 +24,9 @@ const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em 
 
 export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
   const eu = useEu();
+  const router = useRouter();
   const gestor = ehGestor(eu);
+  const [iniciando, setIniciando] = useState(false);
   const [lista, setLista] = useState<EntrevistaDoProcesso[] | null>(null);
   const [convidando, setConvidando] = useState<false | { nota?: string; dica?: string }>(false);
   const [aviso, setAviso] = useState('');
@@ -60,7 +64,13 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   async function cancelar(x: EntrevistaDoProcesso) {
     if (!(await confirmar(confirmacaoDeExclusao(x)))) return;
     setOcupado(x.id);
-    try { await excluirEntrevista(x.id); setAviso(`Convite de ${x.entrevistado ?? 'a pessoa'} cancelado.`); await carregar(); } catch (e) { void avisar('Não foi possível cancelar o convite.', msg(e)); } finally { setOcupado(''); }
+    try { await excluirEntrevista(x.id); setAviso(x.convidado_em ? `Convite de ${x.entrevistado ?? 'a pessoa'} cancelado.` : `Entrevista de ${x.entrevistado ?? 'a pessoa'} cancelada.`); await carregar(); } catch (e) { void avisar('Não foi possível cancelar.', msg(e)); } finally { setOcupado(''); }
+  }
+
+  /** Entrevista imediata (decisão 74): abre a entrevista de quem está logado e leva direto para a tela de ligar. */
+  async function iniciarAgora() {
+    setIniciando(true);
+    try { const r = await iniciarEntrevistaAgora(processoId); router.push(`/app/entrevistas/${r.id}`); } catch (e) { setIniciando(false); void avisar('Não foi possível iniciar a entrevista.', msg(e)); }
   }
 
   async function restaurar(x: EntrevistaDoProcesso) {
@@ -80,7 +90,16 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     <section className="secao-processo" aria-labelledby="titulo-entrevistas">
       <div className="secao-head">
         <h2 id="titulo-entrevistas"><Icone nome="microfone" tamanho={18} />Entrevistas com a Maia</h2>
-        {gestor && !arquivado && <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>}
+        {gestor && !arquivado && (
+          <div className="secao-acoes">
+            {podeIniciarSemConvite(eu) && (
+              <button type="button" className="btn" disabled={iniciando} onClick={() => void iniciarAgora()} title="Você mesmo conversa com a Maia sobre este processo, agora, sem convite nem e-mail">
+                <Icone nome="microfone" tamanho={16} />{iniciando ? 'Abrindo…' : 'Iniciar entrevista agora'}
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>
+          </div>
+        )}
       </div>
       {arquivadas.length > 0 && (
         <div className="segmented abas-arquivo abas-entrevistas" role="tablist" aria-label="Entrevistas">
@@ -127,15 +146,15 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                 <div className="pop-nome">
                   <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}</strong>
                   <span>
-                    {x.convidado_em ? `Convidad${x.entrevistado?.trim().endsWith('a') ? 'a' : 'o'} em ${data(x.convidado_em)}${x.convidado_por ? ` por ${x.convidado_por}` : ''}` : `Criada em ${data(x.criado_em)}`}
+                    {x.convidado_em ? `Convidad${x.entrevistado?.trim().endsWith('a') ? 'a' : 'o'} em ${data(x.convidado_em)}${x.convidado_por ? ` por ${x.convidado_por}` : ''}` : `Aberta sem convite em ${data(x.criado_em)}`}
                     {x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}
                     {x.status === 'concluida' && x.pendencias > 0 ? ` · ${x.pendencias} em aberto` : ''}
                   </span>
                 </div>
                 <SeloSituacao entrevista={x} />
-                {gestor && pendente && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void reenviar(x)} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
+                {gestor && pendente && x.convidado_em && <button type="button" className="btn btn-ghost" disabled={ocupado === x.id} onClick={() => void reenviar(x)} title="Manda o e-mail do convite de novo"><Icone nome="refazer" tamanho={16} />Reenviar convite</button>}
                 {gestor && pendente && (
-                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title="Cancela o convite"><Icone nome="lixo" tamanho={16} />Cancelar</button>
+                  <button type="button" className="btn btn-ghost btn-excluir" disabled={ocupado === x.id} onClick={() => void cancelar(x)} title={x.convidado_em ? 'Cancela o convite' : 'Cancela a entrevista que ainda não começou'}><Icone nome="lixo" tamanho={16} />Cancelar</button>
                 )}
                 {fechada
                   ? <span className="nota-ao-vivo">Abre quando a ligação terminar</span>

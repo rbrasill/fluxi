@@ -440,6 +440,7 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .secao-processo { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
 .secao-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .secao-head h2 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0; }
+.secao-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .linha-pop .tag-status { position: static; }
 .tag-status.st-transcrevendo, .tag-status.st-analisando { background: #eef2ff; color: #3538cd; }
 .migalha { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }

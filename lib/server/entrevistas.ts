@@ -151,10 +151,43 @@ export async function convidar(processoId: string, d: z.infer<typeof ConviteSche
   return { criadas, repetidas, carteiro_configurado: carteiro };
 }
 
+// --- Entrevista imediata (decisão 74): quem conhece o processo abre a sua entrevista na hora, sem convite ---
+
+/**
+ * Quem pode abrir a própria entrevista sem convite nem e-mail. Por enquanto, só administradores: para liberar a
+ * outros perfis, é só mudar aqui (e em `podeIniciarSemConvite`, no navegador). Sem login (desenvolvimento), liberado.
+ */
+export const podeIniciarSemConvite = (p: Pessoa | null | undefined) => !p || p.nivel === 'admin';
+
+/**
+ * Abre na hora a entrevista da própria pessoa sobre o processo: nasce sem convite (`convidado_em` vazio), sem
+ * e-mail, e ela já pode ligar para a Maia. Se a pessoa já tem uma entrevista aberta neste processo, devolve essa
+ * (uma aberta por pessoa em cada processo), em vez de criar outra.
+ */
+export async function iniciarAgora(processoId: string, quem: Pessoa | null) {
+  if (!podeIniciarSemConvite(quem)) throw new ErroApi(403, 'Só administradores iniciam uma entrevista sem convite. Peça um convite a um gestor ou administrador.');
+  const processo = await processoDoConvite(processoId);
+  if (processo.arquivado_em) throw new ErroApi(409, 'Este processo está arquivado.');
+  const db = supabase();
+  if (quem) {
+    const { data, error } = await db.from('entrevistas').select('id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processo.id).eq('entrevistado_id', quem.id)
+      .in('status', ['convidada', 'em_andamento']).is('arquivado_em', null).order('criado_em', { ascending: false }).limit(1);
+    if (error) throw error;
+    const aberta = ((data ?? []) as { id: string }[])[0];
+    if (aberta) return { id: aberta.id, nova: false };
+  }
+  const { data, error } = await db.from('entrevistas')
+    .insert({ tenant_id: TENANT_PADRAO, processo_id: processo.id, tema: processo.nome, contexto: contextoDoConvite(processo, ''), motor: 'gpt-live', status: 'convidada', turnos: [], cobertos: [], anotacoes: [], sessoes: [], metricas: {}, entrevistado_id: quem?.id ?? null, convidado_por: null, convidado_em: null, nota_convite: '' })
+    .select('id').single();
+  if (error) throw error;
+  return { id: (data as { id: string }).id, nova: true };
+}
+
 /** Manda o e-mail do convite de novo (só enquanto a pessoa não começou). */
 export async function reenviarConvite(id: string, quem: Pessoa | null, origem: string) {
   const linha = await carregar(id);
   if (linha.status !== 'convidada') throw new ErroApi(409, 'Esta entrevista já começou.');
+  if (!linha.convidado_em) throw new ErroApi(409, 'Esta entrevista foi aberta sem convite: não há e-mail para reenviar.');
   if (emProducao() && !carteiroConfigurado('convite')) throw new ErroApi(503, 'O envio de convites por e-mail ainda não está configurado (CONVITE_MAILER_URL e CONVITE_MAILER_SECRET).');
   const { data, error } = await supabase().from('pessoas').select('id, nome, email').eq('id', linha.entrevistado_id ?? '').maybeSingle();
   if (error) throw error;

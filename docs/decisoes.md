@@ -560,6 +560,14 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Celular:** o painel com a ilustração vai para cima, menor, e o formulário ocupa a largura toda.
 - **A ilustração** (`public/login-ilustracao.png`) tem 450 × 450 px: em telas de alta densidade fica um pouco suave. Uma versão com 900 px ou mais deixaria mais nítida, é só trocar o arquivo.
 
+## 74. Entrevista imediata: o administrador abre a sua na hora, sem convite (12/11/2026)
+- **Pedido do Rafael:** quem já conhece o processo e quer ser entrevistado pela Maia precisava se convidar, abrir o e-mail do convite e só então entrar. O fluxo tem que ser instantâneo, sem o autoconvite. Por enquanto, só para administradores.
+- **Como ficou:** na página do processo, a seção "Entrevistas com a Maia" ganhou o botão **Iniciar entrevista agora**, ao lado de "Convidar para entrevista". Um clique abre a entrevista no nome de quem clicou e leva direto para a tela de ligar para a Maia: sem convite, sem e-mail. Continuam o aviso de que a conversa é gravada e o botão "Ligar para a Maia": a ligação precisa do consentimento e do microfone, e o navegador só libera o áudio com um clique da pessoa.
+- **Quem pode:** só administradores. A regra está num lugar só de cada lado (`podeIniciarSemConvite`, em `lib/server/entrevistas.ts` e em `lib/auth/eu.ts`): liberar outro perfil depois é mudar essas duas linhas. Gestor e comum não veem o botão, e o servidor recusa (403).
+- **Uma aberta por pessoa em cada processo:** se a pessoa já tem uma entrevista aberta no processo (convite pendente ou conversa pausada), o botão leva para ela em vez de criar outra. Com a anterior concluída ou arquivada, abre uma nova.
+- **Como aparece:** a entrevista nasce sem convite (`convidado_em` vazio, sem `convidado_por`). Enquanto a ligação não começa, a linha mostra "Aberta sem convite em …" e o selo "Ainda não começou", sem "Reenviar convite" (não há e-mail); "Cancelar" apaga a entrevista vazia. Depois da primeira ligação, ela segue igual às outras (pausar, concluir, complemento, arquivar).
+- **Sem migração:** usa as colunas que já existem.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
