@@ -22,7 +22,12 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 
-export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
+export function EntrevistasDoProcesso({ processoId, processoNome, arquivado, pedidoDeConvite = 0, aoContar, aoChamarAtencao }: {
+  processoId: string; processoNome: string; arquivado: boolean;
+  pedidoDeConvite?: number; // muda a cada clique em "Convidar pessoa" fora daqui (o cartão da visão geral): abre o diálogo
+  aoContar?: (ativas: number) => void; // quantas entrevistas ativas há (a contagem da aba)
+  aoChamarAtencao?: () => void; // há um aviso para mostrar aqui: a página traz esta aba para a frente
+}) {
   const eu = useEu();
   const router = useRouter();
   const gestor = ehGestor(eu);
@@ -40,8 +45,12 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     const deixado = pegarAvisoDeEntrevistas(processoId);
     if (!deixado) return;
     setAviso(deixado.texto);
+    aoChamarAtencao?.();
     if (deixado.aba) setAba(deixado.aba);
   }, [processoId]);
+  useEffect(() => { if (pedidoDeConvite > 0) setConvidando({}); }, [pedidoDeConvite]);
+  const totalAtivas = lista ? lista.filter((x) => !x.arquivado_em).length : null;
+  useEffect(() => { if (totalAtivas !== null) aoContar?.(totalAtivas); }, [totalAtivas]); // eslint-disable-line react-hooks/exhaustive-deps
   useAcompanharEntrevistas(lista, () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => {})); // se falhar, fica a lista que já estava
 
   function convidou(r: ResultadoConvite) {
@@ -54,6 +63,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     else if (semEmail.length) partes.push(`O e-mail de ${semEmail.join(', ')} não pôde ser enviado: use "Reenviar convite".`);
     if (r.repetidas.length) partes.push(`${r.repetidas.join(', ')} já ${r.repetidas.length === 1 ? 'tinha' : 'tinham'} entrevista aberta neste processo.`);
     setAviso(partes.join(' '));
+    aoChamarAtencao?.();
   }
 
   async function reenviar(x: EntrevistaDoProcesso) {
@@ -87,7 +97,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   const abertas = ativas.filter((x) => x.status === 'convidada' || x.status === 'em_andamento').map((x) => x.entrevistado_id).filter((x): x is string => !!x);
 
   return (
-    <section className="secao-processo" aria-labelledby="titulo-entrevistas">
+    <section className="secao-processo secao-entrevistas" aria-labelledby="titulo-entrevistas">
       <div className="secao-head">
         <h2 id="titulo-entrevistas"><Icone nome="microfone" tamanho={18} />Entrevistas com a Maia</h2>
         {gestor && !arquivado && (
@@ -97,7 +107,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                 <Icone nome="microfone" tamanho={16} />{iniciando ? 'Abrindo…' : 'Iniciar entrevista agora'}
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>
+            <button className="btn btn-maia" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>
           </div>
         )}
       </div>

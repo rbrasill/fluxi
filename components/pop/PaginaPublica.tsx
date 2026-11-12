@@ -8,8 +8,9 @@ export type EstadoPaginaPublica = 'rascunho' | 'online' | 'offline' | 'arquivado
 
 const dataBr = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
 
-export function PaginaPublica({ tipo = 'pop', estado, publicadoEm = null, alteracoesNaoPublicadas = false, url, alterando, copiado, aoAlternar, aoCopiar }: {
+export function PaginaPublica({ tipo = 'pop', variante = 'faixa', estado, publicadoEm = null, alteracoesNaoPublicadas = false, url, alterando, copiado, aoAlternar, aoCopiar }: {
   tipo?: 'pop' | 'processo';
+  variante?: 'faixa' | 'cartao'; // 'cartao': o cartão da coluna lateral da página do processo (redesign, decisão 77)
   estado: EstadoPaginaPublica;
   publicadoEm?: string | null;
   alteracoesNaoPublicadas?: boolean;
@@ -24,7 +25,7 @@ export function PaginaPublica({ tipo = 'pop', estado, publicadoEm = null, altera
   const explicacao = tipo === 'processo' ? {
     rascunho: '',
     online: 'Qualquer pessoa com o link vê o processo: a descrição, o fluxograma e os POPs publicados. O que você muda aqui aparece na hora.',
-    offline: 'Quem abrir o link vê “Este processo não está disponível”. Ligue a chave para voltar ao ar.',
+    offline: 'Quem abrir o link vê “Este processo não está disponível”. Ligue a chave para colocar no ar.',
     arquivado: 'Processo arquivado: a página pública fica fora do ar.',
   }[estado] : {
     rascunho: 'Publique o POP para poder colocar a página pública no ar.',
@@ -32,6 +33,44 @@ export function PaginaPublica({ tipo = 'pop', estado, publicadoEm = null, altera
     offline: 'Quem abrir o link vê “Este POP não está disponível”. A versão publicada continua guardada: ligue a chave para voltar ao ar.',
     arquivado: 'POP arquivado: a página pública fica fora do ar.',
   }[estado];
+
+  const rotulo = tipo === 'processo' ? 'Página pública do processo' : 'Página pública do POP';
+  if (variante === 'cartao') {
+    return (
+      <section className={`cartao cartao-lateral publica-cartao ${estado}`} aria-label={rotulo}>
+        <div className="lateral-topo">
+          <span className="lateral-icone"><Icone nome="globo" tamanho={20} /></span>
+          <div className="lateral-titulo" aria-live="polite">
+            <h3>Página pública</h3>
+            <span className={`estado-publica${online ? ' online' : ''}`}>{online ? 'Online' : 'Offline'}</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={online}
+            aria-label="Página pública online"
+            className={`interruptor${online ? ' ligado' : ''}`}
+            onClick={aoAlternar}
+            disabled={!comLink || alterando}
+            title={!comLink ? explicacao : online ? 'Desligar: a página pública sai do ar' : 'Ligar: a página pública volta ao ar'}
+          >
+            <span aria-hidden="true" />
+          </button>
+        </div>
+        <p className="lateral-texto">{explicacao}</p>
+        {comLink && (
+          <div className="publica-acoes">
+            <button type="button" className="btn" onClick={aoCopiar} title="Copia o endereço da página pública">
+              <Icone nome={copiado ? 'check' : 'link'} tamanho={16} />{copiado ? 'Link copiado' : 'Copiar link'}
+            </button>
+            <a className="btn btn-icon" href={url} target="_blank" rel="noopener" aria-label="Abrir a página pública" title="Abrir a página pública numa nova aba">
+              <Icone nome="externo" tamanho={16} />
+            </a>
+          </div>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section className={`pagina-publica ${estado}`} aria-label={tipo === 'processo' ? 'Página pública do processo' : 'Página pública do POP'}>

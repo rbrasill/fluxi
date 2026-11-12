@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
 import { ehAdmin, useEu } from '@/lib/auth/eu';
+import { iniciais } from '@/lib/iniciais';
 
 // A parte do menu que depende de quem está logado (decisão 50): "Pessoas e acessos" e o "Painel da Maia"
 // para administradores, e o nome com o botão Sair. Também leva de volta ao login quando a sessão acaba
@@ -44,8 +45,9 @@ export function ContaMenu() {
       {admin && <NavLink href="/app/maia" titulo="Painel da Maia: custos, tempos e métricas das entrevistas"><Icone nome="ia" /><span className="nav-texto">Painel da Maia</span></NavLink>}
       {eu?.enabled && (
         <div className="conta" title={eu.email}>
+          <span className="conta-avatar" aria-hidden="true">{iniciais(eu.name)}</span>
           <span className="conta-nome nav-texto">{eu.name}<small>{ROTULO_NIVEL[eu.nivel]}</small></span>
-          <button type="button" className="conta-sair" onClick={() => void sair()} title="Sair"><Icone nome="voltar" tamanho={16} /><span className="nav-texto">Sair</span></button>
+          <button type="button" className="conta-sair" onClick={() => void sair()} title="Sair" aria-label="Sair"><Icone nome="sair" tamanho={18} /></button>
         </div>
       )}
     </>

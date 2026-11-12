@@ -1,7 +1,9 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icone } from '@/components/Icone';
 import { ehAdmin, useEu } from '@/lib/auth/eu';
+import { corDoAvatar, iniciais } from '@/lib/iniciais';
 import { MAX_CONVITES } from '@/lib/entrevista/topicos';
 import { convidarParaEntrevista, type ResultadoConvite } from '@/lib/entrevistas';
 import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
@@ -51,14 +53,23 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
     }
   }
 
-  return (
+  // Vai direto no corpo da página: quem abre o diálogo pode estar numa aba escondida (o cartão da visão geral do processo).
+  return createPortal(
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="convidar-titulo" onClick={() => !enviando && aoFechar()}>
-      <form className="dialog dialog-lg" onClick={(e) => e.stopPropagation()} onSubmit={enviar}>
-        <h2 id="convidar-titulo">Convidar para entrevista com a Maia</h2>
-        <p className="notice">Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre <b>{processoNome}</b> quando puder. Até {MAX_CONVITES} pessoas por vez, uma entrevista para cada uma.</p>
+      <form className="dialog dialog-lg dialogo-convite" onClick={(e) => e.stopPropagation()} onSubmit={enviar}>
+        <div className="dialogo-topo">
+          <span className="lateral-icone icone-maia"><Icone nome="microfone" tamanho={20} /></span>
+          <div className="dialogo-topo-texto">
+            <h2 id="convidar-titulo">Convidar para entrevista com a Maia</h2>
+            <p className="notice">Cada pessoa recebe um e-mail com o convite e conversa com a Maia sobre <b>{processoNome}</b> quando puder. Até {MAX_CONVITES} pessoas por vez, uma entrevista para cada uma.</p>
+          </div>
+          <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={enviando} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
+        </div>
         {dica && <p className="notice convite-dica">{dica}</p>}
-        <label className="field">Buscar pessoa
-          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Nome ou e-mail" autoFocus />
+        <label className="campo-busca">
+          <span className="sr-only">Buscar pessoa</span>
+          <Icone nome="busca" tamanho={18} />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar pessoa" autoFocus />
         </label>
         <div className="lista-pessoas" role="group" aria-label="Pessoas cadastradas">
           {pessoas === null && <p className="notice">Carregando…</p>}
@@ -68,25 +79,28 @@ export function Convidar({ processoId, processoNome, indisponiveis, notaInicial 
             const aberta = indisponiveis.includes(p.id);
             return (
               <label key={p.id} className={`pessoa-opcao${marcada ? ' marcada' : ''}${aberta ? ' indisponivel' : ''}`}>
-                <input type="checkbox" checked={marcada} disabled={aberta || (!marcada && cheio)} onChange={() => alternar(p.id)} />
+                <span className={`avatar avatar-${corDoAvatar(p.email || p.nome)}`} aria-hidden="true">{iniciais(p.nome)}</span>
                 <span className="pessoa-opcao-nome">{p.nome}<small>{p.email}</small></span>
-                {aberta && <span className="pessoa-opcao-aviso">já tem entrevista aberta</span>}
+                {aberta && <span className="pessoa-opcao-aviso">Já tem entrevista aberta</span>}
+                <input type="checkbox" checked={marcada} disabled={aberta || (!marcada && cheio)} onChange={() => alternar(p.id)} />
               </label>
             );
           })}
         </div>
-        <label className="field">O que a Maia deve focar (opcional)
-          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={2} placeholder="Ex.: concentre nas aprovações e no que acontece quando o pedido é negado." />
+        <label className="field">
+          <span>O que a Maia deve focar <span className="opcional">(opcional)</span></span>
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={3} placeholder="Ex.: concentre nas aprovações e no que acontece quando o pedido é negado." />
         </label>
         {erro && <p className="form-erro" role="alert">{erro}</p>}
         <div className="dialog-actions">
-          <span className="convite-contagem">{marcadas.length} de {MAX_CONVITES}</span>
+          <span className="convite-contagem"><b>{marcadas.length}</b> de {MAX_CONVITES} {marcadas.length === 1 ? 'pessoa escolhida' : 'pessoas escolhidas'}</span>
           <button type="button" className="btn" onClick={aoFechar} disabled={enviando}>Cancelar</button>
-          <button type="submit" className="btn btn-primary" disabled={enviando || marcadas.length === 0}>
+          <button type="submit" className="btn btn-maia" disabled={enviando || marcadas.length === 0}>
             <Icone nome="microfone" tamanho={16} />{enviando ? 'Enviando…' : marcadas.length > 1 ? `Enviar ${marcadas.length} convites` : 'Enviar convite'}
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body,
   );
 }

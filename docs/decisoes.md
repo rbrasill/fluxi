@@ -581,6 +581,18 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **A ilustração** (`public/login-ilustracao.svg`, vetorial, nítida em qualquer tela) é a do Rafael com as cores trocadas pelas do sistema por `scripts/recolorir-ilustracao-login.py`: contornos e moldura em índigo 950, círculos e roupas em índigo 700 e 500, detalhes em índigo 300 e 100, o diamante, os terminais, a lâmpada e as placas em pêssego e rosa 400, e sem o fundo branco. A imagem 3D da decisão 73 saiu.
 - **O que não muda:** o fluxo (e-mail, código de 6 dígitos, reenviar e trocar e-mail) e a fonte (Plus Jakarta Sans). No celular, o painel com a ilustração e a frase vai para cima.
 
+## 77. Redesign: menu lateral, página do processo e diálogo de convite (12/11/2026)
+
+Segunda tela do redesign (referência em `docs/design/referencias/processo.webp`), no sistema de cores da decisão 75.
+
+- **Cores de base para o app todo.** As variáveis antigas (`--primary`, `--bg`, `--ink`, `--line`, `--danger`) passaram a apontar para o sistema novo: índigo na ação, neutros no resto. As telas ainda não redesenhadas herdam as cores por aqui, para o app não ficar metade teal, metade índigo. O que é da IA ("Melhorar com IA", "Gerar com IA", convidar para entrevista) ficou em teal, como manda a decisão 75; na imagem de referência o "Melhorar com IA" aparece em índigo, e valeu a regra do sistema de cores.
+- **Menu lateral** branco, com o logo original (nome escuro), item ativo em índigo claro, botão de recolher ao lado do logo e o cartão da conta (iniciais, nome, nível e sair) no rodapé.
+- **Página do processo:** caminho no topo, cabeçalho com avatar de iniciais, selo "Processo", código com copiar e a área; abas **Visão geral**, **POPs** e **Entrevistas** (a aba fica no endereço: `#pops`, `#entrevistas`). Na visão geral, o fluxograma e a descrição à esquerda; à direita, os cartões Página pública (chave em índigo), Entrevistas com a Maia (botão teal "Convidar pessoa") e Atividade recente.
+- **Atividade recente** é montada com o que a página já tem (fluxograma e POPs ativos, por data de alteração); não há tabela nova nem histórico de quem fez o quê.
+- **Diálogo de convite** no estilo novo: ícone da Maia, busca, pessoas com avatar, botão teal. Os demais diálogos herdam a moldura nova (cantos, borda, foco).
+- **Ficou de fora, a pedido do Rafael:** o cartão "Maturidade do processo".
+- **Ficou para depois:** "Regras de negócio" (aba e cartão). É funcionalidade nova: a Maia extrair regras das entrevistas para o gestor confirmar pede tabela, extração e tela próprias. A barra fixa de formatação da descrição também não entrou: a barra continua aparecendo ao clicar no texto.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
