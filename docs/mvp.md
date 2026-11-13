@@ -17,7 +17,7 @@ Tem que estar muito funcional, com boa navegação e usabilidade.
 - Transcrição com AssemblyAI (falantes, português).
 
 ### 3. POP
-- Extração do POP pela IA e geração do DOCX/PDF no modelo INC v3.
+- Extração do POP pela IA e geração do PDF no modelo INC v3 (o DOCX saiu na decisão 79).
 - Edição do conteúdo antes de gerar.
 
 ### 4. Base da plataforma

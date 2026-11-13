@@ -1,6 +1,6 @@
 // Captura de um print fora da gravação: pela tela (uma janela do sistema), pela área de
 // transferência (Ctrl+V depois do Print Screen) ou por arquivo. Tudo vira PNG, como as telas
-// marcadas na gravação, para o POP, o DOCX e o PDF tratarem igual.
+// marcadas na gravação, para o POP e o PDF tratarem igual.
 
 export type Print = { blob: Blob; largura: number; altura: number };
 

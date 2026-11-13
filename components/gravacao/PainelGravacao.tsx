@@ -36,8 +36,9 @@ export function PainelGravacao(p: PropsPainel) {
   return (
     <div className={`painel-grav ${p.flutuante ? 'flutuante' : ''}`}>
       <div className="painel-topo">
-        <span className={`rec ${p.pausado ? 'pausado' : ''}`}><span className="rec-dot" />{p.pausado ? 'PAUSADO' : 'REC'}</span>
+        <span className={`rec-ponto ${p.pausado ? 'pausado' : ''}`} aria-hidden="true" />
         <span className="rec-tempo">{formatarTempo(p.tempoMs)}</span>
+        <span className={`rec ${p.pausado ? 'pausado' : ''}`}>{p.pausado ? 'Pausado' : 'Gravando'}</span>
         <span className="painel-acoes">
           {p.pausado ? (
             <button type="button" className="btn btn-primary" onClick={p.aoRetomar} title="Continua gravando numa parte nova"><Icone nome="play" tamanho={14} />Retomar</button>
@@ -70,12 +71,16 @@ export function PainelGravacao(p: PropsPainel) {
         <button ref={botao} type="submit" className="btn-marcar">
           <Icone nome="camera" tamanho={20} />Incluir esta tela no POP
         </button>
-        <input
-          value={p.instrucao}
-          onChange={(e) => p.aoMudarInstrucao(e.target.value)}
-          placeholder="Instrução (opcional). Enter inclui a tela"
-          aria-label="Instrução para esta tela"
-        />
+        <label className="painel-instrucao">
+          <span><b>Instrução do passo</b> · opcional</span>
+          <input
+            value={p.instrucao}
+            onChange={(e) => p.aoMudarInstrucao(e.target.value)}
+            placeholder="Ex.: Clique em Salvar e confira a mensagem de sucesso"
+            aria-label="Instrução para esta tela"
+          />
+          <small>Aperte Enter para incluir a tela com esta instrução.</small>
+        </label>
       </form>
 
       {p.flutuante && p.telaInteira && (

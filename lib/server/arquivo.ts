@@ -3,10 +3,10 @@ import { NextResponse } from 'next/server';
 import { ErroApi, respostaDeErro } from './http';
 
 /**
- * Resposta de download de um documento gerado (PDF ou DOCX), com o erro em JSON se falhar.
+ * Resposta de download do PDF gerado, com o erro em JSON se falhar.
  * Exige a pessoa logada (decisão 50), menos nas páginas públicas (`publico`).
  */
-export async function baixar(tipo: 'pdf' | 'docx', gerar: () => Promise<{ arquivo: Uint8Array | Buffer; nomeArquivo: string }>, opcoes: { publico?: boolean } = {}) {
+export async function baixar(tipo: 'pdf', gerar: () => Promise<{ arquivo: Uint8Array | Buffer; nomeArquivo: string }>, opcoes: { publico?: boolean } = {}) {
   if (!opcoes.publico) {
     try { await (await import('./sessao')).pessoaLogada(); } catch (e) { return respostaDeErro(e); }
   }
@@ -14,7 +14,7 @@ export async function baixar(tipo: 'pdf' | 'docx', gerar: () => Promise<{ arquiv
     const { arquivo, nomeArquivo } = await gerar();
     return new NextResponse(new Uint8Array(arquivo), {
       headers: {
-        'content-type': tipo === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'content-type': 'application/pdf',
         'content-disposition': `attachment; filename="pop.${tipo}"; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`,
       },
     });

@@ -21,7 +21,7 @@ export function RecolherMenu() {
   const rotulo = recolhido ? 'Expandir menu' : 'Recolher menu';
   return (
     <button type="button" className="recolher-menu" onClick={alternar} aria-label={rotulo} title={rotulo} aria-expanded={!recolhido}>
-      <Icone nome={recolhido ? 'menu-expandir' : 'menu-recolher'} /><span className="nav-texto">Recolher menu</span>
+      <Icone nome="painel-lateral" />
     </button>
   );
 }

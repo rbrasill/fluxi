@@ -128,10 +128,10 @@ export async function popPublico(link: string) {
   };
 }
 
-/** PDF ou DOCX da versão publicada (o que está na página pública). */
-export async function documentoPublico(link: string, formato: 'docx' | 'pdf', origem: string) {
+/** PDF da versão publicada (o que está na página pública). */
+export async function documentoPublico(link: string, origem: string) {
   const { publicacao, fluxo } = await versaoPublicada(link);
-  return pops.gerarDocumento(formato, publicacao, fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
+  return pops.gerarDocumento(publicacao, fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
 }
 
 /** A página pública do processo (decisão 35): descrição, fluxograma e os POPs publicados e no ar. */
@@ -178,7 +178,7 @@ export async function tituloPublico(de: string | null) {
   return { titulo: rotuloDoc({ tipo: 'processo', nome: data.nome as string, codigo: data.codigo as string }), url: `/pr/${origem.link}` };
 }
 
-/** A página pública "só o fluxograma" (o link do "Abrir diagrama" no PDF e no DOCX). */
+/** A página pública "só o fluxograma" (o link do "Abrir diagrama" no PDF). */
 export async function fluxogramaPublico(link: string) {
   const { data, error } = await supabase().from('fluxogramas')
     .select('nome, codigo, tem_svg, atualizado_em, processo:processos(nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')

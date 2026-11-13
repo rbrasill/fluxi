@@ -68,7 +68,6 @@ function PopPublicoPage() {
           </dl>
           <div className="pub-acoes">
             <a className="btn btn-primary" href={urlDocumentoPublico(link, 'pdf')}><Icone nome="baixar" tamanho={16} />Baixar PDF</a>
-            <a className="btn" href={urlDocumentoPublico(link, 'docx')}><Icone nome="baixar" tamanho={16} />DOCX</a>
           </div>
         </header>
 

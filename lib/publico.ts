@@ -39,6 +39,6 @@ export const obterProcessoPublico = (link: string) => api<ProcessoPublico>(`/api
 /** Título e endereço do documento de origem (?de=), para o "Voltar para…". */
 export const obterTituloPublico = (de: string) => api<{ titulo: string; url: string }>(`/api/publico/titulo?de=${encodeURIComponent(de)}`);
 export const urlSvg = (link: string) => `/api/publico/fluxogramas/${encodeURIComponent(link)}/svg`;
-export const urlDocumentoPublico = (link: string, formato: 'pdf' | 'docx') => `/api/publico/pops/${encodeURIComponent(link)}/${formato}`;
+export const urlDocumentoPublico = (link: string, formato: 'pdf') => `/api/publico/pops/${encodeURIComponent(link)}/${formato}`;
 
 export const dataBr = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');

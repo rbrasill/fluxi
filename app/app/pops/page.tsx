@@ -139,7 +139,6 @@ function ListaPops() {
             </Link>
             <SeloStatus status={p.status} offline={!p.link_publico_ativo} />
             <a className="btn btn-ghost" href={`/api/pops/${p.id}/pdf`} title="Baixar PDF"><Icone nome="baixar" tamanho={16} />PDF</a>
-            <a className="btn btn-ghost" href={`/api/pops/${p.id}/docx`} title="Baixar DOCX"><Icone nome="baixar" tamanho={16} />DOCX</a>
             {filtro === 'arquivados' ? (
               <>
                 {p.arquivado_em && <button className="btn btn-ghost" onClick={() => onRestaurar(p)}><Icone nome="desfazer" tamanho={16} />Restaurar</button>}

@@ -1,11 +1,14 @@
 'use client';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
 import { ehAdmin, useEu } from '@/lib/auth/eu';
+import { iniciais } from '@/lib/iniciais';
 
 // A parte do menu que depende de quem está logado (decisão 50): "Pessoas e acessos" e o "Painel da Maia"
-// para administradores, e o nome com o botão Sair. Também leva de volta ao login quando a sessão acaba
+// para administradores, e o cartão da conta, que abre "Meu perfil" (decisão 84), com o botão Sair. Também leva de volta ao login quando a sessão acaba
 // no meio do uso (qualquer rota de dados respondendo 401).
 
 const ROTULO_NIVEL = { comum: 'Comum', gestor: 'Gestor', admin: 'Administrador' };
@@ -31,6 +34,7 @@ function voltarAoLoginQuandoASessaoAcabar() {
 export function ContaMenu() {
   useEffect(() => { voltarAoLoginQuandoASessaoAcabar(); }, []);
   const eu = useEu();
+  const noPerfil = (usePathname() ?? '').startsWith('/app/perfil');
 
   async function sair() {
     await fetch('/api/auth/sair', { method: 'POST' }).catch(() => {});
@@ -43,9 +47,12 @@ export function ContaMenu() {
       {admin && <NavLink href="/app/pessoas" titulo="Pessoas e acessos"><Icone nome="pessoas" /><span className="nav-texto">Pessoas e acessos</span></NavLink>}
       {admin && <NavLink href="/app/maia" titulo="Painel da Maia: custos, tempos e métricas das entrevistas"><Icone nome="ia" /><span className="nav-texto">Painel da Maia</span></NavLink>}
       {eu?.enabled && (
-        <div className="conta" title={eu.email}>
-          <span className="conta-nome nav-texto">{eu.name}<small>{ROTULO_NIVEL[eu.nivel]}</small></span>
-          <button type="button" className="conta-sair" onClick={() => void sair()} title="Sair"><Icone nome="voltar" tamanho={16} /><span className="nav-texto">Sair</span></button>
+        <div className={`conta${noPerfil ? ' ativa' : ''}`}>
+          <Link href="/app/perfil" className="conta-perfil" title={`Meu perfil · ${eu.email}`} aria-current={noPerfil ? 'page' : undefined}>
+            <span className="conta-avatar" aria-hidden="true">{iniciais(eu.name)}</span>
+            <span className="conta-nome nav-texto">{eu.name}<small>{noPerfil ? 'Meu perfil' : ROTULO_NIVEL[eu.nivel]}</small></span>
+          </Link>
+          <button type="button" className="conta-sair" onClick={() => void sair()} title="Sair" aria-label="Sair"><Icone nome="sair" tamanho={18} /></button>
         </div>
       )}
     </>

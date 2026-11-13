@@ -3,7 +3,7 @@ import { responder } from '@/lib/server/http';
 import { melhorarTexto } from '@/lib/server/melhorar-texto';
 
 const Pedido = z.object({
-  campo: z.enum(['passo', 'objetivo', 'descricao']),
+  campo: z.enum(['passo', 'objetivo', 'descricao', 'atividades']),
   texto: z.string().max(20_000, 'Texto grande demais para revisar de uma vez.'),
   pop: z.string().max(300).optional(),
   processo: z.string().max(300).optional(),

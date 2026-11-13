@@ -1,9 +1,7 @@
 import 'server-only';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { gerarCodigo } from '@/lib/codigo';
-import { gerarDocx, type DadosPop } from '@/lib/pop/docx';
+import type { DadosPop } from '@/lib/pop/documento';
 import { gerarPdf } from '@/lib/pop/pdf';
 import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
@@ -375,8 +373,8 @@ export const linkDoFluxograma = (origem: string, link: string) => `${origem}/f/$
 
 export type BaseDocumento = { nome: string; codigo: string; identificacao: string; versao: string; autor: string; criado_em: string; historico: Historico[]; conteudo: ConteudoPop };
 
-/** Gera o DOCX ou o PDF a partir do conteúdo (com as imagens já nos caminhos finais). `origem` é a base dos links públicos das referências. */
-export async function gerarDocumento(formato: 'docx' | 'pdf', base: BaseDocumento, linkFluxograma: string | null, origem: string) {
+/** Gera o PDF do POP a partir do conteúdo (com as imagens já nos caminhos finais). `origem` é a base dos links públicos das referências. O POP sai só em PDF (decisão 79). */
+export async function gerarDocumento(base: BaseDocumento, linkFluxograma: string | null, origem: string) {
   const caminhos = [...new Set(base.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[])];
   const imagens = new Map<string, Uint8Array>();
   await Promise.all(caminhos.map(async (c) => {
@@ -396,18 +394,14 @@ export async function gerarDocumento(formato: 'docx' | 'pdf', base: BaseDocument
     referencias: referencias.paraDocumento(await referencias.resolverDosTextos(referencias.textosDoPop(base.conteudo).map((t) => t.valor)), origem),
   };
   const nomeBase = `POP ${base.identificacao ? `${base.identificacao} ` : ''}${base.nome}`.replace(/[\\/:*?"<>|]+/g, ' ').trim();
-  if (formato === 'pdf') return { arquivo: await gerarPdf(dados, imagens), nomeArquivo: `${nomeBase}.pdf` };
-  const modelo = await readFile(path.join(process.cwd(), 'templates/pop/modelo-pop-v3.template.docx'));
-  return { arquivo: gerarDocx(modelo, dados, imagens), nomeArquivo: `${nomeBase}.docx` };
+  return { arquivo: await gerarPdf(dados, imagens), nomeArquivo: `${nomeBase}.pdf` };
 }
 
-/** Documento do POP como está agora (o que a área está editando). */
-async function documento(id: string, origem: string, formato: 'docx' | 'pdf') {
+/** PDF do POP como está agora (o que a área está editando). */
+export async function pdf(id: string, origem: string) {
   const original = await buscar(id);
   const conteudo = comImagensFinais(original.conteudo, await marcacoesDoPop(original.conteudo));
   const fluxo = original.processo_id ? await fluxogramaDoProcesso(original.processo_id) : null;
-  return gerarDocumento(formato, { ...original, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
+  return gerarDocumento({ ...original, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
 }
 
-export const docx = (id: string, origem: string) => documento(id, origem, 'docx');
-export const pdf = (id: string, origem: string) => documento(id, origem, 'pdf');

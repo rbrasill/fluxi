@@ -6,14 +6,14 @@
 //  - cada linha tem 1,222 × o tamanho da fonte × a entrelinha do parágrafo, com o texto no topo;
 //  - os parágrafos vazios do modelo (espaçadores de 7, 9, 10, 12 e 18 pt) entram como estão;
 //  - tabelas com as margens de célula, alturas mínimas e alinhamento vertical do modelo;
-//  - ícones, réguas e a faixa nas posições (deslocamentos) das âncoras do DOCX.
+//  - ícones, réguas e a faixa nas posições (deslocamentos) das âncoras do modelo.
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import pdfmake from 'pdfmake';
 import {
   COR_AZUL, COR_BORDA_IMAGEM, COR_CAIXA_BARRA, COR_CAIXA_BORDA, COR_CAIXA_FUNDO, COR_CAIXA_ROTULO, COR_TEXTO,
   DESCRICAO_FLUXOGRAMA, cabecalho, sequenciaPassos, tamanhoImagemPt, type DadosPop,
-} from './docx';
+} from './documento';
 import { colunas, lerTextoParaDocumento, linhasDeCabecalho, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
 
 const PASTA = () => path.join(process.cwd(), 'templates/pop');
@@ -104,9 +104,9 @@ const itemLista = (numero: string, texto: string, recuoNumero: number): Bloco =>
   columns: [{ width: recuoNumero, text: '' }, { width: 18, text: numero }, { width: '*', text: texto || ' ' }],
 });
 
-// --- Texto com formatação (texto-rico.ts), igual ao DOCX: mesmas marcas, listas e recuos ---
+// --- Texto com formatação (texto-rico.ts): mesmas marcas, listas e recuos do editor ---
 
-const RECUO_LISTA = 18; // pt por nível (360 twips no DOCX)
+const RECUO_LISTA = 18; // pt por nível (0,25", como no modelo)
 const MARCADORES = ['disc', 'circle', 'square'];
 const NUMERACOES = ['decimal', 'lower-alpha', 'lower-roman'];
 
@@ -143,7 +143,7 @@ function textoRicoPdf(valor: string, inicio: Bloco[] = [], referencias?: DadosPo
     if (b.tipo === 'paragrafo') return [paragrafo(b.trechos)];
     const rotulo = prefixo.length ? [paragrafo([])] : []; // o rótulo fica numa linha própria antes da lista ou tabela
     if (b.tipo === 'tabela') {
-      // Como no DOCX: colunas iguais, borda cinza fina, cabeçalho com fundo e negrito, repetido em cada página.
+      // Colunas iguais, borda cinza fina, cabeçalho com fundo e negrito, repetido em cada página.
       const n = colunas(b);
       const body = b.linhas.map((linha) => Array.from({ length: n }, (_, k) => linha[k] ?? { cabecalho: false, blocos: [] }).map((c) => {
         const conteudo = blocos(aparar(c.blocos), 0);
@@ -195,7 +195,7 @@ function imagemPasso(chave: string, largura: number, altura: number): Bloco {
 }
 
 /**
- * @param dados   conteúdo do POP (o mesmo do DOCX)
+ * @param dados   conteúdo do POP
  * @param imagens bytes PNG por caminho (imagem_caminho dos passos)
  */
 export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>): Promise<Buffer> {
@@ -204,7 +204,7 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
   const prints: Record<string, string> = {};
   for (const [caminho, bytes] of imagens) prints[caminho] = dataUrl(bytes);
 
-  // Procedimentos, como no DOCX: subtítulo do grupo (10 pt antes, 4 depois); print (6 pt antes) e,
+  // Procedimentos, como no modelo: subtítulo do grupo (10 pt antes, 4 depois); print (6 pt antes) e,
   // logo abaixo, a caixa do passo, seguida de um parágrafo de 10 pt depois. Print e caixa ficam juntos.
   const procedimentos: Bloco[] = [];
   let subtitulo: Bloco | null = null;
@@ -224,7 +224,7 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
     } else if (texto) {
       partes.push(caixaPasso(numero, texto, LARGURA_CAIXA, dados.referencias));
     }
-    // Subtítulo, print e caixa ficam juntos (keepNext no DOCX); o espaço depois da caixa pode ir para a próxima página.
+    // Subtítulo, print e caixa ficam juntos (como no modelo); o espaço depois da caixa pode ir para a próxima página.
     if (partes.length) procedimentos.push({ stack: partes, unbreakable: true });
     if (texto) procedimentos.push({ ...vazio(12, ENTRELINHA_PADRAO), margin: [0, 0, 0, 10] });
   }

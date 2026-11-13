@@ -52,7 +52,7 @@ No editor do POP, qualquer passo aceita um print sem gravar de novo (**Anexar pr
 - Até 1080p, 15 quadros/s, VP9 a 1,5 Mbps (texto de sistema nítido) + áudio Opus 96 kbps. Configuração em `lib/gravacao/config.ts`.
 - O Supabase limita cada arquivo a 50 MB, então o vídeo é gravado em **partes independentes de 3 minutos** (~35 MB), enviadas enquanto a gravação continua. Uma parte é fechada antes se chegar a 85% do limite. Não há limite de duração total.
 - Cada parte recebe a duração no arquivo (`fix-webm-duration`), para o player conseguir avançar e voltar. O player toca as partes em sequência, com o tempo contado desde o início.
-- Prints das telas em **PNG** (texto nítido e compatível com o DOCX do POP).
+- Prints das telas em **PNG** (texto nítido e compatível com o PDF do POP).
 - Num storage sem esse limite (sistema definitivo), basta aumentar `SEGMENTO_MS` e a taxa de bits.
 
 ## Dados (novas tabelas)
