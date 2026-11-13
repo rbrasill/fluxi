@@ -744,6 +744,13 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - O campo de escrever a regra troca o exemplo por uma dica do que escrever em cada tipo.
 - Nada muda no banco.
 
+## 93. Cabeçalho do processo mais limpo (13/11/2026)
+
+- Saem do alto da página do processo: o quadrado com a sigla do nome, o código do processo (com o botão de copiar) e a escolha da área. Fica o nome, o selo "Processo" e as ações (Mover ou copiar, Arquivar).
+- Trocar de área continua possível por **Mover ou copiar**. O código continua existindo (nos POPs e no fluxograma), só não aparece mais ali.
+- As abas não mostram mais barra de rolagem: aparecia uma, vertical, ao lado delas no Windows.
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

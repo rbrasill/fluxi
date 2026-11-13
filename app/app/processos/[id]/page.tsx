@@ -21,8 +21,6 @@ import { ReferenciadoEm } from '@/components/publico/Referencias';
 import type { ResultadoBusca } from '@/lib/referencias';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { ehGestor, useEu } from '@/lib/auth/eu';
-import { corDoAvatar, sigla } from '@/lib/iniciais';
-import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
 import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
 
 // Página do processo (decisão 31, redesenhada na decisão 77): a visão geral traz o fluxograma (um por processo) e a
@@ -65,7 +63,6 @@ function ProcessoPage() {
   const router = useRouter();
   const [p, setP] = useState<Processo | null | undefined>(undefined);
   const [nome, setNome] = useState('');
-  const [areas, setAreas] = useState<AreaResumo[]>([]);
   const [fluxoDialogo, setFluxoDialogo] = useState<'desenhar' | 'ia' | 'substituir' | null>(null);
   const [criandoPop, setCriandoPop] = useState(false); // diálogo "Novo POP" aberto
   const [ocupado, setOcupado] = useState(false);
@@ -79,7 +76,6 @@ function ProcessoPage() {
   const [pedidoDeConvite, setPedidoDeConvite] = useState(0);
   const [finalidadeDoConvite, setFinalidadeDoConvite] = useState<Finalidade>('processo');
   const [regras, setRegras] = useState<{ disponivel: boolean; confirmadas: number; sugeridas: number } | null>(null);
-  const [codigoCopiado, setCodigoCopiado] = useState(false);
   const [filtroPop, setFiltroPop] = useState<FiltroPop>('todos');
   const [buscaPop, setBuscaPop] = useState('');
   const gestor = ehGestor(useEu());
@@ -100,7 +96,6 @@ function ProcessoPage() {
   }
   useEffect(() => {
     void carregar();
-    listarAreas().then(setAreas).catch(() => {});
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (p === undefined) return <div className="page fundo-processo"><p className="notice">Carregando…</p></div>;
@@ -181,16 +176,6 @@ function ProcessoPage() {
     try { await navigator.clipboard.writeText(url); setCopiado(true); setTimeout(() => setCopiado(false), 2500); } catch { void avisar('Copie o link público do processo', url); }
   }
 
-  async function copiarCodigo() {
-    try { await navigator.clipboard.writeText(p!.codigo); setCodigoCopiado(true); setTimeout(() => setCodigoCopiado(false), 2000); } catch { void avisar('Código do processo', p!.codigo); }
-  }
-
-  async function mudarArea(areaId: string) {
-    if (!areaId || areaId === p!.area_id) return;
-    await atualizarProcesso(p!.id, { area_id: areaId });
-    setP({ ...p!, area_id: areaId, area: areas.find((a) => a.id === areaId) ?? p!.area });
-  }
-
   const arquivado = !!p.arquivado_em;
   const pops = p.pops.filter((o) => !o.arquivado_em);
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
@@ -220,24 +205,11 @@ function ProcessoPage() {
       </nav>
 
       <div className="page-head proc-cabecalho">
-        <span className={`proc-avatar avatar-${corDoAvatar(p.codigo)}`} aria-hidden="true">{sigla(p.nome)}</span>
         <div className="proc-titulo">
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <div className="processo-meta">
             <span className="chip-tipo">Processo</span>
-            <button type="button" className="chip-codigo" onClick={() => void copiarCodigo()} title="Copiar o código do processo" aria-label={`Código ${p.codigo}: copiar`}>
-              <span>{p.codigo}</span><Icone nome={codigoCopiado ? 'check' : 'copiar'} tamanho={13} />
-            </button>
-            <label className="proc-area">Área
-              <select className="select-area" value={p.area_id} onChange={(e) => void mudarArea(e.target.value)} aria-label="Área do processo" title="Mover para outra área" disabled={arquivado}>
-                {areas.length
-                  ? porOrganizacao(areas).map(([org, lista]) => (
-                      <optgroup key={org} label={org}>{lista.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}</optgroup>
-                    ))
-                  : p.area && <option value={p.area.id}>{p.area.nome}</option>}
-              </select>
-            </label>
           </div>
         </div>
         <div className="actions">

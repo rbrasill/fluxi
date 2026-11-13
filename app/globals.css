@@ -1139,7 +1139,8 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .pagina-processo .select-area:hover, .pagina-processo .select-area:focus { border-color: var(--indigo-300); }
 
 /* Abas: a ativa em índigo (texto 700, fundo 100, sublinhado 700 e contagem sólida); as outras em cinza, com hover branco. */
-.abas { display: flex; gap: 6px; border-bottom: 1px solid var(--neutro-borda); overflow-x: auto; }
+.abas { display: flex; gap: 6px; border-bottom: 1px solid var(--neutro-borda); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.abas::-webkit-scrollbar { display: none; }
 .abas button { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; margin-bottom: -1px; border: 0; border-bottom: 3px solid transparent; border-radius: 10px 10px 0 0; background: none; color: var(--neutro-texto-2); font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
 .abas button:hover { color: var(--indigo-700); background: var(--neutro-superficie); }
 .abas button[aria-selected='true'] { color: var(--indigo-700); font-weight: 700; background: var(--indigo-100); border-bottom-color: var(--indigo-700); }
