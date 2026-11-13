@@ -117,7 +117,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
       <audio ref={audio} preload="none" hidden />
       <div className="proc-coluna">
         <div className="regras-contadores">
-          <div className="cartao regra-contador"><span><i className="ponto ponto-teal" />Sugeridas pela Maia</span><strong>{sugeridas.length}</strong></div>
+          <div className="cartao regra-contador"><span><i className="ponto ponto-maia" />Sugeridas pela Maia</span><strong>{sugeridas.length}</strong></div>
           <div className="cartao regra-contador"><span><i className="ponto ponto-pessego" />Possíveis conflitos</span><strong>{conflitos}</strong></div>
           <div className="cartao regra-contador"><span><i className="ponto ponto-verde" />Confirmadas</span><strong>{confirmadas.length}</strong></div>
         </div>

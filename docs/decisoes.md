@@ -764,6 +764,13 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - No convite, as opções de finalidade ficaram mais compactas e a lista de pessoas tem altura mínima (duas pessoas à vista) e, em telas baixas, altura máxima menor.
 - Nada muda no banco.
 
+## 96. A Maia em rosa (13/11/2026)
+
+- Tudo o que envolve a Maia e a IA troca o teal pelo **rosa**, escolhido pelo Rafael por ser mais feminino e humano. Depois de comparar opções num HTML de teste, ficou o `#F472B6` "nos detalhes, botão um tom mais fechado": o F472B6 aparece na esfera, nos ícones, no play e nas bordas; o botão sólido usa o `#DB2777` (texto branco legível, 4,6:1); textos em `#BE185D` e `#9D174D`; fundos e bordas em `#FDF2F8`, `#FCE7F3` e `#FBCFE8`.
+- Entra em tudo o que era teal: os botões da Maia e "Melhorar com IA", o convite, os selos "Gerada/Sugerida pela Maia", a aba de regras, o trecho com o play, a esfera e os estados da ligação ("Maia está falando" em rosa sólido), o cartão escuro de "gerando o resultado" (agora vinho), o avatar da Maia.
+- Para nada ser confundido com a Maia: o rosa avermelhado que marcava perigo (erro, excluir, "Offline", gravando) passa a **vermelho** (`#DC2626`), e o ícone de ajuda dos tipos de regra passa a **cinza**. As cores de identidade de pessoas e áreas (avatares teal e rosa) continuam como estavam.
+- O sistema de cores (`docs/design/sistema-de-cores.md`) foi atualizado. Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
