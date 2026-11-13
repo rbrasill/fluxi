@@ -280,7 +280,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
         <section className="cartao cartao-lateral" aria-labelledby="titulo-tipos-regra">
           <div className="sec-titulo">
             <h3 id="titulo-tipos-regra">Tipos de regra</h3>
-            <BotaoAjudaTipos aoAbrir={() => setAjuda(true)} curto />
+            <BotaoAjudaTipos aoAbrir={() => setAjuda(true)} />
           </div>
           <ul className="tipos-regra">
             {TIPOS_REGRA.map((t) => (
@@ -326,16 +326,16 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
   );
 }
 
-/** O botão de ajuda, bem à vista (decisão 91): abre a explicação da diferença entre os tipos de regra. */
-function BotaoAjudaTipos({ aoAbrir, curto = false }: { aoAbrir: () => void; curto?: boolean }) {
+/** O botão de ajuda (decisões 91 e 92): só o ícone de informação, discreto, que abre a explicação dos tipos de regra. */
+function BotaoAjudaTipos({ aoAbrir }: { aoAbrir: () => void }) {
   return (
-    <button type="button" className={`btn-ajuda${curto ? ' so-icone' : ''}`} onClick={aoAbrir} aria-label="Qual é a diferença entre os tipos de regra?" title="Qual é a diferença entre os tipos de regra?">
-      <Icone nome="info" tamanho={curto ? 18 : 16} />{!curto && 'Qual é a diferença entre os tipos?'}
+    <button type="button" className="btn-ajuda" onClick={aoAbrir} aria-label="Qual é a diferença entre os tipos de regra?" title="Qual é a diferença entre os tipos de regra?">
+      <Icone nome="info" tamanho={18} />
     </button>
   );
 }
 
-/** A explicação dos tipos de regra, para quem não sabe a diferença: o que é cada um, como reconhecer e exemplos. */
+/** A explicação dos tipos de regra, para quem não sabe a diferença: um texto simples para cada tipo, sem exemplos. */
 function AjudaTipos({ aoFechar }: { aoFechar: () => void }) {
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') aoFechar(); };
@@ -349,7 +349,7 @@ function AjudaTipos({ aoFechar }: { aoFechar: () => void }) {
           <span className="lateral-icone icone-ajuda"><Icone nome="info" tamanho={22} /></span>
           <div className="dialogo-topo-texto">
             <h2 id="ajuda-tipos-titulo">Regra de negócio, de comportamento ou definição?</h2>
-            <p className="notice">Toda regra do processo entra em um destes três tipos. A diferença está no que ela controla.</p>
+            <p className="notice">Toda regra do processo é de um destes três tipos. Veja o que é cada um.</p>
           </div>
           <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} title="Fechar" aria-label="Fechar" autoFocus><Icone nome="fechar" tamanho={18} /></button>
         </div>
@@ -360,18 +360,15 @@ function AjudaTipos({ aoFechar }: { aoFechar: () => void }) {
                 <span className={`lateral-icone icone-tipo-${t.id}`}><Icone nome={ICONE_DO_TIPO[t.id]} tamanho={18} /></span>
                 <strong>{t.rotulo}</strong><span className={`regra-codigo codigo-${t.id}`}>{t.sigla}</span>
               </div>
-              <p className="ajuda-o-que">{t.o_que}</p>
-              <p className="ajuda-reconhecer"><b>Como reconhecer:</b> {t.reconhecer}</p>
-              <span className="ajuda-rotulo">Exemplos</span>
-              <ul className="ajuda-exemplos">{t.exemplos.map((x) => <li key={x}>{x}</li>)}</ul>
+              <p className="ajuda-explicacao">{t.explicacao}</p>
             </li>
           ))}
         </ul>
         <div className="ajuda-nao-e">
           <strong>Na dúvida</strong>
-          <p>Pergunte: dá para conferir sem ver a pessoa trabalhando? Se sim, é regra de negócio. Se depende do jeito de agir de quem faz, é de comportamento. Se só explica o que uma palavra quer dizer, é definição.</p>
+          <p>Se fala de uma exigência da empresa, é regra de negócio. Se fala da atitude da pessoa, é regra de comportamento. Se só explica uma palavra, é definição.</p>
           <strong>O que não é regra</strong>
-          <p>Etapa do processo (o que se faz, e em que ordem) fica no fluxograma e no POP. Recomendação (“o ideal é…”) só vira regra quando é exigida.</p>
+          <p>O passo a passo do trabalho (o que se faz e em que ordem) não é regra: ele fica no fluxograma e no POP. Uma dica ou sugestão também não é regra, a não ser que seja obrigatória.</p>
         </div>
         <div className="dialog-actions"><button type="button" className="btn btn-primary" onClick={aoFechar}>Entendi</button></div>
       </div>
@@ -400,7 +397,7 @@ function DialogoRegra({ regra, pops, aoSalvar, aoFechar, aoPedirAjuda }: { regra
         {!regra && <p className="notice">A regra escrita aqui já entra confirmada no processo.</p>}
         <label className="field">
           <span>Regra</span>
-          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} maxLength={600} required minLength={3} autoFocus placeholder={`Ex.: ${TIPOS_REGRA.find((t) => t.id === tipo)!.exemplos[0]}`} />
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} maxLength={600} required minLength={3} autoFocus placeholder={TIPOS_REGRA.find((t) => t.id === tipo)!.modelo} />
         </label>
         <fieldset className="opcoes-acesso">
           <legend className="legenda-com-ajuda">Tipo<BotaoAjudaTipos aoAbrir={aoPedirAjuda} /></legend>

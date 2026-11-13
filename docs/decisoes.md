@@ -737,6 +737,13 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - **Saudação:** a Maia cumprimenta com "bom dia", "boa tarde" ou "boa noite", pelo horário de Brasília na hora em que a ligação começa (5h às 12h, 12h às 18h, e o resto), na abertura e quando a pessoa volta. Vale para as duas finalidades.
 - **Banco:** migração 0025 (o tipo `definicao` na tabela `regras`). Enquanto ela não está aplicada, criar uma definição à mão avisa o que falta, e a definição que a Maia sugerir entra como regra de negócio, para não se perder.
 
+## 92. Ajuda dos tipos de regra: ícone discreto e texto simples, sem exemplos (13/11/2026)
+
+- Ajusta a decisão 91. O botão de ajuda passa a ser **só o ícone de informação**, sem texto, num rosa bem claro e pequeno (32 px): o anterior chamava atenção demais.
+- A explicação de cada tipo deixa de trazer exemplos e "como reconhecer": um exemplo que não encaixa na realidade de quem lê confunde mais do que ajuda. Fica um texto curto, em linguagem simples, para qualquer pessoa: o que é a regra de negócio, a de comportamento e a definição, mais "Na dúvida" e "O que não é regra".
+- O campo de escrever a regra troca o exemplo por uma dica do que escrever em cada tipo.
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

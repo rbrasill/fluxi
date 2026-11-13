@@ -42,25 +42,26 @@ export const TOPICOS_REGRAS = [
 
 /**
  * Os tipos de regra (decisões 89 e 91): de negócio (o que a empresa exige), de comportamento (como as pessoas devem
- * agir) e definição (o que um termo quer dizer no processo). `reconhecer` e `exemplos` alimentam a ajuda da tela,
- * para quem não sabe a diferença.
+ * agir) e definição (o que um termo quer dizer no processo). `explicacao` é o texto da ajuda da tela, para quem não
+ * sabe a diferença: linguagem simples e sem exemplos (um exemplo que não encaixa confunde; decisão 92). `modelo` é a
+ * dica do campo ao escrever uma regra daquele tipo.
  */
 export type TipoRegra = 'negocio' | 'comportamento' | 'definicao';
-export const TIPOS_REGRA: { id: TipoRegra; sigla: string; rotulo: string; o_que: string; reconhecer: string; exemplos: string[] }[] = [
+export const TIPOS_REGRA: { id: TipoRegra; sigla: string; rotulo: string; o_que: string; explicacao: string; modelo: string }[] = [
   {
     id: 'negocio', sigla: 'RN', rotulo: 'Regra de negócio', o_que: 'O que a empresa exige: condições, prazos, limites e cálculos.',
-    reconhecer: 'Vale não importa quem executa. Dá para conferir olhando o resultado ou o registro, sem ver a pessoa trabalhando.',
-    exemplos: ['Só entra no sorteio o cupom recebido até o fechamento da urna.', 'Acima de R$ 50 mil, só o diretor aprova.', 'O prêmio é retirado em até 60 dias.'],
+    explicacao: 'É uma exigência da empresa para o trabalho sair certo. Diz o que pode e o que não pode, até quando, até quanto e quem precisa autorizar. Vale para todo mundo, não importa quem esteja fazendo o trabalho.',
+    modelo: 'Escreva, em uma frase, o que a empresa exige.',
   },
   {
     id: 'comportamento', sigla: 'RC', rotulo: 'Regra de comportamento', o_que: 'Como as pessoas devem agir ao executar o processo.',
-    reconhecer: 'É sobre a conduta de quem faz: postura, comunicação, cuidado, sigilo. Só dá para conferir observando a pessoa.',
-    exemplos: ['Só a apresentação anuncia o ganhador no ar.', 'O atendente não discute com o cliente: chama o supervisor.', 'Não se comenta o resultado antes da gravação.'],
+    explicacao: 'É o jeito como a pessoa deve agir enquanto faz o trabalho: como falar, como tratar os outros, que cuidado tomar e o que manter em segredo. Não fala do resultado do trabalho, e sim da atitude de quem faz.',
+    modelo: 'Escreva, em uma frase, como a pessoa deve agir.',
   },
   {
     id: 'definicao', sigla: 'DF', rotulo: 'Definição', o_que: 'O que uma palavra quer dizer neste processo.',
-    reconhecer: 'Não é algo que se cumpre ou descumpre: é o significado de um termo de que as regras dependem.',
-    exemplos: ['Projeto estratégico: projeto novo que muda o que a empresa oferece ou que passa de R$ 100 mil.', 'Cupom válido: cupom físico, preenchido por inteiro e sem rasura.'],
+    explicacao: 'É a explicação de uma palavra usada no processo, para todo mundo entender a mesma coisa. Não manda fazer nem proíbe nada: só diz o que a palavra quer dizer aqui.',
+    modelo: 'Escreva a palavra, dois-pontos e o que ela quer dizer.',
   },
 ];
 const tipoDaRegra = (t: TipoRegra) => TIPOS_REGRA.find((x) => x.id === t) ?? TIPOS_REGRA[0];
