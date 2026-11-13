@@ -7,9 +7,10 @@ outras); elas vão sendo aplicadas tela a tela, à medida que o redesign avança
 A ideia: quatro famílias, cada uma com um papel fixo, para a cor sempre significar a mesma coisa. **Índigo é ação,
 rosa é a Maia, verde é concluído, vermelho e pêssego pedem atenção.**
 
-Atualizado em 13/11/2026 (decisão 96): a Maia trocou o teal pelo **rosa**, escolhido pelo Rafael por ser mais
+Atualizado em 13/11/2026 (decisões 96 e 97): a Maia trocou o teal pelo **rosa**, escolhido pelo Rafael por ser mais
 feminino e humano, a partir do `#F472B6`. Com isso, o que era rosa de perigo (erro, excluir, gravação) passou a um
-**vermelho de verdade**, e o ícone de ajuda passou a cinza, para nada ser confundido com a Maia.
+**vermelho de verdade**, e o ícone de ajuda passou a cinza, para nada ser confundido com a Maia. As outras IAs
+("Melhorar com IA", "Gerar com IA") continuam em **teal**: o rosa é só da Maia.
 
 ## Proporção em cada tela
 
@@ -34,10 +35,10 @@ Botões primários, links, abas, menu ativo, seleção e foco. É a cor do INCFl
 | 100 | `#E0E7FF` | Fundo (o item ativo do menu) | |
 | 50 | `#F8FAFF` | Fundo | |
 
-### Rosa · Maia e IA (decisão 96)
+### Rosa · Maia (decisão 96)
 
-Tudo o que a Maia faz ou sugere: entrevistas, "Melhorar com IA", "Gerar de novo com IA", geração de fluxogramas,
-regras sugeridas, Conversas com a Maia e o Painel da Maia. A escala sai do `#F472B6` (tom 400): o rosa escolhido
+Tudo o que a Maia faz ou sugere: entrevistas e convites, a ligação, o resultado das conversas, as regras sugeridas,
+Conversas com a Maia e o Painel da Maia. As outras IAs ("Melhorar com IA", "Gerar com IA") ficam em teal (abaixo). A escala sai do `#F472B6` (tom 400): o rosa escolhido
 aparece na esfera, nos ícones, no play e nas bordas; o botão usa o 600, um tom mais fechado, para o texto branco
 ser legível.
 
@@ -53,6 +54,20 @@ ser legível.
 | 200 | `#FBCFE8` | Fundo, bordas | |
 | 100 | `#FCE7F3` | Fundo (botão claro, selos) | |
 | 50 | `#FDF2F8` | Fundo | |
+
+### Teal · as outras IAs (decisão 97)
+
+O que a IA faz sem ser a Maia: "Melhorar com IA", "Gerar com IA" e "Gerar de novo com IA" (fluxograma), a sugestão
+de texto. Botão claro: fundo 100 e texto 700.
+
+| Tom | Cor | Uso | Contraste |
+|---|---|---|---|
+| 900 | `#0F4C5C` | Texto | 9,5:1 |
+| 700 | `#187C81` | Texto | 5,0:1 |
+| 500 | `#2A9D8F` | Ícone | 3,3:1 |
+| 300 | `#A8DADC` | Fundo | |
+| 100 | `#E0F7F4` | Fundo | |
+| 50 | `#F7FFFD` | Fundo | |
 
 ### Verde · sucesso
 
@@ -100,10 +115,11 @@ A base de todas as telas; as famílias acima não substituem os neutros.
 - **Índigo, ação e navegação:** botão primário ("Editar fluxograma"), item ativo do menu (fundo 100, texto 700),
   aba ativa (sublinhado), switch ligado, anel de foco (`#A5B4FC`), links, seleção, barra de progresso. Ao passar o
   mouse, o botão primário escurece para `#1E1B4B`.
-- **Rosa, Maia e IA:** "Melhorar com IA" (botão claro, fundo 100 e texto 800), "Convidar para entrevista" (botão
-  sólido 600), o selo "Gerado pela Maia", a sugestão da Maia em destaque suave (fundo 50 com borda 200), a esfera
+- **Rosa, a Maia:** "Convidar para entrevista" (botão sólido 600), "Perguntar na próxima entrevista" (botão claro), o selo "Gerado pela Maia", a sugestão da Maia em destaque suave (fundo 50 com borda 200), a esfera
   e os estados da ligação ("Maia está ouvindo" em fundo 100; "Maia está falando" em 600 sólido). O usuário
   aprende: rosa = Maia.
+- **Teal, as outras IAs:** "Melhorar com IA" e "Gerar com IA" (botão claro, fundo 100 e texto 700) e a sugestão de
+  texto em destaque suave (fundo 50 com borda 300).
 - **Verde, concluído e no ar:** os selos "Publicado" e "Online", "Etapa concluída" com o check, "Salvo
   automaticamente". Só para estado positivo; nunca em botões de ação.
 - **Vermelho e pêssego, atenção:** o selo "Rascunho" e "Sem código · pendente" (pêssego), a mensagem de erro de
@@ -125,7 +141,7 @@ Ordem fixa das séries, sempre com rótulo (a cor nunca é a única pista): 1 `#
 ## Regras de uso
 
 1. Um único botão índigo sólido por área da tela. As demais ações são secundárias (borda) ou terciárias (texto).
-2. Rosa só para a Maia e a IA. Se não foi a IA que fez ou vai fazer, não é rosa.
+2. Rosa só para a Maia; teal para as outras IAs. Se não foi a IA que fez ou vai fazer, não é rosa nem teal.
 3. Verde, vermelho e pêssego só comunicam estado. Nunca como decoração ou cor de seção.
 4. Tons 500 e mais claros nunca como texto pequeno sobre o branco. Texto usa sempre 700 ou mais escuro.
 5. Selos de estado: fundo 100, texto 700 e ponto 500. Sempre com palavra, não só cor.

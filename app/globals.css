@@ -28,6 +28,8 @@
   --verde-900: #0F3D2E; --verde-700: #166534; --verde-500: #4C956C; --verde-300: #A8D5BA; --verde-100: #E6F2EA; --verde-50: #F9FCF8;
   /* A Maia tem cor própria (decisão 96): rosa, a partir do F472B6 (tom 400). O botão usa o 600 (texto branco legível),
      os textos escuros o 700 e o 800, fundos e bordas o 50 ao 200. Perigo e gravação passam a vermelho de verdade. */
+  /* As outras IAs (Melhorar com IA, Gerar com IA) continuam em teal (decisão 97): o rosa é só da Maia. */
+  --teal-900: #0F4C5C; --teal-700: #187C81; --teal-500: #2A9D8F; --teal-300: #A8DADC; --teal-100: #E0F7F4; --teal-50: #F7FFFD;
   --maia-50: #FDF2F8; --maia-100: #FCE7F3; --maia-200: #FBCFE8; --maia-300: #F9A8D4; --maia-400: #F472B6; --maia-500: #EC4899; --maia-600: #DB2777; --maia-700: #BE185D; --maia-800: #9D174D; --maia-900: #831843;
   --vermelho-600: #DC2626; --vermelho-700: #B91C1C; --vermelho-800: #991B1B; --vermelho-400: #F87171; --vermelho-100: #FEE2E2; --vermelho-50: #FEF2F2; --pessego: #FDBA74;
   --neutro-texto: #0E1525; --neutro-texto-2: #5A6372; --neutro-rotulo: #6B7280; --neutro-borda: #E6E8EC; --neutro-fundo: #F6F7F9; --neutro-superficie: #FFFFFF;
@@ -402,10 +404,10 @@ input.passo-num:focus { outline: none; border-color: var(--primary); background:
 .passo-img img { max-width: 100%; max-height: 260px; border: 1px solid var(--line); border-radius: 8px; }
 .passo-acoes { display: flex; align-items: center; gap: 2px; }
 
-/* Melhorar com IA (components/pop/MelhorarComIa.tsx): rosa, a cor da Maia e da IA (decisões 75 e 96) */
+/* Melhorar com IA e Gerar com IA: teal, a cor das IAs que não são a Maia (decisões 75 e 97) */
 .sec-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.btn-ia { background: var(--maia-100); border-color: transparent; color: var(--maia-800); }
-.btn-ia:hover:not(:disabled) { background: var(--maia-200); color: var(--maia-900); }
+.btn-ia { background: var(--teal-100); border-color: transparent; color: var(--teal-700); }
+.btn-ia:hover:not(:disabled) { background: var(--teal-300); color: var(--teal-900); }
 .btn-ia:disabled { color: var(--muted); opacity: .45; }
 .dialogo-ia { gap: 14px; }
 .ia-cabecalho { display: flex; align-items: flex-start; gap: 12px; }
@@ -413,13 +415,13 @@ input.passo-num:focus { outline: none; border-color: var(--primary); background:
 .ia-cabecalho .notice { margin: 4px 0 0; }
 .dialog-fechar { flex: none; margin: -8px -8px 0 auto; color: var(--muted); }
 .dialog-fechar:hover { color: var(--ink); }
-.ia-selo { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--maia-700); background: var(--maia-100); }
+.ia-selo { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: var(--teal-700); background: var(--teal-100); }
 /* minmax(0, …): link ou palavra longa quebra dentro da caixa em vez de alargar a coluna para fora do modal */
 .ia-comparacao { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .ia-rotulo { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-.ia-rotulo-novo { color: var(--maia-700); }
+.ia-rotulo-novo { color: var(--teal-700); }
 .ia-texto { max-height: 46vh; overflow: auto; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--bg); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
-.ia-texto-novo { background: var(--maia-50); border-color: var(--maia-200); }
+.ia-texto-novo { background: var(--teal-50); border-color: var(--teal-300); }
 .ia-texto p { margin: 0; }
 .ia-texto ul, .ia-texto ol { margin: 2px 0; padding-left: 22px; }
 .ia-texto table { width: 100%; border-collapse: collapse; margin: 6px 0; }
@@ -1338,7 +1340,7 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .pagina-pop input.passo-num:hover, .pagina-pop input.passo-num:focus { border-color: var(--indigo-300); background: var(--indigo-50); outline: none; text-align: center; padding-left: 0; }
 .pagina-pop .passo-acoes { gap: 4px; flex-wrap: wrap; }
 .pagina-pop .passo-acoes select { height: 34px; padding: 0 8px; border-color: var(--neutro-borda); border-radius: 9px; font: inherit; font-size: 13px; color: var(--neutro-texto-2); }
-.pagina-pop .passo-acoes .btn-ia { background: var(--maia-100); color: var(--maia-700); }
+.pagina-pop .passo-acoes .btn-ia { background: var(--teal-100); color: var(--teal-700); }
 .pagina-pop .passo-img { flex-direction: row; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
 .pagina-pop .passo-img img { flex: 0 1 300px; min-width: 0; max-width: min(100%, 300px); max-height: 220px; object-fit: contain; border-color: var(--neutro-borda); border-radius: 12px; background: var(--neutro-fundo); }
 .pagina-pop .passo-img-acoes { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -1805,6 +1807,8 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .regra-aplica { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--neutro-texto-2); }
 .regra-aplica b { font-weight: 500; color: var(--neutro-texto); }
 .regra-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.regra-acoes .btn-ia { background: var(--maia-100); color: var(--maia-800); } /* "Perguntar na próxima entrevista" é da Maia */
+.regra-acoes .btn-ia:hover:not(:disabled) { background: var(--maia-200); color: var(--maia-900); }
 .regra-acoes .btn-ia.marcado { background: var(--maia-200); color: var(--maia-800); }
 .regras-topo-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .regras-confirmadas .lista-pops-topo { align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--neutro-borda); }

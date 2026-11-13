@@ -771,6 +771,12 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - Para nada ser confundido com a Maia: o rosa avermelhado que marcava perigo (erro, excluir, "Offline", gravando) passa a **vermelho** (`#DC2626`), e o ícone de ajuda dos tipos de regra passa a **cinza**. As cores de identidade de pessoas e áreas (avatares teal e rosa) continuam como estavam.
 - O sistema de cores (`docs/design/sistema-de-cores.md`) foi atualizado. Nada muda no banco.
 
+## 97. O rosa é só da Maia; as outras IAs voltam ao teal (13/11/2026)
+
+- Ajusta a decisão 96: o rosa fica só no que é da Maia (entrevistas, convites, ligação, resultado das conversas, regras sugeridas, "Perguntar na próxima entrevista", Conversas e Painel da Maia).
+- As outras IAs voltam ao teal de antes: "Melhorar com IA" (descrição, objetivo, passos do POP, atividades do perfil), "Gerar com IA" e "Gerar de novo com IA" (fluxograma) e a sugestão de texto.
+- Perigo continua vermelho e a ajuda continua cinza. Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
