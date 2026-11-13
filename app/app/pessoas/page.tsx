@@ -35,6 +35,7 @@ function Pessoas() {
   const [salvando, setSalvando] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [editando, setEditando] = useState<PessoaResumo | null>(null);
 
   const carregar = () => listarPessoas().then(setLista).catch((e) => { setErro(msg(e)); setLista([]); });
   useEffect(() => {
@@ -115,6 +116,7 @@ function Pessoas() {
                       {NIVEIS.map((n) => <option key={n} value={n}>{ROTULO_NIVEL[n]}</option>)}
                     </select>
                   </label>
+                  <button type="button" className="btn btn-ghost btn-icon btn-editar-pessoa" onClick={() => setEditando(p)} aria-label={`Editar ${p.nome}`} title="Editar nome e e-mail"><Icone nome="editar" tamanho={18} /></button>
                   <button type="button" className="btn btn-ghost btn-icon btn-lixo" onClick={() => void remover(p)} disabled={p.id === eu} aria-label={`Remover ${p.nome}`} title={p.id === eu ? 'Você não pode remover a si mesmo' : 'Remover o acesso'}><Icone nome="lixo" tamanho={18} /></button>
                 </li>
               ))}
@@ -151,6 +153,58 @@ function Pessoas() {
           </section>
         </aside>
       </div>
+      {editando && <EditarPessoa pessoa={editando} souEu={editando.id === eu} aoSalvar={() => { setEditando(null); void carregar(); }} aoFechar={() => setEditando(null)} />}
+    </div>
+  );
+}
+
+// Corrigir o nome ou o e-mail de quem já está cadastrado (um erro de digitação no cadastro, por exemplo).
+function EditarPessoa({ pessoa, souEu, aoSalvar, aoFechar }: { pessoa: PessoaResumo; souEu: boolean; aoSalvar: () => void; aoFechar: () => void }) {
+  const [nome, setNome] = useState(pessoa.nome);
+  const [email, setEmail] = useState(pessoa.email);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+  const mudouEmail = email.trim().toLowerCase() !== pessoa.email;
+  const mudou = mudouEmail || nome.trim() !== pessoa.nome;
+
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !salvando) aoFechar(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [salvando, aoFechar]);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setSalvando(true); setErro('');
+    try {
+      await alterarPessoa(pessoa.id, { nome: nome.trim(), ...(mudouEmail ? { email: email.trim() } : {}) });
+      aoSalvar();
+    } catch (err) {
+      setErro(msg(err));
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="editar-pessoa-titulo" onClick={() => !salvando && aoFechar()}>
+      <form className="dialog dialogo-editar-pessoa" onClick={(e) => e.stopPropagation()} onSubmit={salvar}>
+        <div className="dialogo-topo">
+          <span className="lateral-icone icone-indigo"><Icone nome="editar" tamanho={20} /></span>
+          <div className="dialogo-topo-texto"><h2 id="editar-pessoa-titulo">Editar pessoa</h2></div>
+          <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={salvando} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
+        </div>
+        <label className="field"><span>Nome</span><input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} required minLength={2} autoFocus /></label>
+        <label className="field">
+          <span>E-mail corporativo</span>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required disabled={souEu} />
+          <small className="field-ajuda">{souEu ? 'Você não pode mudar o seu próprio e-mail. Peça a outro administrador.' : 'A pessoa passa a entrar com o e-mail novo. Se ela estiver com o INCFlow aberto, precisa entrar de novo.'}</small>
+        </label>
+        {erro && <p className="form-erro" role="alert">{erro}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={aoFechar} disabled={salvando}>Cancelar</button>
+          <button className="btn btn-primary" disabled={salvando || !mudou || nome.trim().length < 2 || !email.trim()}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+        </div>
+      </form>
     </div>
   );
 }

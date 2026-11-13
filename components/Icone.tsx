@@ -59,6 +59,7 @@ const caminhos: Record<string, string> = {
   ajustar: 'M4 4h6M4 4v6M20 4h-6M20 4v6M4 20h6M4 20v-6M20 20h-6M20 20v-6M9 9h6v6H9z',
   layout: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4v7.5',
   copiar: 'M9 9h12v12H9zM5 15H3V3h12v2',
+  editar: 'M4 20h4L18.500 9.500a2.121 2.121 0 0 0-3-3L5 17zM13.500 8.500l2 2',
   lixo: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   ia: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',

@@ -789,6 +789,14 @@ Na entrevista do processo de Permuta, a pessoa entrevistada era de TI e conhecia
 - O resumo traz só o que foi dito e termina com "é isso mesmo?".
 - Na análise, "quem sabe" leva o nome citado entre parênteses e não é adivinhado ("A definir" quando a conversa não mostra); o nome de quem faz uma etapa entra na descrição da etapa, e o responsável continua sendo a área ou o cargo.
 
+## 99. Editar o nome e o e-mail de uma pessoa cadastrada
+
+Quem cadastra pode digitar o nome ou o e-mail errado, e a única saída era remover e cadastrar de novo. Em Pessoas e acessos, cada linha ganhou um botão de editar, que abre um diálogo com o nome e o e-mail.
+
+- Só administradores editam (a mesma rota que muda o nível).
+- O e-mail novo passa pelas mesmas regras do cadastro (domínio corporativo, sem repetir) e derruba a sessão aberta com o e-mail antigo.
+- O administrador não muda o próprio e-mail, para um erro de digitação não o trancar do lado de fora; o próprio nome ele muda.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

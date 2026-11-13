@@ -1320,6 +1320,10 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .pagina-pop .btn-tracejado { border-color: var(--indigo-300); background: var(--indigo-50); color: var(--indigo-700); }
 .pagina-pop .btn-tracejado:hover { background: var(--indigo-100); }
 .btn-lixo { color: var(--neutro-rotulo); }
+.btn-editar-pessoa { color: var(--neutro-rotulo); }
+.btn-editar-pessoa:hover { color: var(--indigo-700); background: var(--indigo-50); }
+.dialogo-editar-pessoa { display: flex; flex-direction: column; gap: 16px; }
+.field-ajuda { font-size: 13px; font-weight: 300; line-height: 1.45; color: var(--neutro-texto-2); }
 .btn-lixo:hover:not(:disabled) { color: var(--vermelho-600); background: var(--vermelho-50); }
 /* Etapas e passos */
 .etapa { border: 1px solid var(--neutro-borda); border-radius: 16px; background: #FAFBFC; scroll-margin-top: 20px; }
