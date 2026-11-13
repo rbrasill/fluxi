@@ -777,6 +777,18 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - As outras IAs voltam ao teal de antes: "Melhorar com IA" (descrição, objetivo, passos do POP, atividades do perfil), "Gerar com IA" e "Gerar de novo com IA" (fluxograma) e a sugestão de texto.
 - Perigo continua vermelho e a ajuda continua cinza. Nada muda no banco.
 
+## 98. Ajustes da Maia depois da entrevista de mapeamento com quem não executa o processo
+
+Na entrevista do processo de Permuta, a pessoa entrevistada era de TI e conhecia só uma parte. A Maia perguntou "esse processo" sem dizer o nome, seguiu perguntando o que a pessoa não sabia, juntou duas e três perguntas na mesma fala, não voltou às outras modalidades e fez o resumo sem pedir confirmação. Ajustes no roteiro e na análise:
+
+- A primeira pergunta sobre o processo diz o nome dele.
+- Logo no começo a Maia pergunta qual é a parte da pessoa no processo e aprofunda o que ela conhece de perto.
+- Diante de "não sei", pergunta quem saberia (área e, se a pessoa souber, o nome) e volta para o que a pessoa conhece.
+- Processo com mais de uma modalidade: percorre a que a pessoa conhece melhor e, antes de encerrar, pergunta o que muda nas outras.
+- Uma pergunta por fala.
+- O resumo traz só o que foi dito e termina com "é isso mesmo?".
+- Na análise, "quem sabe" leva o nome citado entre parênteses e não é adivinhado ("A definir" quando a conversa não mostra); o nome de quem faz uma etapa entra na descrição da etapa, e o responsável continua sendo a área ou o cargo.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
