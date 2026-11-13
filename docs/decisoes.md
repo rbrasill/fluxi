@@ -751,6 +751,12 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - As abas não mostram mais barra de rolagem: aparecia uma, vertical, ao lado delas no Windows.
 - Nada muda no banco.
 
+## 94. Cabeçalho do POP mais limpo (13/11/2026)
+
+- Como no processo (decisão 93), saem do alto do editor do POP: o quadrado com o ícone do POP, a data de publicação ao lado do selo "Publicado" e o resumo "N etapas · N passos" ao lado das abas.
+- A contagem de etapas e passos continua no cartão Procedimentos; a data de publicação continua no cartão da página pública.
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

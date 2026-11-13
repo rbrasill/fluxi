@@ -419,13 +419,11 @@ function EditorPop() {
       )}
 
       <div className="page-head proc-cabecalho">
-        <span className={`proc-avatar ${arquivado ? 'pi-arquivado' : publicado ? 'pi-publicado' : 'pi-rascunho'}`} aria-hidden="true"><Icone nome="pop" tamanho={26} /></span>
         <div className="proc-titulo">
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
             <span className="chip-tipo">POP</span>
             <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />
-            {publicado && pop.publicado_em && <span className="publicado-em">em {new Date(pop.publicado_em).toLocaleDateString('pt-BR')}</span>}
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
             {!arquivado && (
               <span className={`salvo-auto ${status === 'salvo' ? 'ok' : status === 'erro' ? 'erro' : ''}`} role="status">
@@ -464,7 +462,6 @@ function EditorPop() {
       <div className="abas" role="tablist" aria-label="Partes do POP">
         <button type="button" role="tab" id="aba-conteudo" aria-controls="painel-conteudo" aria-selected={aba === 'conteudo'} onClick={() => irParaAba('conteudo')}><Icone nome="pop" tamanho={17} />Conteúdo</button>
         <button type="button" role="tab" id="aba-recursos" aria-controls="painel-recursos" aria-selected={aba === 'recursos'} onClick={() => irParaAba('recursos')}><Icone nome="tela" tamanho={17} />Recursos<span className="aba-conta">{totalRecursos}</span></button>
-        <span className="abas-resumo">{c.procedimentos.length} {c.procedimentos.length === 1 ? 'etapa' : 'etapas'} · {totalPassos} {totalPassos === 1 ? 'passo' : 'passos'}</span>
       </div>
 
       <div className="proc-grade pop-grade" role="tabpanel" id="painel-conteudo" aria-labelledby="aba-conteudo" hidden={aba !== 'conteudo'}>
