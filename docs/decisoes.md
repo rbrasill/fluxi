@@ -710,6 +710,25 @@ A entrevista com a Maia passa a ter uma **finalidade**: mapeamento de processo (
 - **Banco:** migração 0024 (`entrevistas.finalidade`, `processos.confirmador_regras_id` e a tabela `regras`). Enquanto ela não está aplicada, o app segue como antes: a aba não aparece e o convite não mostra a finalidade.
 - **Ficou para a segunda entrega:** as regras confirmadas na página pública do processo e numa seção do PDF dos POPs.
 
+## 90. Ajustes da Maia de regras depois da primeira entrevista real (13/11/2026)
+
+A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta para completar) mostrou pontos a acertar na condução e na análise.
+
+- **Condução:**
+  - perguntar com palavras do dia a dia e com exemplos, sem termos de análise ("condição", "o que precisa ser verdade"), que confundiram a pessoa;
+  - resposta vaga ("talvez", "acho que") pede um exemplo do que entra e do que não entra antes de seguir;
+  - caso real: pedir uma vez só por regra e não insistir;
+  - se a pessoa disser que a pergunta não é sobre regra, concordar e seguir, sem discutir;
+  - se a pessoa falar de regras de outro assunto, perguntar se valem para o processo da entrevista.
+- **Análise:**
+  - quem autoriza ou aprova faz parte da regra, não vira regra separada ("o CEO dá o aval" tinha virado uma sugestão à parte);
+  - falta de regra ("não tem formato obrigatório") e recomendação ("o ideal é") não viram regra;
+  - "o que um cargo pode decidir" é regra de negócio (alçada), não de comportamento;
+  - a regra só vai para um POP quando o assunto dela aparece no nome ou no objetivo dele (uma regra sobre projetos estratégicos tinha ido para o POP de sorteio);
+  - o trecho sai sem hesitações e repetições;
+  - pendência é sobre regra, não sobre como uma tarefa é feita (formato, canal, antecedência).
+- As regras já confirmadas não mudam. Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
