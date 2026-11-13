@@ -757,6 +757,13 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
 - A contagem de etapas e passos continua no cartão Procedimentos; a data de publicação continua no cartão da página pública.
 - Nada muda no banco.
 
+## 95. Convite para entrevista: nada espremido em tela baixa (13/11/2026)
+
+- Com a escolha da finalidade (decisão 89), o diálogo do convite ficou mais alto que a tela em monitores comuns, e o navegador espremia a busca e a lista de pessoas para caber: a lista quase sumia e os campos se encostavam.
+- Agora nenhum diálogo espreme o conteúdo: quando não cabe na altura da tela, o diálogo rola por inteiro (regra geral, em `.dialog > *`).
+- No convite, as opções de finalidade ficaram mais compactas e a lista de pessoas tem altura mínima (duas pessoas à vista) e, em telas baixas, altura máxima menor.
+- Nada muda no banco.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
