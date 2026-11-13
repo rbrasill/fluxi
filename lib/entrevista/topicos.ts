@@ -28,6 +28,7 @@ export const rotuloDaFinalidade = (f: Finalidade | null | undefined) => (f === '
 /** O que a entrevista de regras de negócio precisa descobrir (decisão 89). */
 export const TOPICOS_REGRAS = [
   { id: 'condicoes', nome: 'Condições e critérios', o_que: 'quando pode e quando não pode; o que precisa ser verdade para seguir, aprovar ou recusar' },
+  { id: 'termos', nome: 'Termos', o_que: 'o que querem dizer as palavras de que as regras dependem ("estratégico", "urgente", "cliente especial")' },
   { id: 'limites', nome: 'Limites e alçadas', o_que: 'valores, quantidades e percentuais máximos ou mínimos, e quem pode autorizar o quê' },
   { id: 'prazos', nome: 'Prazos', o_que: 'até quando, de quanto em quanto tempo, o que vence e o que acontece quando vence' },
   { id: 'obrigacoes', nome: 'Obrigações', o_que: 'o que é sempre obrigatório fazer, conferir, registrar ou guardar' },
@@ -39,15 +40,33 @@ export const TOPICOS_REGRAS = [
   { id: 'consequencias', nome: 'Consequências', o_que: 'o que acontece quando a regra não é cumprida' },
 ] as const;
 
-/** Os tipos de regra (decisão 89): de negócio (o que a empresa exige) e de comportamento (como as pessoas devem agir). */
-export type TipoRegra = 'negocio' | 'comportamento';
-export const TIPOS_REGRA: { id: TipoRegra; sigla: string; rotulo: string; o_que: string }[] = [
-  { id: 'negocio', sigla: 'RN', rotulo: 'Regra de negócio', o_que: 'O que a empresa exige: condições, prazos, limites e cálculos.' },
-  { id: 'comportamento', sigla: 'RC', rotulo: 'Regra de comportamento', o_que: 'Como as pessoas devem agir ao executar o processo.' },
+/**
+ * Os tipos de regra (decisões 89 e 91): de negócio (o que a empresa exige), de comportamento (como as pessoas devem
+ * agir) e definição (o que um termo quer dizer no processo). `reconhecer` e `exemplos` alimentam a ajuda da tela,
+ * para quem não sabe a diferença.
+ */
+export type TipoRegra = 'negocio' | 'comportamento' | 'definicao';
+export const TIPOS_REGRA: { id: TipoRegra; sigla: string; rotulo: string; o_que: string; reconhecer: string; exemplos: string[] }[] = [
+  {
+    id: 'negocio', sigla: 'RN', rotulo: 'Regra de negócio', o_que: 'O que a empresa exige: condições, prazos, limites e cálculos.',
+    reconhecer: 'Vale não importa quem executa. Dá para conferir olhando o resultado ou o registro, sem ver a pessoa trabalhando.',
+    exemplos: ['Só entra no sorteio o cupom recebido até o fechamento da urna.', 'Acima de R$ 50 mil, só o diretor aprova.', 'O prêmio é retirado em até 60 dias.'],
+  },
+  {
+    id: 'comportamento', sigla: 'RC', rotulo: 'Regra de comportamento', o_que: 'Como as pessoas devem agir ao executar o processo.',
+    reconhecer: 'É sobre a conduta de quem faz: postura, comunicação, cuidado, sigilo. Só dá para conferir observando a pessoa.',
+    exemplos: ['Só a apresentação anuncia o ganhador no ar.', 'O atendente não discute com o cliente: chama o supervisor.', 'Não se comenta o resultado antes da gravação.'],
+  },
+  {
+    id: 'definicao', sigla: 'DF', rotulo: 'Definição', o_que: 'O que uma palavra quer dizer neste processo.',
+    reconhecer: 'Não é algo que se cumpre ou descumpre: é o significado de um termo de que as regras dependem.',
+    exemplos: ['Projeto estratégico: projeto novo que muda o que a empresa oferece ou que passa de R$ 100 mil.', 'Cupom válido: cupom físico, preenchido por inteiro e sem rasura.'],
+  },
 ];
-export const rotuloDoTipo = (t: TipoRegra) => (t === 'comportamento' ? 'Regra de comportamento' : 'Regra de negócio');
-/** O código da regra confirmada: RN-01, RC-02. */
-export const codigoDaRegra = (tipo: TipoRegra, numero: number | null | undefined) => (numero ? `${tipo === 'comportamento' ? 'RC' : 'RN'}-${String(numero).padStart(2, '0')}` : '');
+const tipoDaRegra = (t: TipoRegra) => TIPOS_REGRA.find((x) => x.id === t) ?? TIPOS_REGRA[0];
+export const rotuloDoTipo = (t: TipoRegra) => tipoDaRegra(t).rotulo;
+/** O código da regra confirmada: RN-01, RC-02, DF-01. */
+export const codigoDaRegra = (tipo: TipoRegra, numero: number | null | undefined) => (numero ? `${tipoDaRegra(tipo).sigla}-${String(numero).padStart(2, '0')}` : '');
 
 /**
  * Um trecho de fala. `inicio_ms`/`fim_ms`: posição na linha do tempo da conversa (desde o começo da

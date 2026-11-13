@@ -172,7 +172,10 @@ export async function definirConfirmador(processoId: string, d: z.infer<typeof C
 // --- Criar, editar, confirmar, descartar, arquivar ---
 
 const Texto = z.string().trim().min(3, 'Escreva a regra.').max(600, 'A regra pode ter até 600 caracteres.');
-const Tipo = z.enum(['negocio', 'comportamento']);
+const Tipo = z.enum(['negocio', 'comportamento', 'definicao']);
+// O banco ainda não aceita o tipo "definicao" (falta a migração 0025): o check da tabela recusa com 23514.
+const MSG_SEM_DEFINICAO = 'O tipo Definição ainda não está ligado neste ambiente (falta aplicar a migração 0025 no banco).';
+const semDefinicao = (e: { code?: string } | null | undefined, tipo: TipoRegra) => tipo === 'definicao' && e?.code === '23514';
 const PopId = z.string().regex(UUID, 'POP inválido.').nullable();
 export const NovaRegraSchema = z.object({ texto: Texto, tipo: Tipo, pop_id: PopId.optional() });
 export const AlteracaoSchema = z.object({
@@ -198,6 +201,7 @@ async function comNumero<T>(processoId: string, tipo: TipoRegra, gravar: (numero
   for (let tentativa = 0; ; tentativa++) {
     const { data, error } = await gravar(await proximoNumero(processoId, tipo));
     if (!error) return data;
+    if (semDefinicao(error, tipo)) throw new ErroApi(503, MSG_SEM_DEFINICAO, 'sem_definicao');
     if (error.code !== '23505' || tentativa >= 3) throw error;
   }
 }
@@ -252,6 +256,7 @@ export async function alterar(id: string, d: z.infer<typeof AlteracaoSchema>, pe
     numero = (r as { numero: number }).numero;
   } else {
     const { error } = await gravar();
+    if (semDefinicao(error, tipo)) throw new ErroApi(503, MSG_SEM_DEFINICAO, 'sem_definicao');
     if (error) throw error;
   }
   return { ok: true as const, codigo: codigoDaRegra(tipo, d.acao === 'confirmar' || regra.situacao === 'confirmada' ? numero : null) };
@@ -313,7 +318,7 @@ export const AnaliseRegrasSchema = z.object({
   resumo: z.string().describe('Um parágrafo em HTML simples (<p>): do que a conversa tratou e que assuntos de regra apareceram'),
   regras: z.array(z.object({
     texto: z.string().describe('A regra em uma frase afirmativa, no presente, que se entende sem a conversa'),
-    tipo: z.enum(['negocio', 'comportamento']),
+    tipo: z.enum(['negocio', 'comportamento', 'definicao']),
     fala: z.number().int().describe('O número (#) da fala do entrevistado de onde a regra saiu'),
     trecho: z.string().describe('A parte da fala que sustenta a regra, como foi dita, até 300 caracteres'),
     pop: z.number().int().describe('O número do POP em <pops> a que a regra se aplica; 0 para o processo inteiro'),
@@ -342,7 +347,7 @@ O que é uma regra: uma afirmação que restringe ou orienta o trabalho e que al
 Produza, em português do Brasil:
 1. "regras": cada regra que a pessoa afirmou ou confirmou, uma por item.
    - "texto": uma frase só, afirmativa, no presente, que se entende sem a conversa, com o valor, o prazo ou a condição que a pessoa disse. Sem "o entrevistado disse". Uma regra por frase: se a fala traz duas regras, são dois itens. Mas o que completa uma regra fica nela, não vira item à parte: quem autoriza, quem aprova ou a quem se aplica entra na mesma frase ("um projeto estratégico só começa depois do aval do CEO", e não uma regra para "precisa de validação" e outra para "o CEO dá o aval").
-   - "tipo": "negocio" para o que a empresa exige (condições, prazos, limites, alçadas, cálculos, obrigações e proibições do negócio), inclusive o que um cargo pode ou não pode decidir; "comportamento" para como as pessoas devem agir ao executar (postura, comunicação, cuidado, sigilo, quem fala o quê e quando).
+   - "tipo": "negocio" para o que a empresa exige (condições, prazos, limites, alçadas, cálculos, obrigações e proibições do negócio), inclusive o que um cargo pode ou não pode decidir; "comportamento" para como as pessoas devem agir ao executar (postura, comunicação, cuidado, sigilo, quem fala o quê e quando); "definicao" para o que um termo quer dizer neste processo, quando a pessoa explicou o significado de uma palavra de que as regras dependem. A definição se escreve com o termo, dois-pontos e o significado ("Projeto estratégico: projeto novo que muda o que a empresa oferece."). Só entra a definição que a pessoa deu com clareza; termo usado sem explicação, ou explicado com "talvez" e "acho que", vira pendência ("O que faz um projeto ser estratégico?").
    - "fala": o número (#) da fala do entrevistado de onde a regra saiu, a mais direta.
    - "trecho": a parte dessa fala que sustenta a regra, com as palavras da pessoa, até 300 caracteres. Pode cortar o começo e o fim. Tire as hesitações e repetições ("eh", "é...", "né", sílabas repetidas como "proje- projeto") e corrija erros evidentes do reconhecimento de voz, sem trocar nem acrescentar palavras.
    - "pop": o número do POP em <pops> a que a regra se aplica, só quando a regra fala do que aquele POP faz (o assunto dela aparece no nome ou no objetivo do POP); 0 quando vale para o processo inteiro, quando não há <pops> ou quando há qualquer dúvida.
@@ -444,7 +449,11 @@ export async function guardarSugestoes(entrevista: { id: string; processo_id: st
   if (e1) throw e1;
   const novas = sugestoesDaAnalise(a, entrevista.turnos, c);
   if (novas.length) {
-    const { error } = await db.from('regras').insert(novas.map((n) => ({ ...n, tenant_id: TENANT_PADRAO, processo_id: entrevista.processo_id, situacao: 'sugerida', origem: 'maia', entrevista_id: entrevista.id })));
+    const linhas = (lista: typeof novas) => lista.map((n) => ({ ...n, tenant_id: TENANT_PADRAO, processo_id: entrevista.processo_id, situacao: 'sugerida', origem: 'maia', entrevista_id: entrevista.id }));
+    let { error } = await db.from('regras').insert(linhas(novas));
+    // Banco ainda sem o tipo "definicao" (migração 0025): as definições entram como regra de negócio, para não se
+    // perderem; quem revisa troca o tipo depois.
+    if (error?.code === '23514' && novas.some((n) => n.tipo === 'definicao')) ({ error } = await db.from('regras').insert(linhas(novas.map((n) => (n.tipo === 'definicao' ? { ...n, tipo: 'negocio' as const } : n)))));
     if (error) throw error;
   }
   for (const e of a.esclarecimentos ?? []) {

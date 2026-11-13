@@ -1845,3 +1845,36 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
   .regra-linha { flex-wrap: wrap; }
   .chip-finalidade { margin-left: 0; }
 }
+
+/* Definição, o terceiro tipo de regra, e a ajuda dos tipos (decisão 91). O botão de ajuda é rosa claro, para chamar a atenção. */
+.chip-regra.chip-definicao { background: #fff; color: var(--indigo-700); box-shadow: inset 0 0 0 1px var(--indigo-300); }
+.regra-codigo.codigo-definicao { background: #fff; color: var(--indigo-700); box-shadow: inset 0 0 0 1px var(--indigo-300); }
+.lateral-icone.icone-tipo-negocio { background: var(--indigo-100); color: var(--indigo-700); }
+.lateral-icone.icone-tipo-definicao { background: #fff; color: var(--indigo-700); box-shadow: inset 0 0 0 1px var(--indigo-300); }
+.btn-ajuda { flex: none; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px 0 10px; border: 1px solid var(--rosa-400); border-radius: 999px; background: var(--rosa-100); color: #9F1239; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.btn-ajuda:hover { background: #FBCFD9; border-color: var(--rosa-600); }
+.btn-ajuda:focus-visible { outline: 2px solid var(--rosa-600); outline-offset: 2px; }
+.btn-ajuda.so-icone { width: 36px; padding: 0; justify-content: center; }
+.legenda-com-ajuda { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.legenda-com-ajuda .btn-ajuda { height: 30px; font-size: 12px; }
+.overlay.sobre-dialogo { z-index: 60; }
+.dialogo-ajuda { gap: 18px; }
+.dialogo-ajuda .dialog-fechar { margin: -6px -8px 0 0; }
+.lateral-icone.icone-ajuda { background: var(--rosa-100); color: #9F1239; }
+.ajuda-tipos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.ajuda-tipo { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; border: 1px solid var(--neutro-borda); border-radius: 16px; }
+.ajuda-tipo-topo { display: flex; align-items: center; gap: 12px; }
+.ajuda-tipo-topo .lateral-icone { width: 36px; height: 36px; border-radius: 10px; }
+.ajuda-tipo-topo strong { flex: 1; font-size: 16px; font-weight: 600; }
+.ajuda-tipo-topo .regra-codigo { min-width: 0; }
+.ajuda-tipo p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--neutro-texto-2); }
+.ajuda-tipo .ajuda-o-que { font-size: 15px; color: var(--neutro-texto); }
+.ajuda-tipo p b { font-weight: 600; color: var(--neutro-texto); }
+.ajuda-rotulo { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--neutro-rotulo); }
+.ajuda-exemplos { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5; color: var(--neutro-texto); }
+.ajuda-nao-e { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; border-radius: 16px; background: var(--rosa-50); border: 1px solid var(--rosa-100); }
+.ajuda-nao-e strong { font-size: 14px; font-weight: 600; }
+.ajuda-nao-e p { margin: 0 0 8px; font-size: 14px; line-height: 1.55; color: var(--neutro-texto-2); }
+.ajuda-nao-e p:last-child { margin-bottom: 0; }
+.regras-revisar .sec-titulo { align-items: flex-start; }
+@media (max-width: 700px) { .btn-ajuda:not(.so-icone) { white-space: normal; height: auto; min-height: 36px; padding: 6px 14px 6px 10px; text-align: left; } }

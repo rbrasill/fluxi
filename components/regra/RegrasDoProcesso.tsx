@@ -24,6 +24,8 @@ const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.
 const mmss = (ms: number) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, '0')}`;
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 type Filtro = 'todas' | TipoRegra;
+const ICONE_DO_TIPO: Record<TipoRegra, string> = { negocio: 'maleta', comportamento: 'pessoa', definicao: 'livro' };
+const ROTULO_FILTRO: Record<TipoRegra, string> = { negocio: 'Negócio', comportamento: 'Comportamento', definicao: 'Definição' };
 
 export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, aoConvidar }: {
   processoId: string; arquivado: boolean;
@@ -44,6 +46,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
   const [pessoas, setPessoas] = useState<PessoaConvidavel[] | null>(null);
   const [escolhendo, setEscolhendo] = useState(false);
   const [iniciando, setIniciando] = useState(false);
+  const [ajuda, setAjuda] = useState(false); // a explicação dos tipos de regra (decisão 91)
   const audio = useRef<HTMLAudioElement | null>(null);
 
   const carregar = () => listarRegras(processoId).then((r) => { setD(r); setErro(''); }).catch((e) => setErro(msg(e)));
@@ -79,10 +82,17 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
     try {
       const { url, segundos } = await audioDaRegra(r.id);
       // Vai para o ponto da fala assim que a gravação informa o que tem (antes disso, o navegador não deixa buscar).
-      a.onloadedmetadata = () => { try { a.currentTime = segundos; } catch { /* sem busca: toca do começo */ } };
+      // Insiste até o áudio estar de fato no ponto: conforme o navegador, a primeira tentativa não pega.
+      let noPonto = segundos <= 0;
+      const posicionar = () => {
+        if (noPonto) return;
+        try { a.currentTime = segundos; noPonto = a.currentTime >= segundos - 0.25; } catch { /* sem busca: toca do começo */ }
+      };
+      a.onloadedmetadata = a.oncanplay = posicionar;
       a.onended = a.onpause = () => setTocando((t) => (t === r.id ? '' : t));
       a.src = url;
       await a.play();
+      posicionar();
     } catch (e) { setTocando(''); void avisar('Não foi possível tocar o trecho.', msg(e)); }
   }
 
@@ -99,7 +109,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
   }
 
   const chipTipo = (tipo: TipoRegra) => (
-    <span className={`chip-regra chip-${tipo}`}><Icone nome={tipo === 'negocio' ? 'maleta' : 'pessoa'} tamanho={13} />{rotuloDoTipo(tipo)}</span>
+    <span className={`chip-regra chip-${tipo}`}><Icone nome={ICONE_DO_TIPO[tipo]} tamanho={13} />{rotuloDoTipo(tipo)}</span>
   );
 
   return (
@@ -114,9 +124,12 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
 
         {sugeridas.length > 0 && (
           <section className="regras-revisar" aria-labelledby="titulo-revisar">
-            <div className="sec-cabeca">
-              <h3 id="titulo-revisar">Para revisar</h3>
-              <p>A Maia encontrou estas regras nas conversas. Nada entra no processo sem {pode ? 'a sua confirmação' : `a confirmação de ${quemConfirma}`}.</p>
+            <div className="sec-titulo">
+              <div className="sec-cabeca">
+                <h3 id="titulo-revisar">Para revisar</h3>
+                <p>A Maia encontrou estas regras nas conversas. Nada entra no processo sem {pode ? 'a sua confirmação' : `a confirmação de ${quemConfirma}`}.</p>
+              </div>
+              <BotaoAjudaTipos aoAbrir={() => setAjuda(true)} />
             </div>
             {sugeridas.map((r) => (
               <article key={r.id} className={`cartao regra-sugerida${r.conflito ? ' com-conflito' : ''}`} data-regra={r.id}>
@@ -175,8 +188,9 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
               {confirmadas.length > 0 && (
                 <div className="segmented filtro-pops" role="tablist" aria-label="Filtrar regras">
                   <button type="button" role="tab" aria-selected={filtro === 'todas'} onClick={() => setFiltro('todas')}>Todas<span className="conta-aba">{confirmadas.length}</span></button>
-                  <button type="button" role="tab" aria-selected={filtro === 'negocio'} onClick={() => setFiltro('negocio')}>Negócio<span className="conta-aba">{confirmadas.filter((r) => r.tipo === 'negocio').length}</span></button>
-                  <button type="button" role="tab" aria-selected={filtro === 'comportamento'} onClick={() => setFiltro('comportamento')}>Comportamento<span className="conta-aba">{confirmadas.filter((r) => r.tipo === 'comportamento').length}</span></button>
+                  {TIPOS_REGRA.map((t) => (
+                    <button key={t.id} type="button" role="tab" aria-selected={filtro === t.id} onClick={() => setFiltro(t.id)}>{ROTULO_FILTRO[t.id]}<span className="conta-aba">{confirmadas.filter((r) => r.tipo === t.id).length}</span></button>
+                  ))}
                 </div>
               )}
               {pode && <button type="button" className="btn" onClick={() => setEditando('nova')}><Icone nome="mais" tamanho={16} />Nova regra</button>}
@@ -264,11 +278,14 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
         </section>
 
         <section className="cartao cartao-lateral" aria-labelledby="titulo-tipos-regra">
-          <h3 id="titulo-tipos-regra">Tipos de regra</h3>
+          <div className="sec-titulo">
+            <h3 id="titulo-tipos-regra">Tipos de regra</h3>
+            <BotaoAjudaTipos aoAbrir={() => setAjuda(true)} curto />
+          </div>
           <ul className="tipos-regra">
             {TIPOS_REGRA.map((t) => (
               <li key={t.id}>
-                <span className={`lateral-icone ${t.id === 'negocio' ? 'icone-indigo' : ''}`}><Icone nome={t.id === 'negocio' ? 'maleta' : 'pessoa'} tamanho={18} /></span>
+                <span className={`lateral-icone icone-tipo-${t.id}`}><Icone nome={ICONE_DO_TIPO[t.id]} tamanho={18} /></span>
                 <div><strong>{t.rotulo} · {t.sigla}</strong><p>{t.o_que}</p></div>
               </li>
             ))}
@@ -297,19 +314,74 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
       </aside>
 
       {editando && (
-        <DialogoRegra regra={editando === 'nova' ? null : editando} pops={d.pops} aoFechar={() => setEditando(null)}
+        <DialogoRegra regra={editando === 'nova' ? null : editando} pops={d.pops} aoFechar={() => setEditando(null)} aoPedirAjuda={() => setAjuda(true)}
           aoSalvar={async (dados) => {
             if (editando === 'nova') await criarRegra(processoId, dados); else await editarRegra(editando.id, dados);
             setEditando(null);
             await carregar();
           }} />
       )}
+      {ajuda && <AjudaTipos aoFechar={() => setAjuda(false)} />}
     </div>
   );
 }
 
+/** O botão de ajuda, bem à vista (decisão 91): abre a explicação da diferença entre os tipos de regra. */
+function BotaoAjudaTipos({ aoAbrir, curto = false }: { aoAbrir: () => void; curto?: boolean }) {
+  return (
+    <button type="button" className={`btn-ajuda${curto ? ' so-icone' : ''}`} onClick={aoAbrir} aria-label="Qual é a diferença entre os tipos de regra?" title="Qual é a diferença entre os tipos de regra?">
+      <Icone nome="info" tamanho={curto ? 18 : 16} />{!curto && 'Qual é a diferença entre os tipos?'}
+    </button>
+  );
+}
+
+/** A explicação dos tipos de regra, para quem não sabe a diferença: o que é cada um, como reconhecer e exemplos. */
+function AjudaTipos({ aoFechar }: { aoFechar: () => void }) {
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') aoFechar(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [aoFechar]);
+  return createPortal(
+    <div className="overlay sobre-dialogo" role="dialog" aria-modal="true" aria-labelledby="ajuda-tipos-titulo" onClick={aoFechar}>
+      <div className="dialog dialog-lg dialogo-ajuda" onClick={(e) => e.stopPropagation()}>
+        <div className="dialogo-topo">
+          <span className="lateral-icone icone-ajuda"><Icone nome="info" tamanho={22} /></span>
+          <div className="dialogo-topo-texto">
+            <h2 id="ajuda-tipos-titulo">Regra de negócio, de comportamento ou definição?</h2>
+            <p className="notice">Toda regra do processo entra em um destes três tipos. A diferença está no que ela controla.</p>
+          </div>
+          <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} title="Fechar" aria-label="Fechar" autoFocus><Icone nome="fechar" tamanho={18} /></button>
+        </div>
+        <ul className="ajuda-tipos">
+          {TIPOS_REGRA.map((t) => (
+            <li key={t.id} className={`ajuda-tipo ajuda-${t.id}`}>
+              <div className="ajuda-tipo-topo">
+                <span className={`lateral-icone icone-tipo-${t.id}`}><Icone nome={ICONE_DO_TIPO[t.id]} tamanho={18} /></span>
+                <strong>{t.rotulo}</strong><span className={`regra-codigo codigo-${t.id}`}>{t.sigla}</span>
+              </div>
+              <p className="ajuda-o-que">{t.o_que}</p>
+              <p className="ajuda-reconhecer"><b>Como reconhecer:</b> {t.reconhecer}</p>
+              <span className="ajuda-rotulo">Exemplos</span>
+              <ul className="ajuda-exemplos">{t.exemplos.map((x) => <li key={x}>{x}</li>)}</ul>
+            </li>
+          ))}
+        </ul>
+        <div className="ajuda-nao-e">
+          <strong>Na dúvida</strong>
+          <p>Pergunte: dá para conferir sem ver a pessoa trabalhando? Se sim, é regra de negócio. Se depende do jeito de agir de quem faz, é de comportamento. Se só explica o que uma palavra quer dizer, é definição.</p>
+          <strong>O que não é regra</strong>
+          <p>Etapa do processo (o que se faz, e em que ordem) fica no fluxograma e no POP. Recomendação (“o ideal é…”) só vira regra quando é exigida.</p>
+        </div>
+        <div className="dialog-actions"><button type="button" className="btn btn-primary" onClick={aoFechar}>Entendi</button></div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /** Escrever uma regra nova (já nasce confirmada) ou editar uma regra: o texto, o tipo e a que se aplica. */
-function DialogoRegra({ regra, pops, aoSalvar, aoFechar }: { regra: Regra | null; pops: { id: string; rotulo: string }[]; aoSalvar: (d: DadosDaRegra) => Promise<void>; aoFechar: () => void }) {
+function DialogoRegra({ regra, pops, aoSalvar, aoFechar, aoPedirAjuda }: { regra: Regra | null; pops: { id: string; rotulo: string }[]; aoSalvar: (d: DadosDaRegra) => Promise<void>; aoFechar: () => void; aoPedirAjuda: () => void }) {
   const [texto, setTexto] = useState(regra?.texto ?? '');
   const [tipo, setTipo] = useState<TipoRegra>(regra?.tipo ?? 'negocio');
   const [pop, setPop] = useState(regra?.pop?.id ?? '');
@@ -328,10 +400,10 @@ function DialogoRegra({ regra, pops, aoSalvar, aoFechar }: { regra: Regra | null
         {!regra && <p className="notice">A regra escrita aqui já entra confirmada no processo.</p>}
         <label className="field">
           <span>Regra</span>
-          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} maxLength={600} required minLength={3} autoFocus placeholder="Ex.: Só entram no sorteio os cupons recebidos até o fechamento da urna." />
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} maxLength={600} required minLength={3} autoFocus placeholder={`Ex.: ${TIPOS_REGRA.find((t) => t.id === tipo)!.exemplos[0]}`} />
         </label>
         <fieldset className="opcoes-acesso">
-          <legend>Tipo</legend>
+          <legend className="legenda-com-ajuda">Tipo<BotaoAjudaTipos aoAbrir={aoPedirAjuda} /></legend>
           {TIPOS_REGRA.map((t) => (
             <label key={t.id} className={`opcao-acesso${tipo === t.id ? ' marcada' : ''}`}>
               <input type="radio" name="tipo-regra" value={t.id} checked={tipo === t.id} onChange={() => setTipo(t.id)} />

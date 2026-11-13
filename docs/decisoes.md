@@ -729,6 +729,14 @@ A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta
   - pendência é sobre regra, não sobre como uma tarefa é feita (formato, canal, antecedência).
 - As regras já confirmadas não mudam. Nada muda no banco.
 
+## 91. Definição como terceiro tipo de regra, ajuda dos tipos e a saudação da Maia (13/11/2026)
+
+- **Definição (DF):** além da regra de negócio (RN) e da regra de comportamento (RC), a regra pode ser uma definição: o que um termo quer dizer no processo ("Projeto estratégico: …"). As regras dependem dessas palavras, e a primeira entrevista real mostrou isso (a regra sobre projetos estratégicos ficou sem dizer quais são). Tem numeração própria (DF-01) e filtro na lista. Boa prática ("o ideal é") continua fora: não é regra.
+- **Maia:** na entrevista de regras, quando uma regra depende de uma palavra que cada um entende de um jeito, ela pergunta o que a palavra quer dizer, com um exemplo do que é e do que não é, e confirma. A análise registra como definição só o que a pessoa explicou com clareza; termo vago vira pendência.
+- **Ajuda dos tipos:** um botão de informação bem à vista, em rosa claro, abre a explicação da diferença entre os três tipos (o que é, como reconhecer, exemplos, o que não é regra). Fica em "Para revisar", no cartão "Tipos de regra" e ao lado da escolha do tipo, ao criar ou editar uma regra. O texto sai de `TIPOS_REGRA`, em `lib/entrevista/topicos.ts`.
+- **Saudação:** a Maia cumprimenta com "bom dia", "boa tarde" ou "boa noite", pelo horário de Brasília na hora em que a ligação começa (5h às 12h, 12h às 18h, e o resto), na abertura e quando a pessoa volta. Vale para as duas finalidades.
+- **Banco:** migração 0025 (o tipo `definicao` na tabela `regras`). Enquanto ela não está aplicada, criar uma definição à mão avisa o que falta, e a definição que a Maia sugerir entra como regra de negócio, para não se perder.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
