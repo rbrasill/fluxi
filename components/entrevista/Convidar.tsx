@@ -87,6 +87,7 @@ export function Convidar({ processoId, processoNome, indisponiveis, finalidadeIn
             {FINALIDADES.map((f) => (
               <label key={f.id} className={`opcao-acesso${finalidade === f.id ? ' marcada' : ''}`}>
                 <input type="radio" name="finalidade" value={f.id} checked={finalidade === f.id} onChange={() => trocarFinalidade(f.id)} />
+                <i className="opcao-icone" aria-hidden="true"><Icone nome={f.id === 'regras' ? 'balanca' : 'fluxo'} tamanho={20} /></i>
                 <span><strong>{f.rotulo}</strong><small>{f.resumo}</small></span>
               </label>
             ))}
