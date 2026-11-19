@@ -797,6 +797,12 @@ Quem cadastra pode digitar o nome ou o e-mail errado, e a única saída era remo
 - O e-mail novo passa pelas mesmas regras do cadastro (domínio corporativo, sem repetir) e derruba a sessão aberta com o e-mail antigo.
 - O administrador não muda o próprio e-mail, para um erro de digitação não o trancar do lado de fora; o próprio nome ele muda.
 
+## 100. Etapas da ficha em texto simples
+
+O formato do redesign (decisão 85), com caixas "Entra" e "Sai" em cada etapa, ficou difícil de ler, e nem toda etapa tem uma entrada e uma saída claras. Cada etapa volta a ser texto simples: nome, responsável, descrição e, quando houver, linhas curtas "Precisa de:", "Resulta em:" e "Usa:". A regra de negócio e a exceção continuam em destaque, cada uma na sua caixa colorida.
+
+Na análise, ferramentas, entradas e saídas só entram quando a pessoa disse; a IA não deduz um documento ou um resultado para preencher a lista.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

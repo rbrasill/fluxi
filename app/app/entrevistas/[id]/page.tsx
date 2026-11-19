@@ -685,17 +685,17 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
 
 function FichaEtapa({ etapa }: { etapa: Etapa }) {
   const lista = (v: string[]) => (v.length === 1 ? <p>{v[0]}</p> : <ul className="ficha-lista">{v.map((x, i) => <li key={i}>{x}</li>)}</ul>);
+  // Texto corrido, em linhas simples (decisão 100): só o que foi dito na conversa, sem caixas de entrada e saída.
+  const detalhes = ([['Precisa de', etapa.entradas], ['Resulta em', etapa.saidas], ['Usa', etapa.ferramentas]] as [string, string[]][]).filter(([, v]) => v.length > 0);
   return (
     <div className="ficha-etapa">
       <h4>{etapa.nome}{etapa.responsavel && <span className="ficha-resp">{etapa.responsavel}</span>}</h4>
       {etapa.descricao && <p>{etapa.descricao}</p>}
-      {(etapa.entradas.length > 0 || etapa.saidas.length > 0) && (
-        <div className="ficha-entra-sai">
-          {etapa.entradas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo"><Icone nome="entra" tamanho={13} />Entra</span>{lista(etapa.entradas)}</div>}
-          {etapa.saidas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo"><Icone nome="sai" tamanho={13} />Sai</span>{lista(etapa.saidas)}</div>}
-        </div>
+      {detalhes.length > 0 && (
+        <dl className="ficha-detalhes">
+          {detalhes.map(([rotulo, v]) => <div key={rotulo}><dt>{rotulo}:</dt> <dd>{v.join('; ')}</dd></div>)}
+        </dl>
       )}
-      {etapa.ferramentas.length > 0 && <div className="ficha-caixa"><span className="ficha-rotulo">Ferramentas</span>{lista(etapa.ferramentas)}</div>}
       {etapa.regras.length > 0 && <div className="ficha-caixa fc-regra"><span className="ficha-rotulo"><Icone nome="balanca" tamanho={14} />{etapa.regras.length === 1 ? 'Regra de negócio' : 'Regras de negócio'}</span>{lista(etapa.regras)}</div>}
       {etapa.excecoes.length > 0 && <div className="ficha-caixa fc-excecao"><span className="ficha-rotulo">{etapa.excecoes.length === 1 ? 'Exceção' : 'Exceções'}</span>{lista(etapa.excecoes)}</div>}
     </div>
