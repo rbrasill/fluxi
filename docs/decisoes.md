@@ -809,6 +809,10 @@ A conferência de termos da IA de texto (decisão 30) descartava a sugestão qua
 
 Agora, se a palavra nova já aparece escrita certa em outro ponto do texto original (mesmo em minúscula ou sem acento), é conserto, não deformação. A deformação de um nome que não existe no texto original ("FluFlig") continua barrada. Quando a recusa acontece, a mensagem agora diz que, se for erro de digitação no texto, vale corrigir lá e pedir de novo.
 
+## 102. A IA de texto melhora de verdade, não só corrige
+
+O pedido pedia "corrigir e deixar mais claro", mas o resto do roteiro ("só corrija", exemplos que mudavam pouco) empurrava o modelo para trocar poucas letras. O pedido agora diz que melhorar é reescrever a forma: desfazer frases confusas ou truncadas, cortar repetições e rodeios, pôr as ideias em ordem e usar termos profissionais e simples. A trava continua: nenhuma informação do texto original some e nada é acrescentado. Entrou um exemplo de reescrita de verdade no roteiro. Não foi possível testar com o modelo real nesta sessão (a chave da IA não está no ambiente), então vale experimentar com textos reais e ajustar.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
