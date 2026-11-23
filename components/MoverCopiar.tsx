@@ -48,11 +48,8 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   const SEM_ORG = '_sem';
   const orgDaArea = (a: AreaResumo) => a.organizacao?.id ?? SEM_ORG;
   const organizacoes = useMemo(() => {
-    const m = new Map<string, { id: string; nome: string; areas: number }>();
-    for (const a of areas ?? []) {
-      const id = orgDaArea(a);
-      m.set(id, { id, nome: a.organizacao?.nome ?? 'Sem organização', areas: (m.get(id)?.areas ?? 0) + 1 });
-    }
+    const m = new Map<string, { id: string; nome: string }>();
+    for (const a of areas ?? []) m.set(orgDaArea(a), { id: orgDaArea(a), nome: a.organizacao?.nome ?? 'Sem organização' });
     return [...m.values()].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
   }, [areas]);
   const areasDaOrg = useMemo(() => (areas ?? []).filter((a) => orgDaArea(a) === orgId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')), [areas, orgId]);
@@ -121,7 +118,7 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
             <label htmlFor="mc-org" className="mover-passo-cab"><span className={`mover-num${orgId ? ' feito' : ''}`}>{orgId ? '✓' : 1}</span>Organização</label>
             <select id="mc-org" value={orgId} onChange={(e) => escolherOrg(e.target.value)} disabled={carregando || enviando} autoFocus>
               <option value="">{carregando ? 'Carregando…' : 'Escolha a organização…'}</option>
-              {organizacoes.map((o) => <option key={o.id} value={o.id}>{o.nome}{o.id === orgAtual ? ' (atual)' : ''} · {plural(o.areas, 'área', 'áreas')}</option>)}
+              {organizacoes.map((o) => <option key={o.id} value={o.id}>{o.nome}{o.id === orgAtual ? ' (atual)' : ''}</option>)}
             </select>
           </div>
           <div className="mover-campo">
@@ -130,7 +127,7 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
               <option value="">{orgId ? 'Escolha a área…' : 'Escolha a organização primeiro'}</option>
               {areasDaOrg.map((a) => (
                 <option key={a.id} value={a.id} disabled={!!processo && acao === 'mover' && a.id === atual}>
-                  {a.nome}{a.id === areaAtual ? ' (atual)' : ''} · {plural(a.total_processos, 'processo', 'processos')}
+                  {a.nome}{a.id === areaAtual ? ' (atual)' : ''}
                 </option>
               ))}
             </select>
@@ -140,7 +137,7 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
               <label htmlFor="mc-proc" className="mover-passo-cab"><span className={`mover-num${destino ? ' feito' : areaId ? '' : ' espera'}`}>{destino ? '✓' : 3}</span>Processo</label>
               <select id="mc-proc" value={destino} onChange={(e) => { setDestino(e.target.value); setErro(''); }} disabled={!areaId || enviando} required>
                 <option value="">{areaId ? (processosDaArea.length ? 'Escolha o processo…' : 'Esta área ainda não tem processos') : 'Escolha a área primeiro'}</option>
-                {processosDaArea.map((x) => <option key={x.id} value={x.id} disabled={acao === 'mover' && x.id === atual}>{x.nome}{x.id === atual ? ' (atual)' : ''} · {plural(x.total.pops, 'POP', 'POPs')}</option>)}
+                {processosDaArea.map((x) => <option key={x.id} value={x.id} disabled={acao === 'mover' && x.id === atual}>{x.nome}{x.id === atual ? ' (atual)' : ''}</option>)}
               </select>
             </div>
           )}
