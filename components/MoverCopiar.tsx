@@ -1,13 +1,15 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
-import { copiarPop, moverPop, type OndePop } from '@/lib/pops';
+import { listarAreas, type AreaResumo } from '@/lib/areas';
+import { copiarPop, listarPops, moverPop, type OndePop, type PopResumo } from '@/lib/pops';
 import { atualizarProcesso, copiarProcesso, listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
 // "Mover ou copiar" (decisão 36). POP: para outro processo. Processo: para outra área. Mover leva o
 // item como está; copiar cria um novo (POP como rascunho, com os prints; processo com a descrição,
 // o fluxograma e cópias dos POPs ativos). Gravações de tela e páginas públicas nunca vão na cópia.
+// O destino se escolhe em etapas (decisão 103): organização, área e processo, cada campo só com o que pertence à
+// escolha anterior; no fim, a lista do que já está no destino. Para um processo, só organização e área.
 
 export type Acao = 'mover' | 'copiar';
 type Pop = { tipo: 'pop'; id: string; nome: string; identificacao?: string | null; processo: OndePop };
@@ -22,10 +24,13 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   aoFechar: () => void;
 }) {
   const [acao, setAcao] = useState<Acao>(acaoInicial);
-  const [destino, setDestino] = useState('');
+  const [orgId, setOrgId] = useState('');
+  const [areaId, setAreaId] = useState('');
+  const [destino, setDestino] = useState(''); // o POP vai para um processo; o processo vai para uma área
   const [nome, setNome] = useState(item.nome);
   const [areas, setAreas] = useState<AreaResumo[] | null>(null);
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
+  const [pops, setPops] = useState<PopResumo[] | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const pop = item.tipo === 'pop' ? item : null;
@@ -33,34 +38,44 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   const atual = pop ? pop.processo?.id ?? null : processo!.area_id;
 
   useEffect(() => {
-    (pop ? listarProcessos() : listarAreas())
-      .then((lista) => (pop ? setProcessos(lista as ProcessoResumo[]) : setAreas(lista as AreaResumo[])))
-      .catch(() => { setProcessos([]); setAreas([]); setErro('Não foi possível carregar os destinos.'); });
+    // As áreas formam os dois primeiros passos; os processos (e, para o POP, os POPs) alimentam o fim da lista.
+    Promise.all([listarAreas(), listarProcessos(), pop ? listarPops() : Promise.resolve([] as PopResumo[])])
+      .then(([a, p, o]) => { setAreas(a); setProcessos(p); setPops(o); })
+      .catch(() => { setAreas([]); setProcessos([]); setPops([]); setErro('Não foi possível carregar os destinos.'); });
   }, [pop]);
 
-  const carregando = pop ? processos === null : areas === null;
-  // Destinos agrupados: processos por "Organização › Área"; áreas por organização.
-  const grupos = useMemo<[string, { id: string; nome: string }[]][]>(() => {
-    if (pop) {
-      const m = new Map<string, { id: string; nome: string }[]>();
-      for (const p of processos ?? []) {
-        const g = [p.area?.organizacao?.nome, p.area?.nome].filter(Boolean).join(' › ') || 'Sem área';
-        m.set(g, [...(m.get(g) ?? []), { id: p.id, nome: p.nome }]);
-      }
-      return [...m];
+  const carregando = areas === null || processos === null || pops === null;
+  const SEM_ORG = '_sem';
+  const orgDaArea = (a: AreaResumo) => a.organizacao?.id ?? SEM_ORG;
+  const organizacoes = useMemo(() => {
+    const m = new Map<string, { id: string; nome: string; areas: number }>();
+    for (const a of areas ?? []) {
+      const id = orgDaArea(a);
+      m.set(id, { id, nome: a.organizacao?.nome ?? 'Sem organização', areas: (m.get(id)?.areas ?? 0) + 1 });
     }
-    return porOrganizacao(areas ?? []).map(([org, lista]) => [org, lista.map((a) => ({ id: a.id, nome: a.nome }))]);
-  }, [pop, processos, areas]);
-  const escolhido = grupos.flatMap(([, l]) => l).find((x) => x.id === destino) ?? null;
-  const mesmo = !!escolhido && escolhido.id === atual;
+    return [...m.values()].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'));
+  }, [areas]);
+  const areasDaOrg = useMemo(() => (areas ?? []).filter((a) => orgDaArea(a) === orgId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')), [areas, orgId]);
+  const processosDaArea = useMemo(() => (processos ?? []).filter((x) => x.area_id === areaId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')), [processos, areaId]);
+  const popsDoProcesso = useMemo(() => (pops ?? []).filter((x) => x.processo_id === destino), [pops, destino]);
+  const areaAtualDoPop = pop?.processo?.area?.id ?? null;
+  const areaAtual = pop ? areaAtualDoPop : atual;
+  const areaDoLocalAtual = (areas ?? []).find((a) => a.id === areaAtual);
+  const orgAtual = areaDoLocalAtual ? orgDaArea(areaDoLocalAtual) : null;
+
   const processoEscolhido = pop ? processos?.find((x) => x.id === destino) ?? null : null;
   const areaEscolhida = processo ? areas?.find((x) => x.id === destino) ?? null : null;
+  const escolhido = pop ? (processoEscolhido ? { id: processoEscolhido.id, nome: processoEscolhido.nome } : null) : areaEscolhida ? { id: areaEscolhida.id, nome: areaEscolhida.nome } : null;
+  const mesmo = !!escolhido && escolhido.id === atual;
+
+  function escolherOrg(id: string) { setOrgId(id); setAreaId(''); setDestino(''); setErro(''); }
+  function escolherArea(id: string) { setAreaId(id); setDestino(processo ? id : ''); setErro(''); }
 
   // Mudar de ação: mover não aceita o destino atual; a cópia no mesmo lugar ganha "(cópia)" no nome.
   function mudarAcao(a: Acao) {
     setAcao(a);
     setErro('');
-    if (a === 'mover' && destino === atual) setDestino('');
+    if (a === 'mover' && destino === atual) { setDestino(''); if (processo) setAreaId(''); }
   }
   useEffect(() => { setNome(mesmo ? `${item.nome} (cópia)` : item.nome); }, [mesmo, item.nome]);
 
@@ -100,17 +115,44 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
           <button type="button" role="tab" aria-selected={acao === 'copiar'} onClick={() => mudarAcao('copiar')} disabled={enviando}><Icone nome="copiar" tamanho={16} />Copiar</button>
         </div>
 
-        <label className="field">
-          {pop ? 'Para qual processo?' : 'Para qual área?'}
-          <select value={destino} onChange={(e) => { setDestino(e.target.value); setErro(''); }} disabled={carregando || enviando} required autoFocus>
-            <option value="">{carregando ? 'Carregando…' : pop ? 'Escolha o processo…' : 'Escolha a área…'}</option>
-            {grupos.map(([g, lista]) => (
-              <optgroup key={g} label={g}>
-                {lista.map((x) => <option key={x.id} value={x.id} disabled={acao === 'mover' && x.id === atual}>{x.nome}{x.id === atual ? ' (atual)' : ''}</option>)}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <fieldset className="mover-campos">
+          <legend>{pop ? 'Para qual processo?' : 'Para qual área?'}</legend>
+          <div className="mover-campo">
+            <label htmlFor="mc-org" className="mover-passo-cab"><span className={`mover-num${orgId ? ' feito' : ''}`}>{orgId ? '✓' : 1}</span>Organização</label>
+            <select id="mc-org" value={orgId} onChange={(e) => escolherOrg(e.target.value)} disabled={carregando || enviando} autoFocus>
+              <option value="">{carregando ? 'Carregando…' : 'Escolha a organização…'}</option>
+              {organizacoes.map((o) => <option key={o.id} value={o.id}>{o.nome}{o.id === orgAtual ? ' (atual)' : ''} · {plural(o.areas, 'área', 'áreas')}</option>)}
+            </select>
+          </div>
+          <div className="mover-campo">
+            <label htmlFor="mc-area" className="mover-passo-cab"><span className={`mover-num${areaId ? ' feito' : orgId ? '' : ' espera'}`}>{areaId ? '✓' : 2}</span>Área</label>
+            <select id="mc-area" value={areaId} onChange={(e) => escolherArea(e.target.value)} disabled={!orgId || enviando}>
+              <option value="">{orgId ? 'Escolha a área…' : 'Escolha a organização primeiro'}</option>
+              {areasDaOrg.map((a) => (
+                <option key={a.id} value={a.id} disabled={!!processo && acao === 'mover' && a.id === atual}>
+                  {a.nome}{a.id === areaAtual ? ' (atual)' : ''} · {plural(a.total_processos, 'processo', 'processos')}
+                </option>
+              ))}
+            </select>
+          </div>
+          {pop && (
+            <div className="mover-campo">
+              <label htmlFor="mc-proc" className="mover-passo-cab"><span className={`mover-num${destino ? ' feito' : areaId ? '' : ' espera'}`}>{destino ? '✓' : 3}</span>Processo</label>
+              <select id="mc-proc" value={destino} onChange={(e) => { setDestino(e.target.value); setErro(''); }} disabled={!areaId || enviando} required>
+                <option value="">{areaId ? (processosDaArea.length ? 'Escolha o processo…' : 'Esta área ainda não tem processos') : 'Escolha a área primeiro'}</option>
+                {processosDaArea.map((x) => <option key={x.id} value={x.id} disabled={acao === 'mover' && x.id === atual}>{x.nome}{x.id === atual ? ' (atual)' : ''} · {plural(x.total.pops, 'POP', 'POPs')}</option>)}
+              </select>
+            </div>
+          )}
+          {escolhido && (
+            <section className="mover-existentes" aria-label={pop ? 'POPs do processo escolhido' : 'Processos da área escolhida'}>
+              <p className="mover-passo-cab"><span className="mover-num feito">{pop ? 4 : 3}</span>{pop ? 'POPs que já estão neste processo' : 'Processos que já estão nesta área'}</p>
+              {pop
+                ? (popsDoProcesso.length ? <ul>{popsDoProcesso.map((x) => <li key={x.id}><Icone nome="pop" tamanho={14} /><span>{x.nome}</span></li>)}</ul> : <p className="mover-vazio">Este processo ainda não tem POPs.</p>)
+                : (processosDaArea.length ? <ul>{processosDaArea.map((x) => <li key={x.id}><Icone nome="processos" tamanho={14} /><span>{x.nome}</span></li>)}</ul> : <p className="mover-vazio">Esta área ainda não tem processos.</p>)}
+            </section>
+          )}
+        </fieldset>
 
         {acao === 'copiar' && (
           <label className="field">

@@ -813,6 +813,12 @@ Agora, se a palavra nova já aparece escrita certa em outro ponto do texto origi
 
 O pedido pedia "corrigir e deixar mais claro", mas o resto do roteiro ("só corrija", exemplos que mudavam pouco) empurrava o modelo para trocar poucas letras. O pedido agora diz que melhorar é reescrever a forma: desfazer frases confusas ou truncadas, cortar repetições e rodeios, pôr as ideias em ordem e usar termos profissionais e simples. A trava continua: nenhuma informação do texto original some e nada é acrescentado. Entrou um exemplo de reescrita de verdade no roteiro. Não foi possível testar com o modelo real nesta sessão (a chave da IA não está no ambiente), então vale experimentar com textos reais e ajustar.
 
+## 103. Mover e copiar: destino escolhido em etapas
+
+Com muitos processos e POPs, a lista única de destinos (agrupada por "Organização › Área") ficava longa e difícil de percorrer. O diálogo agora pede o destino em etapas, cada campo só com o que pertence à escolha anterior: organização, área e processo (para o POP). Trocar um campo zera os de baixo. Cada opção mostra a contagem do que tem dentro (por exemplo "4 processos"), e o local de hoje aparece como "(atual)", bloqueado ao mover e permitido ao copiar.
+
+Depois do último campo aparece, só para conferência, o que já está no destino: os POPs do processo escolhido ou, para um processo, os processos da área. Para um processo são só dois campos, organização e área. O texto do que muda e o nome da cópia seguem como eram. A opção foi escolhida em protótipo (a outra era uma lista com caminho e busca).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
