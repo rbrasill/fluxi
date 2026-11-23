@@ -140,7 +140,7 @@ export async function melhorarTexto(p: PedidoMelhoria) {
       // Mesmo instruído, o modelo às vezes deforma um nome ("Fluig" → "FluFlig"): descarta e tenta o próximo.
       const alterados = termosAlterados(textoPuro(html), textoPuro(texto));
       if (alterados.length) {
-        throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Tente de novo.`);
+        throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Se for erro de digitação no seu texto, corrija lá e peça de novo; senão, tente de novo.`);
       }
       return { texto: restaurarReferencias(texto, refs), mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
     },

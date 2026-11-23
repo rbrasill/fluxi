@@ -803,6 +803,12 @@ O formato do redesign (decisão 85), com caixas "Entra" e "Sai" em cada etapa, f
 
 Na análise, ferramentas, entradas e saídas só entram quando a pessoa disse; a IA não deduz um documento ou um resultado para preencher a lista.
 
+## 101. Sugestão da IA: erro de digitação consertado não conta como termo deformado
+
+A conferência de termos da IA de texto (decisão 30) descartava a sugestão quando uma palavra com inicial maiúscula no meio da frase mudava de forma parecida, para pegar casos como "Fluig" virar "FluFlig". Mas "Pedio" e "Pagaemnto" eram erros de digitação do próprio texto, e a IA os consertou ("Pedido", "Pagamento"): a conferência tomou o conserto por deformação e recusou a sugestão toda.
+
+Agora, se a palavra nova já aparece escrita certa em outro ponto do texto original (mesmo em minúscula ou sem acento), é conserto, não deformação. A deformação de um nome que não existe no texto original ("FluFlig") continua barrada. Quando a recusa acontece, a mensagem agora diz que, se for erro de digitação no texto, vale corrigir lá e pedir de novo.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
