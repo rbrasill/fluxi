@@ -167,12 +167,6 @@ body:has(.fundo-pop) { background: var(--fundo-pop); }
 .mover-campo select { width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 12px; font: inherit; font-size: 14px; font-weight: 500; background: #fff; color: var(--neutro-texto); }
 .mover-campo select:focus { outline: none; border-color: var(--indigo-500); box-shadow: 0 0 0 3px var(--indigo-300); }
 .mover-campo select:disabled { background: var(--neutro-fundo); color: var(--neutro-rotulo); cursor: not-allowed; }
-.mover-existentes { padding: 12px 14px; border: 1px solid var(--neutro-borda); border-radius: 14px; background: var(--neutro-fundo); }
-.mover-existentes .mover-passo-cab { margin-bottom: 8px; }
-.mover-existentes ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow-y: auto; }
-.mover-existentes li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--neutro-texto); }
-.mover-existentes li svg { flex: none; color: var(--neutro-rotulo); }
-.mover-vazio { margin: 0; font-size: 13px; font-weight: 300; color: var(--neutro-texto-2); }
 .mover-resumo { padding: 12px 14px; border-radius: 12px; background: var(--primary-soft); font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
 .mover-resumo p { margin: 0; }
 .mover-resumo svg { vertical-align: -2px; margin-right: 2px; }

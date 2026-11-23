@@ -817,7 +817,7 @@ O pedido pedia "corrigir e deixar mais claro", mas o resto do roteiro ("só corr
 
 Com muitos processos e POPs, a lista única de destinos (agrupada por "Organização › Área") ficava longa e difícil de percorrer. O diálogo agora pede o destino em etapas, cada campo só com o que pertence à escolha anterior: organização, área e processo (para o POP). Trocar um campo zera os de baixo. As opções mostram só o nome (a contagem de áreas, processos e POPs na frente do texto foi tirada a pedido), e o local de hoje aparece como "(atual)", bloqueado ao mover e permitido ao copiar.
 
-Depois do último campo aparece, só para conferência, o que já está no destino: os POPs do processo escolhido ou, para um processo, os processos da área. Para um processo são só dois campos, organização e área. O texto do que muda e o nome da cópia seguem como eram. A opção foi escolhida em protótipo (a outra era uma lista com caminho e busca).
+Para um processo são só dois campos, organização e área. O nome da cópia segue como era. A lista "o que já está no destino" e o quadro de resumo do que muda ao mover ou copiar um POP foram tirados a pedido; o resumo de mover ou copiar um processo continua. A opção foi escolhida em protótipo (a outra era uma lista com caminho e busca).
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

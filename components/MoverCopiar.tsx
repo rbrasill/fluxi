@@ -2,14 +2,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { listarAreas, type AreaResumo } from '@/lib/areas';
-import { copiarPop, listarPops, moverPop, type OndePop, type PopResumo } from '@/lib/pops';
+import { copiarPop, moverPop, type OndePop } from '@/lib/pops';
 import { atualizarProcesso, copiarProcesso, listarProcessos, type ProcessoResumo } from '@/lib/processos';
 
 // "Mover ou copiar" (decisão 36). POP: para outro processo. Processo: para outra área. Mover leva o
 // item como está; copiar cria um novo (POP como rascunho, com os prints; processo com a descrição,
 // o fluxograma e cópias dos POPs ativos). Gravações de tela e páginas públicas nunca vão na cópia.
 // O destino se escolhe em etapas (decisão 103): organização, área e processo, cada campo só com o que pertence à
-// escolha anterior; no fim, a lista do que já está no destino. Para um processo, só organização e área.
+// escolha anterior. Para um processo, só organização e área.
 
 export type Acao = 'mover' | 'copiar';
 type Pop = { tipo: 'pop'; id: string; nome: string; identificacao?: string | null; processo: OndePop };
@@ -30,7 +30,6 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   const [nome, setNome] = useState(item.nome);
   const [areas, setAreas] = useState<AreaResumo[] | null>(null);
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
-  const [pops, setPops] = useState<PopResumo[] | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
   const pop = item.tipo === 'pop' ? item : null;
@@ -38,13 +37,13 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   const atual = pop ? pop.processo?.id ?? null : processo!.area_id;
 
   useEffect(() => {
-    // As áreas formam os dois primeiros passos; os processos (e, para o POP, os POPs) alimentam o fim da lista.
-    Promise.all([listarAreas(), listarProcessos(), pop ? listarPops() : Promise.resolve([] as PopResumo[])])
-      .then(([a, p, o]) => { setAreas(a); setProcessos(p); setPops(o); })
-      .catch(() => { setAreas([]); setProcessos([]); setPops([]); setErro('Não foi possível carregar os destinos.'); });
-  }, [pop]);
+    // As áreas formam os dois primeiros passos; os processos formam o terceiro (só para o POP).
+    Promise.all([listarAreas(), listarProcessos()])
+      .then(([a, p]) => { setAreas(a); setProcessos(p); })
+      .catch(() => { setAreas([]); setProcessos([]); setErro('Não foi possível carregar os destinos.'); });
+  }, []);
 
-  const carregando = areas === null || processos === null || pops === null;
+  const carregando = areas === null || processos === null;
   const SEM_ORG = '_sem';
   const orgDaArea = (a: AreaResumo) => a.organizacao?.id ?? SEM_ORG;
   const organizacoes = useMemo(() => {
@@ -54,7 +53,6 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
   }, [areas]);
   const areasDaOrg = useMemo(() => (areas ?? []).filter((a) => orgDaArea(a) === orgId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')), [areas, orgId]);
   const processosDaArea = useMemo(() => (processos ?? []).filter((x) => x.area_id === areaId).sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR')), [processos, areaId]);
-  const popsDoProcesso = useMemo(() => (pops ?? []).filter((x) => x.processo_id === destino), [pops, destino]);
   const areaAtualDoPop = pop?.processo?.area?.id ?? null;
   const areaAtual = pop ? areaAtualDoPop : atual;
   const areaDoLocalAtual = (areas ?? []).find((a) => a.id === areaAtual);
@@ -141,14 +139,6 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
               </select>
             </div>
           )}
-          {escolhido && (
-            <section className="mover-existentes" aria-label={pop ? 'POPs do processo escolhido' : 'Processos da área escolhida'}>
-              <p className="mover-passo-cab"><span className="mover-num feito">{pop ? 4 : 3}</span>{pop ? 'POPs que já estão neste processo' : 'Processos que já estão nesta área'}</p>
-              {pop
-                ? (popsDoProcesso.length ? <ul>{popsDoProcesso.map((x) => <li key={x.id}><Icone nome="pop" tamanho={14} /><span>{x.nome}</span></li>)}</ul> : <p className="mover-vazio">Este processo ainda não tem POPs.</p>)
-                : (processosDaArea.length ? <ul>{processosDaArea.map((x) => <li key={x.id}><Icone nome="processos" tamanho={14} /><span>{x.nome}</span></li>)}</ul> : <p className="mover-vazio">Esta área ainda não tem processos.</p>)}
-            </section>
-          )}
         </fieldset>
 
         {acao === 'copiar' && (
@@ -158,25 +148,6 @@ export function MoverCopiar({ item, acaoInicial = 'mover', aoConcluir, aoFechar 
           </label>
         )}
 
-        {escolhido && pop && acao === 'mover' && (
-          <div className="mover-resumo">
-            <p><Icone nome="mover" tamanho={14} /> O POP sai do processo atual e entra em <b>{escolhido.nome}</b>.</p>
-            <ul>
-              {processoEscolhido && <li>O código do processo no documento passa a ser <b>{processoEscolhido.codigo}</b>.</li>}
-              {processoEscolhido?.area && <li>O campo “Área” passa a <b>{processoEscolhido.area.nome}</b>, se ainda estiver com a área antiga.</li>}
-              <li>As gravações de tela vão junto. A página pública e o link continuam os mesmos.</li>
-            </ul>
-          </div>
-        )}
-        {escolhido && pop && acao === 'copiar' && (
-          <div className="mover-resumo">
-            <p><Icone nome="copiar" tamanho={14} /> Uma cópia entra em <b>{escolhido.nome}</b> como rascunho, com os textos, os prints e as referências.</p>
-            <ul>
-              {pop.identificacao && <li>A identificação continua <b>{pop.identificacao}</b>: ajuste na cópia se a área usa outra numeração.</li>}
-              <li>Gravações de tela e a página pública não vão: a cópia tem link próprio e começa desligada do ar até ser publicada.</li>
-            </ul>
-          </div>
-        )}
         {escolhido && processo && acao === 'mover' && (
           <div className="mover-resumo">
             <p><Icone nome="mover" tamanho={14} /> O processo vai inteiro para <b>{escolhido.nome}</b>{t && (t.pops || t.gravacoes || t.fluxograma) ? ', com:' : '.'}</p>
