@@ -823,6 +823,12 @@ Para um processo são só dois campos, organização e área. O nome da cópia s
 
 A tela Áreas do menu mostrava só os cartões, sem a busca, a ordem e a troca entre cartões e lista que a página da organização tem (decisão 82). As duas agora usam a mesma lista (componente ListaDeAreas): busca sem acento, ordem por nome ou por mais processos, cartões ou lista e o cartão "Nova área" no fim da grade. Na tela Áreas, com mais de uma organização, as áreas continuam agrupadas por organização, e a busca e a ordem valem para todos os grupos.
 
+## 105. O draw.io continua no servidor deles (embed.diagrams.net)
+
+O editor de fluxograma continua abrindo o draw.io hospedado por eles, em modo embed, e não uma cópia nossa. Segundo a página de segurança e a política de privacidade do draw.io (novembro de 2026), o diagrama fica no navegador enquanto é editado e não é gravado nos servidores deles; só passa por lá em exportação para PDF, imagem em navegador antigo, colaboração em tempo real, abrir arquivo por endereço e IA, e é apagado em seguida. O INCFlow usa só exportação SVG e PNG feita no navegador, e o arquivo é guardado no nosso banco (Supabase). As mensagens do editor só são aceitas vindas de embed.diagrams.net.
+
+Pontos em aberto para quando o INCFlow for oferecido a outras empresas: os termos de uso do draw.io não citam o embed.diagrams.net nem uso dentro de um produto vendido a terceiros, e o serviço é gratuito, sem garantia de disponibilidade, podendo mudar ou ser encerrado. Antes de vender, confirmar com o draw.io se esse uso é permitido. Se for preciso sair do servidor deles, o plano B é servir o editor como arquivos estáticos (ou a imagem Docker jgraph/drawio) e trocar só o endereço em lib/drawio.ts; o repositório deles avisa que essa versão é de teste e que há uma versão paga para produção.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
