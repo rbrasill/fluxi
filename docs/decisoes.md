@@ -914,6 +914,27 @@ Como foi conferido: além dos testes automáticos, com 30 entrevistas simuladas 
 - As conversas ficaram mais longas: de 30 a 50 falas da Maia, contra cerca de 20.
 A simulação usa modelos de texto, não o modelo de voz, e dados inventados: serve de indício. A confirmação é a próxima entrevista de verdade.
 
+## 111. Maia: orientações por princípio, adaptadas ao negócio de cada entrevista
+
+Ajuste pedido logo depois da decisão 110: as instruções da Maia não podem ser regras fixas e específicas, iguais para toda situação. Ela conversa com pessoas de áreas, empresas e ramos diferentes, e precisa entender a realidade de cada negócio e conduzir a conversa de acordo com ela. A decisão 110 tinha criado uma lista numerada de itens a percorrer em ordem, com perguntas pensadas para um processo de aprovação (o que faz um caso ser aprovado ou recusado, a partir de que valor muda, o que vem depois da decisão).
+
+O que mudou:
+- **Cada negócio é um.** Uma seção nova, nas duas entrevistas (mapeamento e regras): entender primeiro em que realidade o processo acontece (que negócio é, o que o processo entrega e para quem), falar a língua da pessoa, tratar os exemplos das instruções só como ilustração do jeito de perguntar, e usar o julgamento quando uma orientação não fizer sentido naquele processo. O que não muda: o objetivo da conversa, a abertura e as frases de encerramento.
+- **Caminho, não roteiro.** A sequência da entrevista de regras (visão geral, assunto por assunto, observações do convite, ampliar, fechamento) passou a ser "um caminho que costuma funcionar", que ela adapta à conversa; saiu o "siga nesta ordem".
+- **Ampliar sem lista fixa.** Saiu a lista numerada. Ela continua tendo de procurar o que a pessoa não lembrou de citar, mas olhando os tipos de regra (condições, limites, prazos, obrigações, proibições, exceções, comportamento e os demais) e perguntando só sobre os que fazem sentido naquele processo, com as palavras e as situações dele. O que não cabe, ela pula.
+- **Conferência por julgamento.** Antes do repasse, ela confere se os assuntos citados foram percorridos, se as observações do convite foram perguntadas e confirmadas, se fez as perguntas de ampliação e se ficou algo citado sem detalhe. Deixou de ser uma lista obrigatória de itens.
+- **Primeira pergunta.** Continua sendo a de visão geral, mas os exemplos que ela dá do que procura saem do próprio processo.
+- **Exemplos neutros.** Saíram das instruções e da análise os exemplos tirados do caso de um cliente (viabilidade, premissas, percentuais reais). Entraram exemplos genéricos, e a análise passou a dizer que eles só mostram a forma.
+- Os tipos de regra do objetivo viraram referência ("servem para reconhecer uma regra e lembrar do que procurar"), não lista a cumprir.
+
+O que ficou como estava, de propósito: o objetivo dito na abertura, o foco nas regras, a visão geral primeiro, as observações do convite como pontos a abordar e validar (decisão 110), o aprofundamento de cada regra e o repasse numerado (decisão 109). Na entrevista de mapeamento, a conferência do fim (quem faz, prazos, o que acontece quando dá errado, o que dá problema) também ficou, porque vale para qualquer processo.
+
+Como foi conferido: testes automáticos e 11 novas entrevistas simuladas em texto, agora em quatro ramos fictícios (incorporação, farmácia de hospital, qualidade em indústria de alimentos e secretaria de escola), cada um com nove assuntos de regra inventados.
+- Com a lista fixa da decisão 110, as perguntas saíam iguais em todo lugar e às vezes não cabiam (numa farmácia: "o que acontece depois da decisão?"; numa escola: "o que faz um pedido ser aprovado ou recusado?"). Cobertura: 33 de 36 assuntos.
+- Na primeira versão flexível, a Maia adaptou as perguntas, mas trocou a ampliação por "falta alguma coisa?" e a cobertura caiu para 28 de 36. Por isso a ampliação voltou a ser uma etapa que ela não pula, só que sem lista fixa.
+- Na versão final, 32 de 36, com perguntas na linguagem de cada negócio (na farmácia, armazenamento e transporte dos medicamentos; na escola, como agir quando a família reclama) e conversas um pouco mais curtas.
+É uma simulação com modelos de texto e dados inventados, uma rodada por cenário: serve de indício. A confirmação é nas próximas entrevistas de verdade, de preferência em áreas diferentes.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
