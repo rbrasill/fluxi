@@ -313,13 +313,10 @@ function EntrevistaPage() {
             </>
           )}
           {!complemento && regras && <ul className="dicas">
-            <li>A Maia, a entrevistadora por voz do INCFlow, quer entender as <strong>regras de negócio</strong> deste processo: o que pode, o que não pode, os limites, os prazos e em que condições. Você responde falando, como numa ligação.</li>
-            <li>Não é uma conversa sobre o passo a passo do processo. A Maia pergunta sobre as regras, pede exemplos de casos reais e repete cada regra para você confirmar.</li>
-            <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
-            <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
-            <li>No fim, ela separa as regras que ouviu, cada uma com o trecho da sua fala. Nada passa a valer sozinho: as regras ficam no processo à espera da confirmação de quem cuida dele.</li>
-            <li>Dura o necessário para cobrir as regras. A Maia se despede sozinha quando não há mais o que perguntar; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
-            <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
+            <li><strong>Converse com a Maia por voz:</strong> ela faz perguntas sobre as regras de negócio do processo (o que pode, o que não pode, os limites e os prazos) e você responde naturalmente, como em uma ligação. Ela ouve enquanto fala, e você pode interromper, corrigir ou complementar a qualquer momento.</li>
+            <li><strong>Tire dúvidas em tempo real:</strong> se surgir alguma dúvida sobre conceitos, sistemas ou siglas, a Maia pode pesquisar e responder na hora.</li>
+            <li><strong>Regras organizadas automaticamente:</strong> ao final, a Maia separa as regras que ouviu, para quem cuida do processo confirmar.</li>
+            <li><strong>Dica:</strong> use fones de ouvido, se possível. Caso contrário, mantenha o volume moderado.</li>
           </ul>}
           {!complemento && !regras && <ul className="dicas">
             <li><strong>Converse com a Maia por voz:</strong> ela faz perguntas sobre o processo e você responde naturalmente, como em uma ligação. Ela ouve enquanto fala, e você pode interromper, corrigir ou complementar a qualquer momento.</li>

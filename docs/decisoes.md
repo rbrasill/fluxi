@@ -969,6 +969,10 @@ Conferido só com os testes automáticos; não foi simulado.
 - Saiu o selo que alternava entre "Maia está ouvindo" e "Maia está falando": mudava a todo momento e a esfera já mostra quem fala. Continuam só os avisos de transição ("Chamando a Maia…", "Encerrando a conversa…" e as etapas do processamento).
 - Saiu o contador de tempo da ligação, no topo. A duração continua registrada nas métricas da entrevista.
 
+## 116. Tela de ligar, entrevista de regras: o mesmo formato do mapeamento
+
+O "Como funciona" da entrevista de regras passou para os quatro itens da decisão 114, adaptados: conversar por voz sobre as regras de negócio (o que pode, o que não pode, os limites e os prazos), tirar dúvidas em tempo real, regras organizadas ao final para quem cuida do processo confirmar, e a dica dos fones.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
