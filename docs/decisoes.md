@@ -829,6 +829,15 @@ O editor de fluxograma continua abrindo o draw.io hospedado por eles, em modo em
 
 Pontos em aberto para quando o INCFlow for oferecido a outras empresas: os termos de uso do draw.io não citam o embed.diagrams.net nem uso dentro de um produto vendido a terceiros, e o serviço é gratuito, sem garantia de disponibilidade, podendo mudar ou ser encerrado. Antes de vender, confirmar com o draw.io se esse uso é permitido. Se for preciso sair do servidor deles, o plano B é servir o editor como arquivos estáticos (ou a imagem Docker jgraph/drawio) e trocar só o endereço em lib/drawio.ts; o repositório deles avisa que essa versão é de teste e que há uma versão paga para produção.
 
+## 106. Colaboração em tempo real e IA do draw.io: fica como está
+
+Pesquisa na documentação oficial do draw.io (novembro de 2026), para testes futuros:
+
+- Colaboração em tempo real: várias pessoas editam o mesmo diagrama ao mesmo tempo, cada uma com uma cor, cursor com o nome e seleção destacada. Só funciona com o arquivo guardado no Google Drive, OneDrive, Confluence ou Nextcloud; vem ligada por padrão nesses casos (parâmetro sync=auto, manual ou none). As alterações passam por servidores do draw.io (Cloudflare, União Europeia), criptografadas, e ficam lá no máximo 5 minutos. A página do modo embed não fala desse recurso. Como os fluxogramas do INCFlow ficam no nosso banco, ela não se aplica. Para ter colaboração no INCFlow, o modo embed oferece troca de alterações entre o editor e o sistema (diffSync, getDiff, patch, resetDiff), que a documentação diz servir para construir colaboração; a sincronização entre as pessoas teria de ser feita por nós. A configuração tem ainda shareCursorPosition e showRemoteCursors.
+- IA (Gerar diagrama): cria e altera diagramas a partir de texto, com OpenAI, Claude ou Gemini; gratuita no serviço deles, com pedidos de até 10 mil caracteres. Vai só o texto, a não ser que a pessoa anexe o diagrama; os provedores não treinam com os pedidos e apagam em até 30 dias. Só vem ligada por padrão no app.diagrams.net (enableAi), então está desligada no INCFlow. Dá para usar chave própria (claudeApiKey, gptApiKey, geminiApiKey), mas a configuração vai para o navegador e a chave ficaria visível aos usuários; para uso no mercado, a geração teria de passar pelo nosso servidor. O INCFlow já gera fluxogramas com IA a partir das entrevistas.
+
+Decisão: manter como está; colaboração pode ser testada no futuro.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
