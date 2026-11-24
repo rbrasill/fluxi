@@ -819,6 +819,10 @@ Com muitos processos e POPs, a lista única de destinos (agrupada por "Organiza�
 
 Para um processo são só dois campos, organização e área. O nome da cópia segue como era. A lista "o que já está no destino" e o quadro de resumo do que muda ao mover ou copiar um POP foram tirados a pedido; o resumo de mover ou copiar um processo continua. A opção foi escolhida em protótipo (a outra era uma lista com caminho e busca).
 
+## 104. A tela Áreas igual à lista da organização
+
+A tela Áreas do menu mostrava só os cartões, sem a busca, a ordem e a troca entre cartões e lista que a página da organização tem (decisão 82). As duas agora usam a mesma lista (componente ListaDeAreas): busca sem acento, ordem por nome ou por mais processos, cartões ou lista e o cartão "Nova área" no fim da grade. Na tela Áreas, com mais de uma organização, as áreas continuam agrupadas por organização, e a busca e a ordem valem para todos os grupos.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
