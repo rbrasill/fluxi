@@ -15,6 +15,7 @@ import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { ConversaEmLigacao } from '@/components/entrevista/ConversaEmLigacao';
 import { useAcompanharEntrevista } from '@/lib/entrevista/acompanhar';
+import { RegrasDaConversa } from '@/components/regra/RegrasDaConversa';
 import { aquecerSessaoDeVoz, arquivarEntrevista, confirmacaoDeArquivamento, confirmacaoDeExclusao, deixarAvisoDeEntrevistas, desistirComplemento, encerrarEntrevista, enviarAudioDaEntrevista, excluirEntrevista, obterEntrevista, pegarAvisoDeEntrevistas, reenviarConvite, restaurarEntrevista, retomarEntrevista, type Entrevista } from '@/lib/entrevistas';
 
 // Entrevista por voz com a Maia, só com o GPT-Live (decisão 41), fora do processo. Para quem é entrevistado
@@ -472,6 +473,7 @@ function Resultado({ e, aviso, erro, cabecalho, admin, minha, gestor, arquivada,
                 <span className="selo-maia"><Icone nome="ia" tamanho={14} />Gerado pela Maia</span>
               </div>
               {r.descricao && <div className="descricao-sugerida" dangerouslySetInnerHTML={{ __html: r.descricao }} />}
+              {e.processo && <RegrasDaConversa processoId={e.processo.id} entrevistaId={e.id} />}
               {e.processo && <div className="fluxo-acoes"><Link className="btn btn-primary" href={`/app/processos/${e.processo.id}#regras`}><Icone nome="balanca" tamanho={16} />Ver as regras no processo</Link></div>}
             </section>
           )}

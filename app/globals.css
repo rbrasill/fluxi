@@ -1935,3 +1935,15 @@ html[data-menu='recolhido'] .side .nav-selo { position: absolute; top: 2px; righ
 .regra-ajuste p { margin: 2px 0 0; font-size: 14px; line-height: 1.55; color: var(--neutro-texto-2); overflow-wrap: anywhere; }
 .regra-ajuste-dica { display: block; margin-top: 6px; font-size: 13px; color: #9A3412; }
 .regra-citada { margin: 0; padding: 12px 14px; border-left: 3px solid var(--indigo-300); border-radius: 0 10px 10px 0; background: var(--neutro-fundo); font-size: 14px; line-height: 1.55; color: var(--neutro-texto); }
+
+/* As regras encontradas numa conversa, por tipo, no resultado da entrevista de regras (decisão 109). */
+.regras-conversa-lista { display: flex; flex-direction: column; gap: 18px; }
+.regras-conversa-lista .ficha-subtitulo { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; }
+.regras-conversa-lista .ficha-subtitulo small { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--neutro-fundo); color: var(--neutro-texto-2); font-size: 12px; font-weight: 600; }
+.regras-conversa-lista ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.regras-conversa-lista li { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-top: 1px solid var(--neutro-borda); }
+.regras-conversa-lista li > div { flex: 1; min-width: 0; }
+.regras-conversa-lista li p { margin: 2px 0 0; font-size: 15px; line-height: 1.5; color: var(--neutro-texto); overflow-wrap: anywhere; }
+.regras-conversa-lista .regra-meta { display: block; margin-top: 3px; font-size: 13px; color: var(--neutro-texto-2); }
+.regra-codigo.codigo-revisao { min-width: 92px; background: var(--maia-50); color: var(--maia-800); font-family: inherit; font-weight: 600; white-space: nowrap; }
+.regras-da-conversa .descricao-sugerida ul { margin: 8px 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }

@@ -405,9 +405,9 @@ export const AnaliseRegrasSchema = z.object({
     area: z.string().describe('A área ou o setor da pessoa entrevistada, como ela disse; vazio se ela não disse'),
     funcao: z.string().describe('O que ela faz: o cargo e as atividades do dia a dia, em uma frase curta; vazio se ela não disse'),
   }),
-  resumo: z.string().describe('Um parágrafo em HTML simples (<p>): do que a conversa tratou e que assuntos de regra apareceram'),
+  resumo: z.string().describe('A descrição geral da conversa em HTML simples: um parágrafo curto, uma lista (<ul>) com um item por assunto de regra e, se houver, o que ficou em aberto'),
   regras: z.array(z.object({
-    texto: z.string().describe('A regra em uma frase afirmativa, no presente, que se entende sem a conversa'),
+    texto: z.string().describe('A regra em uma frase curta e direta, afirmativa, no presente, que se entende sem a conversa: a quem vale, o que exige e a condição, o valor ou o prazo'),
     tipo: z.enum(['negocio', 'comportamento', 'definicao']),
     fala: z.number().int().describe('O número (#) da fala do entrevistado de onde a regra saiu'),
     trecho: z.string().describe('A parte da fala que sustenta a regra, como foi dita, até 300 caracteres'),
@@ -437,16 +437,18 @@ O que é uma regra: uma afirmação que restringe ou orienta o trabalho e que al
 Produza, em português do Brasil:
 1. "regras": cada regra que a pessoa afirmou ou confirmou, uma por item.
    - "texto": uma frase só, afirmativa, no presente, que se entende sem a conversa, com o valor, o prazo ou a condição que a pessoa disse. Sem "o entrevistado disse". Uma regra por frase: se a fala traz duas regras, são dois itens. Mas o que completa uma regra fica nela, não vira item à parte: quem autoriza, quem aprova ou a quem se aplica entra na mesma frase ("um projeto estratégico só começa depois do aval do CEO", e não uma regra para "precisa de validação" e outra para "o CEO dá o aval").
-   - "tipo": "negocio" para o que a empresa exige (condições, prazos, limites, alçadas, cálculos, obrigações e proibições do negócio), inclusive o que um cargo pode ou não pode decidir; "comportamento" para como as pessoas devem agir ao executar (postura, comunicação, cuidado, sigilo, quem fala o quê e quando); "definicao" para o que um termo quer dizer neste processo, quando a pessoa explicou o significado de uma palavra de que as regras dependem. A definição se escreve com o termo, dois-pontos e o significado ("Projeto estratégico: projeto novo que muda o que a empresa oferece."). Só entra a definição que a pessoa deu com clareza; termo usado sem explicação, ou explicado com "talvez" e "acho que", vira pendência ("O que faz um projeto ser estratégico?").
+     Redação: escreva para quem nunca ouviu a conversa entender de primeira. Comece por quem ou pelo quê a regra vale, diga o que é exigido, permitido ou proibido com um verbo direto ("deve", "só pode", "não pode", "é de") e termine com a condição, o valor ou o prazo. Frase curta, palavras simples, na ordem direta; sem "pois", "sendo que", "conforme" e sem explicar o motivo. Leve para o texto tudo o que a pessoa disse que delimita a regra (a quem se aplica, em que fase, a base de um percentual, a exceção e quem autoriza): nada do que foi dito fica subentendido, e nada do que não foi dito é acrescentado.
+     Lista de valores do mesmo assunto, ditados em sequência (os parâmetros, percentuais ou limites de um mesmo cálculo ou de uma mesma tabela), é uma regra só, com os itens separados por ponto e vírgula ("As premissas fixas da viabilidade são: despesas administrativas, 4,17%; inadimplência pro-soluto, 5%; marketing, 0,8%."), e não uma regra para cada número; "fala" e "trecho" são da primeira fala da lista. Se o texto passar de 500 caracteres, divida em duas regras por assunto.
+   - "tipo": "negocio" para o que a empresa exige (condições, prazos, limites, alçadas, cálculos, obrigações e proibições do negócio), inclusive o que um cargo pode ou não pode decidir e as conferências e os controles do processo ("se o resultado variar muito em relação ao mês anterior, as informações são reavaliadas"); "comportamento" só para a atitude de quem executa (postura, comunicação, cuidado, sigilo, quem fala o quê e quando); "definicao" para o que um termo quer dizer neste processo, quando a pessoa explicou o significado de uma palavra de que as regras dependem. A definição se escreve com o termo, dois-pontos e o significado ("Projeto estratégico: projeto novo que muda o que a empresa oferece."). Só entra a definição que a pessoa deu com clareza; termo usado sem explicação, ou explicado com "talvez" e "acho que", vira pendência ("O que faz um projeto ser estratégico?").
    - "fala": o número (#) da fala do entrevistado de onde a regra saiu, a mais direta.
    - "trecho": a parte dessa fala que sustenta a regra, com as palavras da pessoa, até 300 caracteres. Pode cortar o começo e o fim. Tire as hesitações e repetições ("eh", "é...", "né", sílabas repetidas como "proje- projeto") e corrija erros evidentes do reconhecimento de voz, sem trocar nem acrescentar palavras.
    - "pop": o número do POP em <pops> a que a regra se aplica, só quando a regra fala do que aquele POP faz (o assunto dela aparece no nome ou no objetivo do POP); 0 quando vale para o processo inteiro, quando não há <pops> ou quando há qualquer dúvida.
    - "conflito_com" e "conflito": se a regra contradiz, ou pode contradizer, uma regra de <regras_confirmadas>, o código dela (por exemplo, "RN-01") e, em uma ou duas frases, o que não bate e o que vale confirmar. Sem conflito, os dois vazios. Detalhar ou complementar uma regra confirmada não é conflito.
    Fidelidade: só entra o que a pessoa disse ou confirmou. Um "isso" ou "exato" depois que a entrevistadora repetiu a regra vale como confirmação; nesse caso, "fala" e "trecho" são da fala em que a pessoa explicou a regra, se houver, ou da confirmação. Não tire regra do bloco <processo> nem de conhecimento geral. Hipótese, opinião ("eu acho que deveria ser") e dificuldade não são regra. A falta de regra também não é regra: "não tem prazo", "não tem formato obrigatório" não entra (só responde a pergunta). Recomendação ("o ideal é", "o melhor é", "costuma ser") também não entra, a não ser que a pessoa diga que é exigido. Regra vaga, sem o valor ou a condição ("tem um prazo para isso"), não entra: vira pendência. O que foi dito depois corrige o que foi dito antes: vale a versão mais recente.
-   Sem repetir: não sugira de novo o que já está, com o mesmo sentido, em <regras_confirmadas>, <sugestoes_em_revisao> ou <regras_descartadas>. Se a pessoa disse algo diferente de uma regra confirmada, sugira a regra como ela disse e aponte o conflito.
+   Sem repetir: não sugira de novo o que já está, com o mesmo sentido, em <regras_confirmadas>, <sugestoes_em_revisao> ou <regras_descartadas>. O que está em <regras_descartadas> foi recusado por quem revisa: não volta com outras palavras, nem juntado a outra regra, nem como conflito. Se a pessoa disse algo diferente de uma regra confirmada, sugira a regra como ela disse e aponte o conflito.
 2. "esclarecimentos": só quando vier o bloco <duvidas> (pontos que a entrevistadora ficou de esclarecer nesta conversa). Para cada dúvida que a pessoa respondeu: o número, a resposta em uma ou duas frases e o trecho da fala. Dúvida sem resposta não entra. A resposta a uma dúvida não vira regra nova em "regras", a não ser que traga uma regra diferente da que está na dúvida.
-3. "resumo": um parágrafo em HTML simples (só <p>, <strong>, <em>): do que a conversa tratou e que assuntos de regra apareceram. Tom de documento.
-4. "pendencias": o que faz falta para fechar uma regra e que a própria pessoa pode responder, escrito como perguntas para uma próxima conversa com ela (vazio se nada). No máximo ${MAX_PENDENCIAS}, as mais importantes primeiro. Entra: regra citada sem o valor, o prazo ou a condição; exceção citada sem quem autoriza. Não entra: como uma tarefa é feita (formato, canal, ferramenta, antecedência), a não ser que a pessoa tenha dito que existe regra sobre isso. Pergunta respondida está fechada, mesmo que a resposta seja curta ou negativa. Curiosidade não é pendência.
+3. "resumo": a descrição geral da conversa, curta e organizada, em HTML simples (só <p>, <ul>, <li> e <strong>). Primeiro, um parágrafo de uma ou duas frases: de que processo se falou e que assuntos de regra apareceram. Depois, uma lista (<ul>) com um item por assunto, cada item com o assunto em <strong>, dois-pontos e, em uma frase curta, o que ficou estabelecido ("<strong>Exceções:</strong> o gerente da área avalia e a diretoria aprova."). Por fim, só se houver, um parágrafo começando por "Ficou em aberto:" com o que faltou. Frases curtas, na ordem direta, tom de documento, sem "o entrevistado disse" e sem copiar o texto das regras palavra por palavra.
+4. "pendencias": o que faz falta para fechar uma regra e que a própria pessoa pode responder, escrito como perguntas para uma próxima conversa com ela (vazio se nada). No máximo ${MAX_PENDENCIAS}, as mais importantes primeiro. Entra: regra citada sem o valor, o prazo ou a condição; exceção citada sem quem autoriza; o que sustenta a regra e ficou implícito: um grupo de coisas citado sem a lista ("as premissas", "os critérios"), um percentual sem a base (de quê?), a quem ou em que fase a regra se aplica, um termo ou uma sigla de que a regra depende e que ninguém explicou. Se o bloco <processo> traz "Pedido de quem convidou" e a conversa não fechou a regra sobre esse assunto, a primeira pendência é a pergunta sobre ele. Não entra: como uma tarefa é feita (formato, canal, ferramenta, antecedência), a não ser que a pessoa tenha dito que existe regra sobre isso. Pergunta respondida está fechada, mesmo que a resposta seja curta ou negativa. Curiosidade não é pendência.
    "pendencias_outra_pessoa": o que a pessoa disse não saber ou ser de outra área: a pergunta e "quem_sabe" (a área ou o cargo que saberia responder). O que vai para uma lista não vai para a outra.
 5. "entrevistado": a área ou o setor da pessoa e o que ela faz, só com o que ela contou sobre si na conversa ou com o que vier no bloco <pessoa>. O que ela não disse fica vazio.
 A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos em aberto. Nesse caso vem o bloco <pendencias_anteriores>: preencha "situacao_pendencias" com a situação de cada uma (respondida: a pessoa respondeu, mesmo em poucas palavras; outra_pessoa: disse não saber ou ser de outra área, com "quem_sabe"; em_aberto: não houve resposta) e deixe "pendencias" vazio. Sem o bloco, "situacao_pendencias" fica vazio.
@@ -457,6 +459,8 @@ export type ContextoDaAnalise = {
   confirmadas: { id: string; codigo: string; texto: string }[];
   emRevisao: string[]; // sugestões de outras conversas, ainda sem confirmação
   descartadas: string[];
+  /** As descartadas com o trecho de onde saíram, para a sugestão recusada não voltar com outras palavras (decisão 109). */
+  recusadas?: { texto: string; trecho: string }[];
   pops: { id: string; rotulo: string; objetivo: string }[];
   duvidas: { id: string; texto: string; conflito: string }[];
 };
@@ -464,13 +468,14 @@ export type ContextoDaAnalise = {
 /** Lê do banco o contexto da análise. As sugestões ainda em revisão desta mesma conversa ficam de fora (elas serão refeitas). */
 export async function contextoDaAnalise(processoId: string, entrevistaId: string): Promise<ContextoDaAnalise> {
   const [{ data, error }, pops, paraMaia] = await Promise.all([
-    supabase().from('regras').select('id, texto, situacao, entrevista_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('situacao', ['sugerida', 'descartada']).order('criado_em'),
+    supabase().from('regras').select('id, texto, trecho, situacao, entrevista_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('situacao', ['sugerida', 'descartada']).order('criado_em'),
     popsDoProcesso(processoId, true),
     regrasParaAMaia(processoId),
   ]);
   if (error) throw error;
-  const linhas = (data ?? []) as { id: string; texto: string; situacao: SituacaoRegra; entrevista_id: string | null }[];
+  const linhas = (data ?? []) as { id: string; texto: string; trecho?: string; situacao: SituacaoRegra; entrevista_id: string | null }[];
   return {
+    recusadas: linhas.filter((l) => l.situacao === 'descartada').map((l) => ({ texto: l.texto, trecho: l.trecho ?? '' })).slice(-80),
     confirmadas: paraMaia.confirmadas,
     emRevisao: linhas.filter((l) => l.situacao === 'sugerida' && l.entrevista_id !== entrevistaId).map((l) => l.texto).slice(0, 60),
     descartadas: linhas.filter((l) => l.situacao === 'descartada').map((l) => l.texto).slice(-40),
@@ -499,11 +504,37 @@ export function montarPedidoRegras(l: { tema: string; contexto: string; turnos: 
 
 const semAcento = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
+const VAZIAS = new Set(['para', 'pela', 'pelo', 'pelas', 'pelos', 'como', 'com', 'que', 'uma', 'das', 'dos', 'nas', 'nos', 'por', 'sem', 'sao', 'ser', 'toda', 'todo', 'cada', 'alem', 'essa', 'esse', 'essas', 'esses', 'tem', 'ter', 'pra', 'mais', 'deve', 'pode']);
+const palavras = (s: string) => new Set(semAcento(s).split(' ').filter((w) => w.length > 2 && !VAZIAS.has(w)));
+/** Quanto dois textos têm das mesmas palavras (0 a 1). */
+function parecenca(a: string, b: string) {
+  const x = palavras(a), y = palavras(b);
+  if (!x.size || !y.size) return 0;
+  let comuns = 0;
+  for (const w of x) if (y.has(w)) comuns++;
+  return comuns / (x.size + y.size - comuns);
+}
+/**
+ * A sugestão é uma regra já descartada por quem revisa, com outras palavras? Sim quando os textos são quase iguais,
+ * ou quando saiu do mesmo trecho da conversa e fala do mesmo assunto. A análise é instruída a não repetir, mas às
+ * vezes repete (juntando com outra regra, por exemplo): aqui a recusa de quem revisa é garantida.
+ */
+export function jaRecusada(texto: string, trecho: string, recusadas: { texto: string; trecho: string }[]) {
+  const t = semAcento(trecho);
+  return recusadas.some((r) => {
+    const p = parecenca(texto, r.texto);
+    if (p >= 0.6) return true;
+    const tr = semAcento(r.trecho);
+    const mesmoTrecho = t.length >= 20 && tr.length >= 20 && (t === tr || t.includes(tr) || tr.includes(t));
+    return mesmoTrecho && p >= 0.3;
+  });
+}
+
 /**
  * Transforma o que a análise devolveu nas linhas a gravar: liga cada regra à fala (o tempo dela na conversa), ao
- * POP e à regra com que conflita. Função pura, para testar sem banco.
+ * POP e à regra com que conflita, e tira o que quem revisa já descartou. Função pura, para testar sem banco.
  */
-export function sugestoesDaAnalise(a: Pick<AnaliseRegras, 'regras'>, turnos: Turno[], c: Pick<ContextoDaAnalise, 'confirmadas' | 'pops'>) {
+export function sugestoesDaAnalise(a: Pick<AnaliseRegras, 'regras'>, turnos: Turno[], c: Pick<ContextoDaAnalise, 'confirmadas' | 'pops' | 'recusadas'>) {
   const porCodigo = new Map(c.confirmadas.map((r) => [r.codigo.toUpperCase(), r.id]));
   const vistos = new Set<string>();
   const saida: { tipo: TipoRegra; texto: string; trecho: string; trecho_ms: number | null; pop_id: string | null; conflito_regra_id: string | null; conflito: string }[] = [];
@@ -511,6 +542,7 @@ export function sugestoesDaAnalise(a: Pick<AnaliseRegras, 'regras'>, turnos: Tur
     const texto = r.texto.replace(/\s+/g, ' ').trim().slice(0, 600);
     const chave = semAcento(texto);
     if (texto.length < 3 || vistos.has(chave)) continue;
+    if (c.recusadas?.length && jaRecusada(texto, r.trecho, c.recusadas)) continue;
     vistos.add(chave);
     const fala = turnos[r.fala];
     const conflito_regra_id = porCodigo.get(r.conflito_com.trim().toUpperCase()) ?? null;

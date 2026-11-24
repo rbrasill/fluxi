@@ -857,6 +857,29 @@ Revisão do fluxo de confirmação das regras de negócio. Antes, o aviso só ap
 
 Fica para depois: avisar por e-mail quando a Maia sugerir regras (o carteiro já existe, mas o e-mail ainda está sendo acertado).
 
+## 109. Entrevista de regras: objetivo claro, contexto usado, regras aprofundadas e resultado organizado
+
+Ajustes depois da entrevista de regras do processo de Viabilidades, com as observações de quem convidou.
+
+Na condução da Maia:
+- Objetivo dito com todas as letras na abertura: levantar as regras de negócio do processo (o que pode, o que não pode, limites, prazos e quem autoriza), e não mapear nem avaliar o processo. Durante a conversa, quando precisa perguntar como algo é feito, ela diz que é para entender a regra, e lembra de vez em quando que o assunto são as regras.
+- Contexto: o que foi escrito no convite deixou de ser um texto solto no meio das instruções. O pedido de quem convidou é o assunto principal: vem na primeira pergunta de regra e entra na conferência antes da despedida. A descrição do processo no cadastro serve para perguntar com precisão, sem valer como regra. O mesmo vale para a entrevista de mapeamento.
+- Aprofundar: cada regra só é deixada depois de saber quando vale e a quem se aplica, o valor e sobre o que ele é calculado, o que tem de ser verdade para ela valer, as exceções e quem autoriza, e o que acontece quando não é cumprida. Nada fica subentendido: grupo de coisas citado sem a lista ("as premissas") pede a lista com os valores; número pede a base; valores estranhos juntos pedem conferência; sigla e termo técnico pedem o significado.
+- Repetição: na entrevista analisada, a pergunta sobre o que é proibido repetiu a pergunta de abertura (vinha do roteiro), e a lista de premissas foi relida inteira depois de uma correção; a segunda correção do "G&A" partiu do entrevistado. Agora o que já foi respondido conta como feito na conferência do fim, a regra é repetida para confirmar uma vez só, e depois de uma correção ela confirma só o item corrigido.
+- Repasse final: uma regra por frase curta, numerada em voz ("primeira", "segunda"), com valores de uma mesma lista juntos.
+
+Na análise:
+- Redação da regra: começa por quem ou pelo quê vale, usa verbo direto ("deve", "só pode", "não pode") e termina com a condição, o valor ou o prazo, em frase curta; o que a pessoa disse que delimita a regra vai para o texto.
+- Lista de valores do mesmo assunto (as premissas fixas de um cálculo) vira uma regra só, com os itens em sequência.
+- Conferência ou controle do processo é regra de negócio; comportamento é só a atitude de quem executa.
+- Descrição geral da conversa organizada: um parágrafo curto, uma lista com um item por assunto e, se houver, o que ficou em aberto.
+- Pendências passam a incluir o que sustenta a regra e ficou implícito, e o pedido de quem convidou, quando a conversa não o fechou.
+- Regra descartada por quem revisa não volta: além da instrução, o sistema barra a sugestão que repete uma descartada com outras palavras (texto quase igual, ou mesmo trecho da conversa e mesmo assunto).
+
+No resultado da entrevista de regras, além da descrição geral, aparecem as regras daquela conversa organizadas por tipo, com a situação de cada uma (código quando confirmada, "Em revisão" ou "Ajuste pedido").
+
+Ficou como estava, a pedido: a Maia falar mais que a pessoa e manter a sigla entre parênteses quando a pessoa a corrige.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
