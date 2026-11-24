@@ -41,11 +41,8 @@ function EntrevistaPage() {
   const [aviso, setAviso] = useState('');
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [etapaFim, setEtapaFim] = useState('');
-  const [ciente, setCiente] = useState(false);
   const [ocupadoArquivo, setOcupadoArquivo] = useState(false); // arquivando, restaurando ou excluindo (decisão 72)
-  // O microfone é pedido quando a pessoa marca a ciência (decisão 55): a permissão do navegador, que na primeira
-  // vez pode levar dezenas de segundos, sai do caminho do "Ligar para a Maia".
-  const [mic, setMic] = useState<'' | 'pedindo' | 'pronto' | 'negado'>('');
+  // O microfone é pedido ao ligar (decisão 114: sem a caixa de ciência, que ia para os termos de uso).
   const microfone = useRef<MediaStream | null>(null);
   const motor = useRef<MotorEntrevista | null>(null);
   const encerrando = useRef(false);
@@ -61,18 +58,6 @@ function EntrevistaPage() {
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { void motor.current?.encerrar(); microfone.current?.getTracks().forEach((t) => t.stop()); }, []);
 
-  async function marcarCiente(marcado: boolean) {
-    setCiente(marcado);
-    if (!marcado) { setMic(''); return; }
-    if (microfone.current || !navigator.mediaDevices?.getUserMedia) return;
-    setMic('pedindo');
-    try {
-      microfone.current = await navigator.mediaDevices.getUserMedia({ audio: RESTRICOES_MICROFONE });
-      setMic('pronto');
-    } catch {
-      setMic('negado');
-    }
-  }
   useEffect(() => {
     if (tela !== 'conversa') return;
     const t = setInterval(() => setSegundos((s) => s + 1), 1000);
@@ -120,7 +105,6 @@ function EntrevistaPage() {
     motor.current = m;
     const pronto = microfone.current; // o motor passa a cuidar do microfone (e o desliga ao encerrar)
     microfone.current = null;
-    setMic('');
     try {
       await m.iniciar(pronto);
     } catch (err) {
@@ -344,26 +328,19 @@ function EntrevistaPage() {
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>}
           {!complemento && !regras && <ul className="dicas">
-            <li>A Maia, a entrevistadora por voz do INCFlow, faz perguntas sobre o processo e você responde falando, como numa ligação.</li>
-            <li>É uma conversa ao vivo nos dois sentidos: ela continua ouvindo enquanto fala. Pode corrigir, completar ou interromper a qualquer momento.</li>
-            <li>Durante a ligação nada aparece na tela: só um sinal de quem está falando.</li>
-            <li>Pode pedir para ela verificar algo de conhecimento geral (o que é um sistema, uma sigla): ela consulta e responde na hora.</li>
-            <li>No fim, ela escreve a descrição do processo e uma ficha com etapas, responsáveis, sistemas, regras, exceções e dificuldades, e aponta o que ficou em aberto. Nenhum processo é criado ou alterado.</li>
-            <li>Dura o necessário para cobrir o processo. A Maia se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
-            <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
+            <li><strong>Converse com a Maia por voz:</strong> ela faz perguntas sobre o processo e você responde naturalmente, como em uma ligação. Ela ouve enquanto fala, e você pode interromper, corrigir ou complementar a qualquer momento.</li>
+            <li><strong>Tire dúvidas em tempo real:</strong> se surgir alguma dúvida sobre conceitos, sistemas ou siglas, a Maia pode pesquisar e responder na hora.</li>
+            <li><strong>Documentação automática:</strong> ao final, a Maia gera a descrição do processo.</li>
+            <li><strong>Dica:</strong> use fones de ouvido, se possível. Caso contrário, mantenha o volume moderado.</li>
           </ul>}
           {e.nota_convite && !complemento && <p className="notice">{e.convidador ?? 'Quem convidou'} pediu para a Maia não deixar de abordar: “{e.nota_convite}”. A conversa vai além disso: é sobre {regras ? 'as regras do processo inteiro' : 'o processo inteiro'}.</p>}
           {aviso && <p className="notice">{aviso}</p>}
           {retomando && !complemento && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
-          <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => void marcarCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
-          {mic === 'pedindo' && <p className="notice mic-estado">Permita o uso do microfone, para a Maia ouvir você.</p>}
-          {mic === 'pronto' && <p className="notice mic-estado">Microfone pronto.</p>}
-          {mic === 'negado' && <p className="notice mic-estado">O navegador não liberou o microfone. Permita o acesso (o cadeado na barra de endereço) e marque de novo, ou tente ligar mesmo assim.</p>}
           {erro && <div className="entrevista-erro" role="alert"><span>{erro.texto}</span></div>}
           <div className="fluxo-acoes">
             <Link href="/app/entrevistas" className="btn">Voltar</Link>
             {complemento && e.turnos.length === complemento.a_partir_do_turno && <button className="btn btn-ghost" onClick={() => void desistir()} title="Fica com o resultado que já existe">Deixar como está</button>}
-            <button className="btn btn-primary" onClick={comecar} disabled={!ciente || eu === null || mic === 'pedindo'}><Icone nome="microfone" tamanho={16} />{complemento ? 'Voltar à ligação' : retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
+            <button className="btn btn-primary" onClick={comecar} disabled={eu === null}><Icone nome="microfone" tamanho={16} />{complemento ? 'Voltar à ligação' : retomando ? 'Continuar a ligação' : 'Ligar para a Maia'}</button>
           </div>
         </div>
       </div>

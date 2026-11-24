@@ -958,6 +958,12 @@ Na análise do mapeamento: viram pendência o ponto das observações do convite
 
 Conferido só com os testes automáticos; não foi simulado.
 
+## 114. Tela de ligar para a Maia: texto novo e sem a caixa de ciência
+
+- Na entrevista de mapeamento, o "Como funciona" passou a ter quatro itens curtos, com o texto pedido: conversar por voz (pode interromper, corrigir ou complementar), tirar dúvidas em tempo real, documentação automática ao final e a dica dos fones. A entrevista de regras manteve o texto dela.
+- Saiu a caixa "Estou ciente de que a conversa é gravada e processada por serviços de IA": o aviso vai para os termos de uso. O botão "Ligar para a Maia" fica liberado de saída.
+- Como era a caixa que pedia o microfone antes (decisão 55), agora o navegador pede a permissão ao ligar. Na primeira vez, a ligação espera a pessoa permitir.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
