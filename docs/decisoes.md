@@ -977,6 +977,18 @@ O "Como funciona" da entrevista de regras passou para os quatro itens da decisã
 
 A abertura falada do mapeamento dizia só quem é a Maia, com quem trabalha e que a conversa fica gravada. Passou a dizer também o objetivo, como a de regras já fazia (decisão 109): entender como funciona o processo, do começo ao fim (as etapas, quem faz cada uma, os sistemas usados e o que costuma dar problema), e que não é uma avaliação de ninguém, só o registro de como o trabalho acontece hoje. O resto da abertura continua igual: a pergunta sobre a pessoa e depois "para que serve o processo".
 
+## 118. Mapeamento: fechar pontas na própria conversa, com a pendência como rede de segurança
+
+Depois da entrevista de reserva de salas, que foi boa mas deixou três pontas sem pergunta (o que é "reunião importante", como a chave volta, como funciona a sala alternativa). Quatro orientações, por princípio:
+- Palavra que decide um caminho ("quando é importante", "se for urgente"): a Maia pergunta na hora o que quer dizer ali e quem decide.
+- Saída alternativa citada (outro lugar, outro fornecedor): ela pergunta como funciona, quem aciona e com quem.
+- Fim de verdade: antes do resumo, confere se o que foi entregue, aberto ou emprestado teve destino; se a conversa não disse como termina, pergunta.
+- Pergunta que a pessoa não entendeu não é repetida com as mesmas palavras: vira uma situação concreta do dia a dia dela.
+
+Rede de segurança na análise: se mesmo assim escapar, a palavra não explicada, a saída alternativa sem explicação e o fim que faltou viram pendência, para a volta rápida.
+
+Conferido só com os testes automáticos; não foi simulado.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
