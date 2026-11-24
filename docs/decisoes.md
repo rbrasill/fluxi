@@ -935,6 +935,14 @@ Como foi conferido: testes automáticos e 11 novas entrevistas simuladas em text
 - Na versão final, 32 de 36, com perguntas na linguagem de cada negócio (na farmácia, armazenamento e transporte dos medicamentos; na escola, como agir quando a família reclama) e conversas um pouco mais curtas.
 É uma simulação com modelos de texto e dados inventados, uma rodada por cenário: serve de indício. A confirmação é nas próximas entrevistas de verdade, de preferência em áreas diferentes.
 
+## 112. Mapeamento: o mesmo espírito da decisão 111, mantendo o que já funciona
+
+A entrevista de mapeamento ficou como está, a pedido (o jeito de conduzir agrada): visão geral e início, etapas na ordem, e a conferência obrigatória do fim com os quatro pontos (quem faz, prazos, o que acontece quando dá errado, o que dá problema). Entraram só dois ajustes de flexibilidade, além da seção "Cada negócio é um" da decisão 111:
+- A ordem das etapas é o caminho que costuma funcionar: se a pessoa começar por outra parte, a Maia acompanha e depois volta para completar o processo do início ao fim.
+- Na conferência do fim, as perguntas são feitas com as palavras e as situações do processo; o que a pessoa já respondeu com clareza conta como perguntado, e o ponto que de fato não couber pode ser pulado. A lista continua obrigatória.
+
+Conferido só com os testes automáticos; não foi simulado.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
