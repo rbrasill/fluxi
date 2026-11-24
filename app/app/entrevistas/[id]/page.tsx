@@ -27,7 +27,8 @@ import { aquecerSessaoDeVoz, arquivarEntrevista, confirmacaoDeArquivamento, conf
 
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 // O que a Maia está fazendo, na tela da ligação (decisão 86).
-const ESTADO_DA_LIGACAO: Partial<Record<Fase, string>> = { conectando: 'Chamando a Maia…', falando: 'Maia está falando', ouvindo: 'Maia está ouvindo', juntos: 'Maia está ouvindo', encerrando: 'Encerrando a conversa…' };
+// Só os momentos de transição aparecem; quem está falando a esfera já mostra (decisão 115).
+const ESTADO_DA_LIGACAO: Partial<Record<Fase, string>> = { conectando: 'Chamando a Maia…', encerrando: 'Encerrando a conversa…' };
 const LEGENDA_CONVERSA = 'Conversa ao vivo: fale com naturalidade e interrompa a Maia quando quiser.';
 
 function EntrevistaPage() {
@@ -37,7 +38,6 @@ function EntrevistaPage() {
   const [e, setE] = useState<Entrevista | null | undefined>(undefined);
   const [tela, setTela] = useState<'inicio' | 'conversa' | 'processando' | 'resultado'>('inicio');
   const [fase, setFase] = useState<Fase>('parado');
-  const [segundos, setSegundos] = useState(0);
   const [aviso, setAviso] = useState('');
   const [erro, setErro] = useState<{ texto: string; repetir?: () => void } | null>(null);
   const [etapaFim, setEtapaFim] = useState('');
@@ -58,11 +58,6 @@ function EntrevistaPage() {
   useEffect(() => { void carregar(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { void motor.current?.encerrar(); microfone.current?.getTracks().forEach((t) => t.stop()); }, []);
 
-  useEffect(() => {
-    if (tela !== 'conversa') return;
-    const t = setInterval(() => setSegundos((s) => s + 1), 1000);
-    return () => clearInterval(t);
-  }, [tela]);
   function alternarMicrofone() {
     const novo = !mudo;
     setMudo(novo);
@@ -99,7 +94,6 @@ function EntrevistaPage() {
     setErro(null);
     setAviso('');
     setMudo(false);
-    setSegundos(Math.round(e.metricas?.duracao_s ?? 0));
     encerrando.current = false;
     const m = new MotorEntrevista(id, aoEvento, e.turnos, e.metricas ?? {}, e.frase_final, e.frase_pausa);
     motor.current = m;
@@ -349,7 +343,7 @@ function EntrevistaPage() {
 
   if (tela === 'conversa' || tela === 'processando') {
     const processando = tela === 'processando';
-    const estado = processando ? etapaFim : ESTADO_DA_LIGACAO[fase] ?? 'Maia está ouvindo';
+    const estado = processando ? etapaFim : ESTADO_DA_LIGACAO[fase] ?? '';
     const travado = fase === 'conectando' || fase === 'encerrando';
     return (
       <div className="ligacao">
@@ -359,7 +353,6 @@ function EntrevistaPage() {
             <strong>{regras ? `Regras de negócio de ${e.tema || 'um processo'}` : `Entrevista sobre ${e.tema || 'o processo'}`}</strong>
             <span>{[e.convidador && `Convite de ${e.convidador}`, e.processo?.area?.nome].filter(Boolean).join(' · ')}</span>
           </div>
-          {!processando && <span className="ligacao-tempo" title="Tempo de conversa"><span className="rec-dot" />{mmss(segundos)}</span>}
           {!processando && <button type="button" className="btn btn-ghost" onClick={() => void pausar()} disabled={travado} title="Pausa a entrevista e sai: a conversa fica guardada para continuar depois">Sair</button>}
         </header>
         <div className="ligacao-corpo">
@@ -367,7 +360,7 @@ function EntrevistaPage() {
             <div className="ligacao-esfera">
               <Orbe modo={processando ? 'processando' : fase === 'conectando' ? 'conectando' : 'conversa'} niveis={niveis} />
             </div>
-            <p className={`ligacao-estado${fase === 'falando' && !processando ? ' falando' : ''}`} aria-live="polite">{estado}</p>
+            {estado && <p className="ligacao-estado" aria-live="polite">{estado}</p>}
             {!processando && <p className="ligacao-dica">{fase === 'conectando' ? 'Permita o uso do microfone se o navegador perguntar.' : mudo ? 'Seu microfone está desligado: a Maia não está ouvindo você.' : LEGENDA_CONVERSA}</p>}
             {aviso && <p className="notice">{aviso}</p>}
             {erro && (
