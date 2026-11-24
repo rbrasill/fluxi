@@ -973,6 +973,10 @@ Conferido só com os testes automáticos; não foi simulado.
 
 O "Como funciona" da entrevista de regras passou para os quatro itens da decisão 114, adaptados: conversar por voz sobre as regras de negócio (o que pode, o que não pode, os limites e os prazos), tirar dúvidas em tempo real, regras organizadas ao final para quem cuida do processo confirmar, e a dica dos fones.
 
+## 117. Mapeamento: a abertura diz o objetivo, como na entrevista de regras
+
+A abertura falada do mapeamento dizia só quem é a Maia, com quem trabalha e que a conversa fica gravada. Passou a dizer também o objetivo, como a de regras já fazia (decisão 109): entender como funciona o processo, do começo ao fim (as etapas, quem faz cada uma, os sistemas usados e o que costuma dar problema), e que não é uma avaliação de ninguém, só o registro de como o trabalho acontece hoje. O resto da abertura continua igual: a pergunta sobre a pessoa e depois "para que serve o processo".
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
