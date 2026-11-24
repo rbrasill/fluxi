@@ -943,6 +943,21 @@ A entrevista de mapeamento ficou como está, a pedido (o jeito de conduzir agrad
 
 Conferido só com os testes automáticos; não foi simulado.
 
+## 113. Mapeamento: observações do convite confirmadas, pistas seguidas e resumo no fim
+
+Ajustes depois da entrevista de mapeamento do processo de assistência técnica. A conversa cobriu o processo de ponta a ponta, mas a observação do convite ("quando de fato o problema do cliente está solucionado") não foi validada com a pessoa, o processo novo que ela citou não foi explorado e algumas pontas ficaram soltas.
+
+Na condução do mapeamento (o resto continua como estava):
+- Observações de quem convidou: antes do resumo final, cada ponto pede uma pergunta da Maia e a confirmação da pessoa, como já era na entrevista de regras. Aparecer de passagem não conta.
+- Pistas: o que a pessoa cita de passagem e de que o processo depende (uma compra, uma espera, uma recusa, outra área) é retomado antes do resumo. Resposta confusa pede que a Maia diga o que entendeu e confirme.
+- Processo em mudança: se a pessoa disser que há um jeito novo sendo implantado, a Maia pergunta qual dos dois está sendo descrito e, depois do atual, o que muda no novo.
+- O resumo com "é isso mesmo?" vem depois da conferência, como último passo antes da despedida.
+- Perguntas: em geral uma por fala; duas, quando forem do mesmo assunto e uma completar a outra. Deixou de ser "uma por fala, sempre".
+
+Na análise do mapeamento: viram pendência o ponto das observações do convite que a conversa não abordou ou não fechou e aquilo de que o processo depende e foi citado sem explicação.
+
+Conferido só com os testes automáticos; não foi simulado.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
