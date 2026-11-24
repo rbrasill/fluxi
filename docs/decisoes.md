@@ -838,6 +838,25 @@ Pesquisa na documentação oficial do draw.io (novembro de 2026), para testes fu
 
 Decisão: manter como está; colaboração pode ser testada no futuro.
 
+## 107. Regras de negócio em PDF
+
+Na aba "Regras de negócio" do processo, o botão "Baixar PDF" (aparece quando há regras confirmadas) gera um documento com as regras do processo, com a identidade do POP: o logo da INC, títulos em azul-marinho e o laranja da marca nos detalhes. No topo, o nome do processo, a organização e a área, quantas regras e a data de emissão, e três quadros com a quantidade de cada tipo. Depois, uma seção por tipo (regras de negócio, de comportamento e definições), com o que o tipo quer dizer e as regras na ordem do código (RN-01, RN-02…), cada uma com "Aplica-se a" quando vale só para um POP. O título de cada seção nunca fica sozinho no pé da página, e nenhuma regra é cortada entre páginas; o rodapé traz o processo e o número da página.
+
+Entram só as regras confirmadas. Quem falou, quem confirmou e de onde veio não aparecem no corpo: ficam num resumo de "Observações e histórico" no fim (quem confirma as regras do processo, quantas vieram da Maia e quantas foram escritas pela equipe, as entrevistas consideradas, quem confirmou e quantas, a data da última confirmação e quantas sugestões ainda estão em revisão). Qualquer pessoa logada que vê o processo pode baixar.
+
+## 108. Validação das regras: aviso que acompanha a pessoa e pedido de ajuste
+
+Revisão do fluxo de confirmação das regras de negócio. Antes, o aviso só aparecia no Início, era carregado uma vez e os administradores eram avisados de todos os processos, mesmo dos que têm uma pessoa escolhida para confirmar.
+
+- Quem é avisado: a pessoa escolhida para confirmar as regras do processo; nos processos sem ninguém escolhido, os administradores. Os administradores continuam podendo confirmar em qualquer processo.
+- Selo no menu: o item "Início" mostra quantas regras esperam a pessoa (com o menu recolhido, o número fica sobre o ícone).
+- Aviso flutuante: ao entrar na plataforma, e sempre que chegam regras novas enquanto a pessoa usa, aparece no canto um aviso com quantas regras esperam e em que processo, com o botão "Revisar". Ao fechar, só volta se o número aumentar. No Início e no próprio processo das regras ele não aparece, porque a página já mostra.
+- Sem precisar entrar de novo: o selo e os avisos se atualizam a cada minuto com a aba aberta, ao voltar para a aba e logo depois de cada confirmação.
+- Na aba do processo, quem confirma vê o que fazer com cada regra: confirmar, editar, pedir ajuste ou descartar. As regras confirmadas mostram quem confirmou e quando.
+- Pedir ajuste (migração 0026): quem confirma diz o que precisa mudar. A regra continua em revisão, com o pedido guardado (o que, quem e quando), sai da fila de quem confirma e vai para os administradores, que são avisados. Quando alguém edita a regra, o pedido é resolvido e ela volta para quem confirma. Confirmar ou descartar também resolve o pedido. Sem a migração, o botão não aparece.
+
+Fica para depois: avisar por e-mail quando a Maia sugerir regras (o carteiro já existe, mas o e-mail ainda está sendo acertado).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

@@ -21,6 +21,8 @@ type Linha = {
   origem: 'maia' | 'manual'; entrevista_id: string | null; trecho: string; trecho_ms: number | null;
   conflito_regra_id: string | null; conflito: string; perguntar_em: string | null; esclarecimento: string; esclarecimento_entrevista_id: string | null;
   criado_por: string | null; confirmada_por: string | null; confirmada_em: string | null; criado_em: string; atualizado_em: string;
+  // Pedido de ajuste (decisão 108, migração 0026): vazio quando não há pedido.
+  ajuste?: string; ajuste_por?: string | null; ajuste_em?: string | null;
 };
 const CAMPOS = 'id, processo_id, tipo, texto, situacao, numero, pop_id, origem, entrevista_id, trecho, trecho_ms, conflito_regra_id, conflito, perguntar_em, esclarecimento, esclarecimento_entrevista_id, criado_por, confirmada_por, confirmada_em, criado_em, atualizado_em';
 
@@ -44,6 +46,25 @@ export async function bancoTemRegras() {
   }
   return pronto;
 }
+let temAjuste = false;
+let ajusteConferidoEm = 0;
+/** Verdadeiro quando o banco já guarda o pedido de ajuste das regras (migração 0026). */
+export async function bancoTemAjuste() {
+  if (temAjuste) return true;
+  if (Date.now() - ajusteConferidoEm < 60_000) return false;
+  ajusteConferidoEm = Date.now();
+  try {
+    const { error } = await supabase().from('regras').select('ajuste').limit(1);
+    temAjuste = !error;
+  } catch {
+    temAjuste = false;
+  }
+  return temAjuste;
+}
+/** Os campos da regra; com a migração 0026, também o pedido de ajuste. */
+const campos = async () => ((await bancoTemAjuste()) ? `${CAMPOS}, ajuste, ajuste_por, ajuste_em` : CAMPOS);
+const SEM_AJUSTE = { ajuste: '', ajuste_por: null, ajuste_em: null };
+
 const MSG_SEM_BANCO = 'As regras de negócio ainda não estão ligadas neste ambiente (falta aplicar a migração 0024 no banco).';
 async function exigirBanco() {
   if (!(await bancoTemRegras())) throw new ErroApi(503, MSG_SEM_BANCO, 'sem_regras');
@@ -71,10 +92,10 @@ function exigirConfirmador(pessoa: Pessoa | null | undefined, processo: Processo
 
 async function carregar(id: string) {
   if (!UUID.test(id)) throw new ErroApi(404, 'Regra não encontrada');
-  const { data, error } = await supabase().from('regras').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data, error } = await supabase().from('regras').select(await campos()).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'Regra não encontrada');
-  return data as Linha;
+  return data as unknown as Linha;
 }
 
 async function nomes(ids: (string | null | undefined)[]) {
@@ -98,22 +119,22 @@ async function popsDoProcesso(processoId: string, comObjetivo = false) {
 /** Tudo o que a aba mostra: as regras para revisar e as confirmadas, quem confirma, os POPs e as conversas analisadas. */
 export async function listar(processoId: string, pessoa?: Pessoa | null) {
   const processo = await processoDasRegras(processoId);
-  if (!(await bancoTemRegras())) return { disponivel: false as const, regras: [], confirmador: null, pode_confirmar: false, pops: [], fontes: [] };
+  if (!(await bancoTemRegras())) return { disponivel: false as const, regras: [], confirmador: null, pode_confirmar: false, pode_pedir_ajuste: false, pops: [], fontes: [] };
   const db = supabase();
   const [rs, es, pops] = await Promise.all([
-    db.from('regras').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('situacao', ['sugerida', 'confirmada']).order('criado_em'),
+    db.from('regras').select(await campos()).eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).in('situacao', ['sugerida', 'confirmada']).order('criado_em'),
     db.from('entrevistas').select('id, status, entrevistado_id, iniciada_em, criado_em, metricas').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).eq('finalidade', 'regras').is('arquivado_em', null).order('criado_em', { ascending: false }),
     popsDoProcesso(processoId),
   ]);
   for (const r of [rs, es]) if (r.error) throw r.error;
-  const linhas = (rs.data ?? []) as Linha[];
+  const linhas = (rs.data ?? []) as unknown as Linha[];
   const entrevistas = (es.data ?? []) as { id: string; status: string; entrevistado_id: string | null; iniciada_em: string | null; criado_em: string; metricas: { duracao_s?: number } | null }[];
   // Quantas sugestões cada conversa rendeu (inclusive as já confirmadas ou descartadas).
   const { data: contagem, error: e3 } = await db.from('regras').select('entrevista_id').eq('tenant_id', TENANT_PADRAO).eq('processo_id', processoId).eq('origem', 'maia');
   if (e3) throw e3;
   const porEntrevista = new Map<string, number>();
   for (const c of (contagem ?? []) as { entrevista_id: string | null }[]) if (c.entrevista_id) porEntrevista.set(c.entrevista_id, (porEntrevista.get(c.entrevista_id) ?? 0) + 1);
-  const quem = await nomes([processo.confirmador_regras_id, ...entrevistas.map((e) => e.entrevistado_id), ...linhas.flatMap((l) => [l.criado_por, l.confirmada_por])]);
+  const quem = await nomes([processo.confirmador_regras_id, ...entrevistas.map((e) => e.entrevistado_id), ...linhas.flatMap((l) => [l.criado_por, l.confirmada_por, l.ajuste_por])]);
   // As conversas citadas pelas regras podem estar arquivadas ou ser de outra finalidade: busca o nome de quem falou.
   const idsEntrevistas = [...new Set(linhas.flatMap((l) => [l.entrevista_id, l.esclarecimento_entrevista_id]).filter((x): x is string => !!x))];
   const donos = new Map<string, string | null>(entrevistas.map((e) => [e.id, e.entrevistado_id]));
@@ -131,6 +152,7 @@ export async function listar(processoId: string, pessoa?: Pessoa | null) {
     disponivel: true as const,
     confirmador: processo.confirmador_regras_id ? { id: processo.confirmador_regras_id, nome: quem.get(processo.confirmador_regras_id) ?? 'Pessoa não encontrada' } : null,
     pode_confirmar: podeConfirmar(pessoa, processo) && !processo.arquivado_em,
+    pode_pedir_ajuste: await bancoTemAjuste(),
     pops: pops.map((p) => ({ id: p.id, rotulo: rotuloDoPop(p) })),
     fontes: entrevistas.map((e) => ({ id: e.id, status: e.status, entrevistado: quem.get(e.entrevistado_id ?? '') ?? null, quando: e.iniciada_em ?? e.criado_em, duracao_s: e.metricas?.duracao_s ?? 0, sugestoes: porEntrevista.get(e.id) ?? 0 })),
     regras: linhas.map((l) => {
@@ -146,8 +168,56 @@ export async function listar(processoId: string, pessoa?: Pessoa | null) {
         perguntar: !!l.perguntar_em,
         esclarecimento: l.esclarecimento ? { texto: l.esclarecimento, de: entrevistado(l.esclarecimento_entrevista_id) } : null,
         criado_por: quem.get(l.criado_por ?? '') ?? null, confirmada_por: quem.get(l.confirmada_por ?? '') ?? null, confirmada_em: l.confirmada_em, criado_em: l.criado_em,
+        ajuste: l.ajuste ? { texto: l.ajuste, por: quem.get(l.ajuste_por ?? '') ?? null, em: l.ajuste_em ?? null } : null,
       };
     }),
+  };
+}
+
+// --- O documento das regras em PDF (decisão 107) ---
+
+export type DocumentoDasRegras = {
+  processo: string; organizacao: string | null; area: string | null; emitido_em: string;
+  regras: { codigo: string; tipo: TipoRegra; numero: number; texto: string; aplica: string | null }[];
+  historico: {
+    confirmador: string | null;
+    maia: number; manuais: number;
+    entrevistas: { entrevistado: string | null; quando: string }[];
+    confirmacoes: { nome: string; total: number }[];
+    ultima_confirmacao: string | null;
+    pendentes: number;
+  };
+};
+
+/** As regras confirmadas do processo, na ordem do código, e um resumo de onde vieram e de quem confirmou. */
+export async function documento(processoId: string): Promise<DocumentoDasRegras> {
+  await exigirBanco();
+  const d = await listar(processoId);
+  const { data, error } = await supabase().from('processos').select('nome, area:areas(nome, organizacao:organizacoes(nome))').eq('tenant_id', TENANT_PADRAO).eq('id', processoId).maybeSingle();
+  if (error) throw error;
+  const p = data as unknown as { nome: string; area: { nome: string; organizacao: { nome: string } | null } | null } | null;
+  const confirmadas = d.regras.filter((r) => r.situacao === 'confirmada');
+  if (!confirmadas.length) throw new ErroApi(409, 'Este processo ainda não tem regras confirmadas para gerar o PDF.');
+  const numeroDe = (codigo: string) => Number(codigo.split('-')[1] ?? 0);
+  const ordemTipo = { negocio: 0, comportamento: 1, definicao: 2 } as Record<TipoRegra, number>;
+  const porPessoa = new Map<string, number>();
+  for (const r of confirmadas) if (r.confirmada_por) porPessoa.set(r.confirmada_por, (porPessoa.get(r.confirmada_por) ?? 0) + 1);
+  const datas = confirmadas.map((r) => r.confirmada_em).filter((x): x is string => !!x).sort();
+  const usadas = new Set(confirmadas.map((r) => r.entrevista?.id).filter(Boolean));
+  return {
+    processo: p?.nome ?? '', area: p?.area?.nome ?? null, organizacao: p?.area?.organizacao?.nome ?? null, emitido_em: agora(),
+    regras: confirmadas
+      .map((r) => ({ codigo: r.codigo, tipo: r.tipo, numero: numeroDe(r.codigo), texto: r.texto, aplica: r.pop?.rotulo ?? null }))
+      .sort((a, b) => ordemTipo[a.tipo] - ordemTipo[b.tipo] || a.numero - b.numero),
+    historico: {
+      confirmador: d.confirmador?.nome ?? null,
+      maia: confirmadas.filter((r) => r.origem === 'maia').length,
+      manuais: confirmadas.filter((r) => r.origem === 'manual').length,
+      entrevistas: d.fontes.filter((f) => usadas.has(f.id)).map((f) => ({ entrevistado: f.entrevistado, quando: f.quando })),
+      confirmacoes: [...porPessoa].map(([nome, total]) => ({ nome, total })).sort((a, b) => b.total - a.total),
+      ultima_confirmacao: datas.at(-1) ?? null,
+      pendentes: d.regras.filter((r) => r.situacao === 'sugerida').length,
+    },
   };
 }
 
@@ -180,7 +250,8 @@ const PopId = z.string().regex(UUID, 'POP inválido.').nullable();
 export const NovaRegraSchema = z.object({ texto: Texto, tipo: Tipo, pop_id: PopId.optional() });
 export const AlteracaoSchema = z.object({
   texto: Texto.optional(), tipo: Tipo.optional(), pop_id: PopId.optional(),
-  acao: z.enum(['confirmar', 'descartar', 'arquivar', 'perguntar', 'nao_perguntar']).optional(),
+  acao: z.enum(['confirmar', 'descartar', 'arquivar', 'perguntar', 'nao_perguntar', 'pedir_ajuste']).optional(),
+  ajuste: z.string().trim().min(3, 'Diga o que precisa ajustar.').max(500).optional(),
 });
 
 async function conferirPop(processoId: string, popId: string | null | undefined) {
@@ -231,6 +302,8 @@ export async function alterar(id: string, d: z.infer<typeof AlteracaoSchema>, pe
   if (d.pop_id !== undefined) dados.pop_id = await conferirPop(regra.processo_id, d.pop_id);
   const tipo = d.tipo ?? regra.tipo;
   if (d.tipo !== undefined) dados.tipo = d.tipo;
+  // Editar, confirmar ou descartar uma regra com ajuste pedido resolve o pedido (decisão 108).
+  if (regra.ajuste && d.acao !== 'pedir_ajuste' && d.acao !== 'perguntar' && d.acao !== 'nao_perguntar') Object.assign(dados, SEM_AJUSTE);
   const db = supabase();
   const gravar = (extra: Partial<Linha> = {}) => db.from('regras').update({ ...dados, ...extra }).eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id, numero').single();
   let numero = regra.numero;
@@ -245,6 +318,12 @@ export async function alterar(id: string, d: z.infer<typeof AlteracaoSchema>, pe
   } else if (d.acao === 'arquivar') {
     if (regra.situacao !== 'confirmada') throw new ErroApi(409, 'Só uma regra confirmada pode ser arquivada.');
     const { error } = await gravar({ situacao: 'arquivada' });
+    if (error) throw error;
+  } else if (d.acao === 'pedir_ajuste') {
+    if (!(await bancoTemAjuste())) throw new ErroApi(503, 'O pedido de ajuste ainda não está ligado neste ambiente (falta aplicar a migração 0026 no banco).', 'sem_ajuste');
+    if (regra.situacao !== 'sugerida') throw new ErroApi(409, 'Só uma regra em revisão pode receber pedido de ajuste. Para mudar uma regra confirmada, edite.');
+    if (!d.ajuste) throw new ErroApi(400, 'Diga o que precisa ajustar.');
+    const { error } = await gravar({ ajuste: d.ajuste, ajuste_por: pessoa?.id ?? null, ajuste_em: agora() });
     if (error) throw error;
   } else if (d.acao === 'perguntar' || d.acao === 'nao_perguntar') {
     if (regra.situacao !== 'sugerida') throw new ErroApi(409, 'Só uma regra em revisão vai para a próxima entrevista.');
@@ -270,21 +349,32 @@ export async function trechoDaRegra(id: string) {
   return { entrevista_id: regra.entrevista_id, ms: regra.trecho_ms };
 }
 
-/** As regras à espera de revisão de quem está logado (aviso do Início): os processos em que a pessoa confirma; administradores veem todos. */
+/**
+ * As regras à espera de quem está logado (decisão 108), para o aviso e o selo do menu: as sugestões dos processos
+ * em que a pessoa confirma e, para administradores, as dos processos sem ninguém escolhido. Regra com ajuste pedido
+ * sai da fila de quem confirma e vai para os administradores, que resolvem editando.
+ */
 export async function paraRevisar(pessoa?: Pessoa | null) {
   if (!(await bancoTemRegras())) return [];
-  const { data, error } = await supabase().from('regras').select('processo_id, processo:processos(id, nome, arquivado_em, confirmador_regras_id)').eq('tenant_id', TENANT_PADRAO).eq('situacao', 'sugerida');
+  const comAjuste = await bancoTemAjuste();
+  const { data, error } = await supabase().from('regras')
+    .select(`processo_id${comAjuste ? ', ajuste' : ''}, processo:processos(id, nome, arquivado_em, confirmador_regras_id)`)
+    .eq('tenant_id', TENANT_PADRAO).eq('situacao', 'sugerida');
   if (error) throw error;
-  const porProcesso = new Map<string, { id: string; nome: string; sugeridas: number }>();
-  for (const l of (data ?? []) as unknown as { processo: ProcessoDasRegras | null }[]) {
+  const admin = !pessoa || pessoa.nivel === 'admin';
+  const porProcesso = new Map<string, { id: string; nome: string; sugeridas: number; ajustes: number }>();
+  for (const l of (data ?? []) as unknown as { ajuste?: string; processo: ProcessoDasRegras | null }[]) {
     const p = l.processo;
     if (!p || p.arquivado_em) continue;
-    if (pessoa && pessoa.nivel !== 'admin' && p.confirmador_regras_id !== pessoa.id) continue;
-    const x = porProcesso.get(p.id) ?? { id: p.id, nome: p.nome, sugeridas: 0 };
-    x.sugeridas++;
+    const x = porProcesso.get(p.id) ?? { id: p.id, nome: p.nome, sugeridas: 0, ajustes: 0 };
+    if (l.ajuste) {
+      if (admin) x.ajustes++;
+    } else if (!pessoa || p.confirmador_regras_id === pessoa.id || (admin && !p.confirmador_regras_id)) {
+      x.sugeridas++;
+    }
     porProcesso.set(p.id, x);
   }
-  return [...porProcesso.values()].sort((a, b) => b.sugeridas - a.sugeridas);
+  return [...porProcesso.values()].filter((x) => x.sugeridas + x.ajustes > 0).sort((a, b) => b.sugeridas + b.ajustes - (a.sugeridas + a.ajustes));
 }
 
 // --- O que a Maia leva para a entrevista de regras e o que a análise devolve ---

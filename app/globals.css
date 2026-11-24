@@ -1912,3 +1912,26 @@ html[data-menu='recolhido'] .side .nav a.conta-perfil { justify-content: center;
 .dialogo-convite .opcoes-finalidade .opcao-acesso small { font-size: 13px; line-height: 1.45; }
 .dialogo-convite .lista-pessoas { min-height: 132px; }
 @media (max-height: 860px) { .dialogo-convite { gap: 16px; padding: 24px; } .dialogo-convite .lista-pessoas { max-height: 196px; } .dialogo-convite .field textarea { min-height: 0; } }
+
+/* Regras esperando a pessoa (decisão 108): selo no menu, aviso flutuante e pedido de ajuste. */
+.nav-selo { margin-left: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--indigo-700); color: #fff; font-size: 12px; font-weight: 700; line-height: 1; }
+html[data-menu='recolhido'] .side .nav a { position: relative; }
+html[data-menu='recolhido'] .side .nav-selo { position: absolute; top: 2px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 11px; }
+.aviso-regras { position: fixed; right: 20px; bottom: 72px; z-index: 45; width: min(420px, calc(100vw - 32px)); display: flex; align-items: center; gap: 12px; padding: 14px 14px 14px 16px; border: 1px solid var(--indigo-300); border-radius: 16px; background: #fff; box-shadow: 0 18px 40px rgba(14, 21, 37, .18); }
+.aviso-regras-icone { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--indigo-100); color: var(--indigo-700); }
+.aviso-regras-texto { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aviso-regras-texto strong { font-size: 14px; font-weight: 600; line-height: 1.35; color: var(--neutro-texto); }
+.aviso-regras-texto span { font-size: 13px; color: var(--neutro-texto-2); overflow-wrap: anywhere; }
+.aviso-regras-texto b { font-weight: 600; color: var(--neutro-texto); }
+.aviso-regras .btn-primary { flex: none; height: 38px; }
+@media (max-width: 560px) { .aviso-regras { left: 16px; right: 16px; bottom: 64px; width: auto; flex-wrap: wrap; } .aviso-regras-texto { flex-basis: calc(100% - 52px); } .aviso-regras .btn-primary { flex: 1; } }
+.regras-sua-vez { margin: 8px 0 0; max-width: 100%; display: inline-flex; align-items: flex-start; gap: 8px; padding: 6px 12px; border-radius: 14px; background: var(--indigo-100); color: var(--indigo-700); font-size: 13px; }
+.regras-sua-vez b { font-weight: 600; }
+.regras-sua-vez svg { flex: none; margin-top: 2px; }
+.chip-regra.chip-ajuste { background: #FFF7EE; color: #9A3412; }
+.regra-ajuste { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 14px; border: 1px solid #FDBA74; background: #FFF7EE; color: #9A3412; }
+.regra-ajuste svg { flex: none; margin-top: 2px; }
+.regra-ajuste strong { font-size: 15px; font-weight: 600; color: var(--neutro-texto); }
+.regra-ajuste p { margin: 2px 0 0; font-size: 14px; line-height: 1.55; color: var(--neutro-texto-2); overflow-wrap: anywhere; }
+.regra-ajuste-dica { display: block; margin-top: 6px; font-size: 13px; color: #9A3412; }
+.regra-citada { margin: 0; padding: 12px 14px; border-left: 3px solid var(--indigo-300); border-radius: 0 10px 10px 0; background: var(--neutro-fundo); font-size: 14px; line-height: 1.55; color: var(--neutro-texto); }

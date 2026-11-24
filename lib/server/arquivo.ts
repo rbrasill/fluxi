@@ -15,7 +15,7 @@ export async function baixar(tipo: 'pdf', gerar: () => Promise<{ arquivo: Uint8A
     return new NextResponse(new Uint8Array(arquivo), {
       headers: {
         'content-type': 'application/pdf',
-        'content-disposition': `attachment; filename="pop.${tipo}"; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`,
+        'content-disposition': `attachment; filename="documento.${tipo}"; filename*=UTF-8''${encodeURIComponent(nomeArquivo)}`,
       },
     });
   } catch (e) {

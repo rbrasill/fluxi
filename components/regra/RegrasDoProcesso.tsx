@@ -10,7 +10,8 @@ import { ROTULO_STATUS, TIPOS_REGRA, rotuloDoTipo, type StatusEntrevista, type T
 import { iniciarEntrevistaAgora } from '@/lib/entrevistas';
 import { corDoAvatar, iniciais } from '@/lib/iniciais';
 import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
-import { agirNaRegra, audioDaRegra, criarRegra, editarRegra, escolherConfirmador, listarRegras, type AcaoDaRegra, type DadosDaRegra, type Regra, type RegrasDoProcesso as Dados } from '@/lib/regras';
+import { agirNaRegra, audioDaRegra, criarRegra, editarRegra, escolherConfirmador, listarRegras, pedirAjuste, type AcaoDaRegra, type DadosDaRegra, type Regra, type RegrasDoProcesso as Dados } from '@/lib/regras';
+import { atualizarRegrasPendentes } from '@/lib/regras-pendentes';
 
 // A aba "Regras de negócio" do processo (decisão 89). A Maia sugere as regras a partir das entrevistas de regras
 // de negócio, cada uma com o trecho da fala de onde saiu (dá para ouvir). Nada entra no processo sem confirmação:
@@ -47,9 +48,12 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
   const [escolhendo, setEscolhendo] = useState(false);
   const [iniciando, setIniciando] = useState(false);
   const [ajuda, setAjuda] = useState(false); // a explicação dos tipos de regra (decisão 91)
+  const [ajustando, setAjustando] = useState<Regra | null>(null); // o pedido de ajuste (decisão 108)
   const audio = useRef<HTMLAudioElement | null>(null);
 
   const carregar = () => listarRegras(processoId).then((r) => { setD(r); setErro(''); }).catch((e) => setErro(msg(e)));
+  // Depois de confirmar, descartar, editar ou pedir ajuste: o selo do menu e os avisos acompanham.
+  const recarregar = async () => { await carregar(); void atualizarRegrasPendentes(); };
   useEffect(() => { if (visivel || d === null) void carregar(); }, [processoId, visivel]); // eslint-disable-line react-hooks/exhaustive-deps
   const sugeridas = (d?.regras ?? []).filter((r) => r.situacao === 'sugerida');
   const confirmadas = (d?.regras ?? []).filter((r) => r.situacao === 'confirmada');
@@ -69,7 +73,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
     if (acao === 'descartar' && !(await confirmar({ titulo: 'Descartar esta sugestão?', mensagem: `“${r.texto}” sai da lista e a Maia não sugere de novo.`, acao: 'Descartar' }))) return;
     if (acao === 'arquivar' && !(await confirmar({ titulo: `Arquivar a regra ${r.codigo}?`, mensagem: 'A regra deixa de valer no processo. O código dela não é reaproveitado.', acao: 'Arquivar' }))) return;
     setOcupada(r.id);
-    try { await agirNaRegra(r.id, acao); await carregar(); } catch (e) { void avisar('Não foi possível concluir.', msg(e)); } finally { setOcupada(''); }
+    try { await agirNaRegra(r.id, acao); await recarregar(); } catch (e) { void avisar('Não foi possível concluir.', msg(e)); } finally { setOcupada(''); }
   }
 
   /** Ouve o trecho: a gravação da conversa, a partir da fala de onde a regra saiu. */
@@ -101,7 +105,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
     if (!pessoas) listarConvidaveis().then(setPessoas).catch(() => setPessoas([]));
   }
   async function escolher(id: string) {
-    try { await escolherConfirmador(processoId, id || null); setEscolhendo(false); await carregar(); } catch (e) { void avisar('Não foi possível escolher quem confirma.', msg(e)); }
+    try { await escolherConfirmador(processoId, id || null); setEscolhendo(false); await recarregar(); } catch (e) { void avisar('Não foi possível escolher quem confirma.', msg(e)); }
   }
   async function iniciarAgora() {
     setIniciando(true);
@@ -128,12 +132,13 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
               <div className="sec-cabeca">
                 <h3 id="titulo-revisar">Para revisar</h3>
                 <p>A Maia encontrou estas regras nas conversas. Nada entra no processo sem {pode ? 'a sua confirmação' : `a confirmação de ${quemConfirma}`}.</p>
+                {pode && <p className="regras-sua-vez"><Icone nome="check" tamanho={15} /><span>Leia cada regra e decida: <b>confirmar</b>, <b>editar</b>{d.pode_pedir_ajuste ? <>, <b>pedir ajuste</b></> : null} ou <b>descartar</b>.</span></p>}
               </div>
               <BotaoAjudaTipos aoAbrir={() => setAjuda(true)} />
             </div>
             {sugeridas.map((r) => (
               <article key={r.id} className={`cartao regra-sugerida${r.conflito ? ' com-conflito' : ''}`} data-regra={r.id}>
-                <div className="regra-chips"><span className="chip-regra chip-maia"><Icone nome="ia" tamanho={13} />Sugerida pela Maia</span>{chipTipo(r.tipo)}</div>
+                <div className="regra-chips"><span className="chip-regra chip-maia"><Icone nome="ia" tamanho={13} />Sugerida pela Maia</span>{chipTipo(r.tipo)}{r.ajuste && <span className="chip-regra chip-ajuste"><Icone nome="alerta" tamanho={13} />Ajuste pedido</span>}</div>
                 <p className="regra-texto">{r.texto}</p>
                 {r.trecho && (
                   <div className="regra-trecho">
@@ -154,6 +159,16 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
                     <div><strong>Possível conflito{r.conflito.codigo ? ` com ${r.conflito.codigo}` : ''}</strong><p>{r.conflito.texto}</p></div>
                   </div>
                 )}
+                {r.ajuste && (
+                  <div className="regra-ajuste" role="note">
+                    <Icone nome="conversa" tamanho={18} />
+                    <div>
+                      <strong>Ajuste pedido{r.ajuste.por ? ` por ${r.ajuste.por}` : ''}{r.ajuste.em ? ` em ${data(r.ajuste.em)}` : ''}</strong>
+                      <p>{r.ajuste.texto}</p>
+                      {pode && <span className="regra-ajuste-dica">Edite a regra para resolver o pedido: ela volta para {quemConfirma === 'um administrador' ? 'revisão' : `${quemConfirma} confirmar`}.</span>}
+                    </div>
+                  </div>
+                )}
                 {r.esclarecimento && (
                   <div className="regra-esclarecimento" role="note">
                     <Icone nome="conversa" tamanho={18} />
@@ -171,6 +186,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
                           <Icone nome={r.perguntar ? 'check' : 'microfone'} tamanho={16} />{r.perguntar ? 'Vai para a próxima entrevista' : 'Perguntar na próxima entrevista'}
                         </button>
                       )}
+                      {d.pode_pedir_ajuste && !r.ajuste && <button type="button" className="btn" disabled={ocupada === r.id} onClick={() => setAjustando(r)} title="Diga o que precisa mudar: a regra continua em revisão e um administrador ajusta">Pedir ajuste</button>}
                       <button type="button" className="btn" disabled={ocupada === r.id} onClick={() => setEditando(r)}>Editar</button>
                       <button type="button" className="btn btn-primary" disabled={ocupada === r.id} onClick={() => void agir(r, 'confirmar')}><Icone nome="check" tamanho={16} />Confirmar regra</button>
                     </div>
@@ -193,6 +209,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
                   ))}
                 </div>
               )}
+              {confirmadas.length > 0 && <a className="btn" href={`/api/processos/${processoId}/regras/pdf`} title="Baixar as regras confirmadas em PDF"><Icone nome="baixar" tamanho={16} />Baixar PDF</a>}
               {pode && <button type="button" className="btn" onClick={() => setEditando('nova')}><Icone nome="mais" tamanho={16} />Nova regra</button>}
             </div>
           </div>
@@ -215,7 +232,7 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
                       {r.origem === 'maia'
                         ? <span>Maia{r.entrevista ? <> · <Link href={`/app/entrevistas/${r.entrevista.id}`}>entrevista com {r.entrevista.entrevistado ?? 'pessoa entrevistada'}</Link></> : null}</span>
                         : <span>Adicionada por {r.criado_por ?? 'alguém da equipe'}</span>}
-                      <span className="regra-confirmada"><Icone nome="check" tamanho={14} />{r.origem === 'maia' && r.confirmada_por ? `Confirmada por ${r.confirmada_por}` : 'Confirmada'}</span>
+                      <span className="regra-confirmada"><Icone nome="check" tamanho={14} />{r.origem === 'maia' && r.confirmada_por ? `Confirmada por ${r.confirmada_por}` : 'Confirmada'}{r.confirmada_em ? ` em ${data(r.confirmada_em)}` : ''}</span>
                     </span>
                   </div>
                   {pode && (
@@ -318,11 +335,47 @@ export function RegrasDoProcesso({ processoId, arquivado, visivel, aoCarregar, a
           aoSalvar={async (dados) => {
             if (editando === 'nova') await criarRegra(processoId, dados); else await editarRegra(editando.id, dados);
             setEditando(null);
-            await carregar();
+            await recarregar();
           }} />
       )}
       {ajuda && <AjudaTipos aoFechar={() => setAjuda(false)} />}
+      {ajustando && (
+        <DialogoAjuste regra={ajustando} aoFechar={() => setAjustando(null)}
+          aoEnviar={async (texto) => { await pedirAjuste(ajustando.id, texto); setAjustando(null); await recarregar(); }} />
+      )}
     </div>
+  );
+}
+
+/** O pedido de ajuste (decisão 108): quem confirma diz o que precisa mudar, e a regra vai para um administrador ajustar. */
+function DialogoAjuste({ regra, aoEnviar, aoFechar }: { regra: Regra; aoEnviar: (texto: string) => Promise<void>; aoFechar: () => void }) {
+  const [texto, setTexto] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState('');
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    setEnviando(true);
+    setErro('');
+    try { await aoEnviar(texto.trim()); } catch (err) { setErro(msg(err)); setEnviando(false); }
+  }
+  return createPortal(
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="ajuste-titulo" onClick={() => !enviando && aoFechar()}>
+      <form className="dialog dialogo-regra" onClick={(e) => e.stopPropagation()} onSubmit={enviar}>
+        <h2 id="ajuste-titulo">Pedir ajuste</h2>
+        <blockquote className="regra-citada">{regra.texto}</blockquote>
+        <label className="field">
+          <span>O que precisa ajustar?</span>
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={4} maxLength={500} required minLength={3} autoFocus placeholder="Ex.: o limite é R$ 30 mil, não R$ 50 mil; quem autoriza é o gerente financeiro." />
+        </label>
+        <p className="notice">A regra continua em revisão e não entra no processo. Um administrador ajusta o texto e ela volta para confirmação.</p>
+        {erro && <p className="form-erro" role="alert">{erro}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={aoFechar} disabled={enviando}>Cancelar</button>
+          <button type="submit" className="btn btn-primary" disabled={enviando || texto.trim().length < 3}>{enviando ? 'Enviando…' : 'Enviar pedido'}</button>
+        </div>
+      </form>
+    </div>,
+    document.body,
   );
 }
 
