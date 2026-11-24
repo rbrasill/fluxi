@@ -880,6 +880,40 @@ No resultado da entrevista de regras, além da descrição geral, aparecem as re
 
 Ficou como estava, a pedido: a Maia falar mais que a pessoa e manter a sigla entre parênteses quando a pessoa a corrige.
 
+## 110. Entrevista de regras: visão ampla do processo; as observações do convite são direcionadores
+
+Ajuste depois da segunda entrevista de regras (processo de viabilidade de lançamento) e da avaliação de quem convidou: a Maia deu peso demais à observação escrita no convite, que citava um caso específico, e a conversa ficou nas regras de um assunto só. A decisão 109 tinha feito do "pedido de quem convidou" o assunto principal e a primeira pergunta da conversa; essa parte foi desfeita.
+
+O que se espera: a entrevista de regras busca a visão geral das regras do processo. O que quem convida escreve são pontos que a Maia não pode deixar de abordar e validar, não o assunto da conversa. Ela tem autonomia para ir além deles e precisa perceber quando a pessoa fica só neles.
+
+Na condução da Maia:
+- Roteiro em fases: abertura; visão geral (em que assuntos o processo tem regra, antes de aprofundar qualquer uma); assunto por assunto; ampliar; pergunta de fechamento, repasse e despedida.
+- A primeira pergunta de regra é sempre a de visão geral ("em que pontos desse processo tem regra?"), com "E além disso?" até ter os assuntos principais. Mapa curto não trava a conversa: ela aprofunda o que a pessoa citou e abre o resto depois.
+- Observações do convite: cada ponto pede uma pergunta dela e a confirmação da pessoa (ser citado de passagem não conta). Ela não abre a conversa por eles. Se a observação cita um caso (um empreendimento, um cliente), o caso serve para testar as regras: o que um caso assim tem de cumprir, do começo ao fim, e se alguma regra muda por causa do tamanho, do lugar ou do tipo; depois, o que vale nos outros casos.
+- Do exemplo para a regra geral: regra que aparece a partir de um caso pede a pergunta "vale sempre ou só nesse caso?" e pelo menos um cenário diferente.
+- Ampliar: uma lista numerada, percorrida com uma pergunta concreta por item, que é também a conferência obrigatória antes da despedida: as observações de quem convidou (quando há); o que decide o resultado do processo (o que faz um caso ser aprovado ou recusado); limites, valores e alçadas; prazos; o que é proibido; exceções; como as pessoas devem agir; outro cenário (um caso bem diferente); as partes do processo que não apareceram. No item que já apareceu, ela só pergunta se existe mais alguma regra daquele tipo.
+- "Só cuido de uma parte" não encerra a busca: ela pergunta que outras regras existem no processo e quem cuida de cada uma.
+- Estreitamento: resposta que se restringe sozinha ("para essa premissa, não", "nesse caso é assim") vale só para aquilo; ela refaz a pergunta para o resto. Se continuar, diz que quer olhar o processo inteiro e volta à lista.
+- Amplitude não substitui profundidade: regra citada sem o valor, a condição ou o prazo não está levantada. Palavra sem medida ("muito", "completamente") pede o número.
+- Antes do repasse, a pergunta de fechamento: "Pensando no processo todo, e não só no que a gente conversou: ficou de fora alguma regra importante?"
+- Com regras já confirmadas no processo, a visão geral parte do que elas cobrem e procura o que falta.
+- Quando a pessoa volta só para completar pontos em aberto, nada disso entra: ela percorre só os pontos escolhidos, como antes.
+- A entrevista de mapeamento usa as observações do mesmo jeito: são direcionadores, e o assunto é o processo de ponta a ponta.
+
+Na análise:
+- Regra na forma geral: vale para os casos do processo e é escrita sem o nome do caso citado. O que valia só para aquele caso não vira regra; se ficou em dúvida, vira pendência.
+- A consequência do descumprimento e o pedido de exceção ficam na mesma regra, não em regras separadas.
+- Observação do convite que não foi abordada vira pendência escrita na forma geral. Conversa que ficou em um assunto ou em um caso só é dita na descrição geral e gera uma pendência que abre os outros assuntos.
+
+Nas telas: o campo do convite passou de "O que a Maia deve focar" para "Pontos que a Maia não pode deixar de abordar", com a explicação de que a conversa é sobre o processo inteiro. A tela de quem foi convidado e o modelo do e-mail (`docs/pipedream-convite-enviar.js`, que precisa ser copiado para o Pipedream) dizem o mesmo.
+
+Como foi conferido: além dos testes automáticos, com 30 entrevistas simuladas em texto, usadas também para ajustar as instruções. Um modelo fez a Maia com as instruções do app e outro fez um entrevistado fictício, com nove assuntos de regra inventados, que puxa toda resposta para o caso do convite.
+- Com as instruções da decisão 109 (três simulações), a Maia entrou no caso do convite na segunda fala e levantou 4 ou 5 dos 9 assuntos.
+- Com as novas, nas quatro últimas simulações ela começou pela visão geral, trouxe o ponto do convite depois de percorrer os assuntos e levantou os 9; nas versões intermediárias, de 7 a 9.
+- Com um entrevistado que insiste em dizer que só cuida de um assunto, as instruções novas não foram melhores que as antigas (de 1 a 7 assuntos, contra 4 e 5), e em parte dessas conversas a Maia não chegou a fazer a pergunta sobre o ponto do convite. Nesse caso o que a conversa consegue é registrar quem saberia responder, e a análise leva o ponto não abordado para as pendências.
+- As conversas ficaram mais longas: de 30 a 50 falas da Maia, contra cerca de 20.
+A simulação usa modelos de texto, não o modelo de voz, e dados inventados: serve de indício. A confirmação é a próxima entrevista de verdade.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

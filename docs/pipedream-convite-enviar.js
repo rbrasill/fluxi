@@ -80,7 +80,7 @@ function montarHtml({ nome, processo, convidado_por, nota, link, finalidade }) {
             ${t.como}
             Costuma levar de 15 a 30 minutos. Use fones de ouvido se puder e, se precisar sair no meio, &eacute; s&oacute; dizer: ela pausa e voc&ecirc;s continuam depois.
           </p>
-${nota ? `          <p style="margin: 0 0 14px 0; font-size: 14px; color: #475569;">O que ${esc(convidado_por)} pediu para a Maia focar: <em>&ldquo;${esc(nota)}&rdquo;</em></p>\n` : ""}
+${nota ? `          <p style="margin: 0 0 14px 0; font-size: 14px; color: #475569;">Pontos que ${esc(convidado_por)} pediu para a Maia não deixar de abordar: <em>&ldquo;${esc(nota)}&rdquo;</em>. A conversa vai além deles.</p>\n` : ""}
           <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin: 24px auto 10px auto;">
             <tr>
               <td align="center" bgcolor="#0f5c63" style="background-color: #0f5c63; border-radius: 10px;">

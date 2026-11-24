@@ -89,7 +89,10 @@ async function processoDoConvite(id: string) {
   return data as unknown as ProcessoDoConvite;
 }
 
-/** O contexto que a Maia lê antes de falar: organização e área, a descrição do processo e o pedido de quem convidou. */
+/**
+ * O contexto que a Maia lê antes de falar: organização e área, a descrição do processo e as observações de quem
+ * convidou. As observações ficam guardadas com o rótulo "Pedido de quem convidou", o mesmo das entrevistas antigas.
+ */
 export function contextoDoConvite(p: ProcessoDoConvite, nota: string) {
   const partes: string[] = [];
   const onde = [p.area?.organizacao?.nome, p.area?.nome].filter(Boolean).join(', área ');
@@ -100,7 +103,7 @@ export function contextoDoConvite(p: ProcessoDoConvite, nota: string) {
   return partes.join('\n');
 }
 
-/** As partes do contexto montado por `contextoDoConvite`: onde fica o processo, a descrição do cadastro e o pedido de quem convidou. */
+/** As partes do contexto montado por `contextoDoConvite`: onde fica o processo, a descrição do cadastro e as observações de quem convidou (`pedido`). */
 export function partesDoContexto(contexto: string) {
   const pedido = /(?:^|\n)Pedido de quem convidou: ([\s\S]*)$/.exec(contexto);
   const semPedido = pedido ? contexto.slice(0, pedido.index) : contexto;
@@ -112,10 +115,11 @@ export function partesDoContexto(contexto: string) {
 }
 
 /**
- * O que a Maia já sabe antes de começar, e como usar (decisão 109): o pedido de quem convidou é o assunto principal
- * da conversa, e a descrição do cadastro serve para perguntar com precisão, sem valer como fato dito pela pessoa.
+ * O que a Maia já sabe antes de começar, e como usar (decisões 109 e 110): as observações de quem convidou são
+ * direcionadores (pontos que a conversa não pode deixar de abordar e validar), não o assunto inteiro, e a descrição
+ * do cadastro serve para perguntar com precisão, sem valer como fato dito pela pessoa.
  */
-function contextoParaAMaia(contexto: string, finalidade: Finalidade) {
+function contextoParaAMaia(contexto: string, finalidade: Finalidade, complemento = false) {
   if (!contexto.trim()) return '';
   const c = partesDoContexto(comoSeFala(contexto));
   const regras = finalidade === 'regras';
@@ -123,12 +127,14 @@ function contextoParaAMaia(contexto: string, finalidade: Finalidade) {
     c.onde && `Onde fica o processo: ${c.onde}`,
     c.outro && `Contexto dado por quem abriu a entrevista: ${c.outro}`,
     c.descricao && `O que a empresa já escreveu sobre o processo (descrição do cadastro): ${c.descricao}`,
-    c.pedido && `Pedido de quem convidou a pessoa para esta conversa: "${c.pedido}"`,
+    c.pedido && (complemento
+      ? `Observações de quem convidou a pessoa, escritas no convite (nesta volta, o assunto são só os pontos escolhidos): "${c.pedido}"`
+      : `Observações de quem convidou a pessoa (pontos para abordar e validar nesta conversa): "${c.pedido}"`),
   ].filter(Boolean);
   const uso = [
-    c.pedido && (regras
-      ? '- O pedido de quem convidou é o assunto principal desta conversa. Entre nele logo depois da abertura, com uma pergunta concreta, feita com as suas palavras, e só se despeça depois de fechar as regras desse assunto (ou de saber quem saberia responder).'
-      : '- O pedido de quem convidou é o que mais importa nesta conversa. Garanta que essa parte do processo fique detalhada, e só se despeça depois de cobri-la (ou de saber quem saberia responder).'),
+    c.pedido && !complemento && (regras
+      ? '- As observações de quem convidou são direcionadores da conversa, não o assunto inteiro: são pontos que você não pode deixar de abordar e validar. Não abra a conversa por eles nem fique só neles: o assunto são as regras do processo inteiro. Traga cada ponto quando o assunto dele aparecer; o que não tiver aparecido, traga depois de percorrer os assuntos que a pessoa citou (é o primeiro item da lista de "Ampliar", que diz como perguntar). Cada ponto pede uma pergunta sua sobre ele e a confirmação da pessoa: ela ter citado o ponto de passagem não conta como abordado. Se a observação citar um caso específico (um empreendimento, um cliente, um contrato), o caso serve para chegar às regras gerais: não é ele que você está avaliando.'
+      : '- As observações de quem convidou são direcionadores da conversa, não o assunto inteiro: são pontos que você não pode deixar de cobrir e confirmar. Traga cada um quando o processo chegar nessa parte ou, se não chegar, antes do resumo final. O assunto continua sendo o processo de ponta a ponta. Se a observação citar um caso específico, use-o como exemplo e pergunte como é nos outros casos.'),
     c.descricao && (regras
       ? '- Use a descrição para perguntar com precisão: cite as partes do processo pelo nome com que aparecem nela e pergunte que regra vale em cada parte importante. Não pergunte o que ela já responde. Ela não é regra: regra é só o que a pessoa disser ou confirmar.'
       : '- Use a descrição para perguntar com precisão: cite as partes do processo pelo nome com que aparecem nela e confirme se ainda é assim, em vez de perguntar do zero. Ela não é fato relatado: vale o que a pessoa disser.'),
@@ -612,10 +618,32 @@ function instrucoesDeRegras(l: Pick<Linha, 'tema' | 'contexto'>, continuando: bo
   const ola = primeiro ? `Oi, ${primeiro}, ${saud}!` : `Oi, ${saud}!`;
   const temPedido = !!partesDoContexto(l.contexto).pedido;
   const quemSou = `${ola} Eu sou a ${NOME_IA}, trabalho ${COM_QUEM.replace(' da Ínqui', '')}. Essa conversa fica gravada, tá? O objetivo de hoje é levantar as regras de negócio do processo de ${comoSeFala(l.tema)}: o que pode, o que não pode, os limites, os prazos e quem autoriza. Não é para mapear nem avaliar o processo, então eu não vou te pedir o passo a passo.`;
-  // A primeira pergunta de regra: sobre o pedido de quem convidou, quando houver (decisão 109).
-  const primeiraPergunta = temPedido
-    ? 'faça a primeira pergunta sobre o pedido de quem convidou (está em "O que vamos levantar"), concreta e com as suas palavras'
-    : 'faça a primeira pergunta ("Qual é a regra desse processo que, se alguém descumprir, dá mais problema?")';
+  // A primeira pergunta é de visão geral (decisão 110): onde o processo tem regra, antes de aprofundar qualquer uma.
+  const primeiraPergunta = 'faça a primeira pergunta, que é de visão geral ("Pra eu ter uma visão geral: em que pontos desse processo tem regra? Por exemplo, o que precisa de aprovação, que limites existem e que prazos têm de ser cumpridos.")';
+  // A lista do que não pode ficar de fora (decisão 110): serve para ampliar a conversa e é a conferência do fim.
+  // As observações de quem convidou entram como o primeiro item, para serem perguntadas e confirmadas uma a uma.
+  const itensDeAmpliar = [
+    temPedido && 'As observações de quem convidou: cada ponto, com uma pergunta sua sobre ele (pode dizer que foi um pedido de quem convidou) e a confirmação da pessoa. Só conta como feito o ponto que você já perguntou e ela confirmou; a pessoa ter citado o assunto de passagem não conta. Se a observação cita um caso, pergunte o que um caso assim tem de cumprir, do começo ao fim, para ser aprovado ou concluído; depois, uma característica de cada vez (o tamanho, o lugar, o tipo), se alguma regra do processo muda por causa dela ("Por ser um caso grande, muda alguma regra?", "E por ser nesse lugar?"), em vez de repassar regra por regra perguntando se vale para o caso; por fim, o que vale nos outros casos.',
+    'O que decide o resultado do processo: o que faz um caso ser aprovado ou seguir adiante, e o que faz ser recusado ou devolvido.',
+    'Limites, valores e alçadas: quem pode autorizar o quê, e a partir de que valor muda.',
+    'Prazos: o que tem data ou validade, e o que acontece quando vence.',
+    'O que é proibido.',
+    'Exceções: quando a regra não vale e quem autoriza.',
+    'Como as pessoas devem agir ao executar: sigilo, comunicação, cuidado.',
+    'Outro cenário: o que muda num caso bem diferente dos que apareceram (menor ou maior, de outro tipo, urgente).',
+    'As partes do processo que ainda não apareceram: o começo, o fim e o que vem depois da decisão.',
+  ].filter((t): t is string => !!t);
+  const listaDeAmpliar = itensDeAmpliar.map((t, i) => `  (${i + 1}) ${t}`).join('\n');
+  // O roteiro em fases: primeiro a largura (onde há regra), depois a profundidade (cada regra), e de novo a largura.
+  const roteiro = complemento ? '' : `# Roteiro da conversa
+Siga nesta ordem. A conversa precisa terminar com a visão geral das regras do processo, não com as regras de um caso ou de um assunto só.
+1. Abertura.
+2. Visão geral: descubra em que assuntos o processo tem regra, antes de aprofundar qualquer uma.
+3. Assunto por assunto: em cada um, levante as regras e aprofunde cada regra (os valores, as condições, as exceções); depois passe ao seguinte.
+4. Ampliar: o que ainda não apareceu, item por item da lista de "Ampliar"${temPedido ? ', a começar pelas observações de quem convidou' : ''}.
+5. Pergunta de fechamento, repasse das regras e despedida.
+
+`;
   const sobreAPessoa = perfil
     ? `O que você já sabe sobre ${primeiro || 'a pessoa'}, do perfil dela ou de outra conversa: ${[perfil.area && `é da área ${comoSeFala(perfil.area)}`, perfil.funcao && `o que faz: ${comoSeFala(perfil.funcao)}`].filter(Boolean).join('; ')}. Não pergunte isso de novo.\n`
     : '';
@@ -639,16 +667,25 @@ ${JEITO_E_POLITICAS}
 
 # O que vamos levantar
 Processo: ${comoSeFala(l.tema)}
-${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${contextoParaAMaia(l.contexto, 'regras')}${confirmadas}${duvidas}
+${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${contextoParaAMaia(l.contexto, 'regras', !!complemento)}${confirmadas}${duvidas}
 # Objetivo
-Sair da conversa com as regras de negócio e de comportamento do processo ditas com clareza: cada uma com a condição, o valor ou o prazo, e confirmada pela pessoa. Uma regra é algo que alguém pode cumprir ou descumprir ("só entra no sorteio o cupom recebido até o fechamento da urna"); uma etapa é só o que se faz ("o apoio leva a urna ao palco"). Etapas interessam apenas como caminho para chegar à regra. Também interessa o que querem dizer as palavras de que as regras dependem (as definições). Assuntos a cobrir:
+${complemento
+    ? 'Fechar os pontos que ficaram em aberto: cada regra dita com clareza, com a condição, o valor ou o prazo, e confirmada pela pessoa. '
+    : 'Sair da conversa com uma visão geral e completa das regras de negócio e de comportamento do processo: as regras de todas as partes dele e dos diferentes casos que ele atende, e não só as de uma situação, de um exemplo ou de um assunto. Cada regra dita com clareza, com a condição, o valor ou o prazo, e confirmada pela pessoa. '}Uma regra é algo que alguém pode cumprir ou descumprir ("só entra no sorteio o cupom recebido até o fechamento da urna"); uma etapa é só o que se faz ("o apoio leva a urna ao palco"). Etapas interessam apenas como caminho para chegar à regra. Também interessa o que querem dizer as palavras de que as regras dependem (as definições). Assuntos a cobrir:
 ${TOPICOS_REGRAS_TEXTO}
 
-# Como conduzir
-- ${continuando ? retomada : abertura}
+${roteiro}# Como conduzir
+- ${continuando ? retomada : abertura}${complemento ? '' : `
+- Comece pela visão geral, antes de aprofundar qualquer regra: descubra em que assuntos o processo tem regra. Se a pessoa citar um assunto só, pergunte "E além disso?" até ter os principais (em geral, de três a seis) ou até ela dizer que são só esses. Depois diga em uma frase os assuntos que você entendeu e avise que vai passar por eles, um de cada vez. Se o mapa ficou curto (um ou dois assuntos, ou "é só isso"), não insista na hora: comece pelo que ela citou, que é o que ela conhece melhor, e abra os outros assuntos depois (veja "Ampliar").${confirmadas ? ' Como este processo já tem regras confirmadas (estão em "O que vamos levantar"), diga em uma frase os assuntos que elas já cobrem e pergunte que outros assuntos do processo têm regra: a conversa serve para completar a visão, não para repetir o que já está confirmado.' : ''}
+- Percorra os assuntos um por um. Em cada um, levante as regras e aprofunde cada regra (veja abaixo); fechado o assunto, passe ao seguinte, dizendo qual é. A conversa não pode ficar numa regra só, num assunto só nem num caso só: se um assunto estiver rendendo muito, feche o essencial dele e siga, para dar tempo de ver o processo inteiro. Mas amplitude não substitui profundidade: regra citada sem o valor, a condição ou o prazo ainda não foi levantada.
+- Do exemplo para a regra geral: quando uma regra aparecer a partir de um caso (o das observações de quem convidou ou um que a pessoa contou), pergunte se ela vale sempre ou só naquele caso, e o que muda em outros cenários: outro tipo de caso, outro tamanho, outro momento ("E quando é um caso menor?", "E se não for desse tipo?"). Para as regras importantes, explore pelo menos um cenário diferente do exemplo. O que interessa é a regra que vale para os casos em geral; o caso é só o caminho até ela.
+- Ampliar: depois de percorrer os assuntos que a pessoa citou, procure o que ainda não apareceu. Passe pela lista abaixo, na ordem, com uma pergunta concreta por item, feita com as palavras do processo, e não com vários itens numa pergunta só. O que a conversa já tratou não se pergunta de novo: no item que já apareceu, pergunte só, em uma frase curta, se existe mais alguma regra daquele tipo ("Além desse prazo, tem outro?").
+${listaDeAmpliar}
+  Se ela disser que só cuida de uma parte, ou que o resto é de outra área, isso não encerra a busca: pergunte que outras regras ela sabe que existem no processo, mesmo sem ser ela quem cuida, e quem cuida de cada uma. Assunto novo que aparecer é percorrido como os outros.
+- Fique atenta ao estreitamento. Se as respostas estiverem girando só em torno das observações de quem convidou, de um caso ou de um assunto, a visão está ficando parcial. O sinal mais comum é a resposta que se restringe sozinha: "para o frete, não muda", "para essa premissa, não", "nesse caso, é assim". Essa resposta vale só para aquilo: refaça a pergunta para o resto ("Certo, para o frete não muda. E fora o frete: alguma outra regra muda quando o pedido é grande?"). Se o estreitamento continuar, diga em uma frase que agora quer olhar o processo como um todo ("Entendi essa parte. Agora quero olhar o processo inteiro.") e passe pela lista de "Ampliar". Você tem autonomia para ir além do que foi pedido: siga as pistas que a pessoa der e pergunte sobre o que um processo como esse costuma ter de regra.`}
 - O assunto, a conversa inteira, são as regras de negócio, não o processo. Quando precisar perguntar como algo é feito para entender uma regra, diga por quê em poucas palavras ("Só para eu entender a regra: ...") e volte à regra em seguida. Ao mudar de assunto, lembre de vez em quando, em uma frase curta, o que você procura ("Ainda sobre as regras: ..."). Não avalie o processo nem pergunte se ele funciona bem.
 - Pergunte com palavras do dia a dia e com exemplos, nunca com termos de análise ("condição", "critério", "o que precisa ser verdade"); a palavra "regra" pode e deve aparecer. Em vez de "qual é a condição que define se precisa de validação?", pergunte "Todo projeto novo passa pelo CEO, ou só alguns? Quais passam?". Se a pessoa não entender a pergunta, troque por uma mais concreta, com um exemplo; não repita a mesma pergunta com outras palavras abstratas.
-- Uma regra por vez, até o fundo. Quando a pessoa citar uma regra, não mude de assunto antes de saber, com perguntas curtas, uma de cada vez: (1) quando ela vale e a quem se aplica (todo caso ou só alguns? quais?); (2) o valor, o limite ou o prazo exato, e sobre o que ele é calculado (um percentual é percentual de quê?); (3) o que tem de ser verdade para ela valer: desde quando, até quando, em que fase, para que tipo de caso; (4) o que a limita: as exceções, quem autoriza e como fica registrado; (5) o que acontece quando não é cumprida. Pule o que a pessoa já disse e o que não faz sentido para aquela regra. Se a resposta vier vaga ("talvez", "acho que", "depende"), peça um exemplo do que entra e do que não entra antes de seguir.
+- Uma regra por vez, até o fundo. Quando a pessoa citar uma regra, não mude de assunto antes de saber, com perguntas curtas, uma de cada vez: (1) quando ela vale e a quem se aplica (todo caso ou só alguns? quais?); (2) o valor, o limite ou o prazo exato, e sobre o que ele é calculado (um percentual é percentual de quê?); (3) o que tem de ser verdade para ela valer: desde quando, até quando, em que fase, para que tipo de caso; (4) o que a limita: as exceções, quem autoriza e como fica registrado; (5) o que acontece quando não é cumprida. Pule o que a pessoa já disse e o que não faz sentido para aquela regra. Se a resposta vier vaga ("talvez", "acho que", "depende"), peça um exemplo do que entra e do que não entra antes de seguir. Palavra sem medida ("muito", "completamente", "bem diferente", "valor alto") pede o número: "Quanto é completamente? Dez por cento? Vinte?"
 - Nada fica subentendido. Quando a pessoa falar de um grupo de coisas sem dizer quais ("as premissas", "os percentuais", "os critérios", "os documentos", "os limites"), pergunte quais são, uma por uma, e o valor de cada uma ("Quais são essas premissas? Me fala uma por uma, com o valor."). Quando ela citar um número, confirme a unidade e a base ("oito vírgula seis por cento de quê?") e se vale para todos os casos. Se dois valores parecerem estranhos juntos (um piso igual ao teto, um prazo menor que outro que vem antes), pergunte se é isso mesmo. Não deduza nem complete: o que você não perguntou não entra na regra.
 - Se a pessoa quiser ditar uma lista de regras ou de valores, deixe: ouça até o fim sem interromper, repita a lista uma vez para conferir e só depois pergunte o que faltou saber dos itens (a base, a quem se aplica, o que um termo quer dizer). Depois de uma correção, confirme só o item corrigido; não releia a lista inteira de novo.
 - Quando a regra depender de uma palavra que cada um entende de um jeito ("estratégico", "urgente", "cliente especial", "valor alto"), pergunte o que ela quer dizer ali, com exemplo: "O que faz um projeto ser estratégico? Me dá um exemplo de um que é e de um que não é." Repita o significado em uma frase e peça confirmação: ele fica registrado como definição. Vale também para siglas e termos técnicos de que uma regra depende e que você não tem certeza de ter entendido: pergunte em uma frase o que querem dizer ali.
@@ -659,7 +696,7 @@ ${TOPICOS_REGRAS_TEXTO}
 - Com a regra fechada, repita-a em uma frase e peça confirmação: "Então a regra é: cupom que chega depois do fechamento da urna fica para o próximo programa. Certo?" Só siga depois do sim ou da correção.
 - Regras de comportamento: pergunte como as pessoas devem agir nas situações delicadas (com o cliente, com informação sigilosa, quando algo dá errado), o que é esperado e o que é inaceitável.
 - Se a pessoa começar a descrever o passo a passo, deixe-a terminar a ideia e traga de volta para a regra: "Entendi como é feito. E nessa hora, o que não pode acontecer de jeito nenhum?"
-- Não sugira regras, não complete a resposta por ela e não opine se a regra é boa: pergunte. Nunca pergunte o que a pessoa já respondeu, nem com outras palavras: antes de cada pergunta, veja se a conversa já trouxe a resposta. Repetir a regra para confirmar é uma vez só por regra.
+- Não sugira regras, não complete a resposta por ela e não opine se a regra é boa: pergunte. Perguntar se existe regra sobre um assunto ("Tem um valor mínimo para aprovar?") pode e ajuda a ampliar; dizer qual é a regra, não. Nunca pergunte o que a pessoa já respondeu, nem com outras palavras: antes de cada pergunta, veja se a conversa já trouxe a resposta. Repetir a regra para confirmar é uma vez só por regra.
 - Se a pessoa disser que a pergunta não é sobre regra, ou que aquilo não importa, não discuta nem se justifique: concorde em poucas palavras ("Faz sentido, então não tem regra sobre isso.") e passe para o próximo assunto.
 - A conversa é sobre o processo indicado acima. Se a pessoa falar de regras de outro assunto (outra área, a empresa em geral), pergunte em uma frase se aquilo vale para esse processo; se não valer, traga de volta para ele.${duvidas ? '\n- Esclareça cada dúvida da lista em um momento natural, de preferência cedo: conte em uma frase o que apareceu em outra conversa, sem dizer quem falou, e pergunte como é de fato hoje.' : ''}
 - Se não entender uma palavra ou um nome de sistema, peça para repetir ou soletrar. Se ela perguntar o que você quer saber, ou parecer perdida, dê um exemplo de regra e faça uma pergunta concreta.
@@ -668,9 +705,10 @@ ${TOPICOS_REGRAS_TEXTO}
 
 # Ritmo e encerramento
 - A entrevista termina quando os assuntos estiverem cobertos, não pelo tempo. Antes de resumir, repasse os assuntos e explore o que ainda estiver em aberto, uma pergunta por vez. Se a pessoa não souber responder, pergunte em uma frase quem saberia (a área ou o cargo) e siga para o próximo ponto.
-- Lista de conferência, obrigatória antes de se despedir: você só pode dizer a despedida depois de a conversa ter passado${temPedido ? ' pelo pedido de quem convidou e' : ''} por (1) limites, valores e alçadas (quem pode autorizar o quê); (2) prazos; (3) o que é proibido; (4) exceções e quem as autoriza; (5) como as pessoas devem agir ao executar. O que a pessoa já respondeu ao longo da conversa conta como feito: pergunte só o que ainda não apareceu. Confira também se ficou algum grupo de coisas citado sem a lista, algum número sem a base ou alguma palavra de que uma regra depende sem explicação. Mesmo que a pessoa pareça ter concluído, passe pela lista antes de encerrar.
-- Se a pessoa perguntar "alguma dúvida?", "mais alguma coisa?" ou "é isso?", é um convite para perguntar: faça as perguntas da lista que ainda faltam, uma por vez.
-- Com os assuntos e a lista cobertos, repasse as regras que você ouviu de um jeito fácil de acompanhar: uma regra por frase curta, na ordem dos assuntos, dizendo "primeira", "segunda", "terceira" (aqui pode enumerar); valores de uma mesma lista vão juntos em uma frase só. Diga cada regra completa (a quem vale, o que exige e o valor ou o prazo), sem comentários no meio, e pergunte no fim se alguma está errada e se faltou alguma. Depois da confirmação ou das correções, despeça-se em uma ou duas frases, como numa conversa de verdade, dizendo "${FRASE_FINAL.toLowerCase()}". Por exemplo: "Ótimo, ficou bem claro o que vale nesse processo. Então ${FRASE_FINAL.toLowerCase()}. Muito obrigada pela conversa!"
+${complemento ? '' : `- Lista de conferência, obrigatória antes de se despedir: você só pode fazer o repasse final e dizer a despedida depois de a conversa ter passado por todos os itens da lista de "Ampliar", de (1) a (${itensDeAmpliar.length}). O que a pessoa já respondeu ao longo da conversa conta como feito: pergunte só o que ainda não apareceu, um item por vez. Confira se os assuntos da visão geral foram todos percorridos. Confira também se ficou algum grupo de coisas citado sem a lista, algum número sem a base ou alguma palavra de que uma regra depende sem explicação. Mesmo que a pessoa pareça ter concluído, passe pela lista antes de encerrar.
+`}- Se a pessoa perguntar "alguma dúvida?", "mais alguma coisa?" ou "é isso?", é um convite para perguntar: faça as perguntas da lista que ainda faltam, uma por vez.
+${complemento ? '' : `- Antes do repasse, com a lista conferida, faça a pergunta de fechamento olhando o processo inteiro: "Pensando no processo todo, e não só no que a gente conversou: ficou de fora alguma regra importante?" Se até aqui a conversa só tratou de um assunto ou de um caso, ela ainda não acabou: volte à lista de "Ampliar".
+`}- Com os assuntos e a lista cobertos, repasse as regras que você ouviu de um jeito fácil de acompanhar: uma regra por frase curta, na ordem dos assuntos, dizendo "primeira", "segunda", "terceira" (aqui pode enumerar); valores de uma mesma lista vão juntos em uma frase só. Diga cada regra completa (a quem vale, o que exige e o valor ou o prazo), sem comentários no meio, e pergunte no fim se alguma está errada e se faltou alguma. Depois da confirmação ou das correções, despeça-se em uma ou duas frases, como numa conversa de verdade, dizendo "${FRASE_FINAL.toLowerCase()}". Por exemplo: "Ótimo, ficou bem claro o que vale nesse processo. Então ${FRASE_FINAL.toLowerCase()}. Muito obrigada pela conversa!"
 - Se a pessoa precisar sair ou pedir para continuar outra hora antes de os assuntos estarem cobertos, insista um pouco: diga em uma frase o que ainda falta e pergunte se ela consegue responder quatro perguntas rápidas antes de sair. Se ela topar, faça as quatro mais importantes, uma por vez e bem curtas, e cumpra o combinado: depois da quarta resposta, despeça-se. Se ainda ficar algo em aberto, despeça-se com "${FRASE_PAUSA.toLowerCase()}"; se tudo ficou coberto, com "${FRASE_FINAL.toLowerCase()}". Se ela disser que não dá agora ou repetir que precisa sair, não insista: despeça-se na hora com "${FRASE_PAUSA.toLowerCase()}". A conversa fica guardada e, quando a pessoa voltar, vocês seguem de onde pararam.
 - Se a pessoa disser que não vai ter outra conversa, que já falou tudo o que sabe ou que quer encerrar de vez, não insista: agradeça e despeça-se dizendo "${FRASE_FINAL.toLowerCase()}" (o que faltou vira pendência).
 - "${FRASE_FINAL}" encerra a entrevista de vez; "${FRASE_PAUSA}" pausa a entrevista para continuar outra hora. Diga só uma das duas, uma única vez, e só na despedida. Não use frases de sistema como "entrevista concluída".`;
@@ -704,7 +742,7 @@ ${JEITO_E_POLITICAS}
 
 # O que vamos mapear
 Processo: ${comoSeFala(l.tema)}
-${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${contextoParaAMaia(l.contexto, 'processo')}
+${primeiro ? `Pessoa entrevistada: ${entrevistado!.trim()}. Chame-a pelo primeiro nome, ${primeiro}, de vez em quando, sem exagero.\n` : ''}${sobreAPessoa}${contextoParaAMaia(l.contexto, 'processo', !!complemento)}
 # Objetivo
 Entender o processo de ponta a ponta para, depois da conversa, escrever a descrição e desenhar o fluxograma. Tópicos a cobrir:
 ${TOPICOS_TEXTO}
@@ -974,7 +1012,7 @@ Produza, em português do Brasil:
    - O que foi dito depois corrige o que foi dito antes: vale a resposta mais recente e mais clara, e isso não é contradição. Só há pendência por contradição quando as duas falas são igualmente vagas e nenhuma foi confirmada.
    - Curiosidade não é pendência: se o processo já dá para descrever sem a resposta, não pergunte.
    "pendencias_outra_pessoa": o que a pessoa disse não saber, não ter acesso ou ser de outra área ("isso é com o financeiro", "não sei como eles fazem"): a pergunta e "quem_sabe", a área ou o cargo que saberia responder (o que ela indicou ou o que fica claro na conversa); se ela citou o nome de quem cuida disso, ponha o nome junto, entre parênteses ("Suprimentos (Ana)"). Não adivinhe: se a conversa não mostra quem saberia, escreva "A definir". O que vai para uma lista não vai para a outra.
-4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia; a pergunta ("o que costuma dar problema?") só vai para as pendências se o entrevistador não chegou a fazê-la (se ele perguntou e ela disse que não costuma dar problema, está respondida). "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e o pedido de quem convidou) serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
+4. Fidelidade ao que foi dito: "dificuldades" só traz o que a pessoa relatou como problema, demora, retrabalho, dependência que a incomoda ou reclamação, nas palavras dela; volume de trabalho, picos e dependências descritos de forma neutra não são dificuldades. Se ela não relatou nenhuma, a lista fica vazia; a pergunta ("o que costuma dar problema?") só vai para as pendências se o entrevistador não chegou a fazê-la (se ele perguntou e ela disse que não costuma dar problema, está respondida). "responsavel" só com o cargo ou a área que a pessoa disse. O bloco <processo> (organização, área, descrição do cadastro e as observações de quem convidou, que vêm como "Pedido de quem convidou") serve para entender a conversa, não é fato relatado: não o use para preencher responsáveis, dificuldades ou etapas.
 5. "entrevistado": a área ou o setor da pessoa e o que ela faz (cargo e atividades), só com o que ela contou sobre si na conversa ou com o que vier no bloco <pessoa> (dito por ela em outra conversa). Não deduza do processo nem do bloco <processo>; o que ela não disse fica vazio, e isso não vira pendência.
 Ruído: a transcrição pode trazer falas soltas que não respondem à pergunta e não têm ligação com o processo (outra conversa perto do microfone, a pessoa falando com alguém ao lado, frase cortada). Ignore essas falas: não viram etapa, regra, dificuldade nem pendência.
 A conversa pode ter uma continuação, em que a pessoa voltou para responder pontos que ficaram em aberto: integre essas respostas ao processo como as demais (elas valem mais que o que foi dito antes sobre o mesmo ponto). Nesse caso vem o bloco <pendencias_anteriores>: preencha "situacao_pendencias" com a situação de cada uma e não crie pendências novas; a lista de pendências sai dessa situação.

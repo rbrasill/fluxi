@@ -9,7 +9,8 @@ import { convidarParaEntrevista, type ResultadoConvite } from '@/lib/entrevistas
 import { listarConvidaveis, type PessoaConvidavel } from '@/lib/pessoas';
 
 // Convidar para entrevista com a Maia (decisão 53): quem é gestor ou administrador escolhe até três pessoas
-// cadastradas e, se quiser, diz o que a Maia deve focar. Cada pessoa recebe um e-mail e ganha a sua entrevista.
+// cadastradas e, se quiser, escreve os pontos que a Maia não pode deixar de abordar (decisão 110: são direcionadores,
+// a conversa continua sendo sobre o processo inteiro). Cada pessoa recebe um e-mail e ganha a sua entrevista.
 // O convite tem uma finalidade (decisão 89): mapear o processo ou levantar as regras de negócio dele. A Maia
 // conduz cada uma de um jeito e o e-mail avisa a pessoa de qual se trata.
 
@@ -116,8 +117,9 @@ export function Convidar({ processoId, processoNome, indisponiveis, finalidadeIn
           })}
         </div>
         <label className="field">
-          <span>O que a Maia deve focar <span className="opcional">(opcional)</span></span>
-          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={3} placeholder={regras ? 'Ex.: concentre nos limites de valor e em quem pode autorizar exceções.' : 'Ex.: concentre nas aprovações e no que acontece quando o pedido é negado.'} />
+          <span>Pontos que a Maia não pode deixar de abordar <span className="opcional">(opcional)</span></span>
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} maxLength={500} rows={3} placeholder={regras ? 'Ex.: os limites de valor e quem pode autorizar exceções.' : 'Ex.: as aprovações e o que acontece quando o pedido é negado.'} />
+          <small className="field-ajuda">A Maia conversa sobre {regras ? 'as regras do processo inteiro' : 'o processo inteiro'} e garante que estes pontos sejam explorados e confirmados.</small>
         </label>
         {erro && <p className="form-erro" role="alert">{erro}</p>}
         <div className="dialog-actions">

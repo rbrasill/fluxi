@@ -352,7 +352,7 @@ function EntrevistaPage() {
             <li>Dura o necessário para cobrir o processo. A Maia se despede sozinha quando não há mais lacunas; você também pode encerrar quando quiser. Se precisar sair no meio, é só dizer: ela pausa e vocês continuam depois.</li>
             <li>Use fones de ouvido se puder; sem fones, deixe o volume moderado.</li>
           </ul>}
-          {e.nota_convite && !complemento && <p className="notice">Pedido de {e.convidador ?? 'quem convidou'}: “{e.nota_convite}”. A Maia já sabe disso.</p>}
+          {e.nota_convite && !complemento && <p className="notice">{e.convidador ?? 'Quem convidou'} pediu para a Maia não deixar de abordar: “{e.nota_convite}”. A conversa vai além disso: é sobre {regras ? 'as regras do processo inteiro' : 'o processo inteiro'}.</p>}
           {aviso && <p className="notice">{aviso}</p>}
           {retomando && !complemento && <p className="notice">Esta entrevista está pausada, com {e.turnos.length} falas. Ao continuar, a Maia retoma de onde vocês pararam.</p>}
           <label className="check"><input type="checkbox" checked={ciente} onChange={(ev) => void marcarCiente(ev.target.checked)} />Estou ciente de que a conversa é gravada e processada por serviços de IA (OpenAI e Anthropic).</label>
@@ -662,7 +662,7 @@ function GestaoDaEntrevista({ e, cabecalho, aviso, erro, arquivada, aoMudar, aoE
         <dl className="ficha-resumo">
           {!e.convidado_em && <><dt>Convite</dt><dd>Não houve: {primeiroNome} abriu esta entrevista por conta própria em {dataHora(e.criado_em)}.</dd></>}
           {e.convidado_em && <><dt>Convite</dt><dd>{dataHora(e.convidado_em)}{e.convidador ? `, por ${e.convidador}` : ''}{e.convite_enviado_em ? ` · e-mail enviado em ${dataHora(e.convite_enviado_em)}` : ' · o e-mail não foi enviado'}</dd></>}
-          {e.nota_convite && <><dt>Pedido</dt><dd>“{e.nota_convite}”</dd></>}
+          {e.nota_convite && <><dt>Pontos a abordar</dt><dd>“{e.nota_convite}”</dd></>}
           <dt>Conversa</dt>
           <dd>{pendente ? `${primeiroNome} ainda não ligou para a Maia.` : `${e.iniciada_em ? `Começou em ${dataHora(e.iniciada_em)}` : 'Começou'}${falas ? ` · ${falas} falas` : ''}${duracao_s ? ` · ${duracao_s >= 60 ? `${Math.round(duracao_s / 60)} min` : `${Math.round(duracao_s)} s`}` : ''} · pausada, ainda sem resultado.`}</dd>
           {complemento && <><dt>Completar</dt><dd>Está marcado para {primeiroNome} responder {complemento.pendencias.length === 1 ? 'um ponto que ficou' : `${complemento.pendencias.length} pontos que ficaram`} em aberto.</dd></>}
