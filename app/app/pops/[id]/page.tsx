@@ -22,7 +22,7 @@ import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
 import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
-import { listarProcessos, obterProcesso, type ProcessoResumo } from '@/lib/processos';
+import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 import type { ResultadoBusca } from '@/lib/referencias';
 
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
@@ -57,7 +57,7 @@ function EditorPop() {
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [aba, setAba] = useState<'conteudo' | 'recursos'>('conteudo'); // abas do editor (decisão 87)
+  const [aba, setAba] = useState<'conteudo' | 'gravacoes'>('conteudo'); // abas do editor (decisões 87 e 137)
   const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
   const [publicando, setPublicando] = useState(false);
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta sessão depois de publicar
@@ -105,17 +105,18 @@ function EditorPop() {
     return () => { window.removeEventListener('pagehide', aoSair); salvarPosicao(true); };
   }, [salvarPosicao]);
 
-  const irParaAba = useCallback((a: 'conteudo' | 'recursos') => {
+  const irParaAba = useCallback((a: 'conteudo' | 'gravacoes') => {
     setAba(a);
-    try { history.replaceState(null, '', a === 'conteudo' ? location.pathname + location.search : '#recursos'); } catch { /* sem histórico: a aba muda só na tela */ }
+    try { history.replaceState(null, '', a === 'conteudo' ? location.pathname + location.search : '#gravacoes'); } catch { /* sem histórico: a aba muda só na tela */ }
   }, []);
-  useEffect(() => { if (location.hash === '#recursos') setAba('recursos'); }, []);
+  // "#recursos" é o endereço antigo da aba (antes da decisão 137).
+  useEffect(() => { if (location.hash === '#gravacoes' || location.hash === '#recursos') setAba('gravacoes'); }, []);
 
   const irParaPosicao = useCallback((p: Posicao) => {
     const el = document.getElementById(`pos-${p.chave}`);
     if (!el) return;
-    // As gravações ficam na aba Recursos; todo o resto, na aba Conteúdo. A aba certa vem para a frente antes de rolar.
-    const destino = p.chave === 'gravacoes' ? 'recursos' : 'conteudo';
+    // As gravações ficam na aba Gravações; todo o resto, na aba Conteúdo. A aba certa vem para a frente antes de rolar.
+    const destino = p.chave === 'gravacoes' ? 'gravacoes' : 'conteudo';
     setAba(destino);
     if (el.closest('[hidden]')) { setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -365,9 +366,7 @@ function EditorPop() {
     const pr = processos?.find((x) => x.id === processoId);
     if (!pr) return;
     alterar({ processo_id: pr.id });
-    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area }, fluxograma: null });
-    // O fluxograma passa a ser o do processo escolhido.
-    obterProcesso(pr.id).then((x) => setPop((p) => p && p.processo_id === pr.id ? { ...p, fluxograma: x.fluxograma } : p)).catch(() => {});
+    setPop((p) => p && { ...p, processo: { id: pr.id, nome: pr.nome, arquivado_em: null, area: pr.area } });
   }
 
   const onde = pop.processo;
@@ -378,8 +377,6 @@ function EditorPop() {
     setPop((p) => p && !p.referencias[k] ? { ...p, referencias: { ...p.referencias, [k]: { tipo: r.tipo, id: r.id, nome: r.nome, identificacao: r.identificacao, codigo: r.codigo, rotulo: r.rotulo, situacao: r.situacao, publico: r.situacao === 'ok', url_app: `/app/${r.tipo === 'pop' ? 'pops' : 'processos'}/${r.id}`, url_publica: null } } } : p);
   }
   const citadoEm = pop.referenciado_em.length ? ` Atenção: este POP é referenciado em ${pop.referenciado_em.length} ${pop.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
-  // Ao sair do editor do fluxograma, volta para este POP.
-  const editarFluxo = pop.fluxograma ? `/app/fluxogramas/${pop.fluxograma.id}?voltar=${encodeURIComponent(`/app/pops/${id}`)}` : '';
 
   const textoStatus = { salvo: 'Tudo salvo', alterado: 'Alterações não salvas', salvando: 'Salvando…', erro: 'Erro ao salvar. Tentando de novo ao editar.' }[status];
 
@@ -389,7 +386,6 @@ function EditorPop() {
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
   // "Nesta página" (decisão 80): o índice das seções, com a marca de preenchido.
   const totalPassos = c.procedimentos.reduce((n, p) => n + p.passos.length, 0);
-  const totalRecursos = pop.gravacoes.length + (pop.fluxograma ? 1 : 0);
   const passosEscritos = c.procedimentos.reduce((n, p) => n + p.passos.filter((x) => textoPuro(x.texto) || x.imagem_caminho).length, 0);
   const indice: { alvo: string; nome: string; feito: boolean; conta?: string }[] = [
     { alvo: 'pos-cabecalho', nome: 'Identificação', feito: !!pop.identificacao.trim() },
@@ -462,7 +458,7 @@ function EditorPop() {
 
       <div className="abas" role="tablist" aria-label="Partes do POP">
         <button type="button" role="tab" id="aba-conteudo" aria-controls="painel-conteudo" aria-selected={aba === 'conteudo'} onClick={() => irParaAba('conteudo')}><Icone nome="pop" tamanho={17} />Conteúdo</button>
-        <button type="button" role="tab" id="aba-recursos" aria-controls="painel-recursos" aria-selected={aba === 'recursos'} onClick={() => irParaAba('recursos')}><Icone nome="tela" tamanho={17} />Recursos<span className="aba-conta">{totalRecursos}</span></button>
+        <button type="button" role="tab" id="aba-gravacoes" aria-controls="painel-gravacoes" aria-selected={aba === 'gravacoes'} onClick={() => irParaAba('gravacoes')}><Icone nome="tela" tamanho={17} />Gravações<span className="aba-conta">{pop.gravacoes.length}</span></button>
       </div>
 
       <div className="proc-grade pop-grade" role="tabpanel" id="painel-conteudo" aria-labelledby="aba-conteudo" hidden={aba !== 'conteudo'}>
@@ -476,14 +472,14 @@ function EditorPop() {
         <div className="grade-3">
           <label className="field">Identificação do POP<input id="identificacao" className="mono" value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Sigla da área + número (XXXX-001)" /></label>
           <label className="field">Versão<input value={pop.versao} onChange={(e) => alterar({ versao: e.target.value })} /></label>
-          <label className="field">Área<input value={c.area} onChange={(e) => setConteudo({ area: e.target.value })} placeholder="Área responsável" /></label>
           <label className="field">Executor do processo<input value={c.executor} onChange={(e) => setConteudo({ executor: e.target.value })} placeholder="Cargo de quem executa" /></label>
-          <label className="field">Elaborado por<input value={pop.autor} onChange={(e) => alterar({ autor: e.target.value })} placeholder="Quem elaborou o POP" /></label>
         </div>
         <p className="dados-automaticos">
           <span><Icone nome="cadeado" tamanho={14} />Preenchidos automaticamente</span>
           <span>Código do processo <b className="mono">{pop.codigo}</b></span>
           <span>Criado em <b>{new Date(pop.criado_em).toLocaleDateString('pt-BR')}</b></span>
+          {/* Quem criou o POP (decisão 137); a área do documento é a do processo e não aparece aqui. */}
+          <span>Elaborado por <b>{pop.autor.trim() || '—'}</b></span>
         </p>
       </section>
 
@@ -634,39 +630,9 @@ function EditorPop() {
       </aside>
       </div>
 
-      {/* Recursos (decisão 87): o que apoia o POP sem ser o texto dele. O fluxograma é do processo; as gravações de
-          tela são deste POP e dão os prints dos passos. */}
-      <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-recursos" aria-labelledby="aba-recursos" hidden={aba !== 'recursos'}>
-      {onde && (
-        <section className="cartao pop-sec" id="pos-fluxograma" aria-labelledby="titulo-fluxograma">
-          <h2 id="titulo-fluxograma">Fluxograma do processo</h2>
-          {pop.fluxograma ? (
-            <div className="fluxo-do-pop">
-              <Link href={editarFluxo} className="fluxo-previa" aria-label="Editar fluxograma" title="Editar fluxograma">
-                {pop.fluxograma.miniatura
-                  ? <img className="fluxo-miniatura" src={pop.fluxograma.miniatura} alt="" />
-                  : <span className="pop-icone fluxo-icone"><Icone nome="fluxo" tamanho={22} /></span>}
-              </Link>
-              <div className="fluxo-info">
-                <strong>{pop.fluxograma.nome}</strong>
-                <span>{pop.fluxograma.origem === 'ia' ? 'Gerado com IA' : 'Desenhado à mão'} · atualizado em {new Date(pop.fluxograma.atualizado_em).toLocaleDateString('pt-BR')}</span>
-                <span>
-                  {pop.fluxograma.tem_svg
-                    ? 'Aparece na página pública deste POP e vai no PDF como o link "Abrir diagrama".'
-                    : 'Vai no PDF como o link "Abrir diagrama". Para aparecer também na página pública, abra o fluxograma uma vez.'}
-                  {' '}É do processo: o que você mudar nele vale para todos os POPs do processo.
-                </span>
-              </div>
-              <Link href={editarFluxo} className="btn" title="Abre o editor: mude o desenho, os textos e as setas; salva sozinho"><Icone nome="marcar" tamanho={16} />Editar fluxograma</Link>
-            </div>
-          ) : (
-            <p className="notice">
-              O processo <strong>{onde.nome}</strong> ainda não tem fluxograma. Ele é desenhado ou gerado com IA na <Link href={`/app/processos/${onde.id}`}>página do processo</Link> e, depois, aparece aqui, na página pública e no PDF.
-            </p>
-          )}
-        </section>
-      )}
-
+      {/* Gravações (decisões 87 e 137): as gravações de tela deste POP, que dão os prints dos passos. O fluxograma é do
+          processo e fica só na página do processo. */}
+      <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-gravacoes" aria-labelledby="aba-gravacoes" hidden={aba !== 'gravacoes'}>
         <section className={`cartao pop-sec ${destaque === 'gravacoes' ? 'retomado' : ''}`} id="pos-gravacoes" data-pos="gravacoes" data-rotulo="Gravações de tela" inert={arquivado}>
           <div className="sec-titulo">
             <div className="sec-cabeca">

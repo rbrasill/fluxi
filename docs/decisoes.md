@@ -1127,6 +1127,15 @@ O Rafael pediu ícones com traço mais fino. Comparamos 1,8 (o de antes), 1,65 e
 
 Pedido do Rafael: no topo do seletor de ícone, o título "Ícone do processo" deu lugar ao nome do processo, e o subtítulo (o nome do processo e o do ícone escolhido) saiu. Ao lado do título fica só a prévia do ícone na cor escolhida; o ícone escolhido aparece marcado na lista. Para leitor de tela, a janela continua se apresentando como "Ícone do processo" seguido do nome.
 
+## 137. POP: área e "Elaborado por" automáticos, aba Gravações
+
+Pedidos do Rafael para o editor do POP.
+
+- **Área:** saiu dos campos de Identificação. A área do documento é sempre o nome atual da área do processo do POP: no PDF, na versão publicada e onde mais aparecer. Se a área for renomeada ou o processo mudar de área, o documento acompanha. POP sem processo fica com a área que estava guardada. Na data desta decisão, nenhum POP tinha área diferente da do processo, então nenhum POP publicado passou a mostrar "Alterações não publicadas" por isso.
+- **Elaborado por:** preenchido sozinho com o nome de quem está logado e cria o POP; não se edita mais (a rota de salvar ignora o campo). Aparece junto dos dados preenchidos automaticamente (código do processo e data de criação). Na cópia de POP, "Elaborado por" é quem copiou, porque a cópia é um POP novo, com histórico próprio. Os POPs que já existiam ficam com o nome que tinham; 35 rascunhos antigos estavam sem nome e continuam assim (aparece "—").
+- **Aba Gravações:** a aba "Recursos" passou a se chamar "Gravações" e mostra só as gravações de tela do POP. O fluxograma do processo saiu dela; ele continua na página do processo, no PDF do POP (link "Abrir diagrama") e na página pública. O endereço antigo `#recursos` ainda abre a aba.
+- **Versão e histórico de revisões:** continuam como estavam até definirmos o versionamento (proposta em aberto: versão semântica X.Y.Z dada na publicação).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
@@ -1136,3 +1145,4 @@ Pedido do Rafael: no topo do seletor de ícone, o título "Ícone do processo" d
 - Sugestão automática de marcação pela IA (decisão 18)
 - Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
 - Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)
+- Versionamento do POP: versão semântica X.Y.Z (MAJOR.MINOR.PATCH) e como registrar o que mudou entre as versões (decisão 137)

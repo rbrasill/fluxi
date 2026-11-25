@@ -35,13 +35,18 @@ export async function buscar(id: string) {
   const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}, conteudo, historico, publicacao_hash:publicacao->>versao_hash`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
-  return data as unknown as {
+  const pop = data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
     processo_id: string | null; arquivado_em: string | null; link_publico: string; publicado_em: string | null; criado_em: string; atualizado_em: string;
-    processo: { id: string; nome: string; arquivado_em: string | null } | null;
+    processo: { id: string; nome: string; arquivado_em: string | null; area?: { nome?: string } | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
     publicacao_hash: string | null; // da versão publicada, para saber se há alterações não publicadas
   };
+  // A "Área" do documento não se edita mais (decisão 137): é sempre o nome atual da área do processo, no editor,
+  // no PDF e na versão publicada. Sem processo, fica a que estava guardada.
+  const area = pop.processo?.area?.nome;
+  if (area) pop.conteudo = { ...pop.conteudo, area };
+  return pop;
 }
 
 export type MarcacaoDoPop = {
@@ -124,10 +129,9 @@ export async function telasDasGravacoes(id: string) {
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const [marcs, gravacoes, fluxo, refs, referenciado_em] = await Promise.all([
+  const [marcs, gravacoes, refs, referenciado_em] = await Promise.all([
     marcacoesDoPop(pop.conteudo),
     gravacoesDoPop(id, pop.conteudo),
-    pop.processo_id ? fluxogramaDoProcesso(pop.processo_id) : null,
     referencias.resolverDosTextos(referencias.textosDoPop(pop.conteudo).map((t) => t.valor)),
     referencias.referenciadoEm({ tipo: 'pop', id }),
   ]);
@@ -146,15 +150,13 @@ export async function obter(id: string) {
   const { publicacao_hash, ...resto } = pop;
   // Publicado, mas o que está no editor não é o que está na página pública.
   const alteracoes_nao_publicadas = pop.status === 'publicado' && publicacao_hash !== hashDaVersao(pop, comImagensFinais(pop.conteudo, marcs));
-  // O fluxograma é do processo (decisão 31): o editor só o mostra, como informação.
-  const fluxograma = fluxo
-    ? { id: fluxo.id as string, nome: fluxo.nome as string, origem: fluxo.origem as string, miniatura: (fluxo.miniatura as string | null) ?? null, tem_svg: !!fluxo.tem_svg, atualizado_em: fluxo.atualizado_em as string }
-    : null;
-  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, fluxograma, referencias: refs, referenciado_em };
+  // O fluxograma é do processo (decisão 31) e saiu do editor do POP (decisão 137): fica só na página do processo.
+  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, referencias: refs, referenciado_em };
 }
 
 /** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
-export async function criar(p: { nome?: string; processo_id?: string }) {
+/** `autor` ("Elaborado por") é o nome de quem está logado e criou o POP (decisão 137). */
+export async function criar(p: { nome?: string; processo_id?: string }, autor = '') {
   const processoId = p.processo_id ?? null;
   let conteudo = conteudoVazio();
   const nome = p.nome?.trim() || 'Novo POP';
@@ -172,7 +174,8 @@ export async function criar(p: { nome?: string; processo_id?: string }) {
     nome,
     codigo,
     conteudo,
-    historico: [{ data: hoje(), elaborado_por: '', revisao: 'Rev. 01' }],
+    autor,
+    historico: [{ data: hoje(), elaborado_por: autor, revisao: 'Rev. 01' }],
     processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
@@ -180,7 +183,7 @@ export async function criar(p: { nome?: string; processo_id?: string }) {
   return data;
 }
 
-export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; autor: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; status: string; processo_id: string | null }>) {
+export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; status: string; processo_id: string | null }>) {
   // Mudou de processo: o código do processo no documento acompanha.
   const codigo = dados.processo_id ? { codigo: (await garantirProcesso(dados.processo_id)).codigo } : {};
   const { data, error } = await supabase().from('pops').update({ ...dados, ...codigo, atualizado_em: new Date().toISOString() })
@@ -254,15 +257,15 @@ export async function moverParaProcesso(id: string, processoId: string) {
  * as marcações) e referências. A cópia nasce como rascunho, versão 1.0, com link público próprio e
  * a mesma identificação (a pessoa ajusta). Gravações de tela não vão.
  */
-export async function copiar(id: string, p: { processo_id: string; nome?: string }) {
+export async function copiar(id: string, p: { processo_id: string; nome?: string }, quemCopia = '') {
   const pop = await buscar(id);
   const destino = await processoDestino(p.processo_id);
   const mesmo = pop.processo_id === destino.id;
   const nome = p.nome?.trim() || (mesmo ? `${pop.nome} (cópia)` : pop.nome);
   const db = supabase();
   const { data: novo, error } = await db.from('pops').insert({
-    tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '1.0', autor: pop.autor, status: 'rascunho',
-    processo_id: destino.id, conteudo: conteudoVazio(), historico: [{ data: hoje(), elaborado_por: pop.autor ?? '', revisao: 'Rev. 01' }],
+    tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '1.0', autor: quemCopia || pop.autor, status: 'rascunho',
+    processo_id: destino.id, conteudo: conteudoVazio(), historico: [{ data: hoje(), elaborado_por: quemCopia || pop.autor || '', revisao: 'Rev. 01' }],
   }).select('id').single();
   if (error) throw error;
   const novoId = novo.id as string;

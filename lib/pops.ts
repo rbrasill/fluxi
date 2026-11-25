@@ -17,15 +17,11 @@ export type PopResumo = {
 };
 /** Gravação de tela do POP (resumo para o editor). */
 export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
-/** O fluxograma do processo do POP (um por processo). */
-export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & {
   conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
   alteracoes_nao_publicadas: boolean;
-  /** O fluxograma do processo (só informativo no editor do POP). */
-  fluxograma: FluxogramaDoPop | null;
   /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
   referencias: Record<string, ReferenciaResolvida>;
   referenciado_em: ReferenciadoEm[];
@@ -43,7 +39,7 @@ export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${a
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
 export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'conteudo' | 'historico' | 'posicao' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
 /** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
 export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
