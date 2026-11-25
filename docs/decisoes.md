@@ -1069,6 +1069,17 @@ Pedido do Rafael: tirar do ar todos os processos e POPs, e as mudanças só irem
 
 Pedido do Rafael: "Publicado · offline" confundia. O selo de quem está publicado com a página pública desligada passa a dizer só **"Offline"** (mesma cor vermelha clara), no topo do POP e do processo e nas listas de POPs. Passando o mouse, o título explica: publicado, com a página pública desligada; a versão publicada está guardada, fora do ar. Rascunho continua "Rascunho" e no ar continua "Publicado".
 
+## 131. Textos mais diretos no diálogo "Anexar print"
+
+Textos enviados pelo Rafael para as opções do diálogo (com ou sem a opção "Tela da gravação"):
+
+- **Tela da gravação:** "Selecione uma tela já marcada na gravação deste POP."
+- **Capturar uma janela** (antes, "Capturar uma janela agora"): "Selecione a janela aberta no sistema. O INCFlow captura a tela automaticamente."
+- **Colar print copiado:** "Tire um print (Print Screen ou Win + Shift + S) e cole aqui com Ctrl + V."
+- **Escolher arquivo:** "Selecione uma imagem salva no computador (PNG, JPG ou WebP)."
+
+Na lista de três opções, o título veio como "Colar uma captura" e, na de quatro, "Colar print copiado". Como é o mesmo botão nas duas, ficou um título só: "Colar print copiado", que usa a palavra "print" como o resto do diálogo ("Anexar print", "Usar este print").
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

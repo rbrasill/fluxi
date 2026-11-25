@@ -110,20 +110,20 @@ export function AnexarPrint({ titulo, aoAnexar, aoFechar, telasDaGravacao, aoEsc
               {telasDaGravacao && (
                 <button type="button" className="option" onClick={abrirTelas} disabled={!!ocupado || carregandoTelas}>
                   <strong><Icone nome="tela" tamanho={14} /> {carregandoTelas ? 'Carregando…' : 'Tela da gravação'}</strong>
-                  <span>Escolha uma tela marcada numa gravação deste POP.</span>
+                  <span>Selecione uma tela já marcada na gravação deste POP.</span>
                 </button>
               )}
               <button type="button" className="option" onClick={() => obter(capturarTela)} disabled={!temCaptura || !!ocupado}>
-                <strong><Icone nome="camera" tamanho={14} /> {ocupado === 'capturando' ? 'Escolha a janela…' : 'Capturar uma janela agora'}</strong>
-                <span>Deixe a tela que faltou aberta no sistema, escolha a janela e o INCFlow tira o print.</span>
+                <strong><Icone nome="camera" tamanho={14} /> {ocupado === 'capturando' ? 'Escolha a janela…' : 'Capturar uma janela'}</strong>
+                <span>Selecione a janela aberta no sistema. O INCFlow captura a tela automaticamente.</span>
               </button>
               <button type="button" className="option" onClick={() => obter(lerPrintDaAreaDeTransferencia)} disabled={!!ocupado}>
                 <strong><Icone nome="copiar" tamanho={14} /> Colar print copiado</strong>
-                <span>Tire o print (Print Screen ou Win+Shift+S) e cole. Ctrl+V nesta janela também funciona.</span>
+                <span>Tire um print (Print Screen ou Win + Shift + S) e cole aqui com Ctrl + V.</span>
               </button>
               <button type="button" className="option" onClick={() => arquivo.current?.click()} disabled={!!ocupado}>
                 <strong><Icone nome="pasta" tamanho={14} /> Escolher arquivo</strong>
-                <span>PNG, JPG ou WebP salvo no computador.</span>
+                <span>Selecione uma imagem salva no computador (PNG, JPG ou WebP).</span>
               </button>
             </div>
             <input
