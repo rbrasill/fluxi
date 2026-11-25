@@ -5,7 +5,7 @@
   --fundo-processo: #F6F7F9; /* a página do processo usa o fundo neutro do redesign */
   --fundo-pop: #F6F7F9; /* a página do POP usa o fundo neutro do redesign (decisão 80) */
   --surface: #ffffff;
-  --ink: #0E1525;
+  --ink: #2B3D55; /* cor dos textos (decisão 121); antes, #0E1525 */
   --muted: #5A6372;
   --line: #E6E8EC;
   --line-strong: #D8DCE3;
@@ -32,7 +32,7 @@
   --teal-900: #0F4C5C; --teal-700: #187C81; --teal-500: #2A9D8F; --teal-300: #A8DADC; --teal-100: #E0F7F4; --teal-50: #F7FFFD;
   --maia-50: #FDF2F8; --maia-100: #FCE7F3; --maia-200: #FBCFE8; --maia-300: #F9A8D4; --maia-400: #F472B6; --maia-500: #EC4899; --maia-600: #DB2777; --maia-700: #BE185D; --maia-800: #9D174D; --maia-900: #831843;
   --vermelho-600: #DC2626; --vermelho-700: #B91C1C; --vermelho-800: #991B1B; --vermelho-400: #F87171; --vermelho-100: #FEE2E2; --vermelho-50: #FEF2F2; --pessego: #FDBA74;
-  --neutro-texto: #0E1525; --neutro-texto-2: #5A6372; --neutro-rotulo: #6B7280; --neutro-borda: #E6E8EC; --neutro-fundo: #F6F7F9; --neutro-superficie: #FFFFFF;
+  --neutro-texto: #2B3D55; --neutro-texto-2: #5A6372; --neutro-rotulo: #6B7280; --neutro-borda: #E6E8EC; --neutro-fundo: #F6F7F9; --neutro-superficie: #FFFFFF;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }

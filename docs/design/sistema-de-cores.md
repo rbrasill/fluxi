@@ -103,7 +103,7 @@ A base de todas as telas; as famílias acima não substituem os neutros.
 
 | Papel | Cor |
 |---|---|
-| Texto principal | `#0E1525` |
+| Texto principal | `#2B3D55` (antes `#0E1525`; decisão 121) |
 | Texto secundário | `#5A6372` |
 | Ícones e rótulos | `#6B7280` |
 | Bordas | `#E6E8EC` |

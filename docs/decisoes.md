@@ -999,6 +999,10 @@ Junto saiu o selo com o número de regras esperando confirmação, que ficava ne
 
 A aba do navegador passou a mostrar a marca do INCFlow (o símbolo colorido, o mesmo do menu recolhido), em vez do ícone genérico. O arquivo é `app/icon.png`, com uma cópia em `app/apple-icon.png` para o atalho na tela de início do iPhone. Aparece em todas as páginas, inclusive no login e nas páginas públicas.
 
+## 121. Cor dos textos: #2B3D55
+
+O texto principal passou de `#0E1525` (quase preto) para `#2B3D55`, um azul-ardósia mais suave, a pedido. Vale para títulos e textos de todas as telas, porque as duas variáveis de texto (`--ink` e `--neutro-texto`) mudaram juntas. Os textos secundários (`#5A6372`) e as cores de ação, da Maia e de status ficaram como estavam. Contraste sobre o branco: 11:1 (sobre o fundo cinza da página, 10,3:1), acima do mínimo de acessibilidade (4,5:1). O fundo escuro do avatar da Maia continua `#0E1525`.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
