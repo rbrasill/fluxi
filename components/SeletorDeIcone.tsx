@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Icone } from '@/components/Icone';
 import { DesenhoDoIcone } from '@/components/IconeDoProcesso';
-import { buscarIcones, corPadrao, CORES_DO_PROCESSO, indexar, sugerirIcones, type CatalogoDeIcones, type IconeDoProcesso, type IndiceDeIcones, type ItemDoCatalogo } from '@/lib/icones';
+import { buscarIcones, corPadrao, CORES_DO_PROCESSO, indexar, type CatalogoDeIcones, type IconeDoProcesso, type IndiceDeIcones, type ItemDoCatalogo } from '@/lib/icones';
 import { definirIconeDoProcesso } from '@/lib/processos';
 
-// Seletor do ícone do processo (decisão 133): todos os ícones do Lucide, com nome e busca em português. O catálogo só
-// é pedido ao servidor quando o seletor abre (uma vez por visita) e traz o desenho de cada ícone; as sugestões saem do
-// nome do processo. Salvar manda só o nome do ícone e a cor: o servidor guarda o desenho do catálogo dele.
+// Seletor do ícone do processo (decisão 133): todos os ícones do Lucide, com nome e busca em português, e 12 cores. O
+// catálogo só é pedido ao servidor quando o seletor abre (uma vez por visita) e traz o desenho de cada ícone. Salvar
+// manda só o nome do ícone e a cor: o servidor guarda o desenho do catálogo dele. Nada é sugerido nem aplicado sozinho
+// (decisão 134).
 
 type Dados = { catalogo: CatalogoDeIcones; indice: IndiceDeIcones };
 let pedido: Promise<Dados> | null = null;
@@ -42,7 +43,6 @@ export function SeletorDeIcone({ processo, aoSalvar, aoFechar }: {
     return () => document.removeEventListener('keydown', tecla);
   }, [aoFechar, salvando]);
 
-  const sugestoes = useMemo(() => (dados ? sugerirIcones(dados.indice, processo.nome) : []), [dados, processo.nome]);
   const resultados = useMemo(() => (dados ? buscarIcones(dados.indice, termo, categoria) : []), [dados, termo, categoria]);
   const porNome = useMemo(() => new Map((dados?.catalogo.icones ?? []).map((i) => [i[0], i])), [dados]);
   // O desenho da prévia: o do catálogo ou, antes de ele chegar, o que o processo já tem.
@@ -82,13 +82,6 @@ export function SeletorDeIcone({ processo, aoSalvar, aoFechar }: {
           </div>
           <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={salvando} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
         </div>
-
-        {sugestoes.length > 0 && (
-          <section aria-label="Sugestões pelo nome do processo">
-            <p className="ico-titulo-secao">Sugestões pelo nome</p>
-            <div className="ico-grade ico-sugestoes">{sugestoes.map(item)}</div>
-          </section>
-        )}
 
         <section className="ico-busca">
           <label className="campo-busca">

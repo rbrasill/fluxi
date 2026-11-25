@@ -490,7 +490,7 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
 .selo-doc { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .selo-doc svg { flex: none; }
 .selo-processo { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
-.selo-pop { background: #ECFDF5; border-color: #A7F3D0; color: #047857; }
+.selo-pop { background: #F5F3FE; border-color: #DDD5F7; color: #6448BD; }
 .area-editavel { border: 1px solid transparent; border-radius: 8px; padding: 2px 6px; background: transparent; color: var(--muted); font-size: 14px; width: min(320px, 100%); }
 .area-editavel:hover, .area-editavel:focus { border-color: var(--line-strong); color: var(--ink); }
 .secao-processo { display: flex; flex-direction: column; gap: 12px; margin-top: 28px; }
@@ -1524,7 +1524,7 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .proc-icone:focus-visible { outline: none; }
 @media (max-width: 700px) { .proc-icone .pasta-cor { width: 38px; height: 38px; border-radius: 11px; } }
 
-/* Seletor de ícone: prévia no topo, sugestões pelo nome, busca, categorias, a lista de ícones (rola por dentro) e a cor. */
+/* Seletor de ícone: prévia no topo, busca, categorias, a lista de ícones (rola por dentro) e as 12 cores. */
 .dialog.ico-dialogo { max-width: 780px; gap: 18px; }
 .ico-dialogo .dialog-fechar { margin: -6px -8px 0 0; }
 .ico-previa { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; transition: background .15s, color .15s; }
@@ -1556,8 +1556,8 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
   .ico-grade { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
   .ico-grade.rolavel { max-height: 240px; }
   .ico-item { min-height: 74px; font-size: 11px; }
-  .ico-cores { gap: 7px; }
-  .ico-cor { width: 30px; height: 30px; }
+  .ico-cores { display: grid; grid-template-columns: repeat(6, 1fr); justify-items: center; gap: 10px 6px; }
+  .ico-cor { width: 32px; height: 32px; }
 }
 /* Processos da área em lista (decisão 127): como a lista de áreas, com a cor da pasta, a data e o selo da página
    pública. No arquivado, o botão de restaurar fica fora do link. No celular, a data e o selo descem para baixo do nome. */

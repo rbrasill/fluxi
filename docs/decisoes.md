@@ -1095,12 +1095,24 @@ Ideia do Rafael: trocar o quadradinho colorido da pasta por um ícone de verdade
 - **Biblioteca:** [Lucide](https://lucide.dev), pacote `lucide-static` na versão 1.80.0, fixada: 2.119 ícones, no mesmo traço dos ícones que o INCFlow já usa. Licença ISC (uso comercial liberado; o aviso de licença está em `docs/licencas-de-terceiros.md`). Os desenhos vêm do pacote instalado: nenhum arquivo de ícone é baixado ou guardado à mão no projeto.
 - **Em português:** `lib/icones/pt.json` tem, para cada um dos 2.119 ícones, o nome em português, as palavras de busca e uma de 20 categorias (Pessoas e RH, Saúde e segurança, Financeiro, Documentos e arquivos, Jurídico e proteção, Compras e estoque, Logística e transporte, Obras e manutenção, Imóveis e lugares, Comercial e atendimento, Comunicação, Tecnologia, Gestão e indicadores, Tempo e agenda, Alimentação, Educação e ciência, Lazer, esporte e viagem, Natureza e clima, Design, texto e mídia, Setas, formas e símbolos). A tradução foi feita em lotes e conferida (sem nome repetido, toda categoria válida). Ao atualizar a versão do Lucide, um ícone novo sem tradução aparece com o nome em inglês até ganhar a dele; o teste de servidor acusa o que faltar.
 - **Onde troca:** na página do processo, o quadro do ícone fica ao lado do nome; clicar abre o seletor. Não há lápis nem outra marca de edição sobre o ícone (o Rafael pediu para tirar o lápis da primeira versão): o que avisa é o contorno ao passar o mouse e a dica "Trocar o ícone do processo". Processo arquivado não troca.
-- **O seletor:** prévia no topo, sugestões pelo nome do processo ("Plano Odontológico" sugere a escova de dentes), busca em português sem diferença de acento (o nome em inglês também serve), as 20 categorias, a lista (120 por vez, com "Mostrar mais"), as 8 cores das pastas e "Sem ícone", que volta ao quadradinho. As sugestões são só opções: nada é aplicado sozinho.
+- **O seletor:** prévia no topo, busca em português sem diferença de acento (o nome em inglês também serve), as 20 categorias, a lista (120 por vez, com "Mostrar mais"), as 12 cores (decisão 134) e "Sem ícone", que volta ao quadradinho. Nada é sugerido nem aplicado sozinho (decisão 134).
 - **Onde aparece:** ao lado do nome do processo, na pasta e na lista da área e em "Todos os processos". Quem não tem ícone continua com o quadradinho colorido de sempre.
-- **Cores:** as mesmas 8 cores pastel das pastas; o ícone usa um tom escuro de cada uma (contraste de 4,2:1 ou mais sobre o fundo). Sem escolha, a cor continua saindo do id do processo.
+- **Cores:** as 8 cores pastel das pastas e, desde a decisão 134, mais 4; o ícone usa um tom escuro de cada uma (contraste de 4,2:1 ou mais sobre o fundo). Sem escolha, a cor continua saindo do id do processo, só entre as 8 das pastas.
 - **Como carrega:** o catálogo completo (109 KB compactado) só é pedido quando alguém abre o seletor (`GET /api/icones`, com login, guardado um dia pelo navegador). Para mostrar o ícone nas pastas não se carrega nada: o processo guarda o nome do ícone, a cor e o desenho (`processos.icone`, migração 0030).
 - **Segurança:** o navegador manda só o nome do ícone e a cor (`PUT /api/processos/[id]/icone`); o desenho guardado é o do catálogo do servidor, e nome fora do Lucide é recusado. Na tela, o desenho é montado elemento por elemento, só com as marcas e os atributos que um ícone do Lucide usa.
 - **Não muda:** trocar o ícone não altera a data de atualização do processo nem conta como alteração a publicar; a cópia de processo leva o ícone.
+
+## 134. Seletor de ícone sem sugestões, 12 cores e selo do POP em violeta
+
+Respostas do Rafael às pendências dos ícones e dos selos.
+
+- **Processo sem ícone escolhido:** continua com o quadradinho colorido de sempre. O sistema não põe ícone sozinho.
+- **Seletor sem "Sugestões pelo nome":** a seção saiu do seletor e o código que calculava as sugestões foi removido. Fica a busca em português e as 20 categorias.
+- **12 cores:** além das 8 das pastas, entram Vermelho, Lima, Marrom e Grafite (cada uma com tom escuro de contraste de 4,5:1 ou mais sobre o fundo). As 4 novas só aparecem por escolha: a cor que o processo recebe sozinho continua saindo do id, entre as 8 primeiras, então nenhuma pasta mudou de cor. No celular as cores ficam em 2 linhas de 6.
+- **Selo do POP em violeta:** o verde do selo parecia o verde de "Publicado" lado a lado. O selo "POP" passou a violeta, o lilás que o sistema de cores já usa (fundo `#F5F3FE`, borda `#DDD5F7`, texto `#6448BD`, 6:1), com o mesmo ícone. O degradê verde do fundo da página do POP não mudou.
+- **Mantidos:** o título "Colar print copiado" e a vista em pastas como padrão a cada visita (a escolha entre pastas e lista não é lembrada por enquanto).
+- **Tradução dos ícones:** os 2.119 ícones do Lucide 1.80.0 estão traduzidos (nenhum sem tradução). A conferência de qualidade foi por amostra; nome estranho se ajusta quando for apontado.
+- **Deixado para depois:** o Rafael publica os 3 POPs antigos ("Publicar alterações") quando puder; o aviso de gravação e IA nos termos de uso entra quando a plataforma estiver mais madura.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
@@ -1109,3 +1121,5 @@ Ideia do Rafael: trocar o quadradinho colorido da pasta por um ícone de verdade
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion
 - Sugestão automática de marcação pela IA (decisão 18)
+- Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
+- Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)

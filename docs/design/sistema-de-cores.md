@@ -126,10 +126,12 @@ A base de todas as telas; as famílias acima não substituem os neutros.
   campo (vermelho 600), "Remover" e "Excluir" (vermelho, que aparece ao passar o mouse), "Offline" e o ponto de
   gravando.
 - **Cinza, ajuda:** o ícone de informação que explica os tipos de regra.
-- **Azul e verde, os ambientes (decisões 125 e 126):** o fundo em degradê e o selo do tipo dizem onde a pessoa está: azul
-  no processo, verde no POP. O degradê é pastel, só no lado direito da tela, sobre o cinza claro de sempre. Ficam só no fundo da página e no selo "Processo" ou "POP"; botões, links e abas
-  continuam em índigo. O verde do POP (`#047857`, com borda) é outro tom do verde de "Publicado" (`#166534`, com
-  ponto), e o selo do POP tem ícone, para os dois não se confundirem lado a lado.
+- **Azul e verde, os ambientes (decisões 125 e 126):** o fundo em degradê diz onde a pessoa está: azul no processo, verde
+  no POP. O degradê é pastel, só no lado direito da tela, sobre o cinza claro de sempre. Fica só no fundo da página;
+  botões, links e abas continuam em índigo.
+- **Azul e violeta, os selos do tipo (decisões 125 e 134):** o selo "Processo" é azul (`#EFF6FF`, borda `#BFDBFE`, texto
+  `#1D4ED8`) e o selo "POP" é violeta, o lilás do sistema (`#F5F3FE`, borda `#DDD5F7`, texto `#6448BD`), cada um com
+  seu ícone. O selo do POP não é verde para não se parecer com o "Publicado" ao lado dele.
 
 ## Identidade: avatares e áreas
 
