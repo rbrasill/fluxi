@@ -1174,11 +1174,11 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 
 /* Cartão do fluxograma: o desenho em cima, num palco pontilhado; nome e ações embaixo. */
 .proc-fluxo { padding: 0; gap: 0; overflow: hidden; }
-.fluxo-palco { position: relative; display: grid; place-items: center; min-height: 230px; padding: 44px 24px 24px; border-bottom: 1px solid var(--neutro-borda); background-color: #FAFBFC; background-image: radial-gradient(#DADEE5 1px, transparent 1px); background-size: 18px 18px; text-decoration: none; }
+.fluxo-palco { position: relative; display: grid; place-items: center; min-height: 160px; padding: 40px 20px 16px; border-bottom: 1px solid var(--neutro-borda); background-color: #FAFBFC; background-image: radial-gradient(#DADEE5 1px, transparent 1px); background-size: 18px 18px; text-decoration: none; }
 .fluxo-etiqueta { position: absolute; top: 14px; left: 14px; padding: 4px 10px; border: 1px solid var(--neutro-borda); border-radius: 999px; background: var(--neutro-superficie); color: var(--neutro-texto); font-size: 12px; font-weight: 600; }
-.fluxo-palco .fluxo-miniatura { width: auto; height: auto; max-width: 100%; max-height: 260px; object-fit: contain; border: 0; border-radius: 0; background: none; mix-blend-mode: multiply; }
+.fluxo-palco .fluxo-miniatura { width: auto; height: auto; max-width: 100%; max-height: 170px; object-fit: contain; border: 0; border-radius: 0; background: none; mix-blend-mode: multiply; }
 a.fluxo-palco:hover { background-color: var(--indigo-50); }
-.fluxo-ilustrado { width: min(100%, 460px); height: auto; overflow: visible; }
+.fluxo-ilustrado { width: min(100%, 340px); height: auto; overflow: visible; }
 .fluxo-ilustrado rect, .fluxo-ilustrado circle { fill: #fff; stroke: #D8DCE3; stroke-width: 1.5; }
 .fluxo-ilustrado .destaque { fill: var(--indigo-100); stroke: var(--indigo-300); }
 .fluxo-ilustrado path { fill: none; stroke: #C9CED8; stroke-width: 2; }

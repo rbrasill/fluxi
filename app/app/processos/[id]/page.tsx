@@ -231,9 +231,30 @@ function ProcessoPage() {
         ))}
       </div>
 
-      {/* Visão geral: à esquerda o processo em si (fluxograma e descrição); à direita, o resumo, a página pública e as entrevistas. */}
+      {/* Visão geral: à esquerda o processo em si (descrição e fluxograma, decisão 123); à direita, o resumo, a página pública e as entrevistas. */}
       <div className="proc-grade" role="tabpanel" id="painel-visao" aria-labelledby="aba-visao" hidden={aba !== 'visao'}>
         <div className="proc-coluna">
+          <section className="cartao descricao-processo" inert={arquivado} aria-labelledby="titulo-descricao">
+            <div className="sec-titulo">
+              <h3 id="titulo-descricao">Descrição do processo</h3>
+              {!arquivado && (
+                <MelhorarComIa variante="botao" rotulo="Descrição do processo" vazio={!textoPuro(descricao)} aoAplicar={mudarDescricao}
+                  pedido={() => ({ campo: 'descricao', texto: descricao, processo: p.nome, area: p.area?.nome, organizacao: p.area?.organizacao?.nome })} />
+              )}
+            </div>
+            <TextoRico valor={descricao} aoMudar={mudarDescricao} rotulo="Descrição do processo" linhas={5}
+              placeholder="O que é este processo, onde começa e onde termina. Use “Referência” para citar os POPs e os outros processos ligados a ele."
+              documento={{ tipo: 'processo', id: p.id }} aoReferenciar={registrarReferencia} />
+            <div className="descricao-rodape">
+              {salvandoDescricao === 'erro'
+                ? <span className="salvo-auto erro" role="alert">Erro ao salvar. Tente editar de novo.</span>
+                : salvandoDescricao === 'salvando'
+                  ? <span className="salvo-auto" role="status">Salvando…</span>
+                  : <span className="salvo-auto ok" role="status"><Icone nome="check" tamanho={15} />Salvo automaticamente</span>}
+              <p className="notice">Aparece na página pública. Referências viram links para os documentos citados.</p>
+            </div>
+          </section>
+
           <section className="cartao proc-fluxo" aria-label="Fluxograma do processo">
             {fluxo ? (
               <>
@@ -273,27 +294,6 @@ function ProcessoPage() {
                 </div>
               </>
             )}
-          </section>
-
-          <section className="cartao descricao-processo" inert={arquivado} aria-labelledby="titulo-descricao">
-            <div className="sec-titulo">
-              <h3 id="titulo-descricao">Descrição do processo</h3>
-              {!arquivado && (
-                <MelhorarComIa variante="botao" rotulo="Descrição do processo" vazio={!textoPuro(descricao)} aoAplicar={mudarDescricao}
-                  pedido={() => ({ campo: 'descricao', texto: descricao, processo: p.nome, area: p.area?.nome, organizacao: p.area?.organizacao?.nome })} />
-              )}
-            </div>
-            <TextoRico valor={descricao} aoMudar={mudarDescricao} rotulo="Descrição do processo" linhas={5}
-              placeholder="O que é este processo, onde começa e onde termina. Use “Referência” para citar os POPs e os outros processos ligados a ele."
-              documento={{ tipo: 'processo', id: p.id }} aoReferenciar={registrarReferencia} />
-            <div className="descricao-rodape">
-              {salvandoDescricao === 'erro'
-                ? <span className="salvo-auto erro" role="alert">Erro ao salvar. Tente editar de novo.</span>
-                : salvandoDescricao === 'salvando'
-                  ? <span className="salvo-auto" role="status">Salvando…</span>
-                  : <span className="salvo-auto ok" role="status"><Icone nome="check" tamanho={15} />Salvo automaticamente</span>}
-              <p className="notice">Aparece na página pública. Referências viram links para os documentos citados.</p>
-            </div>
           </section>
 
           {p.referenciado_em.length > 0 && (

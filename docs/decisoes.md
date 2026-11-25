@@ -1009,6 +1009,10 @@ Os cantos arredondados passaram para 15px em todo o site: cartões (antes 20px),
 
 Ficaram como estavam, porque são de outro tipo: o que é pílula ou círculo (etiquetas, contadores, avatares redondos, a chave liga/desliga), os detalhes pequenos (até 9px, como selos e marcadores) e os ícones quadrados pequenos (os quadradinhos coloridos com ícone), que com 15px virariam quase círculos.
 
+## 123. Página do processo: descrição antes do fluxograma, e prévia do fluxograma menor
+
+Na visão geral do processo, a descrição passou a vir primeiro e o fluxograma depois. A prévia do fluxograma ficou menor: a área tem no mínimo 160px de altura (antes, 230px), a imagem do fluxograma vai até 170px (antes, 260px) e o desenho de exemplo, quando ainda não há fluxograma, até 340px de largura (antes, 460px).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
