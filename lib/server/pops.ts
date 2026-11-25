@@ -40,7 +40,7 @@ export async function buscar(id: string) {
   const pop = data as unknown as {
     id: string; nome: string; codigo: string; identificacao: string; versao: string; status: string; autor: string; posicao: Posicao | null;
     processo_id: string | null; arquivado_em: string | null; link_publico: string; publicado_em: string | null; criado_em: string; atualizado_em: string;
-    processo: { id: string; nome: string; arquivado_em: string | null; area?: { nome?: string } | null } | null;
+    processo: { id: string; nome: string; arquivado_em: string | null; area?: { nome?: string; organizacao?: { nome?: string } | null } | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
     publicacao_hash: string | null; // da versão publicada, para saber se há alterações não publicadas
     // Só para comparar com as versões publicadas antes do versionamento (ver `temAlteracoes`).
@@ -399,9 +399,11 @@ export function comImagensFinais(conteudo: ConteudoPop, marcs: Map<string, Marca
 export const linkDoFluxograma = (origem: string, link: string) => `${origem}/f/${link}`;
 
 export type BaseDocumento = { nome: string; codigo: string; identificacao: string; versao: string; autor: string; criado_em: string; historico: Historico[]; conteudo: ConteudoPop };
+/** O que o documento leva além do conteúdo: o link do fluxograma publicado e a organização (rodapé). */
+export type ContextoDoDocumento = { linkFluxograma: string | null; organizacao: string | null };
 
 /** Gera o PDF do POP a partir do conteúdo (com as imagens já nos caminhos finais). `origem` é a base dos links públicos das referências. O POP sai só em PDF (decisão 79). */
-export async function gerarDocumento(base: BaseDocumento, linkFluxograma: string | null, origem: string) {
+export async function gerarDocumento(base: BaseDocumento, contexto: ContextoDoDocumento, origem: string) {
   const caminhos = [...new Set(base.conteudo.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[])];
   const imagens = new Map<string, Uint8Array>();
   await Promise.all(caminhos.map(async (c) => {
@@ -417,7 +419,8 @@ export async function gerarDocumento(base: BaseDocumento, linkFluxograma: string
     autor: base.autor,
     criado_em: base.criado_em,
     historico: base.historico,
-    link_fluxograma: linkFluxograma,
+    organizacao: contexto.organizacao,
+    link_fluxograma: contexto.linkFluxograma,
     referencias: referencias.paraDocumento(await referencias.resolverDosTextos(referencias.textosDoPop(base.conteudo).map((t) => t.valor)), origem),
   };
   const nomeBase = `POP ${base.identificacao ? `${base.identificacao} ` : ''}${base.nome}`.replace(/[\\/:*?"<>|]+/g, ' ').trim();
@@ -436,6 +439,7 @@ export async function pdf(id: string, origem: string) {
   const rascunho = !lista.length || temAlteracoes(original, conteudo);
   const historico = historicoDasVersoes(lista);
   if (rascunho) historico.push({ data: hoje(), elaborado_por: original.autor, revisao: lista.length ? `Rascunho: alterações ainda não publicadas (depois da ${lista[0].versao})` : 'Rascunho: ainda não publicado' });
-  return gerarDocumento({ ...original, versao: rascunho ? 'Rascunho' : lista[0].versao, historico, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
+  const contexto = { linkFluxograma: fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, organizacao: original.processo?.area?.organizacao?.nome ?? null };
+  return gerarDocumento({ ...original, versao: rascunho ? 'Rascunho' : lista[0].versao, historico, conteudo }, contexto, origem);
 }
 

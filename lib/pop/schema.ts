@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Conteúdo do POP (Modelo POP v3, ver docs/modelo-pop.md). Controle (código,
+// Conteúdo do POP (o documento está em docs/modelo-pop.md). Controle (código,
 // identificação, versão, datas, histórico) vem do sistema; o resto a IA sugere
 // e a pessoa revisa.
 export const PassoSchema = z.object({

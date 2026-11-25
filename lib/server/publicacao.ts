@@ -211,14 +211,15 @@ export async function documentoDaVersao(id: string, versao: string, origem: stri
     const { data } = await supabase().from('processos').select('link:publicacao->fluxograma->>link_publico').eq('tenant_id', TENANT_PADRAO).eq('id', pop.processo_id).maybeSingle();
     fluxo = (data as { link?: string | null } | null)?.link ?? null;
   }
-  const doc = await pops.gerarDocumento(publicacao, fluxo ? pops.linkDoFluxograma(origem, fluxo) : null, origem);
+  const organizacao = (pop.processo as unknown as Onde)?.area?.organizacao?.nome ?? null;
+  const doc = await pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo) : null, organizacao }, origem);
   return { ...doc, nomeArquivo: doc.nomeArquivo.replace(/\.pdf$/, ` v${publicacao.versao}.pdf`) };
 }
 
 /** PDF da versão publicada (o que está na página pública). */
 export async function documentoPublico(link: string, origem: string) {
-  const { publicacao, fluxo } = await versaoPublicada(link);
-  return pops.gerarDocumento(publicacao, fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
+  const { publicacao, fluxo, processo } = await versaoPublicada(link);
+  return pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, organizacao: processo?.area?.organizacao?.nome ?? null }, origem);
 }
 
 /** A página pública do processo (decisão 35): descrição, fluxograma e os POPs publicados e no ar. */

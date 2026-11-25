@@ -29,12 +29,12 @@ function PopPublicoPage() {
   }
 
   return (
-    <div className="pub">
+    <div className="pub pub-documento">
       <CabecalhoPublico onde={pop.onde} processoHref={pop.processo_link ? comOrigem(`/pr/${pop.processo_link}`, origem) : null} />
-      <main className="pub-corpo">
+      <main className="docpop-pagina">
         <VoltarPara de={de} />
         <DocumentoDoPop pop={pop} origem={origem} pdf={urlDocumentoPublico(link, 'pdf')} />
-        <footer className="pub-rodape">Versão publicada em {dataBr(pop.publicado_em)} · Publicado com INCFlow</footer>
+        <p className="pub-rodape">Versão {pop.versao ? `${pop.versao} ` : ''}publicada em {dataBr(pop.publicado_em)} · Publicado com INCFlow</p>
       </main>
       <VoltarAoTopo />
     </div>

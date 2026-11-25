@@ -51,7 +51,7 @@ export default function VersaoDoPopPage() {
         </span>
         <span className="aviso-acoes"><Link href={voltar} className="btn"><Icone nome="voltar" tamanho={16} />Voltar para o POP</Link></span>
       </div>
-      <div className="pub-corpo versao-corpo">
+      <div className="versao-documento">
         <DocumentoDoPop pop={doc} origem={null} pdf={urlPdfDaVersao(id, doc.versao)} />
       </div>
       <VoltarAoTopo />

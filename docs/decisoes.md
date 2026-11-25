@@ -1171,6 +1171,27 @@ O processo ganhou versão, com a regra sugerida na decisão 138 e aceita pelo Ra
 - **Processos que já existiam:** nenhum estava publicado na data desta decisão, então todos começam pela 1.0.0 na primeira publicação.
 - **Código comum:** as regras da versão ficam em `lib/versao.ts`; a janela de publicar (`components/PublicarVersao.tsx`), a aba (`components/VersoesPublicadas.tsx`) e o repositório das versões (`lib/server/versoes.ts`) servem ao POP e ao processo.
 
+## 140. Desenho novo do documento do POP (página pública e PDF)
+
+O Rafael mandou um exemplo em HTML com o desenho novo do POP e pediu para aplicar. Perguntei onde, e ele escolheu a página pública e o PDF. O editor não muda.
+
+- **O desenho.** Cabeçalho com a logo num bloco preto sobre o padrão cinza; "POP - Procedimento Operacional Padrão" e a área como título, com régua laranja; cada seção com uma faixa em degradê do azul ao laranja e um ícone; ficha do procedimento (nome, mês/ano e versão; data de criação, código do procedimento e identificação; executor); os envolvidos numa tabela; cada etapa com uma faixa escura ("Etapa N" numa caixa branca e o nome ao lado); cada passo num cartão com o número num selo laranja, o print em cima e o texto embaixo numa caixa creme com barra laranja, e uma linha ligando os passos da etapa; histórico de revisões; rodapé com a identificação, o código e a organização.
+- **Onde vale.** Na página pública do POP (`/p/<link>`), na leitura de uma versão dentro do app (decisão 138) e no PDF, nas três saídas dele: o do editor, o de uma versão e o da página pública. A página e o PDF usam a mesma lista de etapas e passos (`etapasDoDocumento`, em `lib/pop/documento.ts`).
+- **O que ficou diferente do exemplo, e por quê:**
+  - **Toda etapa tem a faixa escura** "Etapa N | nome". No exemplo só algumas tinham; o POP guarda etapas com nome, então a regra é uma só.
+  - **Os passos são numerados do início ao fim do POP** (decisão 24), e não recomeçam em 1 a cada etapa.
+  - **O passo não tem título.** O exemplo tinha um título em negrito em cada passo; o POP guarda um texto só por passo, que aparece como foi escrito. O rótulo "Passo N:" saiu: o número já está no selo.
+  - **Sem o índice "Neste POP"** e sem tema escuro, que o exemplo trazia.
+  - **Fonte:** a página usa a fonte do app; o PDF, a Roboto, como antes.
+  - **"Baixar PDF"** fica ao lado de "POP - Procedimento Operacional Padrão". A imagem do fluxograma continua na página, em "Recursos do processo", abaixo da linha com "Abrir diagrama".
+  - **Seção vazia não aparece** (objetivo sem texto, nenhum envolvido), na página e no PDF. Antes o PDF mostrava a seção com um traço.
+- **PDF.** O gerador (`lib/pop/pdf.ts`) foi refeito no desenho novo; o do Modelo POP v3 (decisão 24) saiu.
+  - **O print não é cortado:** ocupa a largura do cartão; o que é mais alto (tela de celular) fica menor e centralizado. Na página, o print em pé é cortado e amplia ao clicar; no papel não há clique.
+  - **O passo não se parte entre páginas**, e a faixa da etapa fica na mesma página do primeiro passo dela (a da seção, na da primeira etapa). O passo de texto muito longo é a exceção: o selo e o print ficam juntos e o texto continua na página seguinte.
+  - **Rodapé em todas as páginas:** identificação e código à esquerda; organização e "Página X de Y" à direita.
+  - **Arquivos:** a logo e o padrão ficam em `templates/pop/imagens/` (para o PDF) e em `public/pop/` (para a página). As imagens do modelo antigo (faixa, ícones e decoração) saíram; os ícones agora são desenhados no código. O `Modelo_POP_v3.docx` fica no repositório só como registro do desenho anterior.
+- **Sem mudança no banco.** POPs já publicados passam a aparecer no desenho novo, na página e no PDF, sem precisar publicar de novo: o que se guarda é o conteúdo, não a aparência.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
