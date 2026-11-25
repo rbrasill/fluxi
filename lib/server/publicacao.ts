@@ -1,8 +1,8 @@
 import 'server-only';
 import type { ConteudoPop } from '@/lib/pop/schema';
-import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { ErroApi } from './http';
 import * as pops from './pops';
+import * as processos from './processos';
 import * as referencias from './referencias';
 import { lerOrigemPublica, rotuloDoc, type ReferenciaResolvida } from '@/lib/referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
@@ -10,14 +10,24 @@ import * as telas from './telas';
 
 // Publicação online (decisão 32). Ao publicar, o POP vira uma versão guardada (`pops.publicacao`),
 // com cópias dos prints numa pasta própria: a página pública mostra só ela, e editar o POP depois
-// não muda o que está publicado até alguém publicar de novo. O fluxograma é do processo e aparece
-// sempre na última versão salva (o SVG que o editor exporta). Os links são públicos para quem os
-// tiver; quando a plataforma fechar, as mesmas páginas passam a pedir login. A chave
-// `link_publico_ativo` (decisão 34) deixa a página online ou offline sem mexer na versão publicada.
+// não muda o que está publicado até alguém publicar de novo. O processo também (decisão 129): ao
+// publicar, guarda o nome, a descrição e o fluxograma com a imagem (`processos.publicacao` e
+// `publicacao_svg`); a página do processo, a do fluxograma e o fluxograma mostrado na página do POP
+// usam essa cópia. Nada vai ao ar sem a pessoa publicar. Os links são públicos para quem os tiver;
+// quando a plataforma fechar, as mesmas páginas passam a pedir login. A chave `link_publico_ativo`
+// (decisão 34) deixa a página online ou offline sem mexer na versão publicada.
 
 export type Publicacao = pops.BaseDocumento & {
   versao_hash: string; // impressão digital do que foi publicado (ver pops.hashDaVersao)
   publicado_em: string;
+};
+
+/** A versão publicada do processo (decisão 129). A imagem do fluxograma fica à parte, em `processos.publicacao_svg`. */
+export type PublicacaoProcesso = {
+  versao_hash: string; // ver processos.hashDoProcesso
+  publicado_em: string;
+  nome: string; codigo: string; descricao: string;
+  fluxograma: { nome: string; link_publico: string; atualizado_em: string } | null;
 };
 
 const extensao = (caminho: string) => caminho.match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase() ?? 'png';
@@ -95,14 +105,17 @@ const referenciadoPublico = async (doc: referencias.Doc) => (await referencias.r
 /** A versão publicada do POP pelo link público (só POP publicado, com a página online e não arquivado). */
 async function versaoPublicada(link: string) {
   const { data, error } = await supabase().from('pops')
-    .select('id, status, link_publico_ativo, arquivado_em, publicacao, processo:processos(id, nome, arquivado_em, link_publico, link_publico_ativo, area:areas(nome, organizacao:organizacoes(nome)))')
+    .select('id, status, link_publico_ativo, arquivado_em, publicacao, processo:processos(id, nome, arquivado_em, link_publico, link_publico_ativo, publicado_em, publicacao, area:areas(nome, organizacao:organizacoes(nome)))')
     .eq('link_publico', link).maybeSingle();
   if (error) throw error;
-  const processo = data?.processo as unknown as Onde;
-  if (!data || data.status !== 'publicado' || !data.link_publico_ativo || data.arquivado_em || processo?.arquivado_em) throw new ErroApi(404, NAO_DISPONIVEL);
-  // Publicado antes de existir a versão guardada: guarda agora o conteúdo atual.
-  const publicacao = (data.publicacao as Publicacao | null) ?? (await publicar(data.id)).publicacao;
-  const fluxo = processo ? await fluxogramaDoProcesso(processo.id) : null;
+  const processo = data?.processo as unknown as (Onde & { publicado_em?: string | null; publicacao?: PublicacaoProcesso | null });
+  // Sem versão guardada não há o que mostrar: nada é publicado sozinho (decisão 129). Antes, o POP publicado antes
+  // da decisão 32 ganhava a versão guardada na primeira visita à página pública.
+  const publicacao = data?.publicacao as Publicacao | null | undefined;
+  if (!data || data.status !== 'publicado' || !publicacao || !data.link_publico_ativo || data.arquivado_em || processo?.arquivado_em) throw new ErroApi(404, NAO_DISPONIVEL);
+  // O fluxograma que aparece no POP é o publicado com o processo; sem processo publicado, não aparece.
+  const f = processo?.publicacao?.fluxograma;
+  const fluxo = f ? { link_publico: f.link_publico, nome: f.nome, tem_svg: true } : null;
   return { id: data.id as string, publicacao, processo, fluxo };
 }
 
@@ -121,8 +134,8 @@ export async function popPublico(link: string) {
     imagens,
     onde: { organizacao: processo?.area?.organizacao?.nome ?? null, area: processo?.area?.nome ?? null, processo: processo?.nome ?? null },
     // O processo tem página pública (decisão 35): o caminho do topo leva a ela, se estiver no ar.
-    processo_link: processo && !processo.arquivado_em && processo.link_publico_ativo ? (processo.link_publico as string) : null,
-    fluxograma: fluxo ? { link_publico: fluxo.link_publico as string, nome: fluxo.nome as string, tem_svg: !!fluxo.tem_svg } : null,
+    processo_link: processo && !processo.arquivado_em && processo.publicado_em && processo.link_publico_ativo ? (processo.link_publico as string) : null,
+    fluxograma: fluxo,
     referencias: paraPublico(refs),
     referenciado_em,
   };
@@ -137,23 +150,24 @@ export async function documentoPublico(link: string, origem: string) {
 /** A página pública do processo (decisão 35): descrição, fluxograma e os POPs publicados e no ar. */
 export async function processoPublico(link: string) {
   const db = supabase();
-  const { data, error } = await db.from('processos').select('id, nome, codigo, descricao, arquivado_em, link_publico_ativo, area:areas(nome, organizacao:organizacoes(nome))')
+  const { data, error } = await db.from('processos').select('id, arquivado_em, link_publico_ativo, publicacao, area:areas(nome, organizacao:organizacoes(nome))')
     .eq('link_publico', link).maybeSingle();
   if (error) throw error;
-  if (!data || data.arquivado_em || !data.link_publico_ativo) throw new ErroApi(404, 'Este processo não está disponível.');
+  // Só a versão que a pessoa publicou (decisão 129): o que mudou depois fica de fora até publicar de novo.
+  const pub = data?.publicacao as PublicacaoProcesso | null | undefined;
+  if (!data || !pub || data.arquivado_em || !data.link_publico_ativo) throw new ErroApi(404, 'Este processo não está disponível.');
   const area = data.area as unknown as { nome: string; organizacao: { nome: string } | null } | null;
-  const [fluxo, o, refs, referenciado_em] = await Promise.all([
-    fluxogramaDoProcesso(data.id as string),
+  const [o, refs, referenciado_em] = await Promise.all([
     db.from('pops').select('id, nome, identificacao, codigo, versao, link_publico, publicado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', data.id)
       .eq('status', 'publicado').eq('link_publico_ativo', true).is('arquivado_em', null).order('identificacao').order('nome'),
-    referencias.resolverDosTextos([data.descricao as string]),
+    referencias.resolverDosTextos([pub.descricao]),
     referenciadoPublico({ tipo: 'processo', id: data.id as string }),
   ]);
   if (o.error) throw o.error;
   return {
-    nome: data.nome as string, codigo: data.codigo as string, descricao: (data.descricao as string) ?? '',
+    nome: pub.nome, codigo: pub.codigo, descricao: pub.descricao ?? '', publicado_em: pub.publicado_em,
     onde: { organizacao: area?.organizacao?.nome ?? null, area: area?.nome ?? null, processo: null },
-    fluxograma: fluxo ? { link_publico: fluxo.link_publico as string, nome: fluxo.nome as string, tem_svg: !!fluxo.tem_svg } : null,
+    fluxograma: pub.fluxograma ? { link_publico: pub.fluxograma.link_publico, nome: pub.fluxograma.nome, tem_svg: true } : null,
     pops: (o.data ?? []).map((x) => ({ nome: x.nome as string, identificacao: (x.identificacao as string) || null, codigo: x.codigo as string, versao: x.versao as string, link_publico: x.link_publico as string, publicado_em: x.publicado_em as string | null })),
     referencias: paraPublico(refs),
     referenciado_em,
@@ -166,52 +180,91 @@ export async function tituloPublico(de: string | null) {
   if (!origem) throw new ErroApi(400, 'Origem inválida');
   const db = supabase();
   if (origem.tipo === 'p') {
-    const { data, error } = await db.from('pops').select('nome, identificacao, codigo, status, arquivado_em, link_publico_ativo, processo:processos(arquivado_em)').eq('link_publico', origem.link).maybeSingle();
+    const { data, error } = await db.from('pops').select('nome, identificacao, codigo, status, arquivado_em, link_publico_ativo, publicacao_hash:publicacao->>versao_hash, processo:processos(arquivado_em)').eq('link_publico', origem.link).maybeSingle();
     if (error) throw error;
     const pa = (data?.processo as unknown as { arquivado_em: string | null } | null)?.arquivado_em;
-    if (!data || data.status !== 'publicado' || !data.link_publico_ativo || data.arquivado_em || pa) throw new ErroApi(404, NAO_DISPONIVEL);
+    if (!data || data.status !== 'publicado' || !data.publicacao_hash || !data.link_publico_ativo || data.arquivado_em || pa) throw new ErroApi(404, NAO_DISPONIVEL);
     return { titulo: rotuloDoc({ tipo: 'pop', nome: data.nome as string, identificacao: data.identificacao as string, codigo: data.codigo as string }), url: `/p/${origem.link}` };
   }
-  const { data, error } = await db.from('processos').select('nome, codigo, arquivado_em, link_publico_ativo').eq('link_publico', origem.link).maybeSingle();
+  const { data, error } = await db.from('processos').select('nome, codigo, arquivado_em, link_publico_ativo, publicado_em, publicacao_nome:publicacao->>nome').eq('link_publico', origem.link).maybeSingle();
   if (error) throw error;
-  if (!data || data.arquivado_em || !data.link_publico_ativo) throw new ErroApi(404, 'Este processo não está disponível.');
-  return { titulo: rotuloDoc({ tipo: 'processo', nome: data.nome as string, codigo: data.codigo as string }), url: `/pr/${origem.link}` };
+  if (!data || data.arquivado_em || !data.publicado_em || !data.link_publico_ativo) throw new ErroApi(404, 'Este processo não está disponível.');
+  return { titulo: rotuloDoc({ tipo: 'processo', nome: (data.publicacao_nome as string | null) ?? (data.nome as string), codigo: data.codigo as string }), url: `/pr/${origem.link}` };
 }
 
 /**
- * O fluxograma só fica público por uma publicação feita pela pessoa (decisão 128): a página do processo no ar ou um
- * POP do processo publicado e no ar (a página e o PDF dele mostram o fluxograma). Sem nenhuma das duas, o link
- * `/f/<link>` e o SVG respondem "não disponível".
+ * O fluxograma só fica público por uma publicação feita pela pessoa (decisões 128 e 129): é a imagem guardada ao
+ * publicar o processo, e aparece com a página do processo no ar ou com um POP do processo publicado e no ar (a página
+ * e o PDF dele mostram o fluxograma). Sem isso, o link `/f/<link>` e o SVG respondem "não disponível".
  */
 async function fluxogramaExposto(processo: { id: string; arquivado_em: string | null; link_publico_ativo?: boolean } | null) {
   if (!processo || processo.arquivado_em) return false;
   if (processo.link_publico_ativo) return true;
   const { count, error } = await supabase().from('pops').select('id', { count: 'exact', head: true }).eq('tenant_id', TENANT_PADRAO)
-    .eq('processo_id', processo.id).eq('status', 'publicado').eq('link_publico_ativo', true).is('arquivado_em', null);
+    .eq('processo_id', processo.id).eq('status', 'publicado').eq('link_publico_ativo', true).is('arquivado_em', null).not('publicacao', 'is', null);
   if (error) throw error;
   return (count ?? 0) > 0;
+}
+
+type ProcessoDoFluxo = { id: string; nome: string; arquivado_em: string | null; link_publico_ativo: boolean; publicacao: PublicacaoProcesso | null; publicacao_svg?: string | null; area: { nome: string; organizacao: { nome: string } | null } | null };
+
+/** O processo do fluxograma, se o fluxograma publicado com ele é este e está exposto. */
+async function processoDoFluxoPublicado(link: string, processo: ProcessoDoFluxo | null) {
+  const f = processo?.publicacao?.fluxograma;
+  if (!processo || !f || f.link_publico !== link || !(await fluxogramaExposto(processo))) return null;
+  return { processo, f };
 }
 
 /** A página pública "só o fluxograma" (o link do "Abrir diagrama" no PDF). */
 export async function fluxogramaPublico(link: string) {
   const { data, error } = await supabase().from('fluxogramas')
-    .select('nome, codigo, tem_svg, atualizado_em, processo:processos(id, nome, arquivado_em, link_publico_ativo, area:areas(nome, organizacao:organizacoes(nome)))')
+    .select('codigo, processo:processos(id, nome, arquivado_em, link_publico_ativo, publicacao, area:areas(nome, organizacao:organizacoes(nome)))')
     .eq('link_publico', link).maybeSingle();
   if (error) throw error;
-  const processo = data?.processo as unknown as Onde;
-  if (!data || !processo || !(await fluxogramaExposto(processo))) throw new ErroApi(404, 'Este fluxograma não está disponível.');
+  const achado = await processoDoFluxoPublicado(link, (data?.processo as unknown as ProcessoDoFluxo | null) ?? null);
+  if (!data || !achado) throw new ErroApi(404, 'Este fluxograma não está disponível.');
+  const { processo, f } = achado;
+  const nomeProcesso = processo.publicacao?.nome ?? processo.nome;
   return {
-    nome: data.nome as string, codigo: data.codigo as string, tem_svg: !!data.tem_svg, atualizado_em: data.atualizado_em as string,
-    onde: { organizacao: processo.area?.organizacao?.nome ?? null, area: processo.area?.nome ?? null, processo: processo.nome },
+    nome: f.nome, codigo: data.codigo as string, tem_svg: true, atualizado_em: f.atualizado_em,
+    onde: { organizacao: processo.area?.organizacao?.nome ?? null, area: processo.area?.nome ?? null, processo: nomeProcesso },
   };
 }
 
-/** O SVG do fluxograma (servido como imagem, com política que impede qualquer código de rodar). */
+/** O SVG do fluxograma publicado (servido como imagem, com política que impede qualquer código de rodar). */
 export async function svgPublico(link: string) {
-  const { data, error } = await supabase().from('fluxogramas').select('svg, processo:processos(id, arquivado_em, link_publico_ativo)').eq('link_publico', link).maybeSingle();
+  const { data, error } = await supabase().from('fluxogramas').select('processo:processos(id, nome, arquivado_em, link_publico_ativo, publicacao, publicacao_svg, area:areas(nome))').eq('link_publico', link).maybeSingle();
   if (error) throw error;
-  const processo = data?.processo as unknown as { id: string; arquivado_em: string | null; link_publico_ativo: boolean } | null;
-  if (!data?.svg || !(await fluxogramaExposto(processo))) throw new ErroApi(404, 'Fluxograma não disponível.');
-  return data.svg as string;
+  const achado = await processoDoFluxoPublicado(link, (data?.processo as unknown as ProcessoDoFluxo | null) ?? null);
+  if (!achado?.processo.publicacao_svg) throw new ErroApi(404, 'Fluxograma não disponível.');
+  return achado.processo.publicacao_svg;
+}
+
+/**
+ * Publica o processo (decisão 129): guarda o nome, a descrição e o fluxograma com a imagem. A página pública passa a
+ * mostrar esta versão até a pessoa publicar de novo. Com fluxograma sem imagem (o editor a gera ao abrir), pede para
+ * abrir o fluxograma antes, para a página não ficar sem o desenho.
+ */
+export async function publicarProcesso(id: string) {
+  const db = supabase();
+  const { data: p, error } = await db.from('processos').select('id, nome, codigo, descricao, arquivado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!p) throw new ErroApi(404, 'Processo não encontrado');
+  if (p.arquivado_em) throw new ErroApi(409, 'O processo está arquivado: restaure-o antes de publicar.');
+  const { data: f, error: e2 } = await db.from('fluxogramas').select('nome, xml, svg, link_publico, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle();
+  if (e2) throw e2;
+  if (f && !f.svg) throw new ErroApi(409, 'O fluxograma ainda não tem a imagem para a página pública. Abra o fluxograma uma vez (a imagem é gerada ao abrir) e publique de novo.');
+  const agora = new Date().toISOString();
+  const descricao = (p.descricao as string | null) ?? '';
+  const publicacao: PublicacaoProcesso = {
+    versao_hash: processos.hashDoProcesso({ nome: p.nome as string, descricao }, f ? { nome: f.nome as string, xml: (f.xml as string | null) ?? '' } : null),
+    publicado_em: agora,
+    nome: p.nome as string, codigo: p.codigo as string, descricao,
+    fluxograma: f ? { nome: f.nome as string, link_publico: f.link_publico as string, atualizado_em: f.atualizado_em as string } : null,
+  };
+  const { error: e3 } = await db.from('processos').update({ publicacao, publicacao_svg: (f?.svg as string | null) ?? null, publicado_em: agora })
+    .eq('tenant_id', TENANT_PADRAO).eq('id', id);
+  if (e3) throw e3;
+  return { publicado_em: agora };
 }
 

@@ -1,4 +1,5 @@
 import 'server-only';
+import { createHash } from 'node:crypto';
 import { gerarCodigo } from '@/lib/codigo';
 import type { ConteudoPop } from '@/lib/pop/schema';
 import { garantir as garantirArea } from './areas';
@@ -6,7 +7,15 @@ import { ErroApi } from './http';
 import * as referencias from './referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, link_publico, link_publico_ativo, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+
+/**
+ * Impressão digital do que vai para a página pública do processo (decisão 129): o nome, a descrição e o desenho do
+ * fluxograma (o XML, não a imagem, que o editor refaz ao abrir). Diferente da publicada: "Alterações não publicadas".
+ */
+export function hashDoProcesso(p: { nome: string; descricao: string | null }, fluxo: { nome: string; xml: string | null } | null) {
+  return createHash('sha256').update(JSON.stringify([p.nome, p.descricao ?? '', fluxo ? [fluxo.nome, fluxo.xml ?? ''] : null])).digest('hex');
+}
 
 /** Quantos itens de uma relação embutida não estão arquivados. */
 export const ativos = (x: unknown) => ((x as { arquivado_em: string | null }[] | null) ?? []).filter((i) => !i.arquivado_em).length;
@@ -54,8 +63,8 @@ export async function criar(d: { nome: string; area_id: string; descricao?: stri
 export async function obter(id: string) {
   const db = supabase();
   const [p, f, g, o] = await Promise.all([
-    db.from('processos').select(CAMPOS).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
-    db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, link_publico, tem_svg, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
+    db.from('processos').select(`${CAMPOS}, publicacao_hash:publicacao->>versao_hash`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
+    db.from('fluxogramas').select('id, codigo, nome, origem, miniatura, link_publico, tem_svg, atualizado_em, xml').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
     db.from('gravacoes').select('id, nome, status, duracao_ms, processamento, criado_em, pop:pops!pop_id(nome), marcacoes:gravacao_marcacoes(count)')
       .eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('criado_em', { ascending: false }),
     db.from('pops').select('id, nome, codigo, identificacao, versao, status, link_publico_ativo, arquivado_em, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).order('atualizado_em', { ascending: false }),
@@ -66,10 +75,16 @@ export async function obter(id: string) {
     referencias.resolverDosTextos([p.data.descricao as string]),
     referencias.referenciadoEm({ tipo: 'processo', id }),
   ]);
+  // Publicado e diferente do que está na página pública (decisão 129). O XML do fluxograma só entra na conta.
+  const { publicacao_hash, ...processo } = p.data as typeof p.data & { publicacao_hash: string | null };
+  const { xml, ...fluxograma } = (f.data ?? {}) as { xml?: string | null } & Record<string, unknown>;
+  const alteracoes_nao_publicadas = !!processo.publicado_em
+    && publicacao_hash !== hashDoProcesso(processo as { nome: string; descricao: string | null }, f.data ? { nome: f.data.nome as string, xml: xml ?? '' } : null);
   return {
-    ...p.data,
+    ...processo,
+    alteracoes_nao_publicadas,
     referencias: refs, referenciado_em, // decisão 35
-    fluxograma: f.data ?? null, // um por processo (decisão 31)
+    fluxograma: f.data ? fluxograma : null, // um por processo (decisão 31)
     gravacoes: (g.data ?? []).map(({ marcacoes, pop, ...x }) => (
       { ...x, pop_nome: (pop as unknown as { nome: string } | null)?.nome ?? null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }
     )),
@@ -117,12 +132,16 @@ export async function atualizar(id: string, dados: { nome?: string; area_id?: st
   return data;
 }
 
-/** Chave da página pública do processo (decisão 35): online mostra o processo e os POPs publicados; offline, "não disponível". */
+/**
+ * Chave da página pública do processo (decisão 35): online mostra a versão publicada e os POPs publicados; offline,
+ * "não disponível". Só liga depois de a pessoa publicar o processo (decisão 129).
+ */
 export async function definirLinkPublico(id: string, ativo: boolean) {
-  const { data: p, error: e1 } = await supabase().from('processos').select('id, arquivado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data: p, error: e1 } = await supabase().from('processos').select('id, arquivado_em, publicado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (e1) throw e1;
   if (!p) throw new ErroApi(404, 'Processo não encontrado');
   if (ativo && p.arquivado_em) throw new ErroApi(409, 'O processo está arquivado: restaure-o antes de colocar a página no ar.');
+  if (ativo && !p.publicado_em) throw new ErroApi(409, 'Publique o processo para poder colocar a página pública no ar.');
   const { error } = await supabase().from('processos').update({ link_publico_ativo: ativo }).eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) throw error;
   return { link_publico_ativo: ativo };

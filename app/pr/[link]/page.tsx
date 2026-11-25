@@ -99,7 +99,7 @@ function ProcessoPublicoPage() {
           </section>
         )}
 
-        <footer className="pub-rodape">Publicado com INCFlow</footer>
+        <footer className="pub-rodape">{p.publicado_em ? `Versão publicada em ${dataBr(p.publicado_em)} · ` : ''}Publicado com INCFlow</footer>
       </main>
       <VoltarAoTopo />
     </div>

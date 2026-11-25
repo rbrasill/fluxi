@@ -1051,7 +1051,19 @@ Regra do Rafael: "a publicação de processo e POP não pode nunca ser automáti
 - **Processo:** a página pública (`/pr/<link>`) nascia **no ar**: a coluna `processos.link_publico_ativo` tinha padrão `true` (decisão 35, "ligada por padrão"), e a cópia de processo também nascia no ar. Em 25/11/2026, 37 dos 42 processos ativos estavam no ar. **Agora o processo novo e a cópia nascem fora do ar**; só a pessoa liga a chave "Página pública" na página do processo. O código grava `false` ao criar (não depende do banco) e a migração 0027 muda o padrão da coluna para `false`. Os processos que já existem não foram alterados.
 - **Fluxograma:** a página `/f/<link>` e o SVG público abriam para qualquer processo não arquivado, mesmo sem nada publicado. **Agora só abrem com a página do processo no ar ou com um POP do processo publicado e no ar** (a página e o PDF desse POP mostram o fluxograma e levam a esse link); senão, "Este fluxograma não está disponível".
 - **POP:** já seguia a regra. Só fica público quando a pessoa clica em "Publicar", e a página mostra a versão guardada nesse clique (decisão 32): editar depois não muda o que está publicado até publicar de novo. A cópia de POP nasce como rascunho.
-- **Em aberto:** com a página do processo no ar, o que se muda na descrição e no fluxograma aparece na hora na página pública ("O que você muda aqui aparece na hora"), sem um "Publicar" como o do POP.
+- **Em aberto (resolvido na decisão 129):** com a página do processo no ar, o que se mudava na descrição e no fluxograma aparecia na hora na página pública, sem um "Publicar" como o do POP.
+
+## 129. Tudo fora do ar, e o processo passa a ter "Publicar"
+
+Pedido do Rafael: tirar do ar todos os processos e POPs, e as mudanças só irem para a página pública quando a pessoa publicar.
+
+- **Tudo fora do ar** (migração 0028, aplicada pelo Rafael): `link_publico_ativo = false` em todos os processos e POPs. Nada foi apagado: a versão publicada de cada POP e os links continuam; quem abre um link vê "não disponível" até a chave ser ligada de novo.
+- **"Publicar" no processo**, como no POP (decisão 32). Ao publicar, o INCFlow guarda o nome, o código, a descrição e o fluxograma: o nome do desenho, o link e a imagem SVG (migração 0029: `processos.publicacao`, `publicacao_svg` e `publicado_em`). A página pública do processo, a página do fluxograma (`/f/<link>`), o SVG público e o fluxograma mostrado na página e no PDF de um POP passam a usar só essa cópia. Editar depois não muda o que está no ar até publicar de novo.
+- **Na página do processo:** o selo de situação ao lado de "Processo" (Rascunho, Publicado ou Publicado · offline), o botão "Publicar" (ou "Publicar alterações", em destaque) e o aviso "Alterações não publicadas" quando o nome, a descrição ou o desenho do fluxograma mudaram desde a publicação. A conta usa o XML do fluxograma, não a imagem, que o editor refaz ao abrir; refazer a imagem não vira alteração. O "Publicar" salva antes o nome e a descrição que ainda estiverem pendentes. A chave "Página pública" fica travada até a primeira publicação ("Não publicado"; "Publique o processo para poder colocar a página pública no ar"), e o servidor recusa ligar a chave sem publicação. "Ver na página pública" do fluxograma só aparece com o processo publicado e no ar.
+- **Fluxograma sem imagem:** depois de "Gerar de novo com IA", a imagem só existe quando o editor abre. Publicar nesse momento é recusado com o pedido de abrir o fluxograma antes, para a página não ficar sem o desenho.
+- **POP publicado antes da decisão 32** (3 em produção, sem versão guardada): antes, a primeira visita à página pública publicava o conteúdo atual sozinho. Agora a página responde "não disponível" até alguém clicar em "Publicar alterações" no editor do POP, que já mostra o aviso.
+- **Referências e "Voltar para":** um processo nunca publicado aparece como "Não publicado" no seletor de referências e não ganha link na página pública; o "Voltar para" usa o nome publicado.
+- **Na página pública do processo:** o rodapé mostra "Versão publicada em …".
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

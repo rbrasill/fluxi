@@ -22,7 +22,7 @@ import { ReferenciadoEm } from '@/components/publico/Referencias';
 import type { ResultadoBusca } from '@/lib/referencias';
 import { criarPop, restaurarPop, type StatusPop } from '@/lib/pops';
 import { ehGestor, useEu } from '@/lib/auth/eu';
-import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, excluirProcesso, obterProcesso, restaurarProcesso, type Processo } from '@/lib/processos';
+import { arquivarProcesso, atualizarProcesso, definirLinkPublicoProcesso, excluirProcesso, obterProcesso, type Processo, publicarProcesso, restaurarProcesso } from '@/lib/processos';
 
 // Página do processo (decisão 31, redesenhada na decisão 77): a visão geral traz o fluxograma (um por processo) e a
 // descrição, com o resumo, a página pública e as entrevistas ao lado; os POPs e as entrevistas com a
@@ -82,6 +82,8 @@ function ProcessoPage() {
   const [salvandoDescricao, setSalvandoDescricao] = useState<'' | 'salvando' | 'erro'>('');
   const [copiado, setCopiado] = useState(false);
   const [alterandoLink, setAlterandoLink] = useState(false);
+  const [publicando, setPublicando] = useState(false);
+  const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta visita depois de publicar (decisão 129)
   const [movendo, setMovendo] = useState(false);
   const [aba, setAba] = useState<Aba>('visao');
   const [entrevistas, setEntrevistas] = useState<number | null>(null); // quantas entrevistas ativas (vem da seção)
@@ -158,6 +160,7 @@ function ProcessoPage() {
   // Descrição (texto rico, com referências; decisão 35): salva 1 s depois da última alteração.
   function mudarDescricao(v: string) {
     setDescricao(v);
+    setMudouDesdePublicar(true);
     setSalvandoDescricao('salvando');
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -167,6 +170,26 @@ function ProcessoPage() {
   function registrarReferencia(r: ResultadoBusca) {
     const k = `${r.tipo}:${r.id}`;
     setP((x) => x && !x.referencias[k] ? { ...x, referencias: { ...x.referencias, [k]: { tipo: r.tipo, id: r.id, nome: r.nome, identificacao: r.identificacao, codigo: r.codigo, rotulo: r.rotulo, situacao: r.situacao, publico: r.situacao === 'ok', url_app: `/app/${r.tipo === 'pop' ? 'pops' : 'processos'}/${r.id}`, url_publica: null } } } : x);
+  }
+
+  // Publicar guarda a versão atual (decisão 129): a página pública mostra só ela até publicar de novo. Antes, salva o
+  // nome e a descrição que ainda estiverem pendentes, para a versão publicada ser a que está na tela.
+  async function publicar() {
+    setPublicando(true);
+    try {
+      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+      const pendente: { nome?: string; descricao?: string } = {};
+      if (nome.trim() && nome.trim() !== p!.nome) pendente.nome = nome.trim();
+      if (descricao !== p!.descricao) pendente.descricao = descricao;
+      if (Object.keys(pendente).length) { await atualizarProcesso(p!.id, pendente); setSalvandoDescricao(''); }
+      const r = await publicarProcesso(p!.id);
+      setP((x) => x && { ...x, ...pendente, publicado_em: r.publicado_em, alteracoes_nao_publicadas: false });
+      setMudouDesdePublicar(false);
+    } catch (e) {
+      void avisar('Não foi possível publicar o processo.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    } finally {
+      setPublicando(false);
+    }
   }
 
   // Chave da página pública do processo (decisão 35): muda na hora; se o servidor recusar, volta.
@@ -189,6 +212,8 @@ function ProcessoPage() {
   }
 
   const arquivado = !!p.arquivado_em;
+  const publicado = !!p.publicado_em;
+  const naoPublicadas = publicado && (p.alteracoes_nao_publicadas || mudouDesdePublicar);
   const pops = p.pops.filter((o) => !o.arquivado_em);
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
   const fluxo = p.fluxograma;
@@ -218,13 +243,21 @@ function ProcessoPage() {
 
       <div className="page-head proc-cabecalho">
         <div className="proc-titulo">
-          <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
+          <input className="titulo-editavel" value={nome} onChange={(e) => { setNome(e.target.value); setMudouDesdePublicar(true); }} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <div className="processo-meta">
             <SeloDocumento tipo="processo" />
+            {!arquivado && <SeloStatus status={publicado ? 'publicado' : 'rascunho'} offline={publicado && !p.link_publico_ativo} />}
+            {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
           </div>
         </div>
         <div className="actions">
+          {!arquivado && (!publicado || naoPublicadas) && (
+            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={publicar} disabled={publicando || ocupado}
+              title={publicado ? 'Atualiza a página pública com a versão atual' : 'Publica o processo: a página pública passa a mostrar esta versão'}>
+              <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
+            </button>
+          )}
           {!arquivado && <button className="btn" title="Mover para outra área ou criar uma cópia" onClick={() => setMovendo(true)} disabled={ocupado}><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn" title="Tira o processo das listas, com tudo o que tem; dá para restaurar depois" onClick={arquivar} disabled={ocupado}><Icone nome="arquivar" tamanho={16} />Arquivar</button>}
         </div>
@@ -263,7 +296,7 @@ function ProcessoPage() {
                 : salvandoDescricao === 'salvando'
                   ? <span className="salvo-auto" role="status">Salvando…</span>
                   : <span className="salvo-auto ok" role="status"><Icone nome="check" tamanho={15} />Salvo automaticamente</span>}
-              <p className="notice">Aparece na página pública. Referências viram links para os documentos citados.</p>
+              <p className="notice">Vai para a página pública quando você publicar o processo. Referências viram links para os documentos citados.</p>
             </div>
           </section>
 
@@ -282,7 +315,7 @@ function ProcessoPage() {
                   <div className="proc-fluxo-acoes">
                     <Link href={`/app/fluxogramas/${fluxo.id}`} className="btn btn-primary" title={arquivado ? undefined : 'Abre o editor: mude o desenho, os textos e as setas; salva sozinho'}><Icone nome={arquivado ? 'fluxo' : 'marcar'} tamanho={16} />{arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'}</Link>
                     {!arquivado && <button className="btn btn-ia" onClick={() => setFluxoDialogo('substituir')} title="A IA gera outro desenho no lugar do atual"><Icone nome="ia" tamanho={16} />Gerar de novo com IA</button>}
-                    {fluxo.tem_svg && !arquivado && <a className="link-acao" href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" title="Página pública só do fluxograma (o link do PDF)">Ver na página pública<Icone nome="externo" tamanho={15} /></a>}
+                    {fluxo.tem_svg && !arquivado && publicado && p.link_publico_ativo && <a className="link-acao" href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" title="Página pública só do fluxograma (o link do PDF)">Ver na página pública<Icone nome="externo" tamanho={15} /></a>}
                   </div>
                 </div>
               </>
@@ -324,7 +357,8 @@ function ProcessoPage() {
             </dl>
           </section>
 
-          <PaginaPublica tipo="processo" variante="cartao" estado={arquivado ? 'arquivado' : p.link_publico_ativo ? 'online' : 'offline'} url={`/pr/${p.link_publico}`}
+          <PaginaPublica tipo="processo" variante="cartao" estado={arquivado ? 'arquivado' : !publicado ? 'rascunho' : p.link_publico_ativo ? 'online' : 'offline'} url={`/pr/${p.link_publico}`}
+            publicadoEm={p.publicado_em} alteracoesNaoPublicadas={naoPublicadas}
             alterando={alterandoLink} copiado={copiado} aoAlternar={alternarLink} aoCopiar={copiarLink} />
 
           <section className="cartao cartao-lateral" aria-labelledby="titulo-cartao-entrevistas">

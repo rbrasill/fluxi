@@ -9,6 +9,7 @@ export type ProcessoResumo = {
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
   link_publico: string; link_publico_ativo: boolean; // página pública /pr/<link> (decisão 35)
+  publicado_em: string | null; alteracoes_nao_publicadas: boolean; // versão publicada (decisão 129)
   referencias: Record<string, ReferenciaResolvida>; referenciado_em: ReferenciadoEm[];
   fluxograma: { id: string; codigo: string; nome: string; origem: string; miniatura: string | null; link_publico: string; tem_svg: boolean; atualizado_em: string } | null; // um por processo
   gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; pop_nome: string | null; total_marcacoes: number }[];
@@ -35,7 +36,9 @@ export const restaurarProcesso = (id: string) => api(`/api/processos/${id}/resta
 /** Copia o processo para uma área (decisão 36), com a descrição, o fluxograma e cópias dos POPs ativos. */
 export const copiarProcesso = (id: string, dados: { area_id: string; nome?: string }) =>
   api<{ id: string; pops: number; fluxograma: boolean }>(`/api/processos/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
-/** Liga (online) ou desliga (offline) a página pública do processo. */
+/** Publica o processo como está agora (decisão 129): a página pública passa a mostrar esta versão. */
+export const publicarProcesso = (id: string) => api<{ publicado_em: string }>(`/api/processos/${id}/publicar`, { method: 'POST' });
+/** Liga (online) ou desliga (offline) a página pública do processo (só depois de publicado). */
 export const definirLinkPublicoProcesso = (id: string, ativo: boolean) =>
   api<{ link_publico_ativo: boolean }>(`/api/processos/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });
 /** Só processo arquivado: apaga com os POPs, gravações e fluxograma dele. */

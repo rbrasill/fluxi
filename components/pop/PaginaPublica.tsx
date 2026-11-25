@@ -22,10 +22,11 @@ export function PaginaPublica({ tipo = 'pop', variante = 'faixa', estado, public
 }) {
   const online = estado === 'online';
   const comLink = estado === 'online' || estado === 'offline';
+  // Processo (decisão 129): como o POP, só vai ao ar o que a pessoa publicou; mudanças esperam o próximo "Publicar".
   const explicacao = tipo === 'processo' ? {
-    rascunho: '',
-    online: 'Qualquer pessoa com o link vê o processo: a descrição, o fluxograma e os POPs publicados. O que você muda aqui aparece na hora.',
-    offline: 'Quem abrir o link vê “Este processo não está disponível”. Ligue a chave para colocar no ar.',
+    rascunho: 'Publique o processo para poder colocar a página pública no ar.',
+    online: `Qualquer pessoa com o link vê a versão publicada em ${dataBr(publicadoEm)}: a descrição, o fluxograma e os POPs publicados.${alteracoesNaoPublicadas ? ' As últimas alterações ainda não estão nela.' : ''}`,
+    offline: 'Quem abrir o link vê “Este processo não está disponível”. A versão publicada continua guardada: ligue a chave para colocar no ar.',
     arquivado: 'Processo arquivado: a página pública fica fora do ar.',
   }[estado] : {
     rascunho: 'Publique o POP para poder colocar a página pública no ar.',
@@ -42,7 +43,7 @@ export function PaginaPublica({ tipo = 'pop', variante = 'faixa', estado, public
           <span className="lateral-icone"><Icone nome="globo" tamanho={20} /></span>
           <div className="lateral-titulo" aria-live="polite">
             <h3>Página pública</h3>
-            <span className={`estado-publica${online ? ' online' : ''}`}>{online ? 'Online' : 'Offline'}</span>
+            <span className={`estado-publica${online ? ' online' : ''}`}>{estado === 'rascunho' ? 'Não publicado' : online ? 'Online' : 'Offline'}</span>
           </div>
           <button
             type="button"
