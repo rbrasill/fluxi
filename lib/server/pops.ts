@@ -153,7 +153,7 @@ export async function obter(id: string) {
   const [marcs, gravacoes, lista, refs, referenciado_em] = await Promise.all([
     marcacoesDoPop(pop.conteudo),
     gravacoesDoPop(id, pop.conteudo),
-    versoes.listar(id),
+    versoes.doPop.listar(id),
     referencias.resolverDosTextos(referencias.textosDoPop(pop.conteudo).map((t) => t.valor)),
     referencias.referenciadoEm({ tipo: 'pop', id }),
   ]);
@@ -432,7 +432,7 @@ export async function gerarDocumento(base: BaseDocumento, linkFluxograma: string
 export async function pdf(id: string, origem: string) {
   const original = await buscar(id);
   const conteudo = comImagensFinais(original.conteudo, await marcacoesDoPop(original.conteudo));
-  const [fluxo, lista] = await Promise.all([original.processo_id ? fluxogramaDoProcesso(original.processo_id) : null, versoes.listar(id)]);
+  const [fluxo, lista] = await Promise.all([original.processo_id ? fluxogramaDoProcesso(original.processo_id) : null, versoes.doPop.listar(id)]);
   const rascunho = !lista.length || temAlteracoes(original, conteudo);
   const historico = historicoDasVersoes(lista);
   if (rascunho) historico.push({ data: hoje(), elaborado_por: original.autor, revisao: lista.length ? `Rascunho: alterações ainda não publicadas (depois da ${lista[0].versao})` : 'Rascunho: ainda não publicado' });

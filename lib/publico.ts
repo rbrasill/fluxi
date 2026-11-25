@@ -20,6 +20,7 @@ export type ReferenciadoPublico = ReferenciaPublica & { relacoes: Relacao[] };
 export type ProcessoPublico = {
   nome: string; codigo: string; descricao: string; onde: Onde;
   publicado_em: string; // a versão publicada do processo (decisão 129)
+  versao: string | null; // X.Y.Z (decisão 139); nula no que foi publicado antes do versionamento
   fluxograma: { link_publico: string; nome: string; tem_svg: boolean } | null;
   pops: { nome: string; identificacao: string | null; codigo: string; versao: string; link_publico: string; publicado_em: string | null }[];
   referencias: Record<string, ReferenciaPublica>;

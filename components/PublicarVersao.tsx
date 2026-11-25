@@ -1,21 +1,27 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
-import { lerVersao, MAX_O_QUE_MUDOU, MIN_O_QUE_MUDOU, proximaVersao, textoDaVersao, TIPOS_DE_ALTERACAO, type TipoDeAlteracao } from '@/lib/pop/versao';
+import { lerVersao, MAX_O_QUE_MUDOU, MIN_O_QUE_MUDOU, proximaVersao, textoDaVersao, TIPOS_POR_DOCUMENTO, type DocumentoVersionado, type PedidoDePublicacao, type TipoDeAlteracao } from '@/lib/versao';
 
-// Janela de publicar o POP (decisão 138). Na primeira publicação só confirma: sai a versão 1.0.0. Nas seguintes, a
-// pessoa escolhe o tamanho da alteração (que define o número da versão) e escreve o que mudou, com tamanho mínimo.
+// Janela de publicar o POP ou o processo (decisões 138 e 139). Na primeira publicação só confirma: sai a versão
+// 1.0.0. Nas seguintes, a pessoa escolhe o tamanho da alteração (que define o número da versão) e escreve o que
+// mudou, com tamanho mínimo. As palavras das opções são as de cada documento.
 
-export type PedidoDePublicacao = { tipo?: TipoDeAlteracao; o_que_mudou?: string };
+const TEXTOS: Record<DocumentoVersionado, { o: string; titulo: string; exemplo: string; onde: string }> = {
+  pop: { o: 'o POP', titulo: 'Publicar o POP', exemplo: 'Ex.: Incluído o passo de conferir o telefone do cliente.', onde: 'Aparece na aba Versões, no PDF e na página pública.' },
+  processo: { o: 'o processo', titulo: 'Publicar o processo', exemplo: 'Ex.: Incluída a etapa de aprovação da diretoria no fluxograma.', onde: 'Aparece na aba Versões.' },
+};
 
-export function PublicarVersao({ atual, publicando, aoPublicar, aoFechar }: {
-  /** A versão publicada hoje ("1.2.0"); nula: o POP nunca foi publicado. */
+export function PublicarVersao({ documento, atual, publicando, aoPublicar, aoFechar }: {
+  documento: DocumentoVersionado;
+  /** A versão publicada hoje ("1.2.0"); nula: nunca foi publicado. */
   atual: string | null;
   publicando: boolean;
   aoPublicar: (pedido: PedidoDePublicacao) => void;
   aoFechar: () => void;
 }) {
   const numero = lerVersao(atual);
+  const txt = TEXTOS[documento];
   const [tipo, setTipo] = useState<TipoDeAlteracao | null>(null);
   const [texto, setTexto] = useState('');
   const campo = useRef<HTMLTextAreaElement>(null);
@@ -33,8 +39,8 @@ export function PublicarVersao({ atual, publicando, aoPublicar, aoFechar }: {
         <div className="dialog versao-dialogo" onClick={(e) => e.stopPropagation()}>
           <div className="dialogo-topo">
             <div className="dialogo-topo-texto">
-              <h2 id="versao-titulo">Publicar o POP</h2>
-              <p className="notice">Esta é a primeira publicação: o POP sai como <b className="mono">versão 1.0.0</b>. Nas próximas, você escolhe o tamanho da alteração e diz o que mudou.</p>
+              <h2 id="versao-titulo">{txt.titulo}</h2>
+              <p className="notice">Esta é a primeira publicação: {txt.o} sai como <b className="mono">versão 1.0.0</b>. Nas próximas, você escolhe o tamanho da alteração e diz o que mudou.</p>
             </div>
             {fechar}
           </div>
@@ -62,7 +68,7 @@ export function PublicarVersao({ atual, publicando, aoPublicar, aoFechar }: {
           {fechar}
         </div>
         <div className="versao-tipos" role="radiogroup" aria-label="Tamanho da alteração">
-          {TIPOS_DE_ALTERACAO.map((t) => (
+          {TIPOS_POR_DOCUMENTO[documento].map((t) => (
             <button key={t.id} type="button" className="versao-tipo" role="radio" aria-checked={tipo === t.id} disabled={publicando}
               onClick={() => { setTipo(t.id); campo.current?.focus(); }}>
               <span className="versao-tipo-topo">
@@ -77,9 +83,9 @@ export function PublicarVersao({ atual, publicando, aoPublicar, aoFechar }: {
         </div>
         <label className="field">O que mudou
           <textarea ref={campo} rows={3} maxLength={MAX_O_QUE_MUDOU} value={texto} onChange={(e) => setTexto(e.target.value)} disabled={publicando}
-            placeholder="Ex.: Incluído o passo de conferir o telefone do cliente." aria-describedby="versao-dica" />
+            placeholder={txt.exemplo} aria-describedby="versao-dica" />
           <small className="versao-dica" id="versao-dica">
-            <span>Uma frase, com pelo menos {MIN_O_QUE_MUDOU} caracteres. Aparece na aba Versões, no PDF e na página pública.</span>
+            <span>Uma frase, com pelo menos {MIN_O_QUE_MUDOU} caracteres. {txt.onde}</span>
             <span className="versao-conta">{limpo.length}/{MAX_O_QUE_MUDOU}</span>
           </small>
         </label>

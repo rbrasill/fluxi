@@ -8,6 +8,7 @@ import { montarIcone } from './icones';
 import type { IconeDoProcesso } from '@/lib/icones';
 import * as referencias from './referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
+import * as versoes from './versoes';
 
 const CAMPOS = 'id, codigo, nome, descricao, icone, area_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
 
@@ -73,9 +74,10 @@ export async function obter(id: string) {
   ]);
   for (const r of [p, f, g, o]) if (r.error) throw r.error;
   if (!p.data) throw new ErroApi(404, 'Processo não encontrado');
-  const [refs, referenciado_em] = await Promise.all([
+  const [refs, referenciado_em, lista] = await Promise.all([
     referencias.resolverDosTextos([p.data.descricao as string]),
     referencias.referenciadoEm({ tipo: 'processo', id }),
+    versoes.doProcesso.listar(id),
   ]);
   // Publicado e diferente do que está na página pública (decisão 129). O XML do fluxograma só entra na conta.
   const { publicacao_hash, ...processo } = p.data as typeof p.data & { publicacao_hash: string | null };
@@ -86,6 +88,7 @@ export async function obter(id: string) {
     ...processo,
     alteracoes_nao_publicadas,
     referencias: refs, referenciado_em, // decisão 35
+    versoes: lista, // as versões publicadas, da mais nova para a mais antiga (decisão 139)
     fluxograma: f.data ? fluxograma : null, // um por processo (decisão 31)
     gravacoes: (g.data ?? []).map(({ marcacoes, pop, ...x }) => (
       { ...x, pop_nome: (pop as unknown as { nome: string } | null)?.nome ?? null, total_marcacoes: (marcacoes as { count: number }[])[0]?.count ?? 0 }

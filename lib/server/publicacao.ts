@@ -1,6 +1,7 @@
 import 'server-only';
 import type { ConteudoPop } from '@/lib/pop/schema';
-import { historicoDasVersoes, MAX_O_QUE_MUDOU, MIN_O_QUE_MUDOU, PRIMEIRA_VERSAO, proximaVersao, TEXTO_DA_PRIMEIRA_VERSAO, textoDaVersao, type TipoDeAlteracao, type TipoDeVersao } from '@/lib/pop/versao';
+import { historicoDasVersoes } from '@/lib/pop/versao';
+import type { PedidoDePublicacao } from '@/lib/versao';
 import { ErroApi } from './http';
 import * as pops from './pops';
 import * as processos from './processos';
@@ -29,15 +30,13 @@ export type Publicacao = pops.BaseDocumento & {
 export type PublicacaoProcesso = {
   versao_hash: string; // ver processos.hashDoProcesso
   publicado_em: string;
+  versao?: string; // X.Y.Z (decisão 139); as publicações de antes do versionamento não têm
   nome: string; codigo: string; descricao: string;
   fluxograma: { nome: string; link_publico: string; atualizado_em: string } | null;
 };
 
 const extensao = (caminho: string) => caminho.match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toLowerCase() ?? 'png';
 const NAO_DISPONIVEL = 'Este POP não está disponível.';
-
-/** O que a pessoa informa ao publicar a partir da segunda versão (decisão 138). */
-export type PedidoDePublicacao = { tipo?: TipoDeAlteracao; o_que_mudou?: string };
 
 /**
  * Publica o POP como uma versão nova (decisão 138). A primeira publicação é a 1.0.0. Nas seguintes, quem publica
@@ -49,20 +48,9 @@ export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pess
   if (pops.arquivado(pop)) throw new ErroApi(409, 'O POP está arquivado: restaure-o antes de publicar.');
   const final = pops.comImagensFinais(pop.conteudo, await pops.marcacoesDoPop(pop.conteudo));
 
-  const anterior = await versoes.ultima(id);
-  let tipo: TipoDeVersao = 'primeira';
-  let oQueMudou = TEXTO_DA_PRIMEIRA_VERSAO;
-  if (anterior) {
-    if (!pops.temAlteracoes(pop, final)) throw new ErroApi(409, `Não há alterações para publicar: o POP está igual à versão ${anterior.versao}.`);
-    if (!pedido.tipo) throw new ErroApi(400, 'Escolha o tamanho da alteração: correção, ajuste ou mudança no procedimento.');
-    const texto = (pedido.o_que_mudou ?? '').replace(/\s+/g, ' ').trim();
-    if (texto.length < MIN_O_QUE_MUDOU) throw new ErroApi(400, `Diga o que mudou, com pelo menos ${MIN_O_QUE_MUDOU} caracteres.`);
-    if (texto.length > MAX_O_QUE_MUDOU) throw new ErroApi(400, `Resuma o que mudou em até ${MAX_O_QUE_MUDOU} caracteres.`);
-    tipo = pedido.tipo;
-    oQueMudou = texto;
-  }
-  const numero = anterior ? proximaVersao(anterior.numero, tipo as TipoDeAlteracao) : PRIMEIRA_VERSAO;
-  const versao = textoDaVersao(numero);
+  const anterior = await versoes.doPop.ultima(id);
+  if (anterior && !pops.temAlteracoes(pop, final)) throw new ErroApi(409, `Não há alterações para publicar: o POP está igual à versão ${anterior.versao}.`);
+  const { numero, versao, tipo, o_que_mudou: oQueMudou } = versoes.proxima(anterior, pedido, 'mudança no procedimento');
 
   // Cópia de cada print (já com as marcações): editar, trocar ou apagar o print no editor não afeta as versões
   // publicadas. O print que já foi copiado na versão anterior (mesmo arquivo de origem) é reaproveitado.
@@ -72,7 +60,7 @@ export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pess
   const novas: string[] = [];
   const originais = [...new Set(final.procedimentos.flatMap((p) => p.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[])];
   await Promise.all(originais.map(async (c, i) => {
-    const ja = anterior?.copias[c];
+    const ja = anterior?.copias?.[c];
     if (ja) { copias.set(c, ja); return; }
     const destino = `${pasta}/${lote}-${i + 1}.${extensao(c)}`;
     const { error } = await supabase().storage.from(telas.BUCKET).copy(c, destino);
@@ -102,7 +90,7 @@ export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pess
   const descartarCopias = async () => { if (novas.length) await supabase().storage.from(telas.BUCKET).remove(novas); };
   // Primeiro a versão: se duas pessoas publicarem ao mesmo tempo, a segunda é recusada aqui.
   try {
-    await versoes.registrar(id, { numero, tipo, o_que_mudou: oQueMudou, publicado_por: pessoa?.nome ?? '', publicado_por_id: pessoa?.id ?? null, publicado_em: agora, publicacao, copias: Object.fromEntries(copias) });
+    await versoes.doPop.registrar(id, { numero, tipo, o_que_mudou: oQueMudou, publicado_por: pessoa?.nome ?? '', publicado_por_id: pessoa?.id ?? null, publicado_em: agora, publicacao }, { copias: Object.fromEntries(copias) });
   } catch (e) {
     await descartarCopias();
     throw e;
@@ -110,12 +98,12 @@ export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pess
   const { error } = await supabase().from('pops').update({ status: 'publicado', publicacao, publicado_em: agora, versao, atualizado_em: agora })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id);
   if (error) {
-    await versoes.desfazer(id, numero);
+    await versoes.doPop.desfazer(id, numero);
     await descartarCopias();
     throw error;
   }
   // As cópias das versões anteriores ficam: cada versão continua podendo ser aberta e baixada.
-  return { publicado_em: agora, link_publico: pop.link_publico, versao, versoes: await versoes.listar(id) };
+  return { publicado_em: agora, link_publico: pop.link_publico, versao, versoes: await versoes.doPop.listar(id) };
 }
 
 /**
@@ -152,7 +140,7 @@ async function versaoPublicada(link: string) {
   if (!data || data.status !== 'publicado' || !guardada || !data.link_publico_ativo || data.arquivado_em || processo?.arquivado_em) throw new ErroApi(404, NAO_DISPONIVEL);
   // A versão e o histórico do documento vêm das versões publicadas (decisão 138): valem também para o que foi
   // publicado antes do versionamento, que virou a 1.0.0.
-  const lista = await versoes.listar(data.id as string);
+  const lista = await versoes.doPop.listar(data.id as string);
   const publicacao: Publicacao = { ...guardada, versao: lista[0]?.versao ?? guardada.versao, historico: lista.length ? historicoDasVersoes(lista) : guardada.historico };
   // O fluxograma que aparece no POP é o publicado com o processo; sem processo publicado, não aparece.
   const f = processo?.publicacao?.fluxograma;
@@ -187,7 +175,7 @@ export async function popPublico(link: string) {
  * no mesmo formato da página pública. O histórico vai até aquela versão.
  */
 async function versaoGuardada(id: string, versao: string) {
-  const [pop, v, lista] = await Promise.all([pops.buscar(id), versoes.buscar<Publicacao>(id, versao), versoes.listar(id)]);
+  const [pop, v, lista] = await Promise.all([pops.buscar(id), versoes.doPop.buscar<Publicacao>(id, versao), versoes.doPop.listar(id)]);
   const publicacao: Publicacao = { ...v.publicacao, versao: v.versao, publicado_em: v.publicado_em, historico: historicoDasVersoes(lista, v.versao) };
   return { pop, v, publicacao, atual: lista[0]?.versao ?? v.versao };
 }
@@ -251,7 +239,7 @@ export async function processoPublico(link: string) {
   ]);
   if (o.error) throw o.error;
   return {
-    nome: pub.nome, codigo: pub.codigo, descricao: pub.descricao ?? '', publicado_em: pub.publicado_em,
+    nome: pub.nome, codigo: pub.codigo, descricao: pub.descricao ?? '', publicado_em: pub.publicado_em, versao: pub.versao ?? null,
     onde: { organizacao: area?.organizacao?.nome ?? null, area: area?.nome ?? null, processo: null },
     fluxograma: pub.fluxograma ? { link_publico: pub.fluxograma.link_publico, nome: pub.fluxograma.nome, tem_svg: true } : null,
     pops: (o.data ?? []).map((x) => ({ nome: x.nome as string, identificacao: (x.identificacao as string) || null, codigo: x.codigo as string, versao: x.versao as string, link_publico: x.link_publico as string, publicado_em: x.publicado_em as string | null })),
@@ -327,30 +315,77 @@ export async function svgPublico(link: string) {
 }
 
 /**
- * Publica o processo (decisão 129): guarda o nome, a descrição e o fluxograma com a imagem. A página pública passa a
- * mostrar esta versão até a pessoa publicar de novo. Com fluxograma sem imagem (o editor a gera ao abrir), pede para
- * abrir o fluxograma antes, para a página não ficar sem o desenho.
+ * Publica o processo como uma versão nova (decisões 129 e 139): guarda o nome, a descrição e o fluxograma com a
+ * imagem. A página pública passa a mostrar esta versão até a pessoa publicar de novo. A versão é do processo e não
+ * depende das versões dos POPs: a primeira é a 1.0.0 e, nas seguintes, quem publica escolhe o tamanho da alteração
+ * (correção, ajuste ou mudança no processo) e escreve o que mudou. Cada versão fica em `processo_versoes`. Com
+ * fluxograma sem imagem (o editor a gera ao abrir), pede para abrir o fluxograma antes, para a página não ficar sem
+ * o desenho.
  */
-export async function publicarProcesso(id: string) {
+export async function publicarProcesso(id: string, pedido: PedidoDePublicacao = {}, pessoa: { id: string; nome: string } | null = null) {
   const db = supabase();
-  const { data: p, error } = await db.from('processos').select('id, nome, codigo, descricao, arquivado_em').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data: p, error } = await db.from('processos').select('id, nome, codigo, descricao, arquivado_em, publicacao_hash:publicacao->>versao_hash').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!p) throw new ErroApi(404, 'Processo não encontrado');
   if (p.arquivado_em) throw new ErroApi(409, 'O processo está arquivado: restaure-o antes de publicar.');
   const { data: f, error: e2 } = await db.from('fluxogramas').select('nome, xml, svg, link_publico, atualizado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle();
   if (e2) throw e2;
   if (f && !f.svg) throw new ErroApi(409, 'O fluxograma ainda não tem a imagem para a página pública. Abra o fluxograma uma vez (a imagem é gerada ao abrir) e publique de novo.');
-  const agora = new Date().toISOString();
   const descricao = (p.descricao as string | null) ?? '';
+  const hash = processos.hashDoProcesso({ nome: p.nome as string, descricao }, f ? { nome: f.nome as string, xml: (f.xml as string | null) ?? '' } : null);
+
+  const anterior = await versoes.doProcesso.ultima(id);
+  if (anterior && (p as unknown as { publicacao_hash: string | null }).publicacao_hash === hash) throw new ErroApi(409, `Não há alterações para publicar: o processo está igual à versão ${anterior.versao}.`);
+  const { numero, versao, tipo, o_que_mudou } = versoes.proxima(anterior, pedido, 'mudança no processo');
+
+  const agora = new Date().toISOString();
   const publicacao: PublicacaoProcesso = {
-    versao_hash: processos.hashDoProcesso({ nome: p.nome as string, descricao }, f ? { nome: f.nome as string, xml: (f.xml as string | null) ?? '' } : null),
+    versao_hash: hash,
     publicado_em: agora,
+    versao,
     nome: p.nome as string, codigo: p.codigo as string, descricao,
     fluxograma: f ? { nome: f.nome as string, link_publico: f.link_publico as string, atualizado_em: f.atualizado_em as string } : null,
   };
-  const { error: e3 } = await db.from('processos').update({ publicacao, publicacao_svg: (f?.svg as string | null) ?? null, publicado_em: agora })
+  const svg = (f?.svg as string | null) ?? null;
+  // Primeiro a versão: se duas pessoas publicarem ao mesmo tempo, a segunda é recusada aqui.
+  await versoes.doProcesso.registrar(id, { numero, tipo, o_que_mudou, publicado_por: pessoa?.nome ?? '', publicado_por_id: pessoa?.id ?? null, publicado_em: agora, publicacao }, { publicacao_svg: svg });
+  const { error: e3 } = await db.from('processos').update({ publicacao, publicacao_svg: svg, publicado_em: agora })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id);
-  if (e3) throw e3;
-  return { publicado_em: agora };
+  if (e3) {
+    await versoes.doProcesso.desfazer(id, numero);
+    throw e3;
+  }
+  return { publicado_em: agora, versao, versoes: await versoes.doProcesso.listar(id) };
 }
 
+/**
+ * Uma versão publicada do processo, para quem está logado (decisão 139): o nome, a descrição e o fluxograma como
+ * saíram naquele dia, só leitura. Os POPs não entram: cada um tem as suas versões.
+ */
+export async function versaoDoProcesso(id: string, versao: string) {
+  const db = supabase();
+  const [{ data: processo, error }, v, lista] = await Promise.all([
+    db.from('processos').select('id, nome, area:areas(nome, organizacao:organizacoes(nome))').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
+    versoes.doProcesso.buscar<PublicacaoProcesso>(id, versao),
+    versoes.doProcesso.listar(id),
+  ]);
+  if (error) throw error;
+  if (!processo) throw new ErroApi(404, 'Processo não encontrado');
+  const pub = v.publicacao;
+  const area = processo.area as unknown as { nome: string; organizacao: { nome: string } | null } | null;
+  return {
+    nome: pub.nome, codigo: pub.codigo, descricao: pub.descricao ?? '', versao: v.versao, publicado_em: v.publicado_em,
+    onde: { organizacao: area?.organizacao?.nome ?? null, area: area?.nome ?? null, processo: null },
+    // A imagem do fluxograma desta versão sai por uma rota própria (`svgDaVersaoDoProcesso`).
+    fluxograma: pub.fluxograma ? { nome: pub.fluxograma.nome, tem_svg: !!v.publicacao_svg } : null,
+    referencias: paraPublico(await referencias.resolverDosTextos([pub.descricao])),
+    desta_versao: { tipo: v.tipo, o_que_mudou: v.o_que_mudou, publicado_por: v.publicado_por, versao_atual: lista[0]?.versao ?? v.versao, processo_nome: processo.nome as string },
+  };
+}
+
+/** A imagem do fluxograma de uma versão publicada do processo (decisão 139). */
+export async function svgDaVersaoDoProcesso(id: string, versao: string) {
+  const v = await versoes.doProcesso.buscar<PublicacaoProcesso>(id, versao);
+  if (!v.publicacao_svg) throw new ErroApi(404, 'Fluxograma não disponível.');
+  return v.publicacao_svg;
+}

@@ -7,6 +7,9 @@ import { QuadroDoProcesso } from '@/components/IconeDoProcesso';
 import { SeletorDeIcone } from '@/components/SeletorDeIcone';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { avisar, confirmar } from '@/components/Dialogos';
+import { PublicarVersao } from '@/components/PublicarVersao';
+import { VersoesPublicadas } from '@/components/VersoesPublicadas';
+import type { PedidoDePublicacao } from '@/lib/versao';
 import { DialogoNome } from '@/components/DialogoNome';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { MoverCopiar } from '@/components/MoverCopiar';
@@ -34,11 +37,11 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
 // As abas da página (redesign, decisão 77). A aba fica no endereço (#pops, #entrevistas) para o link levar direto a ela.
 // "Regras de negócio" (decisão 89) só aparece quando o banco já tem as regras (migração 0024).
-type Aba = 'visao' | 'pops' | 'entrevistas' | 'regras';
-const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'entrevistas', rotulo: 'Entrevistas' }, { id: 'regras', rotulo: 'Regras de negócio' }];
+type Aba = 'visao' | 'pops' | 'entrevistas' | 'regras' | 'versoes';
+const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'entrevistas', rotulo: 'Entrevistas' }, { id: 'regras', rotulo: 'Regras de negócio' }, { id: 'versoes', rotulo: 'Versões' }];
 const abaDoEndereco = (): Aba => {
   const h = typeof location === 'undefined' ? '' : location.hash.slice(1);
-  return h === 'pops' || h === 'entrevistas' || h === 'regras' ? h : 'visao';
+  return h === 'pops' || h === 'entrevistas' || h === 'regras' || h === 'versoes' ? h : 'visao';
 };
 
 // Filtro da aba POPs (decisão 78). "Arquivados" só aparece quando há algum.
@@ -87,6 +90,7 @@ function ProcessoPage() {
   const [publicando, setPublicando] = useState(false);
   const [escolhendoIcone, setEscolhendoIcone] = useState(false); // seletor do ícone aberto (decisão 133)
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta visita depois de publicar (decisão 129)
+  const [janelaDePublicar, setJanelaDePublicar] = useState(false); // a janela que pede o tamanho da alteração e o que mudou (decisão 139)
   const [movendo, setMovendo] = useState(false);
   const [aba, setAba] = useState<Aba>('visao');
   const [entrevistas, setEntrevistas] = useState<number | null>(null); // quantas entrevistas ativas (vem da seção)
@@ -175,19 +179,32 @@ function ProcessoPage() {
     setP((x) => x && !x.referencias[k] ? { ...x, referencias: { ...x.referencias, [k]: { tipo: r.tipo, id: r.id, nome: r.nome, identificacao: r.identificacao, codigo: r.codigo, rotulo: r.rotulo, situacao: r.situacao, publico: r.situacao === 'ok', url_app: `/app/${r.tipo === 'pop' ? 'pops' : 'processos'}/${r.id}`, url_publica: null } } } : x);
   }
 
-  // Publicar guarda a versão atual (decisão 129): a página pública mostra só ela até publicar de novo. Antes, salva o
-  // nome e a descrição que ainda estiverem pendentes, para a versão publicada ser a que está na tela.
-  async function publicar() {
+  // Publicar guarda a versão atual (decisão 129): a página pública mostra só ela até publicar de novo. Cada
+  // publicação é uma versão do processo (decisão 139): a janela mostra o número que vai sair e, a partir da segunda,
+  // pede o tamanho da alteração e o que mudou. Antes, salva o nome e a descrição que ainda estiverem pendentes, para
+  // a versão publicada ser a que está na tela.
+  async function abrirPublicar() {
     setPublicando(true);
     try {
       if (timer.current) { clearTimeout(timer.current); timer.current = null; }
       const pendente: { nome?: string; descricao?: string } = {};
       if (nome.trim() && nome.trim() !== p!.nome) pendente.nome = nome.trim();
       if (descricao !== p!.descricao) pendente.descricao = descricao;
-      if (Object.keys(pendente).length) { await atualizarProcesso(p!.id, pendente); setSalvandoDescricao(''); }
-      const r = await publicarProcesso(p!.id);
-      setP((x) => x && { ...x, ...pendente, publicado_em: r.publicado_em, alteracoes_nao_publicadas: false });
+      if (Object.keys(pendente).length) { await atualizarProcesso(p!.id, pendente); setSalvandoDescricao(''); setP((x) => x && { ...x, ...pendente }); }
+      setJanelaDePublicar(true);
+    } catch (e) {
+      void avisar('Não foi possível salvar as alterações.', e instanceof Error ? e.message : 'Tente de novo antes de publicar.');
+    } finally {
+      setPublicando(false);
+    }
+  }
+  async function publicar(pedido: PedidoDePublicacao) {
+    setPublicando(true);
+    try {
+      const r = await publicarProcesso(p!.id, pedido);
+      setP((x) => x && { ...x, publicado_em: r.publicado_em, versoes: r.versoes, alteracoes_nao_publicadas: false });
       setMudouDesdePublicar(false);
+      setJanelaDePublicar(false);
     } catch (e) {
       void avisar('Não foi possível publicar o processo.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
     } finally {
@@ -217,6 +234,7 @@ function ProcessoPage() {
   const arquivado = !!p.arquivado_em;
   const publicado = !!p.publicado_em;
   const naoPublicadas = publicado && (p.alteracoes_nao_publicadas || mudouDesdePublicar);
+  const versaoAtual = p.versoes[0]?.versao ?? null; // a versão publicada hoje; nula: nunca publicado com versão
   const pops = p.pops.filter((o) => !o.arquivado_em);
   const popsArquivados = p.pops.filter((o) => o.arquivado_em);
   const fluxo = p.fluxograma;
@@ -258,13 +276,14 @@ function ProcessoPage() {
           <div className="processo-meta">
             <SeloDocumento tipo="processo" />
             {!arquivado && <SeloStatus status={publicado ? 'publicado' : 'rascunho'} offline={publicado && !p.link_publico_ativo} />}
+            {versaoAtual && <button type="button" className="chip-versao" onClick={() => irPara('versoes')} title="Versão publicada do processo. Clique para ver todas as versões">v{versaoAtual}</button>}
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
           </div>
         </div>
         <div className="actions">
           {!arquivado && (!publicado || naoPublicadas) && (
-            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={publicar} disabled={publicando || ocupado}
-              title={publicado ? 'Atualiza a página pública com a versão atual' : 'Publica o processo: a página pública passa a mostrar esta versão'}>
+            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando || ocupado}
+              title={versaoAtual ? 'Publica uma versão nova do processo: você diz o tamanho da alteração e o que mudou' : 'Publica o processo como versão 1.0.0: a página pública passa a mostrar esta versão'}>
               <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
             </button>
           )}
@@ -281,6 +300,7 @@ function ProcessoPage() {
             {a.rotulo}
             {a.id === 'pops' && <span className="aba-conta">{pops.length}</span>}
             {a.id === 'entrevistas' && entrevistas !== null && <span className="aba-conta">{entrevistas}</span>}
+            {a.id === 'versoes' && <span className="aba-conta">{p.versoes.length}</span>}
             {a.id === 'regras' && regras && <span className="aba-conta" title={regras.sugeridas ? `${regras.confirmadas} confirmadas · ${regras.sugeridas} para revisar` : undefined}>{regras.confirmadas}{regras.sugeridas > 0 && <i className="aba-ponto" aria-label="há regras para revisar" />}</span>}
           </button>
         ))}
@@ -363,6 +383,7 @@ function ProcessoPage() {
               {p.area && <div><dt>Área</dt><dd>{p.area.nome}</dd></div>}
               <div><dt>POPs</dt><dd>{pops.length}{publicados > 0 ? ` (${publicados} ${publicados === 1 ? 'publicado' : 'publicados'})` : ''}</dd></div>
               <div><dt>Entrevistas</dt><dd>{entrevistas ?? '…'}</dd></div>
+              <div><dt>Versão</dt><dd>{versaoAtual ?? 'ainda não publicado'}</dd></div>
               <div><dt>Atualizado</dt><dd>{data(atualizado)}</dd></div>
             </dl>
           </section>
@@ -471,6 +492,13 @@ function ProcessoPage() {
         <RegrasDoProcesso processoId={p.id} arquivado={arquivado} visivel={aba === 'regras'} aoCarregar={setRegras}
           aoConvidar={() => { setFinalidadeDoConvite('regras'); setPedidoDeConvite((n) => n + 1); }} />
       </div>
+
+      {/* Versões (decisão 139): uma linha por publicação do processo; os POPs têm as versões deles. */}
+      <div role="tabpanel" id="painel-versoes" aria-labelledby="aba-versoes" hidden={aba !== 'versoes'}>
+        <VersoesPublicadas documento="processo" versoes={p.versoes} ver={(v) => `/app/processos/${p.id}/versoes/${v}`} />
+      </div>
+
+      {janelaDePublicar && <PublicarVersao documento="processo" atual={versaoAtual} publicando={publicando} aoPublicar={(pedido) => void publicar(pedido)} aoFechar={() => setJanelaDePublicar(false)} />}
 
       {fluxoDialogo && (
         <NovoFluxograma

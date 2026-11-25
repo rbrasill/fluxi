@@ -1154,6 +1154,23 @@ O Rafael propôs versionar o POP como software (X.Y.Z). Validamos num exemplo em
 - **Duas pessoas publicando ao mesmo tempo:** a segunda é recusada, com aviso para recarregar.
 - **Processo:** o versionamento do processo fica para uma etapa posterior (ver "Em aberto").
 
+## 139. Versionamento do processo
+
+O processo ganhou versão, com a regra sugerida na decisão 138 e aceita pelo Rafael: a mesma mecânica do POP, sem medir o fluxograma.
+
+- **Versão própria, independente dos POPs.** Publicar um POP não muda a versão do processo, e publicar o processo não muda a dos POPs.
+- **Muda só ao publicar o processo**, que guarda o nome, a descrição e o fluxograma. A primeira publicação é a **1.0.0**.
+- **A pessoa escolhe o tamanho**, na mesma janela do POP, com as palavras do processo:
+  - **Correção** (Z): não muda como o processo funciona (erro de digitação, texto mais claro, aparência do fluxograma).
+  - **Ajuste** (Y): muda um detalhe; o caminho continua o mesmo (etapa mais detalhada, anotação nova, descrição complementada).
+  - **Mudança no processo** (X): o caminho mudou (etapas, decisões ou responsáveis diferentes); quem participa precisa ser avisado.
+  - "O que mudou" obrigatório, de 10 a 300 caracteres, como no POP. Sem alteração desde a última versão, o servidor recusa.
+- **Aba Versões** na página do processo (depois de Visão geral, POPs, Entrevistas e Regras de negócio), o selo da versão ao lado de "Publicado" e a versão no resumo.
+- **Cada versão fica guardada** (`processo_versoes`, migração 0032), com a descrição e a imagem do fluxograma daquele dia. "Ver" abre a versão só para leitura, com aviso quando não é a atual. O processo não tem PDF, então não há botão de baixar. Os POPs não aparecem na leitura da versão: cada um tem as suas.
+- **Página pública do processo:** o rodapé diz "Versão X.Y.Z publicada em …".
+- **Processos que já existiam:** nenhum estava publicado na data desta decisão, então todos começam pela 1.0.0 na primeira publicação.
+- **Código comum:** as regras da versão ficam em `lib/versao.ts`; a janela de publicar (`components/PublicarVersao.tsx`), a aba (`components/VersoesPublicadas.tsx`) e o repositório das versões (`lib/server/versoes.ts`) servem ao POP e ao processo.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
@@ -1163,4 +1180,3 @@ O Rafael propôs versionar o POP como software (X.Y.Z). Validamos num exemplo em
 - Sugestão automática de marcação pela IA (decisão 18)
 - Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
 - Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)
-- Versionamento do processo (decisão 138): sugestão em aberto é versão própria, independente dos POPs, que muda só ao publicar o processo, com a pessoa escolhendo o tamanho na mesma janela do POP (correção: texto ou aparência do fluxograma; ajuste: detalhe novo sem mudar o caminho; mudança no processo: etapas, decisões ou responsáveis)

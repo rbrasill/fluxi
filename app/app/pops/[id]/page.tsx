@@ -14,15 +14,16 @@ import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
-import { PublicarVersao, type PedidoDePublicacao } from '@/components/pop/PublicarVersao';
-import { VersoesDoPop } from '@/components/pop/VersoesDoPop';
+import { PublicarVersao } from '@/components/PublicarVersao';
+import { VersoesPublicadas } from '@/components/VersoesPublicadas';
+import type { PedidoDePublicacao } from '@/lib/versao';
 import { TextoRico } from '@/components/pop/TextoRico';
 import type { ConteudoPop, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
 import { SeloStatus } from '@/components/SeloStatus';
-import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
+import { adicionarTelasDaGravacao, anexarPrint, arquivarPop, definirLinkPublico, excluirPop, excluirTelaDoPop, listarTelasDasGravacoes, obterPop, popArquivado, publicarPop, restaurarPop, salvarPop, urlPdfDaVersao, urlPdf, urlPublica, type Pop, type TelaDoPop } from '@/lib/pops';
 import { ROTULO_STATUS, formatarTempo, type StatusGravacao, type TelaDaGravacao } from '@/lib/gravacoes';
 import { listarProcessos, type ProcessoResumo } from '@/lib/processos';
 import type { ResultadoBusca } from '@/lib/referencias';
@@ -681,10 +682,10 @@ function EditorPop() {
 
       {/* Versões (decisão 138): o histórico das publicações, que antes era digitado à mão no fim do conteúdo. */}
       <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-versoes" aria-labelledby="aba-versoes" hidden={aba !== 'versoes'}>
-        <VersoesDoPop popId={pop.id} versoes={pop.versoes} />
+        <VersoesPublicadas documento="pop" versoes={pop.versoes} ver={(v) => `/app/pops/${pop.id}/versoes/${v}`} pdf={(v) => urlPdfDaVersao(pop.id, v)} />
       </div>
 
-      {janelaDePublicar && <PublicarVersao atual={versaoAtual} publicando={publicando} aoPublicar={(pedido) => void publicar(pedido)} aoFechar={() => setJanelaDePublicar(false)} />}
+      {janelaDePublicar && <PublicarVersao documento="pop" atual={versaoAtual} publicando={publicando} aoPublicar={(pedido) => void publicar(pedido)} aoFechar={() => setJanelaDePublicar(false)} />}
 
       {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
         const t = pop.telas[marcando.marcacaoId];
