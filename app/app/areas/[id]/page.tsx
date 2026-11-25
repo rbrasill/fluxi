@@ -4,8 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
+import { ListaDeProcessos } from '@/components/ListaDeProcessos';
 import { NovoProcesso } from '@/components/NovoProcesso';
-import { PastaProcesso } from '@/components/PastaProcesso';
 import { atualizarArea, excluirArea, obterArea, type Area } from '@/lib/areas';
 import { restaurarProcesso } from '@/lib/processos';
 
@@ -62,13 +62,6 @@ export default function AreaPage() {
       </div>
       {erro && <div className="aviso erro">{erro}</div>}
 
-      {arquivados.length > 0 && (
-        <div className="segmented abas-arquivo" role="tablist" aria-label="Processos">
-          <button type="button" role="tab" aria-selected={abaAtual === 'ativos'} onClick={() => setAba('ativos')}>Ativos <span className="conta-aba">{ativos.length}</span></button>
-          <button type="button" role="tab" aria-selected={abaAtual === 'arquivados'} onClick={() => setAba('arquivados')}>Arquivados <span className="conta-aba">{arquivados.length}</span></button>
-        </div>
-      )}
-
       {a.processos.length === 0 && (
         <div className="empty">
           <h2>Nenhum processo nesta área</h2>
@@ -76,11 +69,17 @@ export default function AreaPage() {
           <button className="btn btn-primary" onClick={() => setNovo(true)}><Icone nome="mais" />Criar o primeiro</button>
         </div>
       )}
-      {a.processos.length > 0 && lista.length === 0 && <p className="notice">{abaAtual === 'ativos' ? 'Todos os processos desta área estão arquivados.' : 'Nenhum processo arquivado.'}</p>}
-
-      <div className="pastas-processos">
-        {lista.map((p) => <PastaProcesso key={p.id} processo={p} aoRestaurar={p.arquivado_em ? () => restaurar(p.id) : undefined} />)}
-      </div>
+      {/* Busca, ordem e pastas ou lista, como nas áreas (decisão 127); as abas de arquivo ficam entre a barra e a lista. */}
+      {a.processos.length > 0 && (
+        <ListaDeProcessos titulo="Processos" processos={lista} aoRestaurar={restaurar}
+          entre={arquivados.length > 0 && (
+            <div className="segmented abas-arquivo" role="tablist" aria-label="Processos">
+              <button type="button" role="tab" aria-selected={abaAtual === 'ativos'} onClick={() => setAba('ativos')}>Ativos <span className="conta-aba">{ativos.length}</span></button>
+              <button type="button" role="tab" aria-selected={abaAtual === 'arquivados'} onClick={() => setAba('arquivados')}>Arquivados <span className="conta-aba">{arquivados.length}</span></button>
+            </div>
+          )}
+          vazio={<p className="notice">{abaAtual === 'ativos' ? 'Todos os processos desta área estão arquivados.' : 'Nenhum processo arquivado.'}</p>} />
+      )}
       {novo && <NovoProcesso areaId={a.id} aoFechar={() => setNovo(false)} />}
     </div>
   );

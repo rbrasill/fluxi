@@ -1488,6 +1488,28 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .areas-lista-conta { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutro-texto-2); white-space: nowrap; }
 .areas-lista a > svg { flex: none; color: var(--neutro-rotulo); }
 @media (max-width: 700px) { .areas-controles, .areas-controles .busca-pops { width: 100%; } .select-ordem { flex: 1; } }
+/* Processos da área em lista (decisão 127): como a lista de áreas, com a cor da pasta, a data e o selo da página
+   pública. No arquivado, o botão de restaurar fica fora do link. No celular, a data e o selo descem para baixo do nome. */
+.processos-lista { list-style: none; margin: 0; padding: 0; gap: 0; overflow: hidden; }
+.processos-lista li { display: flex; align-items: center; border-bottom: 1px solid var(--neutro-borda); }
+.processos-lista li:last-child { border-bottom: 0; }
+.processos-lista a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 14px 20px; color: var(--neutro-texto); text-decoration: none; }
+.processos-lista a:hover { background: var(--indigo-50); }
+.processos-lista .pasta-cor { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; flex: none; }
+.processos-lista .pasta-cor::before { content: ''; width: 9px; height: 9px; border-radius: 2px; background: var(--miolo, #fff); }
+.processos-lista strong { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.processos-lista-meta { display: inline-flex; align-items: center; gap: 12px; }
+.processos-lista-data { font-size: 13px; color: var(--neutro-texto-2); white-space: nowrap; }
+.processos-lista a > svg { flex: none; color: var(--neutro-rotulo); }
+.processos-lista li.arquivada .pasta-cor { background: #e7ecec !important; --miolo: #b4c0c2 !important; }
+.processos-lista li.arquivada strong { color: var(--muted); }
+.processos-lista-restaurar { flex: none; height: 32px; margin-right: 12px; padding: 0 10px; font-size: 13px; gap: 5px; color: var(--primary); }
+@media (max-width: 700px) {
+  .processos-lista a { display: grid; grid-template-columns: 28px 1fr 16px; column-gap: 12px; row-gap: 4px; padding: 12px 14px; }
+  .processos-lista a > .pasta-cor { grid-row: 1 / span 2; align-self: start; }
+  .processos-lista a > svg { grid-column: 3; grid-row: 1 / span 2; }
+  .processos-lista-meta { grid-column: 2; flex-wrap: wrap; gap: 4px 10px; }
+}
 
 /* ===== Redesign da gravação de tela (decisão 83) ===== */
 /* Player próprio: moldura índigo escura, vídeo arredondado, linha do tempo com as telas numeradas. */

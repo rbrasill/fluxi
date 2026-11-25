@@ -1035,6 +1035,15 @@ O Rafael achou o azul e o verde da decisão 125 fortes demais e as manchas grand
 - **Base no cinza claro de sempre** (`#F6F7F9`), no lugar do quase branco da decisão 125: o lado esquerdo e o meio da tela ficam como nas outras telas.
 - **Leitura:** o que fica direto sobre o fundo tem contraste de 5,6:1 ou mais (antes, 4,9:1). Os selos da decisão 125 não mudaram.
 
+## 127. Processos da área com busca, ordem e pastas ou lista
+
+A página da área ganhou os mesmos controles da lista de áreas (decisão 82): uma barra "Processos" com a busca, a ordem e o botão de ver em pastas ou em lista. O componente novo é `ListaDeProcessos`.
+
+- **Busca:** pelo nome ou pelo código do processo, sem diferença de acento nem de maiúscula ("cotacao" acha "Cotação"). Sem resultado, aparece "Nenhum processo com “…”".
+- **Ordem:** Nome (A–Z), que é a de sempre; Nome (Z–A); Atualizados recentemente; e Mais POPs (no empate, pelo nome). Nas áreas, a terceira opção é "Mais processos".
+- **Pastas ou lista:** as pastas continuam como eram (decisão 61). Na lista, cada linha tem a cor da pasta, o nome, a data da última atualização e o selo Online ou Offline; a linha inteira abre o processo. No arquivado, aparece a data de arquivamento e o botão Restaurar, fora do link. No celular, a data e o selo descem para baixo do nome.
+- **Abas de arquivo:** "Ativos" e "Arquivados" ficam entre a barra e a lista; a busca, a ordem e a vista valem para a aba aberta e continuam ao trocar de aba. Como nas áreas, a escolha de pastas ou lista não fica guardada.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
