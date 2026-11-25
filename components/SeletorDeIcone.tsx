@@ -70,15 +70,15 @@ export function SeletorDeIcone({ processo, aoSalvar, aoFechar }: {
   );
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="ico-titulo" onClick={() => !salvando && aoFechar()}>
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={`Ícone do processo ${processo.nome}`} onClick={() => !salvando && aoFechar()}>
       <div className="dialog dialog-lg ico-dialogo" onClick={(e) => e.stopPropagation()}>
         <div className="dialogo-topo">
           <span className={`ico-previa${nosDaPrevia ? '' : ' sem'}`} style={{ background: c.fundo, color: c.tinta, '--miolo': c.miolo } as CSSProperties} aria-hidden="true">
             {nosDaPrevia && <DesenhoDoIcone nos={nosDaPrevia} tamanho={26} />}
           </span>
-          <div className="dialogo-topo-texto">
-            <h2 id="ico-titulo">Ícone do processo</h2>
-            <p className="notice">{processo.nome}{escolhido ? ` · ${escolhido[1]}` : ''}</p>
+          {/* O título é o nome do processo, sem subtítulo (decisão 136). */}
+          <div className="dialogo-topo-texto ico-topo-texto">
+            <h2>{processo.nome}</h2>
           </div>
           <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={salvando} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
         </div>

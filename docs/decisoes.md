@@ -1123,6 +1123,10 @@ O Rafael pediu ícones com traço mais fino. Comparamos 1,8 (o de antes), 1,65 e
 - **Um lugar só:** a espessura fica em `TRACO_DOS_ICONES` (`lib/icones/index.ts`); os componentes leem dali.
 - **Não muda:** os traços do fluxograma e dos desenhos de marcação no print, que não são ícones.
 
+## 136. Seletor de ícone com o nome do processo como título
+
+Pedido do Rafael: no topo do seletor de ícone, o título "Ícone do processo" deu lugar ao nome do processo, e o subtítulo (o nome do processo e o do ícone escolhido) saiu. Ao lado do título fica só a prévia do ícone na cor escolhida; o ícone escolhido aparece marcado na lista. Para leitor de tela, a janela continua se apresentando como "Ícone do processo" seguido do nome.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
