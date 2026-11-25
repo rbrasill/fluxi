@@ -989,6 +989,12 @@ Rede de segurança na análise: se mesmo assim escapar, a palavra não explicada
 
 Conferido só com os testes automáticos; não foi simulado.
 
+## 119. Menu lateral sem o item "Início"
+
+O item "Início" saiu do menu lateral; "Áreas" passou a ser o primeiro. A página Início continua existindo: o logo leva a ela, o endereço raiz também, e o aviso flutuante das regras com vários processos aponta para ela.
+
+Junto saiu o selo com o número de regras esperando confirmação, que ficava nesse item (decisão 108). Continua o aviso flutuante, que aparece ao entrar e quando chega regra nova.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
