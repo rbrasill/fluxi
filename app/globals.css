@@ -1522,7 +1522,6 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .proc-icone .pasta-cor.com-icone::before { display: none; }
 .proc-icone:not(:disabled):hover .pasta-cor, .proc-icone:focus-visible .pasta-cor { box-shadow: 0 0 0 2px var(--neutro-superficie), 0 0 0 3.5px currentColor; }
 .proc-icone:focus-visible { outline: none; }
-.proc-icone-lapis { position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center; background: var(--neutro-superficie); border: 1px solid var(--neutro-borda); color: var(--neutro-texto-2); box-shadow: 0 2px 6px rgba(15, 23, 42, .14); }
 @media (max-width: 700px) { .proc-icone .pasta-cor { width: 38px; height: 38px; border-radius: 11px; } }
 
 /* Seletor de ícone: prévia no topo, sugestões pelo nome, busca, categorias, a lista de ícones (rola por dentro) e a cor. */

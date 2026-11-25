@@ -251,7 +251,6 @@ function ProcessoPage() {
             <button type="button" className="proc-icone" onClick={() => setEscolhendoIcone(true)} disabled={arquivado}
               title={p.icone ? 'Trocar o ícone do processo' : 'Escolher um ícone para o processo'} aria-label={p.icone ? 'Trocar o ícone do processo' : 'Escolher um ícone para o processo'}>
               <QuadroDoProcesso id={p.id} icone={p.icone} tamanho={22} />
-              {!arquivado && <span className="proc-icone-lapis" aria-hidden="true"><Icone nome="editar" tamanho={11} /></span>}
             </button>
             <input className="titulo-editavel" value={nome} onChange={(e) => { setNome(e.target.value); setMudouDesdePublicar(true); }} aria-label="Nome do processo" readOnly={arquivado}
               onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
