@@ -2,8 +2,8 @@
   /* Redesign (decisões 75 e 77): as variáveis de base passaram a apontar para o sistema de cores novo (índigo na
      ação, neutros no resto). As telas ainda não redesenhadas herdam as cores novas por aqui. */
   --bg: #F6F7F9;
-  --fundo-processo: #F7F9FC; /* base do degradê azul da página do processo (decisão 125) */
-  --fundo-pop: #F7FBF9; /* base do degradê verde da página do POP (decisão 125) */
+  --fundo-processo: #F6F7F9; /* base do degradê azul da página do processo: o cinza claro de sempre (decisões 125 e 126) */
+  --fundo-pop: #F6F7F9; /* base do degradê verde da página do POP: o cinza claro de sempre (decisões 125 e 126) */
   --surface: #ffffff;
   --ink: #2B3D55; /* cor dos textos (decisão 121); antes, #0E1525 */
   --muted: #5A6372;
@@ -92,26 +92,24 @@ input { font-family: inherit; }
 /* Lista */
 /* Centralizada: em telas largas (ou com o menu recolhido) a sobra fica dividida entre os dois lados. */
 .page { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
-/* Identidade de cada ambiente (decisão 125): o processo tem fundo em degradê azul e o POP, em degradê verde, para a
-   pessoa saber onde está sem depender do título. O degradê fica preso à janela (não estica com a rolagem): a cor mais
-   forte no alto, à direita, um tom bem claro no alto, à esquerda, e outro no canto de baixo, à direita. Os cartões
-   continuam brancos e opacos, então o texto dentro deles não muda; o que fica direto sobre o fundo (caminho, título,
-   abas) mantém 4,9:1 ou mais. */
+/* Identidade de cada ambiente (decisões 125 e 126): o processo tem fundo em degradê azul e o POP, em degradê verde,
+   para a pessoa saber onde está sem depender do título. Tons pastel, só no lado direito: a mancha maior no canto de
+   cima (chega até perto da borda direita da coluna principal) e outra, mais clara, no canto de baixo; o lado esquerdo
+   e o meio ficam no cinza claro de sempre. O degradê fica preso à janela (não estica com a rolagem). Os cartões
+   continuam brancos e opacos; o que fica direto sobre o fundo (caminho, título, abas) mantém 5,6:1 ou mais. */
 body:has(.fundo-processo) { background: var(--fundo-processo); }
 body:has(.fundo-pop) { background: var(--fundo-pop); }
 @media screen {
   body:has(.fundo-processo)::before, body:has(.fundo-pop)::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
   body:has(.fundo-processo)::before {
     background:
-      radial-gradient(70% 60% at 80% 0%, rgba(178, 208, 254, .75) 0%, rgba(178, 208, 254, 0) 75%),
-      radial-gradient(50% 45% at 28% 0%, rgba(214, 224, 255, .6) 0%, rgba(214, 224, 255, 0) 75%),
-      radial-gradient(60% 75% at 100% 100%, rgba(186, 230, 253, .65) 0%, rgba(186, 230, 253, 0) 75%);
+      radial-gradient(65% 80% at 100% 0%, rgba(188, 213, 250, .85) 0%, rgba(188, 213, 250, 0) 72%),
+      radial-gradient(45% 60% at 100% 100%, rgba(207, 226, 252, .8) 0%, rgba(207, 226, 252, 0) 72%);
   }
   body:has(.fundo-pop)::before {
     background:
-      radial-gradient(70% 60% at 80% 0%, rgba(167, 243, 208, .7) 0%, rgba(167, 243, 208, 0) 75%),
-      radial-gradient(50% 45% at 28% 0%, rgba(220, 252, 231, .7) 0%, rgba(220, 252, 231, 0) 75%),
-      radial-gradient(60% 75% at 100% 100%, rgba(187, 247, 208, .6) 0%, rgba(187, 247, 208, 0) 75%);
+      radial-gradient(65% 80% at 100% 0%, rgba(196, 240, 210, .8) 0%, rgba(196, 240, 210, 0) 72%),
+      radial-gradient(45% 60% at 100% 100%, rgba(212, 245, 222, .8) 0%, rgba(212, 245, 222, 0) 72%);
   }
 }
 /* Sobre o degradê, os links do caminho ficam um pouco mais escuros, para o contraste não cair. */

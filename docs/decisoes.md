@@ -1026,6 +1026,15 @@ Para a pessoa perceber, sem ler o título, se está num processo ou num POP. Val
 - **Leitura:** os cartões continuam brancos e opacos, então nada dentro deles muda. O que fica direto sobre o fundo (caminho, título e abas) tem contraste de 4,9:1 ou mais; para isso, os links do caminho, nessas duas páginas, passaram do cinza `#6B7280` para `#5A6372` (sem isso, cairiam para 3,9:1 sobre o azul).
 - **Selos do tipo:** "Processo" e "POP", abaixo do nome, deixaram de ser iguais (índigo claro). "Processo" ficou azul (fundo `#EFF6FF`, borda `#BFDBFE`, texto `#1D4ED8`, 6,2:1), com o ícone das duas etapas ligadas; "POP" ficou verde (fundo `#ECFDF5`, borda `#A7F3D0`, texto `#047857`, 5,2:1), com o ícone do documento. O selo é o componente `SeloDocumento`, que já existia e estava sem uso nas páginas.
 
+## 126. Degradê dos ambientes mais suave, só à direita e sobre o cinza claro
+
+O Rafael achou o azul e o verde da decisão 125 fortes demais e as manchas grandes demais. Validado num exemplo em HTML montado sobre as telas reais, a partir de uma imagem de referência.
+
+- **Tons pastel:** azul `rgba(188, 213, 250, .85)` e verde `rgba(196, 240, 210, .8)` no canto de cima, e um tom ainda mais claro de cada um no canto de baixo. Os dois ficaram com a mesma intensidade aparente.
+- **Só no lado direito:** saiu a mancha do alto à esquerda. A mancha de cima chega até perto da borda direita da coluna principal (onde o Rafael marcou) e desce até mais ou menos o começo dos cartões; a de baixo é menor.
+- **Base no cinza claro de sempre** (`#F6F7F9`), no lugar do quase branco da decisão 125: o lado esquerdo e o meio da tela ficam como nas outras telas.
+- **Leitura:** o que fica direto sobre o fundo tem contraste de 5,6:1 ou mais (antes, 4,9:1). Os selos da decisão 125 não mudaram.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
