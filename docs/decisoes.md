@@ -995,6 +995,10 @@ O item "Início" saiu do menu lateral; "Áreas" passou a ser o primeiro. A pági
 
 Junto saiu o selo com o número de regras esperando confirmação, que ficava nesse item (decisão 108). Continua o aviso flutuante, que aparece ao entrar e quando chega regra nova.
 
+## 120. Ícone de aba
+
+A aba do navegador passou a mostrar a marca do INCFlow (o símbolo colorido, o mesmo do menu recolhido), em vez do ícone genérico. O arquivo é `app/icon.png`, com uma cópia em `app/apple-icon.png` para o atalho na tela de início do iPhone. Aparece em todas as páginas, inclusive no login e nas páginas públicas.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
