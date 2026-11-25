@@ -1114,6 +1114,15 @@ Respostas do Rafael às pendências dos ícones e dos selos.
 - **Tradução dos ícones:** os 2.119 ícones do Lucide 1.80.0 estão traduzidos (nenhum sem tradução). A conferência de qualidade foi por amostra; nome estranho se ajusta quando for apontado.
 - **Deixado para depois:** o Rafael publica os 3 POPs antigos ("Publicar alterações") quando puder; o aviso de gravação e IA nos termos de uso entra quando a plataforma estiver mais madura.
 
+## 135. Traço dos ícones mais fino: 1,65
+
+O Rafael pediu ícones com traço mais fino. Comparamos 1,8 (o de antes), 1,65 e 1,5 nos tamanhos que o app usa (14, 16, 18 e 22 px) e em contexto (menu, botões, busca); ele escolheu 1,65.
+
+- **Por que não 1,5:** o traço na tela é a espessura × tamanho ÷ 24. Aos 16 px, o tamanho mais usado, 1,5 desenha 1,0 px, no limite do nítido em tela comum (não retina), e os ícones cinza perdem contraste. 1,65 desenha 1,1 px.
+- **Vale para todos os ícones da interface:** os do app (antes 1,8), o ícone do processo e os do seletor do Lucide (antes 2) e os das referências no texto rico, no editor e nas páginas públicas (antes 2).
+- **Um lugar só:** a espessura fica em `TRACO_DOS_ICONES` (`lib/icones/index.ts`); os componentes leem dali.
+- **Não muda:** os traços do fluxograma e dos desenhos de marcação no print, que não são ícones.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

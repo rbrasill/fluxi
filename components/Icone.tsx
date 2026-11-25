@@ -1,3 +1,5 @@
+import { TRACO_DOS_ICONES } from '@/lib/icones';
+
 const caminhos: Record<string, string> = {
   voltar: 'M15 6l-6 6 6 6',
   mais: 'M12 5v14M5 12h14',
@@ -87,7 +89,7 @@ const caminhos: Record<string, string> = {
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {
   return (
-    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={TRACO_DOS_ICONES} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={caminhos[nome]} />
     </svg>
   );

@@ -1,5 +1,5 @@
 import { createElement, type CSSProperties } from 'react';
-import { coresDoProcesso, type IconeDoProcesso, type NoDoIcone } from '@/lib/icones';
+import { coresDoProcesso, TRACO_DOS_ICONES, type IconeDoProcesso, type NoDoIcone } from '@/lib/icones';
 
 // O ícone do processo (decisão 133). O desenho vem dos nós guardados com o processo (ou do catálogo, no seletor) e é
 // montado elemento por elemento, só com as marcas e os atributos que um ícone do Lucide usa: nada de HTML solto.
@@ -9,7 +9,7 @@ const ATRIBUTOS = new Set(['d', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2
 
 export function DesenhoDoIcone({ nos, tamanho = 18 }: { nos: NoDoIcone[]; tamanho?: number }) {
   return (
-    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={TRACO_DOS_ICONES} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       {nos.filter(([marca]) => MARCAS.has(marca)).map(([marca, atributos], i) => createElement(marca, {
         key: i,
         ...Object.fromEntries(Object.entries(atributos).filter(([k, v]) => ATRIBUTOS.has(k) && (k !== 'fill' || v === 'none' || v === 'currentColor'))),

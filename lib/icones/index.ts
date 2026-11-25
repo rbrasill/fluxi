@@ -2,6 +2,10 @@
 // lista e ao lado do nome. O banco guarda o nome do ícone, a cor escolhida e o desenho (os nós do SVG, conferidos pelo
 // servidor contra o catálogo), então mostrar o ícone não depende de carregar a biblioteca.
 
+/** A espessura do traço de todos os ícones da interface, em unidades do desenho de 24×24 (decisão 135: 1,65; antes, 1,8
+ * nos ícones do app e 2 nos do processo e das referências). Aos 16 px, desenha 1,1 px na tela. */
+export const TRACO_DOS_ICONES = 1.65;
+
 /** Um elemento do desenho: a marca do SVG (path, circle…) e os atributos dela. */
 export type NoDoIcone = [string, Record<string, string>];
 export type IconeDoProcesso = { nome: string; cor: number | null; nos: NoDoIcone[] };
