@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { SeloDocumento } from '@/components/SeloDocumento';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { DialogoNome } from '@/components/DialogoNome';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
@@ -220,7 +221,7 @@ function ProcessoPage() {
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} aria-label="Nome do processo" readOnly={arquivado}
             onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           <div className="processo-meta">
-            <span className="chip-tipo">Processo</span>
+            <SeloDocumento tipo="processo" />
           </div>
         </div>
         <div className="actions">

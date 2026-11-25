@@ -107,7 +107,7 @@ A base de todas as telas; as famílias acima não substituem os neutros.
 | Texto secundário | `#5A6372` |
 | Ícones e rótulos | `#6B7280` |
 | Bordas | `#E6E8EC` |
-| Fundo da página | `#F6F7F9` |
+| Fundo da página | `#F6F7F9` (no processo e no POP, degradê azul e verde; decisão 125) |
 | Superfície (cartões) | `#FFFFFF` |
 
 ## Onde cada cor entra na plataforma
@@ -126,6 +126,10 @@ A base de todas as telas; as famílias acima não substituem os neutros.
   campo (vermelho 600), "Remover" e "Excluir" (vermelho, que aparece ao passar o mouse), "Offline" e o ponto de
   gravando.
 - **Cinza, ajuda:** o ícone de informação que explica os tipos de regra.
+- **Azul e verde, os ambientes (decisão 125):** o fundo em degradê e o selo do tipo dizem onde a pessoa está: azul
+  no processo, verde no POP. Ficam só no fundo da página e no selo "Processo" ou "POP"; botões, links e abas
+  continuam em índigo. O verde do POP (`#047857`, com borda) é outro tom do verde de "Publicado" (`#166534`, com
+  ponto), e o selo do POP tem ícone, para os dois não se confundirem lado a lado.
 
 ## Identidade: avatares e áreas
 

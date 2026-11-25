@@ -1018,6 +1018,14 @@ Na visão geral do processo, a descrição passou a vir primeiro e o fluxograma 
 - **Com fluxograma:** o cartão mostra a miniatura do desenho. Antes, só aparecia quando o editor tinha salvo uma miniatura (2 dos 15 fluxogramas); nos outros, aparecia o desenho ilustrativo. Agora, sem miniatura salva, a prévia usa o SVG publicado pelo editor, que todos têm, servido por uma rota nova só para quem está logado (`/api/fluxogramas/[id]/svg`, com a mesma política de segurança da rota pública e funcionando também em processo arquivado). Se nenhuma das duas existir ou a imagem não carregar, fica o desenho ilustrativo.
 - **Sem fluxograma:** continua o desenho ilustrativo (a imagem de referência enviada não foi usada). Saíram os textos "Este processo ainda não tem fluxograma" e "O fluxograma mostra o processo como um todo…". A etiqueta "Fluxograma" virou a pílula "Processo sem fluxograma", com ícone de alerta, fundo amarelo-claro (`#FEF9C3`), borda `#FDE68A` e texto dourado (`#854D0E`, contraste 6,4:1): atenção, sem cara de erro. Os botões Desenhar e Gerar com IA continuam; em processo arquivado, o cartão fica só com o desenho e a pílula.
 
+## 125. Identidade de cada ambiente: azul no processo, verde no POP
+
+Para a pessoa perceber, sem ler o título, se está num processo ou num POP. Validado pelo Rafael num exemplo em HTML montado sobre as telas reais.
+
+- **Fundo em degradê:** a página do processo tem um degradê azul e a do POP, um degradê verde, no mesmo desenho: a cor mais forte no alto, à direita, um tom bem claro no alto, à esquerda, e outro no canto de baixo, à direita, sobre uma base quase branca (`#F7F9FC` no processo, `#F7FBF9` no POP). O degradê fica preso à janela (não estica com a rolagem) e não aparece na impressão. As outras telas continuam com o fundo neutro.
+- **Leitura:** os cartões continuam brancos e opacos, então nada dentro deles muda. O que fica direto sobre o fundo (caminho, título e abas) tem contraste de 4,9:1 ou mais; para isso, os links do caminho, nessas duas páginas, passaram do cinza `#6B7280` para `#5A6372` (sem isso, cairiam para 3,9:1 sobre o azul).
+- **Selos do tipo:** "Processo" e "POP", abaixo do nome, deixaram de ser iguais (índigo claro). "Processo" ficou azul (fundo `#EFF6FF`, borda `#BFDBFE`, texto `#1D4ED8`, 6,2:1), com o ícone das duas etapas ligadas; "POP" ficou verde (fundo `#ECFDF5`, borda `#A7F3D0`, texto `#047857`, 5,2:1), com o ícone do documento. O selo é o componente `SeloDocumento`, que já existia e estava sem uso nas páginas.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { SeloDocumento } from '@/components/SeloDocumento';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
@@ -422,7 +423,7 @@ function EditorPop() {
         <div className="proc-titulo">
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
           <p className="status-linha">
-            <span className="chip-tipo">POP</span>
+            <SeloDocumento tipo="pop" />
             <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
             {!arquivado && (
