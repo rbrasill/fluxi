@@ -1080,6 +1080,14 @@ Textos enviados pelo Rafael para as opções do diálogo (com ou sem a opção "
 
 Na lista de três opções, o título veio como "Colar uma captura" e, na de quatro, "Colar print copiado". Como é o mesmo botão nas duas, ficou um título só: "Colar print copiado", que usa a palavra "print" como o resto do diálogo ("Anexar print", "Usar este print").
 
+## 132. Layout do diálogo "Anexar print"
+
+Pedido do Rafael: melhorar o layout da janela e dos cartões. Antes, quatro cartões estreitos numa janela de 680px: os títulos quebravam em duas linhas com um ícone pequeno ao lado e as descrições ficavam em colunas de quatro ou cinco linhas.
+
+- **Janela:** 720px com três opções e 900px quando há "Tela da gravação". O topo tem "Anexar print", o passo logo abaixo ("Passo 1.1") e o botão de fechar (X), como os outros diálogos do redesign; "Cancelar" continua no rodapé.
+- **Cartões:** todos com a mesma largura e altura, o ícone em destaque em cima (quadrado de 40px em índigo claro), o título numa linha só (15px) e a descrição embaixo (13px, até quatro linhas). Ao passar o mouse, a borda e o fundo ficam em índigo claro, com uma sombra leve.
+- **Telas menores:** até 900px, as quatro opções ficam em duas colunas; até 640px, viram uma lista, com o ícone ao lado do título e da descrição.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
