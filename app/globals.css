@@ -1176,6 +1176,8 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .proc-fluxo { padding: 0; gap: 0; overflow: hidden; }
 .fluxo-palco { position: relative; display: grid; place-items: center; min-height: 160px; padding: 40px 20px 16px; border-bottom: 1px solid var(--neutro-borda); background-color: #FAFBFC; background-image: radial-gradient(#DADEE5 1px, transparent 1px); background-size: 18px 18px; text-decoration: none; }
 .fluxo-etiqueta { position: absolute; top: 14px; left: 14px; padding: 4px 10px; border: 1px solid var(--neutro-borda); border-radius: 999px; background: var(--neutro-superficie); color: var(--neutro-texto); font-size: 12px; font-weight: 600; }
+/* Processo sem fluxograma (decisão 124): atenção, sem cara de erro. Fundo amarelo-claro, texto e ícone dourados. */
+.fluxo-etiqueta.sem-fluxo { display: inline-flex; align-items: center; gap: 6px; background: #FEF9C3; border-color: #FDE68A; color: #854D0E; }
 .fluxo-palco .fluxo-miniatura { width: auto; height: auto; max-width: 100%; max-height: 170px; object-fit: contain; border: 0; border-radius: 0; background: none; mix-blend-mode: multiply; }
 a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .fluxo-ilustrado { width: min(100%, 340px); height: auto; overflow: visible; }

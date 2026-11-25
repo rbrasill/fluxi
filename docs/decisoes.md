@@ -1013,6 +1013,11 @@ Ficaram como estavam, porque são de outro tipo: o que é pílula ou círculo (e
 
 Na visão geral do processo, a descrição passou a vir primeiro e o fluxograma depois. A prévia do fluxograma ficou menor: a área tem no mínimo 160px de altura (antes, 230px), a imagem do fluxograma vai até 170px (antes, 260px) e o desenho de exemplo, quando ainda não há fluxograma, até 340px de largura (antes, 460px).
 
+## 124. Cartão do fluxograma: miniatura de verdade e "Processo sem fluxograma"
+
+- **Com fluxograma:** o cartão mostra a miniatura do desenho. Antes, só aparecia quando o editor tinha salvo uma miniatura (2 dos 15 fluxogramas); nos outros, aparecia o desenho ilustrativo. Agora, sem miniatura salva, a prévia usa o SVG publicado pelo editor, que todos têm, servido por uma rota nova só para quem está logado (`/api/fluxogramas/[id]/svg`, com a mesma política de segurança da rota pública e funcionando também em processo arquivado). Se nenhuma das duas existir ou a imagem não carregar, fica o desenho ilustrativo.
+- **Sem fluxograma:** continua o desenho ilustrativo (a imagem de referência enviada não foi usada). Saíram os textos "Este processo ainda não tem fluxograma" e "O fluxograma mostra o processo como um todo…". A etiqueta "Fluxograma" virou a pílula "Processo sem fluxograma", com ícone de alerta, fundo amarelo-claro (`#FEF9C3`), borda `#FDE68A` e texto dourado (`#854D0E`, contraste 6,4:1): atenção, sem cara de erro. Os botões Desenhar e Gerar com IA continuam; em processo arquivado, o cartão fica só com o desenho e a pílula.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

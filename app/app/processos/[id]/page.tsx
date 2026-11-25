@@ -45,6 +45,17 @@ const FILTROS_POP: { id: FiltroPop; rotulo: string }[] = [
 ];
 const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
+/**
+ * A miniatura do fluxograma (decisão 124): a que o editor salvou ou, se não houver, o SVG publicado. Se nenhuma das
+ * duas existir, ou a imagem não carregar, fica o desenho ilustrativo.
+ */
+function PreviaDoFluxo({ fluxo }: { fluxo: { id: string; miniatura: string | null; tem_svg: boolean } }) {
+  const [falhou, setFalhou] = useState(false);
+  const src = fluxo.miniatura || (fluxo.tem_svg ? `/api/fluxogramas/${fluxo.id}/svg` : '');
+  if (!src || falhou) return <FluxoIlustrado />;
+  return <img className="fluxo-miniatura" src={src} alt="" onError={() => setFalhou(true)} />;
+}
+
 /** O desenho de enfeite do cartão do fluxograma, para quando ainda não há miniatura. */
 function FluxoIlustrado() {
   return (
@@ -260,7 +271,7 @@ function ProcessoPage() {
               <>
                 <Link href={`/app/fluxogramas/${fluxo.id}`} className="fluxo-palco" aria-label={arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'} title={arquivado ? 'Ver fluxograma' : 'Abrir fluxograma'}>
                   <span className="fluxo-etiqueta">Fluxograma</span>
-                  {fluxo.miniatura ? <img className="fluxo-miniatura" src={fluxo.miniatura} alt="" /> : <FluxoIlustrado />}
+                  <PreviaDoFluxo fluxo={fluxo} />
                 </Link>
                 <div className="proc-fluxo-corpo">
                   <div>
@@ -277,21 +288,17 @@ function ProcessoPage() {
             ) : (
               <>
                 <div className="fluxo-palco vazio">
-                  <span className="fluxo-etiqueta">Fluxograma</span>
+                  <span className="fluxo-etiqueta sem-fluxo"><Icone nome="alerta" tamanho={14} />Processo sem fluxograma</span>
                   <FluxoIlustrado />
                 </div>
-                <div className="proc-fluxo-corpo">
-                  <div>
-                    <h3>Este processo ainda não tem fluxograma</h3>
-                    <p className="proc-fluxo-meta">O fluxograma mostra o processo como um todo: o que acontece, em que ordem e como as etapas se encadeiam.</p>
-                  </div>
-                  {!arquivado && (
+                {!arquivado && (
+                  <div className="proc-fluxo-corpo">
                     <div className="proc-fluxo-acoes">
                       <button className="btn btn-primary" onClick={() => setFluxoDialogo('desenhar')}><Icone nome="marcar" tamanho={16} />Desenhar</button>
                       <button className="btn btn-ia" onClick={() => setFluxoDialogo('ia')}><Icone nome="ia" tamanho={16} />Gerar com IA</button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </>
             )}
           </section>
