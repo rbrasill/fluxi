@@ -1065,6 +1065,10 @@ Pedido do Rafael: tirar do ar todos os processos e POPs, e as mudanças só irem
 - **Referências e "Voltar para":** um processo nunca publicado aparece como "Não publicado" no seletor de referências e não ganha link na página pública; o "Voltar para" usa o nome publicado.
 - **Na página pública do processo:** o rodapé mostra "Versão publicada em …".
 
+## 130. Selo "Offline" no lugar de "Publicado · offline"
+
+Pedido do Rafael: "Publicado · offline" confundia. O selo de quem está publicado com a página pública desligada passa a dizer só **"Offline"** (mesma cor vermelha clara), no topo do POP e do processo e nas listas de POPs. Passando o mouse, o título explica: publicado, com a página pública desligada; a versão publicada está guardada, fora do ar. Rascunho continua "Rascunho" e no ar continua "Publicado".
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
