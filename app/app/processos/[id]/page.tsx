@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { QuadroDoProcesso } from '@/components/IconeDoProcesso';
+import { SeletorDeIcone } from '@/components/SeletorDeIcone';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { DialogoNome } from '@/components/DialogoNome';
@@ -83,6 +85,7 @@ function ProcessoPage() {
   const [copiado, setCopiado] = useState(false);
   const [alterandoLink, setAlterandoLink] = useState(false);
   const [publicando, setPublicando] = useState(false);
+  const [escolhendoIcone, setEscolhendoIcone] = useState(false); // seletor do ícone aberto (decisão 133)
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta visita depois de publicar (decisão 129)
   const [movendo, setMovendo] = useState(false);
   const [aba, setAba] = useState<Aba>('visao');
@@ -243,8 +246,16 @@ function ProcessoPage() {
 
       <div className="page-head proc-cabecalho">
         <div className="proc-titulo">
-          <input className="titulo-editavel" value={nome} onChange={(e) => { setNome(e.target.value); setMudouDesdePublicar(true); }} aria-label="Nome do processo" readOnly={arquivado}
-            onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
+          {/* O ícone do processo fica ao lado do nome; clicar abre o seletor (decisão 133). */}
+          <div className="proc-nome-linha">
+            <button type="button" className="proc-icone" onClick={() => setEscolhendoIcone(true)} disabled={arquivado}
+              title={p.icone ? 'Trocar o ícone do processo' : 'Escolher um ícone para o processo'} aria-label={p.icone ? 'Trocar o ícone do processo' : 'Escolher um ícone para o processo'}>
+              <QuadroDoProcesso id={p.id} icone={p.icone} tamanho={22} />
+              {!arquivado && <span className="proc-icone-lapis" aria-hidden="true"><Icone nome="editar" tamanho={11} /></span>}
+            </button>
+            <input className="titulo-editavel" value={nome} onChange={(e) => { setNome(e.target.value); setMudouDesdePublicar(true); }} aria-label="Nome do processo" readOnly={arquivado}
+              onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
+          </div>
           <div className="processo-meta">
             <SeloDocumento tipo="processo" />
             {!arquivado && <SeloStatus status={publicado ? 'publicado' : 'rascunho'} offline={publicado && !p.link_publico_ativo} />}
@@ -475,6 +486,10 @@ function ProcessoPage() {
       {criandoPop && (
         <DialogoNome titulo="Novo POP" rotulo="Nome do POP" exemplo="Ex.: Criação de pedido de compra" aviso={<>O POP entra no processo <b>{p.nome}</b>.</>}
           aoCriar={novoPop} aoFechar={() => setCriandoPop(false)} />
+      )}
+      {escolhendoIcone && (
+        <SeletorDeIcone processo={{ id: p.id, nome: nome.trim() || p.nome, icone: p.icone }} aoFechar={() => setEscolhendoIcone(false)}
+          aoSalvar={(icone) => { setP((x) => x && { ...x, icone }); setEscolhendoIcone(false); }} />
       )}
       {movendo && (
         <MoverCopiar item={{ tipo: 'processo', id: p.id, nome: p.nome, area_id: p.area_id, totais: { pops: pops.length, gravacoes: p.gravacoes.length, fluxograma: !!fluxo } }}

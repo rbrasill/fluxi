@@ -1,10 +1,12 @@
 // Cliente da API de processos (a "pasta" de cada processo).
 import { ErroCliente } from './fluxogramas';
+import type { IconeDoProcesso } from './icones';
 import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 
 export type ProcessoResumo = {
   id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null;
   arquivado_em: string | null; criado_em: string; atualizado_em: string; link_publico_ativo: boolean; // página pública no ar (decisão 35)
+  icone: IconeDoProcesso | null; // ícone escolhido para o processo (decisão 133)
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
@@ -36,6 +38,9 @@ export const restaurarProcesso = (id: string) => api(`/api/processos/${id}/resta
 /** Copia o processo para uma área (decisão 36), com a descrição, o fluxograma e cópias dos POPs ativos. */
 export const copiarProcesso = (id: string, dados: { area_id: string; nome?: string }) =>
   api<{ id: string; pops: number; fluxograma: boolean }>(`/api/processos/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
+/** Escolhe o ícone do processo (decisão 133); com `nome` nulo, tira o ícone. */
+export const definirIconeDoProcesso = (id: string, nome: string | null, cor: number | null) =>
+  api<{ icone: IconeDoProcesso | null }>(`/api/processos/${id}/icone`, { method: 'PUT', body: JSON.stringify({ nome, cor }) });
 /** Publica o processo como está agora (decisão 129): a página pública passa a mostrar esta versão. */
 export const publicarProcesso = (id: string) => api<{ publicado_em: string }>(`/api/processos/${id}/publicar`, { method: 'POST' });
 /** Liga (online) ou desliga (offline) a página pública do processo (só depois de publicado). */

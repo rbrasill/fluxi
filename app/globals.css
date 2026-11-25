@@ -1509,6 +1509,57 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .areas-lista-conta { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--neutro-texto-2); white-space: nowrap; }
 .areas-lista a > svg { flex: none; color: var(--neutro-rotulo); }
 @media (max-width: 700px) { .areas-controles, .areas-controles .busca-pops { width: 100%; } .select-ordem { flex: 1; } }
+/* Ícone do processo (decisão 133): no quadro colorido da pasta, da lista e ao lado do nome. Com ícone, some o
+   quadradinho do meio; o ícone usa o tom escuro da cor (color do quadro). */
+.pasta-processo .pasta-cor.com-icone::before, .processos-lista .pasta-cor.com-icone::before { display: none; }
+.pasta-processo.arquivada .pasta-cor, .processos-lista li.arquivada .pasta-cor { color: #8a999d !important; }
+.proc-nome-linha { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.proc-nome-linha .titulo-editavel { flex: 1; min-width: 0; margin-left: 0; }
+.proc-icone { position: relative; flex: none; padding: 0; border: 0; border-radius: 13px; background: transparent; cursor: pointer; }
+.proc-icone:disabled { cursor: default; }
+.proc-icone .pasta-cor { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; transition: box-shadow .15s; }
+.proc-icone .pasta-cor::before { content: ''; width: 13px; height: 13px; border-radius: 3px; background: var(--miolo, #fff); }
+.proc-icone .pasta-cor.com-icone::before { display: none; }
+.proc-icone:not(:disabled):hover .pasta-cor, .proc-icone:focus-visible .pasta-cor { box-shadow: 0 0 0 2px var(--neutro-superficie), 0 0 0 3.5px currentColor; }
+.proc-icone:focus-visible { outline: none; }
+.proc-icone-lapis { position: absolute; right: -5px; bottom: -5px; width: 20px; height: 20px; border-radius: 999px; display: grid; place-items: center; background: var(--neutro-superficie); border: 1px solid var(--neutro-borda); color: var(--neutro-texto-2); box-shadow: 0 2px 6px rgba(15, 23, 42, .14); }
+@media (max-width: 700px) { .proc-icone .pasta-cor { width: 38px; height: 38px; border-radius: 11px; } }
+
+/* Seletor de ícone: prévia no topo, sugestões pelo nome, busca, categorias, a lista de ícones (rola por dentro) e a cor. */
+.dialog.ico-dialogo { max-width: 780px; gap: 18px; }
+.ico-dialogo .dialog-fechar { margin: -6px -8px 0 0; }
+.ico-previa { flex: none; width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; transition: background .15s, color .15s; }
+.ico-previa.sem::before { content: ''; width: 14px; height: 14px; border-radius: 3px; background: var(--miolo); }
+.ico-titulo-secao { margin: 0 0 8px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--neutro-rotulo); }
+.ico-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ico-grade.rolavel { max-height: 288px; overflow-y: auto; padding: 2px 4px 2px 2px; }
+.ico-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; min-height: 82px; padding: 10px 6px; border: 1px solid var(--neutro-borda); border-radius: 12px; background: var(--neutro-superficie); color: var(--neutro-texto); font: inherit; font-size: 11.5px; font-weight: 500; line-height: 1.25; text-align: center; overflow-wrap: anywhere; cursor: pointer; transition: border-color .12s, background .12s; }
+.ico-item svg { flex: none; }
+.ico-item:hover { border-color: var(--indigo-300); background: var(--indigo-50); }
+.ico-item[aria-pressed='true'] { border: 2px solid var(--indigo-500); padding: 9px 5px; background: var(--indigo-50); color: var(--indigo-700); font-weight: 600; }
+.ico-mais { grid-column: 1 / -1; height: 40px; border: 1px dashed var(--line-strong); border-radius: 12px; background: transparent; color: var(--indigo-700); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ico-mais:hover { background: var(--indigo-50); }
+.ico-busca { display: flex; flex-direction: column; gap: 12px; }
+.ico-busca .campo-busca { height: 44px; }
+.ico-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.ico-chip { flex: none; height: 32px; padding: 0 12px; border: 1px solid var(--neutro-borda); border-radius: 999px; background: var(--neutro-superficie); color: var(--neutro-texto-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.ico-chip:hover { background: var(--neutro-fundo); }
+.ico-chip[aria-pressed='true'] { border-color: transparent; background: var(--indigo-100); color: var(--indigo-700); }
+.ico-vazio { margin: 0; padding: 18px; border: 1px dashed var(--neutro-borda); border-radius: 12px; text-align: center; font-size: 14px; color: var(--neutro-texto-2); }
+.ico-cores { display: flex; gap: 10px; flex-wrap: wrap; }
+.ico-cor { width: 34px; height: 34px; padding: 0; border: 1px solid rgba(15, 23, 42, .08); border-radius: 999px; display: grid; place-items: center; cursor: pointer; }
+.ico-cor span { width: 11px; height: 11px; border-radius: 999px; }
+.ico-cor[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--neutro-superficie), 0 0 0 4px var(--indigo-500); }
+.ico-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--neutro-borda); }
+.ico-rodape .dialog-actions { margin-left: auto; }
+.ico-credito { margin: 0; font-size: 12px; color: var(--neutro-rotulo); }
+@media (max-width: 640px) {
+  .ico-grade { grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+  .ico-grade.rolavel { max-height: 240px; }
+  .ico-item { min-height: 74px; font-size: 11px; }
+  .ico-cores { gap: 7px; }
+  .ico-cor { width: 30px; height: 30px; }
+}
 /* Processos da área em lista (decisão 127): como a lista de áreas, com a cor da pasta, a data e o selo da página
    pública. No arquivado, o botão de restaurar fica fora do link. No celular, a data e o selo descem para baixo do nome. */
 .processos-lista { list-style: none; margin: 0; padding: 0; gap: 0; overflow: hidden; }

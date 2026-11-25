@@ -4,10 +4,12 @@ import { gerarCodigo } from '@/lib/codigo';
 import type { ConteudoPop } from '@/lib/pop/schema';
 import { garantir as garantirArea } from './areas';
 import { ErroApi } from './http';
+import { montarIcone } from './icones';
+import type { IconeDoProcesso } from '@/lib/icones';
 import * as referencias from './referencias';
 import { TENANT_PADRAO, supabase } from './supabase';
 
-const CAMPOS = 'id, codigo, nome, descricao, area_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
+const CAMPOS = 'id, codigo, nome, descricao, icone, area_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em, area:areas(id, nome, organizacao:organizacoes(id, nome))';
 
 /**
  * Impressão digital do que vai para a página pública do processo (decisão 129): o nome, a descrição e o desenho do
@@ -47,11 +49,11 @@ export async function tocar(id: string | null | undefined) {
 // O processo nasce fora do ar (decisão 128): só a pessoa coloca a página pública no ar, pela chave da página do
 // processo. Vale também para a cópia, que é criada por aqui. A coluna tem o mesmo padrão no banco (migração 0027),
 // mas o valor vai explícito para não depender dela.
-export async function criar(d: { nome: string; area_id: string; descricao?: string }) {
+export async function criar(d: { nome: string; area_id: string; descricao?: string; icone?: IconeDoProcesso | null }) {
   await garantirArea(d.area_id);
   for (let i = 0; i < 3; i++) {
     const { data, error } = await supabase().from('processos')
-      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '', link_publico_ativo: false })
+      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '', link_publico_ativo: false, icone: d.icone ?? null })
       .select(CAMPOS).single();
     if (!error) return data;
     if (error.code !== '23505') throw error;
@@ -130,6 +132,19 @@ export async function atualizar(id: string, dados: { nome?: string; area_id?: st
   // A descrição mudou: o índice de referências acompanha (decisão 35).
   if (dados.descricao !== undefined) await referencias.indexar({ tipo: 'processo', id }, [{ campo: 'descricao', valor: dados.descricao }]);
   return data;
+}
+
+/**
+ * Ícone do processo (decisão 133): a pessoa escolhe um ícone do Lucide e, se quiser, a cor. O navegador manda só o nome;
+ * o desenho guardado é o do catálogo do servidor. Com `nome` nulo, o processo volta ao quadradinho colorido. É só
+ * aparência: não mexe na data de atualização nem conta como alteração a publicar.
+ */
+export async function definirIcone(id: string, nome: string | null, cor: number | null) {
+  const icone = nome ? montarIcone(nome, cor) : null;
+  const { data, error } = await supabase().from('processos').update({ icone }).eq('tenant_id', TENANT_PADRAO).eq('id', id).select('id').maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ErroApi(404, 'Processo não encontrado');
+  return { icone };
 }
 
 /**

@@ -1,6 +1,7 @@
 import 'server-only';
 import { garantir as garantirArea } from './areas';
 import * as fluxogramas from './fluxogramas';
+import type { IconeDoProcesso } from '@/lib/icones';
 import * as pops from './pops';
 import * as processos from './processos';
 import * as referencias from './referencias';
@@ -14,7 +15,7 @@ export async function copiarProcesso(id: string, p: { area_id: string; nome?: st
   const area = await garantirArea(p.area_id);
   const nome = p.nome?.trim() || (origem.area_id === area.id ? `${origem.nome} (cópia)` : origem.nome);
   const descricao = (origem.descricao as string | null) ?? '';
-  const novo = await processos.criar({ nome, area_id: area.id, descricao });
+  const novo = await processos.criar({ nome, area_id: area.id, descricao, icone: (origem as { icone?: IconeDoProcesso | null }).icone ?? null }); // a cópia leva o ícone
   if (descricao) await referencias.indexar({ tipo: 'processo', id: novo.id as string }, [{ campo: 'descricao', valor: descricao }]);
 
   let fluxograma = false;

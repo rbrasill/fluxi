@@ -1088,6 +1088,20 @@ Pedido do Rafael: melhorar o layout da janela e dos cartões. Antes, quatro cart
 - **Cartões:** todos com a mesma largura e altura, o ícone em destaque em cima (quadrado de 40px em índigo claro), o título numa linha só (15px) e a descrição embaixo (13px, até quatro linhas). Ao passar o mouse, a borda e o fundo ficam em índigo claro, com uma sombra leve.
 - **Telas menores:** até 900px, as quatro opções ficam em duas colunas; até 640px, viram uma lista, com o ícone ao lado do título e da descrição.
 
+## 133. Ícone do processo, escolhido entre todos os ícones do Lucide
+
+Ideia do Rafael: trocar o quadradinho colorido da pasta por um ícone de verdade, escolhido pela pessoa. Validado num exemplo em HTML; depois dele, o Rafael pediu a biblioteca inteira (a plataforma vai atender empresas de vários segmentos), os nomes em português e a troca dentro do processo, ao lado do nome.
+
+- **Biblioteca:** [Lucide](https://lucide.dev), pacote `lucide-static` na versão 1.80.0, fixada: 2.119 ícones, no mesmo traço dos ícones que o INCFlow já usa. Licença ISC (uso comercial liberado; o aviso de licença está em `docs/licencas-de-terceiros.md`). Os desenhos vêm do pacote instalado: nenhum arquivo de ícone é baixado ou guardado à mão no projeto.
+- **Em português:** `lib/icones/pt.json` tem, para cada um dos 2.119 ícones, o nome em português, as palavras de busca e uma de 20 categorias (Pessoas e RH, Saúde e segurança, Financeiro, Documentos e arquivos, Jurídico e proteção, Compras e estoque, Logística e transporte, Obras e manutenção, Imóveis e lugares, Comercial e atendimento, Comunicação, Tecnologia, Gestão e indicadores, Tempo e agenda, Alimentação, Educação e ciência, Lazer, esporte e viagem, Natureza e clima, Design, texto e mídia, Setas, formas e símbolos). A tradução foi feita em lotes e conferida (sem nome repetido, toda categoria válida). Ao atualizar a versão do Lucide, um ícone novo sem tradução aparece com o nome em inglês até ganhar a dele; o teste de servidor acusa o que faltar.
+- **Onde troca:** na página do processo, o quadro do ícone fica ao lado do nome, com um lápis; clicar abre o seletor. Processo arquivado não troca.
+- **O seletor:** prévia no topo, sugestões pelo nome do processo ("Plano Odontológico" sugere a escova de dentes), busca em português sem diferença de acento (o nome em inglês também serve), as 20 categorias, a lista (120 por vez, com "Mostrar mais"), as 8 cores das pastas e "Sem ícone", que volta ao quadradinho. As sugestões são só opções: nada é aplicado sozinho.
+- **Onde aparece:** ao lado do nome do processo, na pasta e na lista da área e em "Todos os processos". Quem não tem ícone continua com o quadradinho colorido de sempre.
+- **Cores:** as mesmas 8 cores pastel das pastas; o ícone usa um tom escuro de cada uma (contraste de 4,2:1 ou mais sobre o fundo). Sem escolha, a cor continua saindo do id do processo.
+- **Como carrega:** o catálogo completo (109 KB compactado) só é pedido quando alguém abre o seletor (`GET /api/icones`, com login, guardado um dia pelo navegador). Para mostrar o ícone nas pastas não se carrega nada: o processo guarda o nome do ícone, a cor e o desenho (`processos.icone`, migração 0030).
+- **Segurança:** o navegador manda só o nome do ícone e a cor (`PUT /api/processos/[id]/icone`); o desenho guardado é o do catálogo do servidor, e nome fora do Lucide é recusado. Na tela, o desenho é montado elemento por elemento, só com as marcas e os atributos que um ícone do Lucide usa.
+- **Não muda:** trocar o ícone não altera a data de atualização do processo nem conta como alteração a publicar; a cópia de processo leva o ícone.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

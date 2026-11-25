@@ -1,12 +1,13 @@
 // Cliente da API de áreas (primeiro nível: Área → Processos → itens do processo).
 import { ErroCliente } from './fluxogramas';
+import type { IconeDoProcesso } from './icones';
 
 export type AreaResumo = {
   id: string; nome: string; descricao: string; organizacao_id: string; organizacao: { id: string; nome: string } | null;
   criado_em: string; atualizado_em: string; total_processos: number;
 };
 export type Area = Omit<AreaResumo, 'total_processos'> & {
-  processos: { id: string; codigo: string; nome: string; descricao: string; arquivado_em: string | null; atualizado_em: string; link_publico_ativo: boolean; total: { fluxogramas: number; gravacoes: number; pops: number } }[];
+  processos: { id: string; codigo: string; nome: string; descricao: string; icone: IconeDoProcesso | null; arquivado_em: string | null; atualizado_em: string; link_publico_ativo: boolean; total: { fluxogramas: number; gravacoes: number; pops: number } }[];
 };
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {

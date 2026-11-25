@@ -1,8 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Icone } from '@/components/Icone';
-import { PastaProcesso, corDaPasta, type ProcessoDaPasta } from '@/components/PastaProcesso';
+import { QuadroDoProcesso } from '@/components/IconeDoProcesso';
+import { PastaProcesso, type ProcessoDaPasta } from '@/components/PastaProcesso';
 
 // Os processos da área com busca, ordem e a opção de ver em pastas ou em lista (decisão 127): os mesmos controles
 // da lista de áreas (decisão 82), para as duas telas funcionarem igual. A busca e a ordem valem para a aba aberta
@@ -71,12 +72,11 @@ export function ListaDeProcessos({ processos, titulo, entre, vazio, aoRestaurar 
         : (
           <ul className="cartao processos-lista">
             {visiveis.map((p) => {
-              const [fundo, miolo] = corDaPasta(p.id);
               const online = !!p.link_publico_ativo;
               return (
                 <li key={p.id} className={p.arquivado_em ? 'arquivada' : undefined}>
                   <Link href={`/app/processos/${p.id}`}>
-                    <span className="pasta-cor" style={{ background: fundo, '--miolo': miolo } as CSSProperties} aria-hidden="true" />
+                    <QuadroDoProcesso id={p.id} icone={p.icone} />
                     <strong>{p.nome}</strong>
                     <span className="processos-lista-meta">
                       <span className="processos-lista-data">{p.arquivado_em ? `Arquivado em ${data(p.arquivado_em)}` : `Atualizado em ${data(p.atualizado_em)}`}</span>
