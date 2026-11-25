@@ -178,14 +178,28 @@ export async function tituloPublico(de: string | null) {
   return { titulo: rotuloDoc({ tipo: 'processo', nome: data.nome as string, codigo: data.codigo as string }), url: `/pr/${origem.link}` };
 }
 
+/**
+ * O fluxograma só fica público por uma publicação feita pela pessoa (decisão 128): a página do processo no ar ou um
+ * POP do processo publicado e no ar (a página e o PDF dele mostram o fluxograma). Sem nenhuma das duas, o link
+ * `/f/<link>` e o SVG respondem "não disponível".
+ */
+async function fluxogramaExposto(processo: { id: string; arquivado_em: string | null; link_publico_ativo?: boolean } | null) {
+  if (!processo || processo.arquivado_em) return false;
+  if (processo.link_publico_ativo) return true;
+  const { count, error } = await supabase().from('pops').select('id', { count: 'exact', head: true }).eq('tenant_id', TENANT_PADRAO)
+    .eq('processo_id', processo.id).eq('status', 'publicado').eq('link_publico_ativo', true).is('arquivado_em', null);
+  if (error) throw error;
+  return (count ?? 0) > 0;
+}
+
 /** A página pública "só o fluxograma" (o link do "Abrir diagrama" no PDF). */
 export async function fluxogramaPublico(link: string) {
   const { data, error } = await supabase().from('fluxogramas')
-    .select('nome, codigo, tem_svg, atualizado_em, processo:processos(nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
+    .select('nome, codigo, tem_svg, atualizado_em, processo:processos(id, nome, arquivado_em, link_publico_ativo, area:areas(nome, organizacao:organizacoes(nome)))')
     .eq('link_publico', link).maybeSingle();
   if (error) throw error;
   const processo = data?.processo as unknown as Onde;
-  if (!data || !processo || processo.arquivado_em) throw new ErroApi(404, 'Este fluxograma não está disponível.');
+  if (!data || !processo || !(await fluxogramaExposto(processo))) throw new ErroApi(404, 'Este fluxograma não está disponível.');
   return {
     nome: data.nome as string, codigo: data.codigo as string, tem_svg: !!data.tem_svg, atualizado_em: data.atualizado_em as string,
     onde: { organizacao: processo.area?.organizacao?.nome ?? null, area: processo.area?.nome ?? null, processo: processo.nome },
@@ -194,10 +208,10 @@ export async function fluxogramaPublico(link: string) {
 
 /** O SVG do fluxograma (servido como imagem, com política que impede qualquer código de rodar). */
 export async function svgPublico(link: string) {
-  const { data, error } = await supabase().from('fluxogramas').select('svg, processo:processos(arquivado_em)').eq('link_publico', link).maybeSingle();
+  const { data, error } = await supabase().from('fluxogramas').select('svg, processo:processos(id, arquivado_em, link_publico_ativo)').eq('link_publico', link).maybeSingle();
   if (error) throw error;
-  const processo = data?.processo as unknown as { arquivado_em: string | null } | null;
-  if (!data?.svg || !processo || processo.arquivado_em) throw new ErroApi(404, 'Fluxograma não disponível.');
+  const processo = data?.processo as unknown as { id: string; arquivado_em: string | null; link_publico_ativo: boolean } | null;
+  if (!data?.svg || !(await fluxogramaExposto(processo))) throw new ErroApi(404, 'Fluxograma não disponível.');
   return data.svg as string;
 }
 

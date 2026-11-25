@@ -35,11 +35,14 @@ export async function tocar(id: string | null | undefined) {
   if (id) await supabase().from('processos').update({ atualizado_em: new Date().toISOString() }).eq('tenant_id', TENANT_PADRAO).eq('id', id);
 }
 
+// O processo nasce fora do ar (decisão 128): só a pessoa coloca a página pública no ar, pela chave da página do
+// processo. Vale também para a cópia, que é criada por aqui. A coluna tem o mesmo padrão no banco (migração 0027),
+// mas o valor vai explícito para não depender dela.
 export async function criar(d: { nome: string; area_id: string; descricao?: string }) {
   await garantirArea(d.area_id);
   for (let i = 0; i < 3; i++) {
     const { data, error } = await supabase().from('processos')
-      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '' })
+      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '', link_publico_ativo: false })
       .select(CAMPOS).single();
     if (!error) return data;
     if (error.code !== '23505') throw error;

@@ -1044,6 +1044,15 @@ A página da área ganhou os mesmos controles da lista de áreas (decisão 82): 
 - **Pastas ou lista:** as pastas continuam como eram (decisão 61). Na lista, cada linha tem a cor da pasta, o nome, a data da última atualização e o selo Online ou Offline; a linha inteira abre o processo. No arquivado, aparece a data de arquivamento e o botão Restaurar, fora do link. No celular, a data e o selo descem para baixo do nome.
 - **Abas de arquivo:** "Ativos" e "Arquivados" ficam entre a barra e a lista; a busca, a ordem e a vista valem para a aba aberta e continuam ao trocar de aba. Como nas áreas, a escolha de pastas ou lista não fica guardada.
 
+## 128. A publicação nunca é automática
+
+Regra do Rafael: "a publicação de processo e POP não pode nunca ser automática; sempre tem que ser o usuário publicar". Verificado o que ficava público sem ação de ninguém:
+
+- **Processo:** a página pública (`/pr/<link>`) nascia **no ar**: a coluna `processos.link_publico_ativo` tinha padrão `true` (decisão 35, "ligada por padrão"), e a cópia de processo também nascia no ar. Em 25/11/2026, 37 dos 42 processos ativos estavam no ar. **Agora o processo novo e a cópia nascem fora do ar**; só a pessoa liga a chave "Página pública" na página do processo. O código grava `false` ao criar (não depende do banco) e a migração 0027 muda o padrão da coluna para `false`. Os processos que já existem não foram alterados.
+- **Fluxograma:** a página `/f/<link>` e o SVG público abriam para qualquer processo não arquivado, mesmo sem nada publicado. **Agora só abrem com a página do processo no ar ou com um POP do processo publicado e no ar** (a página e o PDF desse POP mostram o fluxograma e levam a esse link); senão, "Este fluxograma não está disponível".
+- **POP:** já seguia a regra. Só fica público quando a pessoa clica em "Publicar", e a página mostra a versão guardada nesse clique (decisão 32): editar depois não muda o que está publicado até publicar de novo. A cópia de POP nasce como rascunho.
+- **Em aberto:** com a página do processo no ar, o que se muda na descrição e no fluxograma aparece na hora na página pública ("O que você muda aqui aparece na hora"), sem um "Publicar" como o do POP.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
