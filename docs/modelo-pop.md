@@ -16,7 +16,7 @@ Modelo padrão de Procedimento Operacional Padrão da plataforma.
 | Envolvidos | Pares área ↔ cargo | IA |
 | Recursos do Processo | Fluxograma + link "Abrir diagrama" | Sistema |
 | Procedimentos | Passos numerados do início ao fim: print da tela (se houver) e, logo abaixo, o texto numa caixa de destaque "Passo N:". O nome do grupo de passos vira um subtítulo | IA + usuário |
-| Históricos de Revisões | Data, elaborado por (quem criou o POP), revisão | Sistema + usuário |
+| Históricos de Revisões | Data, elaborado por (quem publicou a versão), revisão (versão X.Y.Z, tamanho da alteração e o que mudou) | Sistema (decisão 138) |
 
 ## Schema de extração (IA)
 
@@ -47,6 +47,7 @@ const PopSchema = z.object({
 - **Procedimentos:** os passos são numerados do início ao fim do POP ("Passo 1:", "Passo 2:"…), com o print (se houver) e o texto numa caixa de destaque logo abaixo (fundo creme #FFF4E0, barra laranja #F28C28 à esquerda, mesma largura do print). Passo sem print mostra só a caixa; passo sem texto, só o print. O nome do grupo de passos (quando preenchido) aparece como subtítulo.
 - **Elaborado por:** campo `pops.autor` (migração `0010_pop_autor.sql`), preenchido sozinho com o nome de quem está logado e cria (ou copia) o POP; não se edita (decisão 137). As linhas do histórico sem nome usam esse valor.
 - **Área:** a do cabeçalho do documento é sempre o nome atual da área do processo do POP; não se edita (decisão 137).
+- **Versão e histórico (decisão 138):** a versão é X.Y.Z e vem da publicação (`lib/pop/versao.ts`): a primeira é 1.0.0; nas seguintes, quem publica escolhe correção (Z), ajuste (Y) ou mudança no procedimento (X) e escreve o que mudou (10 a 300 caracteres). Cada versão fica em `pop_versoes`, com a cópia do documento e dos prints. A tabela "Históricos de Revisões" tem uma linha por versão. O PDF baixado do editor sai como "Rascunho" quando o POP nunca foi publicado ou tem alterações não publicadas.
 - **Dados:** tabela `pops` (migração `0003_pops.sql`): código do processo (o mesmo do fluxograma, se vinculado), identificação, versão, autor, `conteudo` (área, executor, objetivo, envolvidos, procedimentos com passos) e `historico`.
 - **Criar a partir de uma gravação:** as telas marcadas com "Incluir no POP" viram os passos de um procedimento "Passo a passo no sistema", com a instrução digitada (ou a sugerida pela IA, quando houver).
 

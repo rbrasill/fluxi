@@ -1551,6 +1551,57 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
   .ico-cores { display: grid; grid-template-columns: repeat(6, 1fr); justify-items: center; gap: 10px 6px; }
   .ico-cor { width: 32px; height: 32px; }
 }
+/* Versões do POP (decisão 138): o selo da versão, a aba Versões, a janela de publicar e a leitura de uma versão. */
+.chip-versao { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--neutro-borda); background: var(--neutro-superficie); color: var(--neutro-texto-2); font-family: var(--font-mono, ui-monospace, monospace); font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.chip-versao:hover { border-color: var(--indigo-300); color: var(--indigo-700); }
+.rev-lista { display: flex; flex-direction: column; }
+.rev-cab, .rev-linha { display: grid; grid-template-columns: 96px 96px 170px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.rev-cab { padding: 0 4px 8px; border-bottom: 1px solid var(--neutro-borda); }
+.rev-cab span { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--neutro-rotulo); }
+.rev-linha { padding: 12px 4px; border-bottom: 1px solid var(--neutro-borda); font-size: 14px; color: var(--neutro-texto); }
+.rev-linha:last-child { border-bottom: 0; }
+.rev-versao { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.rev-versao b { font-size: 14px; }
+.rev-atual { font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--verde-100); color: var(--verde-700); }
+.rev-data, .rev-quem { color: var(--neutro-texto-2); }
+.rev-oque { line-height: 1.5; overflow-wrap: anywhere; }
+.rev-tipo { display: inline-flex; align-items: center; height: 22px; margin-right: 8px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; vertical-align: 1px; }
+.rev-correcao, .rev-primeira { background: #EEF0F3; color: #4B5563; }
+.rev-ajuste { background: var(--indigo-100); color: var(--indigo-700); }
+.rev-mudanca { background: #FFEDD5; color: #9A3412; }
+.rev-acoes { display: flex; align-items: center; gap: 2px; }
+.rev-acoes .btn { height: 34px; padding: 0 10px; font-size: 13px; }
+.rev-acoes .btn-icon { width: 34px; padding: 0; justify-content: center; }
+.versao-dialogo { gap: 20px; }
+.versao-tipos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.versao-tipo { display: flex; flex-direction: column; gap: 6px; padding: 14px; border: 1px solid var(--line-strong); border-radius: 15px; background: var(--neutro-superficie); color: var(--neutro-texto); font: inherit; text-align: left; cursor: pointer; transition: border-color .12s, background .12s; }
+.versao-tipo:hover:not(:disabled) { border-color: var(--indigo-300); background: var(--indigo-50); }
+.versao-tipo[aria-checked='true'] { border: 2px solid var(--indigo-500); padding: 13px; background: var(--indigo-50); }
+.versao-tipo-topo { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 6px 8px; }
+.versao-tipo-topo strong { font-size: 15px; }
+.versao-radio { margin-top: 2px; width: 16px; height: 16px; border-radius: 999px; border: 1.5px solid var(--line-strong); background: #fff; }
+.versao-tipo[aria-checked='true'] .versao-radio { border: 5px solid var(--indigo-500); }
+.versao-tipo-versao { grid-column: 1 / -1; font-size: 12.5px; font-weight: 700; color: var(--indigo-700); }
+.versao-tipo-texto { font-size: 13.5px; font-weight: 600; line-height: 1.4; }
+.versao-tipo-exemplo { font-size: 13px; line-height: 1.45; color: var(--neutro-texto-2); }
+.versao-dialogo .field textarea { width: 100%; }
+.versao-dica { display: flex; justify-content: space-between; gap: 12px; font-weight: 400; font-size: 12.5px; color: var(--neutro-rotulo); }
+.versao-conta { flex: none; font-variant-numeric: tabular-nums; }
+.versao-rodape { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--neutro-borda); }
+.versao-rodape .dialog-actions { margin-left: auto; }
+.versao-resumo { margin: 0; font-size: 13.5px; color: var(--neutro-texto-2); }
+.versao-resumo b { color: var(--neutro-texto); }
+.versao-aviso { align-items: flex-start; }
+.versao-aviso > span:first-of-type { flex: 1 1 320px; min-width: 0; line-height: 1.5; }
+.versao-aviso.atual { background: var(--verde-50); border-color: var(--verde-300); color: var(--verde-900); }
+.versao-aviso > svg { flex: none; margin-top: 2px; }
+.versao-corpo { padding: 8px 0 48px; }
+@media (max-width: 760px) {
+  .versao-tipos { grid-template-columns: 1fr; }
+  .rev-cab { display: none; }
+  .rev-linha { grid-template-columns: auto 1fr auto; grid-template-areas: 'versao data acoes' 'oque oque oque' 'quem quem quem'; gap: 6px 12px; }
+  .rev-versao { grid-area: versao; flex-direction: row; align-items: center; } .rev-data { grid-area: data; } .rev-acoes { grid-area: acoes; } .rev-oque { grid-area: oque; } .rev-quem { grid-area: quem; font-size: 13px; }
+}
 /* Processos da área em lista (decisão 127): como a lista de áreas, com a cor da pasta, a data e o selo da página
    pública. No arquivado, o botão de restaurar fica fora do link. No celular, a data e o selo descem para baixo do nome. */
 .processos-lista { list-style: none; margin: 0; padding: 0; gap: 0; overflow: hidden; }

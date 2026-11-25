@@ -5,6 +5,7 @@ import type { DadosPop } from '@/lib/pop/documento';
 import { gerarPdf } from '@/lib/pop/pdf';
 import type { Anotacoes } from '@/lib/marcacao/anotacoes';
 import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posicao } from '@/lib/pop/schema';
+import { historicoDasVersoes } from '@/lib/pop/versao';
 import { ErroApi } from './http';
 import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { excluir as excluirGravacao } from './gravacoes';
@@ -12,6 +13,7 @@ import * as referencias from './referencias';
 import { areaDoDocumento, garantir as garantirProcesso, tocar } from './processos';
 import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
+import * as versoes from './versoes';
 
 const dono = (id: string): telas.Dono => ({ pop_id: id });
 const CAMPOS = 'id, nome, codigo, identificacao, versao, status, autor, posicao, processo_id, arquivado_em, link_publico, link_publico_ativo, publicado_em, criado_em, atualizado_em';
@@ -32,7 +34,7 @@ export async function listar(arquivados = false) {
 }
 
 export async function buscar(id: string) {
-  const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}, conteudo, historico, publicacao_hash:publicacao->>versao_hash`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
+  const { data, error } = await supabase().from('pops').select(`${CAMPOS}, ${ONDE}, conteudo, historico, publicacao_hash:publicacao->>versao_hash, publicacao_v:publicacao->>hash_v, publicacao_versao:publicacao->>versao, publicacao_historico:publicacao->historico`).eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) throw new ErroApi(404, 'POP não encontrado');
   const pop = data as unknown as {
@@ -41,6 +43,8 @@ export async function buscar(id: string) {
     processo: { id: string; nome: string; arquivado_em: string | null; area?: { nome?: string } | null } | null;
     conteudo: ConteudoPop; historico: Historico[];
     publicacao_hash: string | null; // da versão publicada, para saber se há alterações não publicadas
+    // Só para comparar com as versões publicadas antes do versionamento (ver `temAlteracoes`).
+    publicacao_v: string | null; publicacao_versao: string | null; publicacao_historico: Historico[] | null;
   };
   // A "Área" do documento não se edita mais (decisão 137): é sempre o nome atual da área do processo, no editor,
   // no PDF e na versão publicada. Sem processo, fica a que estava guardada.
@@ -83,8 +87,25 @@ export const pastaPublicacao = (id: string) => `tenants/${TENANT_PADRAO}/publica
  * Impressão digital do que o POP mostra (com a imagem final de cada passo, então marcar uma tela
  * também conta). Se for diferente da versão publicada, há alterações não publicadas.
  */
-export function hashDaVersao(p: { nome: string; identificacao: string; versao: string; autor: string; historico: Historico[] }, conteudoFinal: ConteudoPop) {
-  return createHash('sha256').update(JSON.stringify([p.nome, p.identificacao, p.versao, p.autor, p.historico, conteudoFinal])).digest('hex');
+export function hashDaVersao(p: { nome: string; identificacao: string }, conteudoFinal: ConteudoPop) {
+  return createHash('sha256').update(JSON.stringify(['v2', p.nome, p.identificacao, conteudoFinal])).digest('hex');
+}
+/** Marca das publicações feitas com `hashDaVersao` (decisão 138). As de antes não têm a marca. */
+export const VERSAO_DO_HASH = 2;
+// Antes do versionamento (decisão 138), a impressão digital incluía a versão e o histórico digitados à mão e o
+// "Elaborado por". Para as publicações daquela época, a conta é refeita do mesmo jeito, com a versão e o histórico que
+// ficaram guardados nelas (hoje ninguém os edita mais).
+const hashAntigo = (p: { nome: string; identificacao: string; versao: string; autor: string; historico: Historico[] }, conteudoFinal: ConteudoPop) =>
+  createHash('sha256').update(JSON.stringify([p.nome, p.identificacao, p.versao, p.autor, p.historico, conteudoFinal])).digest('hex');
+
+type ComPublicacao = { nome: string; identificacao: string; autor: string; status: string; publicacao_hash: string | null; publicacao_v: string | null; publicacao_versao: string | null; publicacao_historico: Historico[] | null };
+/** Publicado, mas o que está no editor não é o que foi publicado por último. */
+export function temAlteracoes(pop: ComPublicacao, conteudoFinal: ConteudoPop) {
+  if (pop.status !== 'publicado') return false;
+  const atual = pop.publicacao_v === String(VERSAO_DO_HASH)
+    ? hashDaVersao(pop, conteudoFinal)
+    : hashAntigo({ nome: pop.nome, identificacao: pop.identificacao, versao: pop.publicacao_versao ?? '', autor: pop.autor, historico: pop.publicacao_historico ?? [] }, conteudoFinal);
+  return pop.publicacao_hash !== atual;
 }
 
 const telasUsadas = (c: ConteudoPop) => new Set(c.procedimentos.flatMap((p) => p.passos.map((s) => s.marcacao_id)).filter(Boolean) as string[]);
@@ -129,9 +150,10 @@ export async function telasDasGravacoes(id: string) {
  */
 export async function obter(id: string) {
   const pop = await buscar(id);
-  const [marcs, gravacoes, refs, referenciado_em] = await Promise.all([
+  const [marcs, gravacoes, lista, refs, referenciado_em] = await Promise.all([
     marcacoesDoPop(pop.conteudo),
     gravacoesDoPop(id, pop.conteudo),
+    versoes.listar(id),
     referencias.resolverDosTextos(referencias.textosDoPop(pop.conteudo).map((t) => t.valor)),
     referencias.referenciadoEm({ tipo: 'pop', id }),
   ]);
@@ -147,11 +169,12 @@ export async function obter(id: string) {
     altura: m.altura,
     anotacoes: m.anotacoes,
   }]));
-  const { publicacao_hash, ...resto } = pop;
+  const { publicacao_hash: _h, publicacao_v: _v, publicacao_versao: _pv, publicacao_historico: _ph, historico: _hist, ...resto } = pop;
   // Publicado, mas o que está no editor não é o que está na página pública.
-  const alteracoes_nao_publicadas = pop.status === 'publicado' && publicacao_hash !== hashDaVersao(pop, comImagensFinais(pop.conteudo, marcs));
+  const alteracoes_nao_publicadas = temAlteracoes(pop, comImagensFinais(pop.conteudo, marcs));
   // O fluxograma é do processo (decisão 31) e saiu do editor do POP (decisão 137): fica só na página do processo.
-  return { ...resto, imagens, telas: telasDoPop, gravacoes, alteracoes_nao_publicadas, referencias: refs, referenciado_em };
+  // As versões publicadas, da mais nova para a mais antiga (decisão 138): a aba Versões e a janela de publicar.
+  return { ...resto, imagens, telas: telasDoPop, gravacoes, versoes: lista, alteracoes_nao_publicadas, referencias: refs, referenciado_em };
 }
 
 /** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
@@ -175,7 +198,8 @@ export async function criar(p: { nome?: string; processo_id?: string }, autor = 
     codigo,
     conteudo,
     autor,
-    historico: [{ data: hoje(), elaborado_por: autor, revisao: 'Rev. 01' }],
+    versao: '', // a versão vem da publicação (decisão 138)
+    historico: [],
     processo_id: processoId,
   }).select('id').single();
   if (error) throw error;
@@ -183,7 +207,7 @@ export async function criar(p: { nome?: string; processo_id?: string }, autor = 
   return data;
 }
 
-export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; versao: string; conteudo: ConteudoPop; historico: Historico[]; posicao: Posicao | null; status: string; processo_id: string | null }>) {
+export async function atualizar(id: string, dados: Partial<{ nome: string; identificacao: string; conteudo: ConteudoPop; posicao: Posicao | null; status: string; processo_id: string | null }>) {
   // Mudou de processo: o código do processo no documento acompanha.
   const codigo = dados.processo_id ? { codigo: (await garantirProcesso(dados.processo_id)).codigo } : {};
   const { data, error } = await supabase().from('pops').update({ ...dados, ...codigo, atualizado_em: new Date().toISOString() })
@@ -264,8 +288,8 @@ export async function copiar(id: string, p: { processo_id: string; nome?: string
   const nome = p.nome?.trim() || (mesmo ? `${pop.nome} (cópia)` : pop.nome);
   const db = supabase();
   const { data: novo, error } = await db.from('pops').insert({
-    tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '1.0', autor: quemCopia || pop.autor, status: 'rascunho',
-    processo_id: destino.id, conteudo: conteudoVazio(), historico: [{ data: hoje(), elaborado_por: quemCopia || pop.autor || '', revisao: 'Rev. 01' }],
+    tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '', autor: quemCopia || pop.autor, status: 'rascunho',
+    processo_id: destino.id, conteudo: conteudoVazio(), historico: [],
   }).select('id').single();
   if (error) throw error;
   const novoId = novo.id as string;
@@ -400,11 +424,18 @@ export async function gerarDocumento(base: BaseDocumento, linkFluxograma: string
   return { arquivo: await gerarPdf(dados, imagens), nomeArquivo: `${nomeBase}.pdf` };
 }
 
-/** PDF do POP como está agora (o que a área está editando). */
+/**
+ * PDF do POP como está agora (o que a área está editando). Se é igual à última versão publicada, sai com o número
+ * dela; se nunca foi publicado ou tem alterações não publicadas, sai como "Rascunho", com uma linha no histórico
+ * dizendo isso (decisão 138).
+ */
 export async function pdf(id: string, origem: string) {
   const original = await buscar(id);
   const conteudo = comImagensFinais(original.conteudo, await marcacoesDoPop(original.conteudo));
-  const fluxo = original.processo_id ? await fluxogramaDoProcesso(original.processo_id) : null;
-  return gerarDocumento({ ...original, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
+  const [fluxo, lista] = await Promise.all([original.processo_id ? fluxogramaDoProcesso(original.processo_id) : null, versoes.listar(id)]);
+  const rascunho = !lista.length || temAlteracoes(original, conteudo);
+  const historico = historicoDasVersoes(lista);
+  if (rascunho) historico.push({ data: hoje(), elaborado_por: original.autor, revisao: lista.length ? `Rascunho: alterações ainda não publicadas (depois da ${lista[0].versao})` : 'Rascunho: ainda não publicado' });
+  return gerarDocumento({ ...original, versao: rascunho ? 'Rascunho' : lista[0].versao, historico, conteudo }, fluxo ? linkDoFluxograma(origem, fluxo.link_publico) : null, origem);
 }
 

@@ -3,12 +3,15 @@ import { ErroCliente } from './fluxogramas';
 import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 import type { Anotacoes } from './marcacao/anotacoes';
 import { enviarArquivo, type StatusGravacao, type TelaDaGravacao } from './gravacoes';
-import type { ConteudoPop, Historico, Posicao } from './pop/schema';
+import type { ConteudoPop, Posicao } from './pop/schema';
+import type { TipoDeAlteracao, TipoDeVersao, VersaoDoPop } from './pop/versao';
+import type { PopPublico } from './publico';
 
 export type OndePop = { id: string; nome: string; arquivado_em?: string | null; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
 export type StatusPop = 'rascunho' | 'publicado';
 export type PopResumo = {
-  id: string; nome: string; codigo: string; identificacao: string; versao: string; status: StatusPop; autor: string;
+  id: string; nome: string; codigo: string; identificacao: string; status: StatusPop; autor: string;
+  versao: string; // a versão publicada atual (X.Y.Z); vazia enquanto o POP não é publicado (decisão 138)
   posicao: Posicao | null; // onde a pessoa parou no editor
   processo: OndePop;
   processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
@@ -19,7 +22,9 @@ export type PopResumo = {
 export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & {
-  conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  conteudo: ConteudoPop; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  /** As versões publicadas, da mais nova para a mais antiga (decisão 138). */
+  versoes: VersaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
   alteracoes_nao_publicadas: boolean;
   /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
@@ -39,10 +44,18 @@ export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${a
 export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
 export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'conteudo' | 'historico' | 'posicao' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'conteudo' | 'posicao' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
-/** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
-export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
+/**
+ * Publica o POP como uma versão nova: a página pública passa a mostrar esta versão (decisões 32 e 138). A primeira
+ * publicação é a 1.0.0; nas seguintes vão o tamanho da alteração e o que mudou.
+ */
+export const publicarPop = (id: string, pedido: { tipo?: TipoDeAlteracao; o_que_mudou?: string } = {}) =>
+  api<{ publicado_em: string; link_publico: string; versao: string; versoes: VersaoDoPop[] }>(`/api/pops/${id}/publicar`, { method: 'POST', body: JSON.stringify(pedido) });
+/** Uma versão publicada do POP, como saiu naquele dia (só leitura), e o PDF dela. */
+export type VersaoPublicadaDoPop = PopPublico & { desta_versao: { tipo: TipoDeVersao; o_que_mudou: string; publicado_por: string; versao_atual: string; pop_nome: string } };
+export const obterVersaoDoPop = (id: string, versao: string) => api<VersaoPublicadaDoPop>(`/api/pops/${id}/versoes/${encodeURIComponent(versao)}`);
+export const urlPdfDaVersao = (id: string, versao: string) => `/api/pops/${id}/versoes/${encodeURIComponent(versao)}/pdf`;
 /** Volta para rascunho: a página pública deixa de mostrar o POP. */
 /** Liga (online) ou desliga (offline) a página pública do POP. */
 export const definirLinkPublico = (id: string, ativo: boolean) =>

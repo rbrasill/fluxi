@@ -82,7 +82,7 @@ function ProcessoPublicoPage() {
                       <span className="pop-icone"><Icone nome="pop" tamanho={20} /></span>
                       <span className="pub-pop-texto">
                         <strong>{o.identificacao ? `${o.identificacao} · ` : ''}{o.nome}</strong>
-                        <span>Versão {o.versao}{o.publicado_em ? ` · publicado em ${dataBr(o.publicado_em)}` : ''}</span>
+                        <span>{[o.versao && `Versão ${o.versao}`, o.publicado_em && `publicado em ${dataBr(o.publicado_em)}`].filter(Boolean).join(' · ')}</span>
                       </span>
                       <Icone nome="avancar" tamanho={18} />
                     </a>

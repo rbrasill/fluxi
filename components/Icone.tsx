@@ -85,6 +85,7 @@ const caminhos: Record<string, string> = {
   microfone: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
   conversa: 'M4 5h16v11h-9l-5 4v-4H4zM8 9h8M8 12h5',
   'alto-falante': 'M4 10v4h3l5 4V6l-5 4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10',
+  versoes: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2', // relógio com seta: histórico de versões (Lucide "history")
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {

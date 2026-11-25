@@ -14,8 +14,10 @@ import { PaginaPublica } from '@/components/pop/PaginaPublica';
 import { ReferenciasContext } from '@/components/pop/Referencia';
 import { ReferenciadoEm } from '@/components/publico/Referencias';
 import { PosicaoPasso } from '@/components/pop/PosicaoPasso';
+import { PublicarVersao, type PedidoDePublicacao } from '@/components/pop/PublicarVersao';
+import { VersoesDoPop } from '@/components/pop/VersoesDoPop';
 import { TextoRico } from '@/components/pop/TextoRico';
-import type { ConteudoPop, Historico, Passo, Posicao } from '@/lib/pop/schema';
+import type { ConteudoPop, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
 import { salvarMarcacaoDesenhada, type DonoTela } from '@/lib/gravacoes';
@@ -28,6 +30,7 @@ import type { ResultadoBusca } from '@/lib/referencias';
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
 type Status = 'salvo' | 'alterado' | 'salvando' | 'erro';
+type Aba = 'conteudo' | 'gravacoes' | 'versoes';
 
 const donoDe = (t: TelaDoPop): DonoTela => (t.pop_id ? { pop_id: t.pop_id } : { gravacao_id: t.gravacao_id! });
 // Gravação que ainda pode receber mais conteúdo (pausada ou não finalizada).
@@ -45,7 +48,9 @@ function EditorPop() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   // ?retomar=1 (links "Continuar"): vai direto para onde a pessoa parou.
-  const retomar = !!useSearchParams().get('retomar');
+  const parametros = useSearchParams();
+  const retomar = !!parametros.get('retomar');
+  const abaPedida = parametros.get('aba'); // quem chega de outra tela pedindo uma aba (a leitura de uma versão volta para "versoes")
   const [pop, setPop] = useState<Pop | null | undefined>(undefined);
   const [status, setStatus] = useState<Status>('salvo');
   const [processos, setProcessos] = useState<ProcessoResumo[] | null>(null);
@@ -57,9 +62,10 @@ function EditorPop() {
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [aba, setAba] = useState<'conteudo' | 'gravacoes'>('conteudo'); // abas do editor (decisões 87 e 137)
+  const [aba, setAba] = useState<Aba>('conteudo'); // abas do editor (decisões 87, 137 e 138)
   const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
   const [publicando, setPublicando] = useState(false);
+  const [janelaDePublicar, setJanelaDePublicar] = useState(false); // a janela que pede o tamanho da alteração e o que mudou (decisão 138)
   const [mudouDesdePublicar, setMudouDesdePublicar] = useState(false); // editado nesta sessão depois de publicar
   const [copiado, setCopiado] = useState(false);
   const [alterandoLink, setAlterandoLink] = useState(false);
@@ -105,18 +111,28 @@ function EditorPop() {
     return () => { window.removeEventListener('pagehide', aoSair); salvarPosicao(true); };
   }, [salvarPosicao]);
 
-  const irParaAba = useCallback((a: 'conteudo' | 'gravacoes') => {
+  const irParaAba = useCallback((a: Aba) => {
     setAba(a);
-    try { history.replaceState(null, '', a === 'conteudo' ? location.pathname + location.search : '#gravacoes'); } catch { /* sem histórico: a aba muda só na tela */ }
+    // A aba fica no endereço (#gravacoes, #versoes), para recarregar na mesma; o "?aba=" de quem chegou de outra tela sai.
+    try {
+      const busca = new URLSearchParams(location.search); busca.delete('aba');
+      history.replaceState(null, '', `${location.pathname}${busca.size ? `?${busca}` : ''}${a === 'conteudo' ? '' : `#${a}`}`);
+    } catch { /* sem histórico: a aba muda só na tela */ }
   }, []);
-  // "#recursos" é o endereço antigo da aba (antes da decisão 137).
-  useEffect(() => { if (location.hash === '#gravacoes' || location.hash === '#recursos') setAba('gravacoes'); }, []);
+  // "#recursos" é o endereço antigo da aba Gravações (antes da decisão 137).
+  useEffect(() => {
+    if (location.hash === '#gravacoes' || location.hash === '#recursos') setAba('gravacoes');
+    if (location.hash === '#versoes') setAba('versoes');
+  }, []);
+  useEffect(() => { if (abaPedida === 'versoes' || abaPedida === 'gravacoes') irParaAba(abaPedida); }, [abaPedida, irParaAba]);
 
   const irParaPosicao = useCallback((p: Posicao) => {
-    const el = document.getElementById(`pos-${p.chave}`);
+    // O histórico de revisões virou a aba Versões (decisão 138): quem tinha parado nele vai para ela.
+    const chave = p.chave === 'historico' ? 'versoes' : p.chave;
+    const el = document.getElementById(`pos-${chave}`);
     if (!el) return;
-    // As gravações ficam na aba Gravações; todo o resto, na aba Conteúdo. A aba certa vem para a frente antes de rolar.
-    const destino = p.chave === 'gravacoes' ? 'gravacoes' : 'conteudo';
+    // As gravações e as versões têm aba própria; todo o resto fica na aba Conteúdo. A aba certa vem para a frente antes de rolar.
+    const destino: Aba = chave === 'gravacoes' || chave === 'versoes' ? chave : 'conteudo';
     setAba(destino);
     if (el.closest('[hidden]')) { setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60); }
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -200,7 +216,6 @@ function EditorPop() {
       setTimeout(() => setDestaque((d) => (d === `passo-${i}-${destino}` ? null : d)), 3000);
     }, 50);
   };
-  const setHist = (h: Historico[]) => alterar({ historico: h });
 
   // O POP só sai em PDF (decisão 79). Salva o que estiver pendente antes, para o PDF ter a última versão.
   async function baixarPdf() {
@@ -293,16 +308,22 @@ function EditorPop() {
     imagemParaPng(f).then((p) => anexarAoPasso(i, k, p)).catch(() => avisar('Não foi possível colar a imagem.', 'Copie o print de novo ou use “Anexar print”.'));
   }
 
-  // Publicar guarda a versão atual: a página pública mostra só ela até publicar de novo (decisão 32).
-  async function publicar() {
+  // Publicar guarda a versão atual: a página pública mostra só ela até publicar de novo (decisão 32). Cada publicação
+  // é uma versão (decisão 138): antes de publicar, a janela mostra o número que vai sair e, a partir da segunda,
+  // pede o tamanho da alteração e o que mudou.
+  async function abrirPublicar() {
     if (timer.current) clearTimeout(timer.current);
     await enviar();
     if (Object.keys(pendente.current).length) return avisar('Não foi possível salvar as alterações.', 'Tente de novo antes de publicar.');
+    setJanelaDePublicar(true);
+  }
+  async function publicar(pedido: PedidoDePublicacao) {
     setPublicando(true);
     try {
-      const r = await publicarPop(id);
-      setPop((p) => p && { ...p, status: 'publicado', publicado_em: r.publicado_em, alteracoes_nao_publicadas: false });
+      const r = await publicarPop(id, pedido);
+      setPop((p) => p && { ...p, status: 'publicado', publicado_em: r.publicado_em, versao: r.versao, versoes: r.versoes, alteracoes_nao_publicadas: false });
       setMudouDesdePublicar(false);
+      setJanelaDePublicar(false);
     } catch (e) {
       void avisar('Não foi possível publicar o POP.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
     } finally {
@@ -384,6 +405,7 @@ function EditorPop() {
   const arquivado = popArquivado(pop);
   const publicado = pop.status === 'publicado';
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
+  const versaoAtual = pop.versoes[0]?.versao ?? null; // a versão publicada hoje; nula: nunca publicado com versão
   // "Nesta página" (decisão 80): o índice das seções, com a marca de preenchido.
   const totalPassos = c.procedimentos.reduce((n, p) => n + p.passos.length, 0);
   const passosEscritos = c.procedimentos.reduce((n, p) => n + p.passos.filter((x) => textoPuro(x.texto) || x.imagem_caminho).length, 0);
@@ -392,7 +414,6 @@ function EditorPop() {
     { alvo: 'pos-objetivo', nome: 'Objetivo', feito: !!textoPuro(c.objetivo) },
     { alvo: 'pos-envolvidos', nome: 'Envolvidos', feito: c.envolvidos.some((e) => e.area.trim() || e.cargo.trim()), conta: c.envolvidos.length ? String(c.envolvidos.length) : undefined },
     { alvo: 'pos-procedimentos', nome: 'Procedimentos', feito: passosEscritos > 0, conta: `${c.procedimentos.length} ${c.procedimentos.length === 1 ? 'etapa' : 'etapas'}` },
-    { alvo: 'pos-historico', nome: 'Histórico de revisões', feito: pop.historico.length > 0, conta: pop.historico.length ? String(pop.historico.length) : undefined },
   ];
 
   return (
@@ -421,6 +442,7 @@ function EditorPop() {
           <p className="status-linha">
             <SeloDocumento tipo="pop" />
             <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />
+            {versaoAtual && <button type="button" className="chip-versao" onClick={() => irParaAba('versoes')} title="Versão publicada. Clique para ver todas as versões">v{versaoAtual}</button>}
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
             {!arquivado && (
               <span className={`salvo-auto ${status === 'salvo' ? 'ok' : status === 'erro' ? 'erro' : ''}`} role="status">
@@ -437,8 +459,8 @@ function EditorPop() {
         <div className="actions">
           {!arquivado && !publicado && <button className="btn" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>}
           {!arquivado && (!publicado || naoPublicadas) && (
-            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={publicar} disabled={publicando}
-              title={publicado ? 'Atualiza a página pública com a versão atual' : 'Publica o POP: a página pública passa a mostrar esta versão'}>
+            <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando}
+              title={versaoAtual ? 'Publica uma versão nova: você diz o tamanho da alteração e o que mudou' : 'Publica o POP como versão 1.0.0: a página pública passa a mostrar esta versão'}>
               <Icone nome="check" tamanho={16} />{publicando ? 'Publicando…' : publicado ? 'Publicar alterações' : 'Publicar'}
             </button>
           )}
@@ -459,6 +481,7 @@ function EditorPop() {
       <div className="abas" role="tablist" aria-label="Partes do POP">
         <button type="button" role="tab" id="aba-conteudo" aria-controls="painel-conteudo" aria-selected={aba === 'conteudo'} onClick={() => irParaAba('conteudo')}><Icone nome="pop" tamanho={17} />Conteúdo</button>
         <button type="button" role="tab" id="aba-gravacoes" aria-controls="painel-gravacoes" aria-selected={aba === 'gravacoes'} onClick={() => irParaAba('gravacoes')}><Icone nome="tela" tamanho={17} />Gravações<span className="aba-conta">{pop.gravacoes.length}</span></button>
+        <button type="button" role="tab" id="aba-versoes" aria-controls="painel-versoes" aria-selected={aba === 'versoes'} onClick={() => irParaAba('versoes')}><Icone nome="versoes" tamanho={17} />Versões<span className="aba-conta">{pop.versoes.length}</span></button>
       </div>
 
       <div className="proc-grade pop-grade" role="tabpanel" id="painel-conteudo" aria-labelledby="aba-conteudo" hidden={aba !== 'conteudo'}>
@@ -471,11 +494,12 @@ function EditorPop() {
         </div>
         <div className="grade-3">
           <label className="field">Identificação do POP<input id="identificacao" className="mono" value={pop.identificacao} onChange={(e) => alterar({ identificacao: e.target.value.toUpperCase() })} placeholder="Sigla da área + número (XXXX-001)" /></label>
-          <label className="field">Versão<input value={pop.versao} onChange={(e) => alterar({ versao: e.target.value })} /></label>
           <label className="field">Executor do processo<input value={c.executor} onChange={(e) => setConteudo({ executor: e.target.value })} placeholder="Cargo de quem executa" /></label>
         </div>
         <p className="dados-automaticos">
           <span><Icone nome="cadeado" tamanho={14} />Preenchidos automaticamente</span>
+          {/* A versão vem da publicação (decisão 138): não se digita. */}
+          <span>Versão <b className={versaoAtual ? 'mono' : undefined}>{versaoAtual ?? 'ainda não publicado'}</b></span>
           <span>Código do processo <b className="mono">{pop.codigo}</b></span>
           <span>Criado em <b>{new Date(pop.criado_em).toLocaleDateString('pt-BR')}</b></span>
           {/* Quem criou o POP (decisão 137); a área do documento é a do processo e não aparece aqui. */}
@@ -585,19 +609,6 @@ function EditorPop() {
         </section>
       )}
 
-      <section className="cartao pop-sec" id="pos-historico" data-pos="historico" data-rotulo="Histórico de revisões">
-        <h2>Histórico de revisões</h2>
-        {pop.historico.length > 0 && <div className="hist-cab"><span>Data</span><span>Elaborado por</span><span>Revisão</span><span /></div>}
-        {pop.historico.map((h, i) => (
-          <div key={i} className="hist-linha">
-            <input value={h.data} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, data: e.target.value } : x)))} aria-label="Data" />
-            <input value={h.elaborado_por} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, elaborado_por: e.target.value } : x)))} placeholder="Nome" aria-label="Elaborado por" />
-            <input value={h.revisao} onChange={(e) => setHist(pop.historico.map((x, j) => (j === i ? { ...x, revisao: e.target.value } : x)))} aria-label="Revisão" />
-            <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Remover" title="Remover" onClick={() => setHist(pop.historico.filter((_, j) => j !== i))}><Icone nome="lixo" tamanho={16} /></button>
-          </div>
-        ))}
-        <button className="btn btn-tracejado" onClick={() => setHist([...pop.historico, { data: new Date().toLocaleDateString('pt-BR'), elaborado_por: pop.autor, revisao: `Rev. ${String(pop.historico.length + 1).padStart(2, '0')}` }])}><Icone nome="mais" tamanho={16} />Adicionar revisão</button>
-      </section>
       </div>
 
       <aside className="proc-coluna pop-lateral" aria-label="Página pública e índice">
@@ -667,6 +678,13 @@ function EditorPop() {
             )}
         </section>
       </div>
+
+      {/* Versões (decisão 138): o histórico das publicações, que antes era digitado à mão no fim do conteúdo. */}
+      <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-versoes" aria-labelledby="aba-versoes" hidden={aba !== 'versoes'}>
+        <VersoesDoPop popId={pop.id} versoes={pop.versoes} />
+      </div>
+
+      {janelaDePublicar && <PublicarVersao atual={versaoAtual} publicando={publicando} aoPublicar={(pedido) => void publicar(pedido)} aoFechar={() => setJanelaDePublicar(false)} />}
 
       {marcando && pop.telas[marcando.marcacaoId]?.imagem_url && (() => {
         const t = pop.telas[marcando.marcacaoId];

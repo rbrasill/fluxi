@@ -1136,6 +1136,24 @@ Pedidos do Rafael para o editor do POP.
 - **Aba Gravações:** a aba "Recursos" passou a se chamar "Gravações" e mostra só as gravações de tela do POP. O fluxograma do processo saiu dela; ele continua na página do processo, no PDF do POP (link "Abrir diagrama") e na página pública. O endereço antigo `#recursos` ainda abre a aba.
 - **Versão e histórico de revisões:** continuam como estavam até definirmos o versionamento (proposta em aberto: versão semântica X.Y.Z dada na publicação).
 
+## 138. Versionamento do POP: X.Y.Z dado na publicação
+
+O Rafael propôs versionar o POP como software (X.Y.Z). Validamos num exemplo em HTML; ele pediu "Ajuste" no lugar de "Melhoria" (uma mudança nem sempre melhora), "O que mudou" obrigatório com mínimo de caracteres e o histórico numa aba, não no rodapé.
+
+- **A versão vem da publicação, não é digitada.** Rascunho nunca publicado não tem versão. A primeira publicação é a **1.0.0**. O campo "Versão" saiu da Identificação: a versão aparece nos dados automáticos e num selo ao lado de "Publicado".
+- **Janela de publicar.** A partir da segunda publicação, quem publica escolhe o tamanho da alteração e escreve o que mudou; a janela mostra a versão que vai sair:
+  - **Correção** (Z, 1.2.0 → 1.2.1): não muda o que a pessoa faz (erro de digitação, print trocado, texto mais claro).
+  - **Ajuste** (Y, 1.2.0 → 1.3.0): muda um detalhe; o jeito de fazer continua o mesmo (passo novo ou mais detalhado, envolvido novo, ordem dos passos).
+  - **Mudança no procedimento** (X, 1.2.0 → 2.0.0): o jeito de fazer mudou; quem executa precisa ser avisado.
+  - **"O que mudou":** obrigatório, de 10 a 300 caracteres (espaços repetidos não contam). O servidor confere de novo.
+  - Sem alteração desde a última versão, não há o que publicar: o servidor recusa.
+- **Aba Versões.** O "Histórico de revisões" digitado à mão, no fim do conteúdo, deu lugar à aba Versões (Conteúdo, Gravações, Versões): uma linha por versão, com data, quem publicou, tamanho e o que mudou. É preenchida sozinha. Todos os POPs só tinham a linha "Rev. 01" que o sistema criava, então nada digitado se perdeu; a coluna `pops.historico` fica no banco, sem uso.
+- **Cada versão fica guardada** (tabela `pop_versoes`, migração 0031), com o documento e os prints daquele dia. Na aba, "Ver" abre a versão só para leitura (com aviso quando não é a atual) e o botão ao lado baixa o PDF dela. O print que não mudou de uma versão para a outra é reaproveitado, sem cópia nova.
+- **Documentos.** No PDF e na página pública, "Versão" é a publicada e a tabela "Históricos de Revisões" tem uma linha por versão: data, quem publicou e "versão · tamanho: o que mudou" (a coluna "Revisão" ficou mais larga). O PDF baixado do editor sai como "Rascunho" quando o POP nunca foi publicado ou tem alterações não publicadas, com uma linha dizendo isso.
+- **POPs que já existiam.** Os publicados com cópia guardada viraram 1.0.0 ("Versão inicial (publicada antes do versionamento)"), tendo como quem publicou o "Elaborado por", porque não havia esse registro. Eles não passam a mostrar "Alterações não publicadas": a comparação com a cópia antiga continua sendo feita do jeito antigo até a próxima publicação. Os 3 publicados sem cópia guardada ganham a 1.0.0 na próxima publicação. Os rascunhos ficam sem versão.
+- **Duas pessoas publicando ao mesmo tempo:** a segunda é recusada, com aviso para recarregar.
+- **Processo:** o versionamento do processo fica para uma etapa posterior (ver "Em aberto").
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
@@ -1145,4 +1163,4 @@ Pedidos do Rafael para o editor do POP.
 - Sugestão automática de marcação pela IA (decisão 18)
 - Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
 - Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)
-- Versionamento do POP: versão semântica X.Y.Z (MAJOR.MINOR.PATCH) e como registrar o que mudou entre as versões (decisão 137)
+- Versionamento do processo (decisão 138): sugestão em aberto é versão própria, independente dos POPs, que muda só ao publicar o processo, com a pessoa escolhendo o tamanho na mesma janela do POP (correção: texto ou aparência do fluxograma; ajuste: detalhe novo sem mudar o caminho; mudança no processo: etapas, decisões ou responsáveis)

@@ -133,7 +133,7 @@ function ListaPops() {
               <strong>{p.nome}</strong>
               <span>{ondeEsta(p)}</span>
               <span>
-                {p.identificacao || 'Sem identificação'} · Versão {p.versao} · atualizado em {dataCurta(p.atualizado_em)}
+                {p.identificacao || 'Sem identificação'}{p.versao ? ` · Versão ${p.versao}` : ''} · atualizado em {dataCurta(p.atualizado_em)}
                 {filtro === 'arquivados' && (p.arquivado_em ? ` · arquivado em ${new Date(p.arquivado_em).toLocaleDateString('pt-BR')}` : ' · o processo está arquivado')}
               </span>
             </Link>

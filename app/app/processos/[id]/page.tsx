@@ -434,7 +434,7 @@ function ProcessoPage() {
                       {o.identificacao
                         ? <span className="pop-linha-codigo">{o.identificacao}</span>
                         : <span className="sem-codigo"><Icone nome="alerta" tamanho={15} />Sem identificação{!arquivado && !arq && <> <Link href={`/app/pops/${o.id}#identificacao`}>Definir</Link></>}</span>}
-                      <span>v{o.versao}</span>
+                      {o.versao && <span>v{o.versao}</span>}
                       <span>{arq ? `arquivado em ${data(o.arquivado_em!)}` : `atualizado em ${data(o.atualizado_em)}`}</span>
                     </p>
                   </div>

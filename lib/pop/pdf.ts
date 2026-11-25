@@ -364,10 +364,11 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
           {
             table: {
               headerRows: 1,
-              widths: [larguraCol(2929), larguraCol(3382), larguraCol(3177)],
+              // A coluna "Revisão" é a mais larga: leva a versão e o que mudou (decisão 138).
+              widths: [larguraCol(1900), larguraCol(2600), larguraCol(4988)],
               body: [
                 ['Data', 'Elaborado por', 'Revisão'].map((t) => ({ text: t, bold: true, alignment: 'center' })),
-                ...comum.historico.map((h) => [h.data, h.elaboradoPor, h.revisao].map((t) => ({ text: t || ' ', alignment: 'center' }))),
+                ...comum.historico.map((h) => [h.data, h.elaboradoPor, h.revisao].map((t, i) => ({ text: t || ' ', alignment: i === 2 ? 'left' : 'center' }))),
               ],
             },
             layout: {
