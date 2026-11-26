@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Icone } from '@/components/Icone';
 import { DocumentoDoPop } from '@/components/publico/DocumentoDoPop';
+import { abrirArquivo } from '@/lib/anexos';
 import { VoltarAoTopo } from '@/components/VoltarAoTopo';
 import { ROTULO_DO_TIPO } from '@/lib/pop/versao';
 import { obterVersaoDoPop, urlPdfDaVersao, type VersaoPublicadaDoPop } from '@/lib/pops';
@@ -52,7 +53,7 @@ export default function VersaoDoPopPage() {
         <span className="aviso-acoes"><Link href={voltar} className="btn"><Icone nome="voltar" tamanho={16} />Voltar para o POP</Link></span>
       </div>
       <div className="versao-documento">
-        <DocumentoDoPop pop={doc} origem={null} pdf={urlPdfDaVersao(id, doc.versao)} />
+        <DocumentoDoPop pop={doc} origem={null} pdf={urlPdfDaVersao(id, doc.versao)} abrirArquivo={(arquivoId) => abrirArquivo(id, arquivoId)} />
       </div>
       <VoltarAoTopo />
     </div>

@@ -2,6 +2,7 @@ import 'server-only';
 import type { ConteudoPop } from '@/lib/pop/schema';
 import { historicoDasVersoes } from '@/lib/pop/versao';
 import type { PedidoDePublicacao } from '@/lib/versao';
+import * as anexos from './anexos';
 import { ErroApi } from './http';
 import * as pops from './pops';
 import * as processos from './processos';
@@ -24,6 +25,8 @@ export type Publicacao = pops.BaseDocumento & {
   versao_hash: string; // impressão digital do que foi publicado (ver pops.hashDaVersao)
   hash_v?: number; // como a impressão digital foi calculada (ver pops.temAlteracoes); sem a marca: antes do versionamento
   publicado_em: string;
+  /** Os arquivos anexados no dia da publicação (decisão 141), com o nome e a descrição daquele dia. */
+  arquivos?: pops.ArquivoDaVersao[];
 };
 
 /** A versão publicada do processo (decisão 129). A imagem do fluxograma fica à parte, em `processos.publicacao_svg`. */
@@ -46,10 +49,12 @@ const NAO_DISPONIVEL = 'Este POP não está disponível.';
 export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pessoa: { id: string; nome: string } | null = null) {
   const pop = await pops.buscar(id);
   if (pops.arquivado(pop)) throw new ErroApi(409, 'O POP está arquivado: restaure-o antes de publicar.');
-  const final = pops.comImagensFinais(pop.conteudo, await pops.marcacoesDoPop(pop.conteudo));
+  const { conteudo: final, arquivos: anexados } = await pops.estadoFinal(pop);
+  // Entram na versão os arquivos anexados hoje: os que chegarem depois só aparecem na página pública ao publicar de novo.
+  const arquivos = anexados.map(({ id: arquivoId, nome, descricao }) => ({ id: arquivoId, nome, descricao }));
 
   const anterior = await versoes.doPop.ultima(id);
-  if (anterior && !pops.temAlteracoes(pop, final)) throw new ErroApi(409, `Não há alterações para publicar: o POP está igual à versão ${anterior.versao}.`);
+  if (anterior && !pops.temAlteracoes(pop, final, arquivos)) throw new ErroApi(409, `Não há alterações para publicar: o POP está igual à versão ${anterior.versao}.`);
   const { numero, versao, tipo, o_que_mudou: oQueMudou } = versoes.proxima(anterior, pedido, 'mudança no procedimento');
 
   // Cópia de cada print (já com as marcações): editar, trocar ou apagar o print no editor não afeta as versões
@@ -80,12 +85,13 @@ export async function publicar(id: string, pedido: PedidoDePublicacao = {}, pess
 
   const agora = new Date().toISOString();
   const publicacao: Publicacao = {
-    versao_hash: pops.hashDaVersao(pop, final),
+    versao_hash: pops.hashDaVersao(pop, final, arquivos),
     hash_v: pops.VERSAO_DO_HASH,
     publicado_em: agora,
     nome: pop.nome, codigo: pop.codigo, identificacao: pop.identificacao, versao, autor: pop.autor, criado_em: pop.criado_em,
     historico: [], // o histórico do documento é montado na hora, a partir das versões (ver `historicoDasVersoes`)
     conteudo,
+    ...(arquivos.length ? { arquivos } : {}),
   };
   const descartarCopias = async () => { if (novas.length) await supabase().storage.from(telas.BUCKET).remove(novas); };
   // Primeiro a versão: se duas pessoas publicarem ao mesmo tempo, a segunda é recusada aqui.
@@ -152,14 +158,17 @@ async function versaoPublicada(link: string) {
 export async function popPublico(link: string) {
   const { id, publicacao: p, processo, fluxo } = await versaoPublicada(link);
   const caminhos = p.conteudo.procedimentos.flatMap((x) => x.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[];
-  const [imagens, refs, referenciado_em] = await Promise.all([
+  const [imagens, refs, referenciado_em, arquivos] = await Promise.all([
     telas.assinar(caminhos).then((m) => Object.fromEntries(m) as Record<string, string>),
     referencias.resolverDosTextos(referencias.textosDoPop(p.conteudo).map((t) => t.valor)),
     referenciadoPublico({ tipo: 'pop', id }),
+    anexos.paraLeitura(id, p.arquivos),
   ]);
   const { versao_hash: _h, hash_v: _v, ...versao } = p;
   return {
     ...versao,
+    // Dos arquivos da versão publicada, só os que existem e não expiraram (decisão 141).
+    arquivos,
     imagens,
     onde: { organizacao: processo?.area?.organizacao?.nome ?? null, area: processo?.area?.nome ?? null, processo: processo?.nome ?? null },
     // O processo tem página pública (decisão 35): o caminho do topo leva a ela, se estiver no ar.
@@ -183,14 +192,16 @@ async function versaoGuardada(id: string, versao: string) {
 export async function versaoDoPop(id: string, versao: string) {
   const { pop, v, publicacao: p, atual } = await versaoGuardada(id, versao);
   const caminhos = p.conteudo.procedimentos.flatMap((x) => x.passos.map((s) => s.imagem_caminho)).filter(Boolean) as string[];
-  const [imagens, refs] = await Promise.all([
+  const [imagens, refs, arquivos] = await Promise.all([
     telas.assinar(caminhos).then((m) => Object.fromEntries(m) as Record<string, string>),
     referencias.resolverDosTextos(referencias.textosDoPop(p.conteudo).map((t) => t.valor)),
+    anexos.paraLeitura(id, p.arquivos),
   ]);
   const { versao_hash: _h, hash_v: _v, ...documento } = p;
   const processo = pop.processo as unknown as Onde;
   return {
     ...documento,
+    arquivos,
     imagens,
     onde: { organizacao: processo?.area?.organizacao?.nome ?? null, area: processo?.area?.nome ?? null, processo: processo?.nome ?? null },
     processo_link: null,
@@ -212,14 +223,23 @@ export async function documentoDaVersao(id: string, versao: string, origem: stri
     fluxo = (data as { link?: string | null } | null)?.link ?? null;
   }
   const organizacao = (pop.processo as unknown as Onde)?.area?.organizacao?.nome ?? null;
-  const doc = await pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo) : null, organizacao }, origem);
+  const arquivos = await pops.arquivosDoDocumento(id, publicacao.arquivos ?? [], origem);
+  const doc = await pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo) : null, organizacao, arquivos }, origem);
   return { ...doc, nomeArquivo: doc.nomeArquivo.replace(/\.pdf$/, ` v${publicacao.versao}.pdf`) };
 }
 
 /** PDF da versão publicada (o que está na página pública). */
 export async function documentoPublico(link: string, origem: string) {
-  const { publicacao, fluxo, processo } = await versaoPublicada(link);
-  return pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, organizacao: processo?.area?.organizacao?.nome ?? null }, origem);
+  const { id, publicacao, fluxo, processo } = await versaoPublicada(link);
+  const arquivos = await pops.arquivosDoDocumento(id, publicacao.arquivos ?? [], origem);
+  return pops.gerarDocumento(publicacao, { linkFluxograma: fluxo ? pops.linkDoFluxograma(origem, fluxo.link_publico) : null, organizacao: processo?.area?.organizacao?.nome ?? null, arquivos }, origem);
+}
+
+/** Abre um arquivo pela página pública do POP: só os da versão publicada, com a página no ar, e que não expiraram. */
+export async function abrirArquivoPublico(link: string, arquivoId: string) {
+  const { id, publicacao } = await versaoPublicada(link);
+  if (!publicacao.arquivos?.some((a) => a.id === arquivoId)) throw new ErroApi(404, 'Arquivo não encontrado.');
+  return anexos.abrir(id, arquivoId);
 }
 
 /** A página pública do processo (decisão 35): descrição, fluxograma e os POPs publicados e no ar. */

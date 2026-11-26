@@ -1,16 +1,20 @@
 'use client';
 import { useState, type ReactNode } from 'react';
+import { IconeDoArquivo } from '@/components/arquivos/Pecas';
+import { VisualizadorDeArquivo } from '@/components/arquivos/VisualizadorDeArquivo';
 import { Icone } from '@/components/Icone';
 import { ReferenciadoEm, RicoPublico } from '@/components/publico/Referencias';
 import { VisualizadorImagens, type ImagemAmpliavel } from '@/components/publico/VisualizadorImagens';
-import { MESES, etapasDoDocumento } from '@/lib/pop/documento';
+import { dataBr as diaBr, formatoDe, tamanhoLegivel, type Abertura, type ArquivoPublico } from '@/lib/anexos';
+import { MESES, arquivosGerais, etapasDoDocumento } from '@/lib/pop/documento';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { comOrigem } from '@/lib/referencias';
 import { dataBr, urlSvg, type PopPublico } from '@/lib/publico';
 
 // O documento do POP como foi publicado, só leitura (decisão 140): o cabeçalho com a logo, a ficha do procedimento, o
 // objetivo, os envolvidos, os recursos, os procedimentos (cada passo num cartão numerado, com o print em cima e o
-// texto embaixo) e o histórico de revisões. É o corpo da página pública (decisão 32) e da leitura de uma versão antiga
+// texto embaixo), os arquivos da versão (decisão 141: os de cada etapa dentro dela, os gerais nos recursos) e o
+// histórico de revisões. É o corpo da página pública (decisão 32) e da leitura de uma versão antiga
 // dentro do app (decisão 138). O PDF segue o mesmo desenho (`lib/pop/pdf.ts`).
 
 /** Os ícones dos títulos das seções (traço, 24×24). */
@@ -33,13 +37,33 @@ function Secao({ id, icone, titulo, children }: { id: string; icone: keyof typeo
   );
 }
 
-export function DocumentoDoPop({ pop, origem, pdf }: {
+/** Um arquivo do POP na leitura (decisão 141): o que é, até quando vale e o botão que abre o visualizador. */
+function ArquivoNaLeitura({ arquivo, aoAbrir }: { arquivo: ArquivoPublico; aoAbrir: () => void }) {
+  return (
+    <li className="docpop-arquivo">
+      <IconeDoArquivo arquivo={arquivo} />
+      <div className="docpop-arquivo-texto">
+        <strong>{arquivo.descricao || arquivo.nome}</strong>
+        <span>{arquivo.nome} · {formatoDe(arquivo)} · {tamanhoLegivel(arquivo.tamanho)}{arquivo.validade ? ` · válido até ${diaBr(arquivo.validade)}` : ''}</span>
+      </div>
+      <button type="button" className="docpop-pilula" onClick={aoAbrir} aria-label={`Abrir ${arquivo.nome}`}>Abrir</button>
+    </li>
+  );
+}
+
+export function DocumentoDoPop({ pop, origem, pdf, abrirArquivo, arquivoInicial }: {
   pop: PopPublico;
   /** A página pública de onde as referências saem (para o "Voltar para…" do destino); nula dentro do app. */
   origem: { tipo: 'p'; link: string } | null;
   /** Endereço do PDF desta versão. */
   pdf: string;
+  /** Pede ao servidor o endereço para abrir um arquivo desta versão (decisão 141). */
+  abrirArquivo: (id: string) => Promise<Abertura>;
+  /** Arquivo a abrir ao chegar (o link "Abrir" do PDF traz `?arquivo=`). */
+  arquivoInicial?: string | null;
 }) {
+  const arquivos = pop.arquivos ?? [];
+  const [vendo, setVendo] = useState<string | null>(arquivoInicial && arquivos.some((a) => a.id === arquivoInicial) ? arquivoInicial : null);
   const [ampliada, setAmpliada] = useState<number | null>(null); // índice em `prints`
   const c = pop.conteudo;
   const fluxo = pop.fluxograma;
@@ -50,7 +74,10 @@ export function DocumentoDoPop({ pop, origem, pdf }: {
   // As etapas com pelo menos um passo escrito ou com print, com os passos numerados do início ao fim do POP, como no
   // PDF. Todos os prints, nessa ordem, vão para o visualizador, que passa de um para o outro.
   const prints: ImagemAmpliavel[] = [];
-  const etapas = etapasDoDocumento(c.procedimentos, (caminho) => !!pop.imagens[caminho]).map((e) => ({
+  const porId = new Map(arquivos.map((a) => [a.id, a]));
+  const base = etapasDoDocumento(c.procedimentos, (caminho) => !!pop.imagens[caminho], (id) => porId.has(id));
+  const gerais = arquivosGerais(arquivos, base); // os que não estão em nenhuma etapa: referência geral do POP
+  const etapas = base.map((e) => ({
     ...e,
     passos: e.passos.map((s) => {
       const src = s.imagem ? pop.imagens[s.imagem] : undefined;
@@ -116,6 +143,11 @@ export function DocumentoDoPop({ pop, origem, pdf }: {
         {fluxo?.tem_svg && (
           <a href={`/f/${fluxo.link_publico}`} target="_blank" rel="noopener" className="docpop-fluxo" title="Abrir o fluxograma em tela cheia"><img src={urlSvg(fluxo.link_publico)} alt={`Fluxograma: ${fluxo.nome}`} /></a>
         )}
+        {gerais.length > 0 && (
+          <ul className="docpop-arquivos" aria-label="Arquivos do POP">
+            {gerais.map((a) => <ArquivoNaLeitura key={a.id} arquivo={a} aoAbrir={() => setVendo(a.id)} />)}
+          </ul>
+        )}
       </Secao>
 
       <Secao id="procedimentos" icone="procedimentos" titulo="Procedimentos">
@@ -123,6 +155,12 @@ export function DocumentoDoPop({ pop, origem, pdf }: {
         {etapas.map((e) => (
           <div key={e.ordem} className="docpop-etapa" id={`procedimento-${e.ordem}`}>
             <p className="docpop-etapa-faixa"><b>Etapa {e.ordem}</b>{e.nome && <span>{e.nome}</span>}</p>
+            {e.arquivos.length > 0 && (
+              <ul className="docpop-arquivos da-etapa" aria-label={`Arquivos da etapa ${e.ordem}`}>
+                {e.arquivos.map((x) => <ArquivoNaLeitura key={x} arquivo={porId.get(x)!} aoAbrir={() => setVendo(x)} />)}
+              </ul>
+            )}
+            {e.passos.length > 0 && (
             <ol className="docpop-passos" start={e.passos[0].numero}>
               {e.passos.map((s) => (
                 <li key={s.numero} className="docpop-passo">
@@ -139,6 +177,7 @@ export function DocumentoDoPop({ pop, origem, pdf }: {
                 </li>
               ))}
             </ol>
+            )}
           </div>
         ))}
       </Secao>
@@ -165,6 +204,7 @@ export function DocumentoDoPop({ pop, origem, pdf }: {
         <span>{pop.onde.organizacao ?? ''}</span>
       </footer>
       {ampliada !== null && prints[ampliada] && <VisualizadorImagens imagens={prints} inicial={ampliada} aoFechar={() => setAmpliada(null)} />}
+      {vendo && <VisualizadorDeArquivo arquivos={arquivos} inicial={vendo} abrir={abrirArquivo} aoFechar={() => setVendo(null)} />}
     </article>
   );
 }

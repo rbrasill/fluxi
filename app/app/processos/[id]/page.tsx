@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
 import { Icone } from '@/components/Icone';
+import { CentralDeArquivos } from '@/components/arquivos/CentralDeArquivos';
+import { listarArquivosDoProcesso, type PopComArquivos } from '@/lib/anexos';
 import { QuadroDoProcesso } from '@/components/IconeDoProcesso';
 import { SeletorDeIcone } from '@/components/SeletorDeIcone';
 import { SeloDocumento } from '@/components/SeloDocumento';
@@ -37,11 +39,11 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR');
 
 // As abas da página (redesign, decisão 77). A aba fica no endereço (#pops, #entrevistas) para o link levar direto a ela.
 // "Regras de negócio" (decisão 89) só aparece quando o banco já tem as regras (migração 0024).
-type Aba = 'visao' | 'pops' | 'entrevistas' | 'regras' | 'versoes';
-const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'entrevistas', rotulo: 'Entrevistas' }, { id: 'regras', rotulo: 'Regras de negócio' }, { id: 'versoes', rotulo: 'Versões' }];
+type Aba = 'visao' | 'pops' | 'arquivos' | 'entrevistas' | 'regras' | 'versoes';
+const ABAS: { id: Aba; rotulo: string }[] = [{ id: 'visao', rotulo: 'Visão geral' }, { id: 'pops', rotulo: 'POPs' }, { id: 'arquivos', rotulo: 'Arquivos' }, { id: 'entrevistas', rotulo: 'Entrevistas' }, { id: 'regras', rotulo: 'Regras de negócio' }, { id: 'versoes', rotulo: 'Versões' }];
 const abaDoEndereco = (): Aba => {
   const h = typeof location === 'undefined' ? '' : location.hash.slice(1);
-  return h === 'pops' || h === 'entrevistas' || h === 'regras' || h === 'versoes' ? h : 'visao';
+  return h === 'pops' || h === 'arquivos' || h === 'entrevistas' || h === 'regras' || h === 'versoes' ? h : 'visao';
 };
 
 // Filtro da aba POPs (decisão 78). "Arquivados" só aparece quando há algum.
@@ -97,6 +99,7 @@ function ProcessoPage() {
   const [pedidoDeConvite, setPedidoDeConvite] = useState(0);
   const [finalidadeDoConvite, setFinalidadeDoConvite] = useState<Finalidade>('processo');
   const [regras, setRegras] = useState<{ disponivel: boolean; confirmadas: number; sugeridas: number } | null>(null);
+  const [arquivos, setArquivos] = useState<PopComArquivos[] | null>(null); // a central de arquivos (decisão 141)
   const [filtroPop, setFiltroPop] = useState<FiltroPop>('todos');
   const [buscaPop, setBuscaPop] = useState('');
   const gestor = ehGestor(useEu());
@@ -117,10 +120,15 @@ function ProcessoPage() {
   }
   useEffect(() => {
     void carregar();
+    // Os arquivos dos POPs do processo vêm à parte: a aba mostra a contagem e se há algo vencendo.
+    setArquivos(null);
+    listarArquivosDoProcesso(id).then((r) => setArquivos(r.pops)).catch(() => setArquivos([]));
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (p === undefined) return <div className="page fundo-processo"><p className="notice">Carregando…</p></div>;
   if (p === null) return <div className="page fundo-processo"><div className="empty"><h2>Processo não encontrado</h2><Link href="/app/processos" className="btn btn-primary">Voltar</Link></div></div>;
+  const totalDeArquivos = (arquivos ?? []).reduce((n, x) => n + x.arquivos.length, 0);
+  const arquivosComAtencao = (arquivos ?? []).reduce((n, x) => n + x.arquivos.filter((a) => a.situacao !== 'vigente').length, 0);
   const citadoEm = p.referenciado_em.length ? ` Atenção: este processo é referenciado em ${p.referenciado_em.length} ${p.referenciado_em.length === 1 ? 'documento' : 'documentos'}.` : '';
 
   // Novo POP: a pessoa dá o nome antes (o POP não herda o nome do processo).
@@ -299,6 +307,7 @@ function ProcessoPage() {
           <button key={a.id} type="button" role="tab" id={`aba-${a.id}`} aria-controls={`painel-${a.id}`} aria-selected={aba === a.id} onClick={() => irPara(a.id)}>
             {a.rotulo}
             {a.id === 'pops' && <span className="aba-conta">{pops.length}</span>}
+            {a.id === 'arquivos' && arquivos !== null && <span className={`aba-conta${arquivosComAtencao ? ' atencao' : ''}`} title={arquivosComAtencao ? `${arquivosComAtencao} ${arquivosComAtencao === 1 ? 'arquivo expirado ou perto de vencer' : 'arquivos expirados ou perto de vencer'}` : undefined}>{totalDeArquivos}</span>}
             {a.id === 'entrevistas' && entrevistas !== null && <span className="aba-conta">{entrevistas}</span>}
             {a.id === 'versoes' && <span className="aba-conta">{p.versoes.length}</span>}
             {a.id === 'regras' && regras && <span className="aba-conta" title={regras.sugeridas ? `${regras.confirmadas} confirmadas · ${regras.sugeridas} para revisar` : undefined}>{regras.confirmadas}{regras.sugeridas > 0 && <i className="aba-ponto" aria-label="há regras para revisar" />}</span>}
@@ -491,6 +500,11 @@ function ProcessoPage() {
       <div role="tabpanel" id="painel-regras" aria-labelledby="aba-regras" hidden={aba !== 'regras' || !regras?.disponivel}>
         <RegrasDoProcesso processoId={p.id} arquivado={arquivado} visivel={aba === 'regras'} aoCarregar={setRegras}
           aoConvidar={() => { setFinalidadeDoConvite('regras'); setPedidoDeConvite((n) => n + 1); }} />
+      </div>
+
+      {/* Arquivos (decisão 141): a central com os arquivos de todos os POPs do processo. */}
+      <div role="tabpanel" id="painel-arquivos" aria-labelledby="aba-arquivos" hidden={aba !== 'arquivos'}>
+        <CentralDeArquivos pops={arquivos} />
       </div>
 
       {/* Versões (decisão 139): uma linha por publicação do processo; os POPs têm as versões deles. */}

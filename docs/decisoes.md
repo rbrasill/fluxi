@@ -1192,6 +1192,25 @@ O Rafael mandou um exemplo em HTML com o desenho novo do POP e pediu para aplica
   - **Arquivos:** a logo e o padrão ficam em `templates/pop/imagens/` (para o PDF) e em `public/pop/` (para a página). As imagens do modelo antigo (faixa, ícones e decoração) saíram; os ícones agora são desenhados no código. O `Modelo_POP_v3.docx` fica no repositório só como registro do desenho anterior.
 - **Sem mudança no banco.** POPs já publicados passam a aparecer no desenho novo, na página e no PDF, sem precisar publicar de novo: o que se guarda é o conteúdo, não a aparência.
 
+## 141. Gestão de arquivos no POP
+
+O Rafael mandou a especificação (anexar, descrever, ligar a etapas, visualizar no navegador, controlar a validade e reunir tudo na tela do processo, sem versões do arquivo). Três pontos dependiam dele, e ele respondeu: os arquivos aparecem na página pública **ao publicar**; o prazo do aviso de vencimento é **por arquivo**; o arquivo expirado **ninguém abre**.
+
+- **Aba Arquivos no POP** (entre Gravações e Versões). Para anexar: o arquivo (até 50 MB, que é o limite do armazenamento), a descrição (obrigatória), as etapas relacionadas (opcional) e a validade. O arquivo em si não se troca: cada atualização é um arquivo novo. Dá para editar a descrição, as etapas e a validade, e excluir.
+- **Etapas.** Um arquivo pode estar em várias etapas ou em nenhuma ("Geral do POP"), sem cópia. A ligação é feita na janela do arquivo ou dentro da própria etapa, no editor ("Adicionar arquivo": escolhe um já anexado ou anexa um novo). Fica guardada no conteúdo do POP (`procedimentos[].arquivos`), então acompanha a etapa quando ela muda de lugar e sai com ela.
+- **Validade.** "Sem validade definida" ou uma data. O arquivo vale até o fim do dia da data e expira no dia seguinte (horário de Brasília). Situações: **Vigente**, **Próximo do vencimento** (faltam os dias do aviso ou menos; 30 por padrão, de 0 a 365, escolhido em cada arquivo) e **Expirado**.
+  - **Expirado:** continua guardado e listado, marcado, mas não abre para ninguém, em lugar nenhum, até alguém alterar a validade ou excluir. Some da página pública e do PDF, e não é oferecido para entrar numa etapa. Quem recusa é o servidor, na hora de abrir.
+- **Visualização dentro da plataforma**, em tela cheia, sem sair da tela: PDF com páginas e zoom (pdf.js, porque o leitor do navegador não mostra PDF dentro da página no celular); imagem ampliada, passando pelas outras imagens da lista; vídeo e áudio com os controles do navegador; nos outros formatos, o download. SVG e HTML só baixam, porque podem trazer script.
+- **Central de arquivos no processo:** aba "Arquivos" na tela do processo, com os arquivos de todos os POPs ativos, agrupados por POP e, dentro dele, por etapa; resumo por situação e filtros por POP, etapa e situação. É só consulta: anexar, editar e excluir é em cada POP.
+- **Publicação** (segue a regra "nada vai ao ar sem publicar"):
+  - Arquivo novo, exclusão e mudança de descrição ou de etapa são alterações a publicar: o POP mostra "Alterações não publicadas" e o arquivo novo só aparece na página pública depois de "Publicar alterações". A versão publicada guarda a lista dos arquivos, com o nome e a descrição daquele dia.
+  - **O que sai, sai na hora:** arquivo excluído ou expirado some da página pública sem publicar. A validade também vale na hora (alterar a data não pede publicação).
+  - Na página pública e na leitura de uma versão, os arquivos da etapa ficam logo abaixo da faixa dela e os gerais, em "Recursos do processo". O PDF lista os mesmos arquivos; "Abrir" leva ao arquivo na página pública, quando ela está no ar.
+  - Qualquer pessoa com o link da página pública abre os arquivos da versão publicada, como já acontece com os prints.
+- **Copiar e excluir o POP:** a cópia leva os arquivos (arquivos novos, nas mesmas etapas); excluir o POP apaga os arquivos dele.
+- **Não tem:** versões ou histórico do arquivo (pedido expresso) e aviso por e-mail de vencimento. A aba do POP e a do processo mostram em laranja quando há arquivo expirado ou perto de vencer.
+- **Onde está:** tabela `pop_arquivos` (migração 0033); `lib/anexos.ts` (regras da validade, formatos, chamadas do navegador) e `lib/server/anexos.ts`; telas em `components/arquivos/`. No código o nome é "anexo", para não confundir com "arquivar"; na tela é sempre "arquivo". Os endereços dos arquivos são temporários e pedidos ao servidor na hora de abrir.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
@@ -1201,3 +1220,4 @@ O Rafael mandou um exemplo em HTML com o desenho novo do POP e pediu para aplica
 - Sugestão automática de marcação pela IA (decisão 18)
 - Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
 - Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)
+- Arquivos do POP (decisão 141): aviso por e-mail de arquivo perto de vencer; arquivos maiores que 50 MB (depende do limite do armazenamento)

@@ -1,4 +1,5 @@
 // Cliente das páginas públicas (decisão 32): a versão publicada do POP e o fluxograma do processo.
+import type { ArquivoPublico } from './anexos';
 import { ErroCliente } from './fluxogramas';
 import type { ConteudoPop, Historico } from './pop/schema';
 import type { ReferenciaResolvida, Relacao } from './referencias';
@@ -9,6 +10,8 @@ export type PopPublico = {
   nome: string; codigo: string; identificacao: string; versao: string; autor: string; criado_em: string; publicado_em: string;
   historico: Historico[]; conteudo: ConteudoPop;
   imagens: Record<string, string>; // link temporário de cada print (por imagem_caminho)
+  /** Os arquivos da versão que existem e não expiraram (decisão 141). As etapas de cada um ficam em `conteudo.procedimentos[].arquivos`. */
+  arquivos?: ArquivoPublico[];
   onde: Onde;
   processo_link: string | null; // página pública do processo, se estiver no ar
   fluxograma: { link_publico: string; nome: string; tem_svg: boolean } | null;

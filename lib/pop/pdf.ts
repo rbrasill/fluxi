@@ -10,7 +10,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import pdfmake from 'pdfmake';
-import { DESCRICAO_FLUXOGRAMA, cabecalho, etapasDoDocumento, tamanhoImagemPt, type DadosPop, type PassoDoDocumento } from './documento';
+import { DESCRICAO_FLUXOGRAMA, arquivosGerais, cabecalho, etapasDoDocumento, tamanhoImagemPt, type ArquivoDoDocumento, type DadosPop, type PassoDoDocumento } from './documento';
 import { colunas, lerTextoParaDocumento, linhasDeCabecalho, textoPuro, type Bloco as BlocoTexto, type Trecho } from './texto-rico';
 
 const PASTA = () => path.join(process.cwd(), 'templates/pop');
@@ -146,17 +146,38 @@ const campo = (rotulo: string, valor: string): Bloco => ({
   stack: [{ text: rotulo, bold: true, fontSize: 8.8, color: TINTA }, { text: valor || '—', fontSize: 10, color: TINTA_2, margin: [0, 1.5, 0, 0] }],
 });
 
-/** "Abrir diagrama" numa pílula cinza, com o link do fluxograma; sem fluxograma publicado, um traço. */
-function pilula(link: string | null | undefined, largura: number): Bloco {
+/** Um link numa pílula cinza ("Abrir diagrama", "Abrir"); sem link, um traço. */
+function pilula(texto: string, link: string | null | undefined, largura: number): Bloco {
   const altura = 17, tamanho = 8.5;
   const respiro = (altura - tamanho * ALTURA_DA_LINHA) / 2;
   return {
     stack: [
       { canvas: [{ type: 'rect', x: 0.3, y: 0.3, w: largura - 0.6, h: altura - 0.6, r: (altura - 0.6) / 2, color: '#eceff3', lineColor: '#dde1e8', lineWidth: 0.6 }], relativePosition: { x: 0, y: 0 } },
-      { text: link ? 'Abrir diagrama' : '—', ...(link ? { link } : {}), fontSize: tamanho, lineHeight: 1, color: TINTA_2, alignment: 'center', margin: [0, respiro, 0, respiro] },
+      { text: link ? texto : '—', ...(link ? { link } : {}), fontSize: tamanho, lineHeight: 1, color: TINTA_2, alignment: 'center', margin: [0, respiro, 0, respiro] },
     ],
   };
 }
+
+const LARGURA_ABRIR = 52;
+const dataBr = (dia: string) => dia.slice(0, 10).split('-').reverse().join('/');
+/**
+ * Os arquivos anexados (decisão 141), numa tabela: a descrição, o nome do arquivo e até quando vale; "Abrir" leva
+ * ao arquivo na página pública do POP, quando ela está no ar.
+ */
+function tabelaDeArquivos(arquivos: ArquivoDoDocumento[]): Bloco {
+  return {
+    table: {
+      widths: ['*', LARGURA_ABRIR], dontBreakRows: true,
+      body: arquivos.map((a) => [
+        { stack: [{ text: a.descricao || a.nome, color: TINTA }, { text: `${a.nome}${a.validade ? ` · válido até ${dataBr(a.validade)}` : ''}`, fontSize: 8, color: TINTA_2, margin: [0, 1, 0, 0] }] },
+        a.link ? { ...pilula('Abrir', a.link, LARGURA_ABRIR), margin: [0, 3, 0, 0] } : { text: '' },
+      ]),
+    },
+    layout: grade(10, 6),
+  };
+}
+/** Altura aproximada da tabela de arquivos (cada linha tem a descrição e, embaixo, o nome). */
+const alturaDosArquivos = (arquivos: ArquivoDoDocumento[]) => arquivos.reduce((t, a) => t + (Math.ceil((a.descricao || a.nome).length / 70) + Math.ceil((a.nome.length + 24) / 85)) * 13 + 14, 0);
 
 /** Faixa escura da etapa: "Etapa N" numa caixa branca e o nome ao lado. Cresce com o nome. */
 function faixaEtapa(ordem: number, nome: string): Bloco {
@@ -393,13 +414,23 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
   for (const [caminho, bytes] of imagens) prints[caminho] = dataUrl(bytes);
 
   // Procedimentos: a faixa da etapa fica na mesma página do primeiro passo dela, e a faixa da seção, na da primeira etapa.
-  const etapas = etapasDoDocumento(dados.procedimentos, (caminho) => caminho in prints);
+  // A etapa com arquivos (decisão 141) mostra a lista deles logo abaixo da faixa; os passos vêm depois, cada um inteiro.
+  const arquivos = new Map((dados.arquivos ?? []).map((a) => [a.id, a]));
+  const etapas = etapasDoDocumento(dados.procedimentos, (caminho) => caminho in prints, (id) => arquivos.has(id));
+  const gerais = arquivosGerais(dados.arquivos ?? [], etapas);
   const procedimentos: Bloco[] = [];
   etapas.forEach((etapa, e) => {
     const abertura: Bloco[] = [
       ...(e === 0 ? [faixa('Procedimentos', 'procedimentos')] : []),
       { ...faixaEtapa(etapa.ordem, etapa.nome), margin: [0, e === 0 ? 0 : 12, 0, 13] },
     ];
+    if (etapa.arquivos.length) {
+      const daEtapa = etapa.arquivos.map((id) => arquivos.get(id)!);
+      const tabela = { ...tabelaDeArquivos(daEtapa), margin: [0, 0, 0, 13] };
+      if (alturaDosArquivos(daEtapa) <= LIMITE_INTEIRO) procedimentos.push(juntos([...abertura, tabela]));
+      else procedimentos.push(juntos(abertura), tabela);
+      abertura.length = 0; // a faixa já saiu, com a lista de arquivos
+    }
     etapa.passos.forEach((passo, i) => {
       const print = passo.imagem
         ? { chave: passo.imagem, ...tamanhoImagemPt(passo.passo.imagem_largura ?? 1600, passo.passo.imagem_altura ?? 900, LARGURA_CARTAO - 2 * BORDA, ALTURA_MAX_PRINT) }
@@ -496,11 +527,13 @@ export async function gerarPdf(dados: DadosPop, imagens: Map<string, Uint8Array>
           body: [[
             { text: 'Fluxograma', color: TINTA, margin: [0, 2.7, 0, 0] },
             { text: DESCRICAO_FLUXOGRAMA, color: TINTA_2, margin: [0, 2.7, 0, 0] },
-            pilula(dados.link_fluxograma, larguraPilula),
+            pilula('Abrir diagrama', dados.link_fluxograma, larguraPilula),
           ]],
         },
         layout: { ...semBordas({ esquerda: 11, direita: 11, cima: 8, baixo: 8 }), hLineWidth: () => 0.6, hLineColor: () => LINHA },
-      }]),
+      }, ...(gerais.length && alturaDosArquivos(gerais) <= LIMITE_DA_SECAO - 60 ? [{ ...tabelaDeArquivos(gerais), margin: [0, 12, 0, 0] }] : [])]),
+      // Muitos arquivos gerais: a lista continua na página seguinte, fora do bloco da seção.
+      ...(gerais.length && alturaDosArquivos(gerais) > LIMITE_DA_SECAO - 60 ? [{ ...tabelaDeArquivos(gerais), margin: [0, 12, 0, 0] }] : []),
 
       ...procedimentos,
 

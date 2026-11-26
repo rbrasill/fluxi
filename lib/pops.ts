@@ -1,4 +1,5 @@
 // Cliente da API de POPs.
+import type { Arquivo } from './anexos';
 import { ErroCliente } from './fluxogramas';
 import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 import type { Anotacoes } from './marcacao/anotacoes';
@@ -23,6 +24,8 @@ export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; 
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & {
   conteudo: ConteudoPop; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  /** Os arquivos anexados (decisão 141). Em que etapas estão fica em `conteudo.procedimentos[].arquivos`. */
+  arquivos: Arquivo[];
   /** As versões publicadas, da mais nova para a mais antiga (decisão 138). */
   versoes: VersaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
@@ -41,7 +44,8 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 /** POPs ativos; com `arquivados`, só os arquivados (por si ou pelo processo). */
 export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${arquivados ? '?arquivados=1' : ''}`);
-export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
+// `arquivos` chegou com a decisão 141: uma resposta sem a lista (servidor ainda na versão anterior, durante uma publicação do app) vale como "nenhum".
+export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`).then((p) => ({ ...p, arquivos: p.arquivos ?? [] }));
 export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
 export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'conteudo' | 'posicao' | 'processo_id'>>, keepalive = false) =>

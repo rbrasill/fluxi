@@ -15,8 +15,8 @@ O documento padrão de Procedimento Operacional Padrão da plataforma: a página
 | Executor do processo | Cargo do executor | Usuário |
 | Objetivo do processo | Texto (a seção não aparece se estiver vazio) | Usuário |
 | Envolvidos | Pares área ↔ cargo (a seção não aparece se não houver nenhum) | Usuário |
-| Recursos do processo | Fluxograma + "Abrir diagrama" (na página, também a imagem do fluxograma) | Sistema |
-| Procedimentos | Uma faixa escura por etapa ("Etapa N" e o nome). Os passos são numerados do início ao fim do POP: o número num selo, o print (se houver) e o texto logo abaixo, no mesmo cartão | Usuário |
+| Recursos do processo | Fluxograma + "Abrir diagrama" (na página, também a imagem do fluxograma) e os arquivos gerais do POP (decisão 141) | Sistema / usuário (arquivos) |
+| Procedimentos | Uma faixa escura por etapa ("Etapa N" e o nome), com os arquivos da etapa logo abaixo dela (decisão 141). Os passos são numerados do início ao fim do POP: o número num selo, o print (se houver) e o texto logo abaixo, no mesmo cartão | Usuário |
 | Histórico de revisões | Data, elaborado por (quem publicou a versão), revisão (versão X.Y.Z, tamanho da alteração e o que mudou) | Sistema (decisão 138) |
 | Rodapé | Identificação e código; organização (no PDF, também "Página X de Y", em todas as páginas) | Sistema |
 

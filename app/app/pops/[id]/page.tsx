@@ -7,6 +7,10 @@ import { Icone } from '@/components/Icone';
 import { SeloDocumento } from '@/components/SeloDocumento';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { FaixaArquivado } from '@/components/FaixaArquivado';
+import { ArquivosDaEtapa } from '@/components/arquivos/ArquivosDaEtapa';
+import { ArquivosDoPop } from '@/components/arquivos/ArquivosDoPop';
+import { JanelaDoArquivo } from '@/components/arquivos/JanelaDoArquivo';
+import { VisualizadorDeArquivo } from '@/components/arquivos/VisualizadorDeArquivo';
 import { AnexarPrint } from '@/components/pop/AnexarPrint';
 import { MelhorarComIa } from '@/components/pop/MelhorarComIa';
 import { MoverCopiar } from '@/components/MoverCopiar';
@@ -18,6 +22,7 @@ import { PublicarVersao } from '@/components/PublicarVersao';
 import { VersoesPublicadas } from '@/components/VersoesPublicadas';
 import type { PedidoDePublicacao } from '@/lib/versao';
 import { TextoRico } from '@/components/pop/TextoRico';
+import { abrirArquivo, comArquivoNasEtapas, etapasDoArquivo, excluirArquivo, semArquivo, type Arquivo } from '@/lib/anexos';
 import type { ConteudoPop, Passo, Posicao } from '@/lib/pop/schema';
 import { textoPuro } from '@/lib/pop/texto-rico';
 import { imagemColada, imagemParaPng, type Print } from '@/lib/gravacao/captura';
@@ -31,7 +36,7 @@ import type { ResultadoBusca } from '@/lib/referencias';
 const EditorMarcacao = dynamic(() => import('@/components/marcacao/EditorMarcacao'), { ssr: false });
 
 type Status = 'salvo' | 'alterado' | 'salvando' | 'erro';
-type Aba = 'conteudo' | 'gravacoes' | 'versoes';
+type Aba = 'conteudo' | 'gravacoes' | 'arquivos' | 'versoes';
 
 const donoDe = (t: TelaDoPop): DonoTela => (t.pop_id ? { pop_id: t.pop_id } : { gravacao_id: t.gravacao_id! });
 // Gravação que ainda pode receber mais conteúdo (pausada ou não finalizada).
@@ -63,7 +68,10 @@ function EditorPop() {
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [aba, setAba] = useState<Aba>('conteudo'); // abas do editor (decisões 87, 137 e 138)
+  const [aba, setAba] = useState<Aba>('conteudo'); // abas do editor (decisões 87, 137, 138 e 141)
+  // Arquivos do POP (decisão 141): a janela de anexar ou editar (com as etapas já marcadas) e o arquivo aberto no visualizador.
+  const [janelaArquivo, setJanelaArquivo] = useState<{ arquivo?: Arquivo; etapas: number[] } | null>(null);
+  const [vendo, setVendo] = useState<string | null>(null);
   const [levando, setLevando] = useState(''); // id da gravação cujas telas estão sendo levadas aos passos
   const [publicando, setPublicando] = useState(false);
   const [janelaDePublicar, setJanelaDePublicar] = useState(false); // a janela que pede o tamanho da alteração e o que mudou (decisão 138)
@@ -124,8 +132,9 @@ function EditorPop() {
   useEffect(() => {
     if (location.hash === '#gravacoes' || location.hash === '#recursos') setAba('gravacoes');
     if (location.hash === '#versoes') setAba('versoes');
+    if (location.hash === '#arquivos') setAba('arquivos');
   }, []);
-  useEffect(() => { if (abaPedida === 'versoes' || abaPedida === 'gravacoes') irParaAba(abaPedida); }, [abaPedida, irParaAba]);
+  useEffect(() => { if (abaPedida === 'versoes' || abaPedida === 'gravacoes' || abaPedida === 'arquivos') irParaAba(abaPedida); }, [abaPedida, irParaAba]);
 
   const irParaPosicao = useCallback((p: Posicao) => {
     // O histórico de revisões virou a aba Versões (decisão 138): quem tinha parado nele vai para ela.
@@ -309,6 +318,30 @@ function EditorPop() {
     imagemParaPng(f).then((p) => anexarAoPasso(i, k, p)).catch(() => avisar('Não foi possível colar a imagem.', 'Copie o print de novo ou use “Anexar print”.'));
   }
 
+  // Arquivos do POP (decisão 141). O cadastro é salvo na hora; em que etapas o arquivo está faz parte do conteúdo.
+  const existentes = new Set(pop.arquivos.map((a) => a.id));
+  const arquivosDaEtapa = (i: number) => (c.procedimentos[i].arquivos ?? []).filter((x) => existentes.has(x));
+  function aoSalvarArquivo(arquivo: Arquivo, etapas: number[]) {
+    setPop((p) => p && { ...p, arquivos: p.arquivos.some((a) => a.id === arquivo.id) ? p.arquivos.map((a) => (a.id === arquivo.id ? arquivo : a)) : [...p.arquivos, arquivo] });
+    if (etapasDoArquivo(c.procedimentos, arquivo.id).join() !== etapas.join()) setConteudo({ procedimentos: comArquivoNasEtapas(c.procedimentos, arquivo.id, etapas) });
+    setMudouDesdePublicar(true); // o arquivo novo só aparece na página pública depois de publicar
+    setJanelaArquivo(null);
+  }
+  async function excluirArquivoDoPop(a: Arquivo) {
+    const etapas = etapasDoArquivo(c.procedimentos, a.id);
+    const dasEtapas = etapas.length === 0 ? '' : etapas.length === 1 ? ` Ele sai também da Etapa ${etapas[0] + 1}.` : ` Ele sai também das ${etapas.length} etapas em que está.`;
+    const daPagina = pop!.status === 'publicado' ? ' Na página pública, some na hora.' : '';
+    if (!(await confirmar({ titulo: `Excluir o arquivo "${a.nome}"?`, mensagem: `O arquivo é apagado e não dá para desfazer.${dasEtapas}${daPagina}`, acao: 'Excluir', perigo: true }))) return;
+    try {
+      await excluirArquivo(id, a.id);
+      setPop((p) => p && { ...p, arquivos: p.arquivos.filter((x) => x.id !== a.id) });
+      if (etapas.length) setConteudo({ procedimentos: semArquivo(c.procedimentos, a.id) });
+      setMudouDesdePublicar(true);
+    } catch (e) {
+      void avisar('Não foi possível excluir o arquivo.', e instanceof Error ? e.message : 'Tente de novo em instantes.');
+    }
+  }
+
   // Publicar guarda a versão atual: a página pública mostra só ela até publicar de novo (decisão 32). Cada publicação
   // é uma versão (decisão 138): antes de publicar, a janela mostra o número que vai sair e, a partir da segunda,
   // pede o tamanho da alteração e o que mudou.
@@ -407,6 +440,7 @@ function EditorPop() {
   const publicado = pop.status === 'publicado';
   const naoPublicadas = publicado && (pop.alteracoes_nao_publicadas || mudouDesdePublicar);
   const versaoAtual = pop.versoes[0]?.versao ?? null; // a versão publicada hoje; nula: nunca publicado com versão
+  const precisamDeAtencao = pop.arquivos.filter((a) => a.situacao !== 'vigente').length;
   // "Nesta página" (decisão 80): o índice das seções, com a marca de preenchido.
   const totalPassos = c.procedimentos.reduce((n, p) => n + p.passos.length, 0);
   const passosEscritos = c.procedimentos.reduce((n, p) => n + p.passos.filter((x) => textoPuro(x.texto) || x.imagem_caminho).length, 0);
@@ -482,6 +516,9 @@ function EditorPop() {
       <div className="abas" role="tablist" aria-label="Partes do POP">
         <button type="button" role="tab" id="aba-conteudo" aria-controls="painel-conteudo" aria-selected={aba === 'conteudo'} onClick={() => irParaAba('conteudo')}><Icone nome="pop" tamanho={17} />Conteúdo</button>
         <button type="button" role="tab" id="aba-gravacoes" aria-controls="painel-gravacoes" aria-selected={aba === 'gravacoes'} onClick={() => irParaAba('gravacoes')}><Icone nome="tela" tamanho={17} />Gravações<span className="aba-conta">{pop.gravacoes.length}</span></button>
+        <button type="button" role="tab" id="aba-arquivos" aria-controls="painel-arquivos" aria-selected={aba === 'arquivos'} onClick={() => irParaAba('arquivos')}>
+          <Icone nome="clipe" tamanho={17} />Arquivos<span className={`aba-conta${precisamDeAtencao ? ' atencao' : ''}`} title={precisamDeAtencao ? `${precisamDeAtencao} ${precisamDeAtencao === 1 ? 'arquivo expirado ou perto de vencer' : 'arquivos expirados ou perto de vencer'}` : undefined}>{pop.arquivos.length}</span>
+        </button>
         <button type="button" role="tab" id="aba-versoes" aria-controls="painel-versoes" aria-selected={aba === 'versoes'} onClick={() => irParaAba('versoes')}><Icone nome="versoes" tamanho={17} />Versões<span className="aba-conta">{pop.versoes.length}</span></button>
       </div>
 
@@ -551,6 +588,9 @@ function EditorPop() {
               <button className="btn btn-ghost btn-icon" aria-label="Descer etapa" title="Descer etapa" disabled={i === c.procedimentos.length - 1} onClick={() => setConteudo({ procedimentos: mover(c.procedimentos, i, i + 1) })}><Icone nome="seta-para-baixo" tamanho={16} /></button>
               <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Excluir etapa" title="Excluir etapa" onClick={async () => (await confirmar({ titulo: 'Excluir esta etapa?', mensagem: 'Os passos dela também saem do POP.', acao: 'Excluir', perigo: true })) && setConteudo({ procedimentos: c.procedimentos.filter((_, j) => j !== i) })}><Icone nome="lixo" tamanho={16} /></button>
             </div>
+            <ArquivosDaEtapa etapa={`Etapa ${i + 1}`} arquivos={pop.arquivos} ids={arquivosDaEtapa(i)} aoVer={(a) => setVendo(a.id)}
+              aoMudar={(ids) => { const { arquivos: _a, ...resto } = p; setConteudo({ procedimentos: c.procedimentos.map((q, j) => (j === i ? (ids.length ? { ...resto, arquivos: ids } : resto) : q)) }); }}
+              aoAnexarNovo={() => setJanelaArquivo({ etapas: [i] })} />
             <div className="etapa-corpo">
             {p.passos.map((s, k) => (
               <div key={k} className={`passo ${destaque === `passo-${i}-${k}` ? 'retomado' : ''}`} id={`pos-passo-${i}-${k}`} data-pos={`passo-${i}-${k}`} data-rotulo={`Passo ${i + 1}.${k + 1}`}>
@@ -680,10 +720,19 @@ function EditorPop() {
         </section>
       </div>
 
+      {/* Arquivos (decisão 141): documentos, imagens e vídeos do POP, com validade. */}
+      <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-arquivos" aria-labelledby="aba-arquivos" hidden={aba !== 'arquivos'}>
+        <ArquivosDoPop arquivos={pop.arquivos} procedimentos={c.procedimentos} bloqueado={arquivado} aoAnexar={() => setJanelaArquivo({ etapas: [] })} aoVer={(a) => setVendo(a.id)}
+          aoEditar={(a) => setJanelaArquivo({ arquivo: a, etapas: etapasDoArquivo(c.procedimentos, a.id) })} aoExcluir={(a) => void excluirArquivoDoPop(a)} />
+      </div>
+
       {/* Versões (decisão 138): o histórico das publicações, que antes era digitado à mão no fim do conteúdo. */}
       <div className="pop-conteudo pop-recursos" role="tabpanel" id="painel-versoes" aria-labelledby="aba-versoes" hidden={aba !== 'versoes'}>
         <VersoesPublicadas documento="pop" versoes={pop.versoes} ver={(v) => `/app/pops/${pop.id}/versoes/${v}`} pdf={(v) => urlPdfDaVersao(pop.id, v)} />
       </div>
+
+      {janelaArquivo && <JanelaDoArquivo popId={id} etapas={c.procedimentos} arquivo={janelaArquivo.arquivo} etapasIniciais={janelaArquivo.etapas} aoSalvar={aoSalvarArquivo} aoFechar={() => setJanelaArquivo(null)} />}
+      {vendo && <VisualizadorDeArquivo arquivos={pop.arquivos.filter((a) => a.situacao !== 'expirado')} inicial={vendo} abrir={(arquivoId) => abrirArquivo(id, arquivoId)} aoFechar={() => setVendo(null)} />}
 
       {janelaDePublicar && <PublicarVersao documento="pop" atual={versaoAtual} publicando={publicando} aoPublicar={(pedido) => void publicar(pedido)} aoFechar={() => setJanelaDePublicar(false)} />}
 
