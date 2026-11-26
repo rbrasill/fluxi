@@ -1244,6 +1244,16 @@ Durante a gravação, a pessoa trabalha em outros programas e janelas, e a aba d
 - **Navegadores:** Chrome e Edge 123 ou mais novos (o Edge usa a mesma base do Chrome). No Firefox (151 ou mais novo, quando ganhou a janela flutuante), usamos a forma do padrão, que os testes do próprio Firefox cobrem; não foi possível testar nele daqui. No Safari não há janela flutuante: os controles já ficam na aba.
 - **Limites:** se a pessoa parar pelo "Parar compartilhamento" do navegador, não há clique na janela flutuante e a aba não volta sozinha (a gravação termina do mesmo jeito). Se algum navegador recusar o pedido, a janela flutuante fecha e a gravação termina normalmente; a pessoa só precisa clicar na aba.
 
+## 146. Explicar as opções da janela de compartilhamento antes de gravar
+
+O Rafael pediu que a tela de iniciar a gravação mostrasse, com imagens e texto simples, o que cada aba da janela de compartilhamento do navegador grava.
+
+- **Onde:** na tela "Gravar a tela para o POP", acima das dicas, três cartões com a imagem de cada aba e uma frase curta.
+- **Janela (recomendada):** grava só o programa escolhido; a janelinha de controles não aparece nos prints.
+- **Guia do Chrome (no Edge, "Guia do Microsoft Edge"):** grava só uma aba do navegador, para sistemas que abrem no navegador.
+- **Tela inteira:** grava tudo o que aparece no monitor, inclusive a janelinha de controles; só para mostrar vários programas.
+- As imagens são as que o Rafael enviou, recortadas (`public/gravacao/`). A dica antiga sobre qual opção escolher saiu da lista, porque os cartões já explicam.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

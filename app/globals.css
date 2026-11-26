@@ -282,6 +282,17 @@ body:has(.fundo-processo) .trilha a, body:has(.fundo-pop) .trilha a { color: var
 .page-estreita { max-width: 960px; }
 .voltar { display: flex; width: fit-content; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; margin-bottom: 8px; }
 .cartao { background: var(--surface); border: 1px solid var(--line); border-radius: 15px; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.opcoes-tela { display: flex; flex-direction: column; gap: 8px; }
+.opcoes-tela h2 { margin: 0; font-size: 16px; }
+.opcoes-tela > p { margin: 0; font-size: 14px; color: var(--neutro-texto); }
+.opcoes-tela-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 4px; }
+.opcao-tela { margin: 0; border: 1px solid var(--neutro-200, #e5e7eb); border-radius: 12px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.opcao-tela.recomendada { border: 2px solid var(--indigo-500, #6366f1); }
+.opcao-tela img { display: block; width: 100%; height: auto; background: #15171c; }
+.opcao-tela figcaption { padding: 10px 12px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; line-height: 1.5; }
+.opcao-tela figcaption > span:last-child { flex-basis: 100%; color: var(--neutro-texto); }
+.selo-recomendada { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--indigo-100); color: var(--indigo-700); }
+@media (max-width: 720px) { .opcoes-tela-grade { grid-template-columns: minmax(0, 1fr); } }
 .opcoes-grav { display: flex; flex-wrap: wrap; gap: 12px 24px; }
 .check { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--primary); }

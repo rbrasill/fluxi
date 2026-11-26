@@ -23,6 +23,13 @@ function mensagemDeErro(e: unknown) {
   return e instanceof Error ? e.message : 'Não foi possível iniciar a gravação.';
 }
 
+// As três abas da janela de compartilhamento do navegador, explicadas em texto simples (decisão 146).
+const OPCOES_DE_TELA = [
+  { titulo: 'Janela', imagem: '/gravacao/opcao-janela.png', recomendada: true, texto: 'Grava só o programa que você escolher, como o sistema da empresa. A janelinha de controles do INCFlow não aparece nos prints.' },
+  { titulo: 'Guia do Chrome', imagem: '/gravacao/opcao-guia.png', recomendada: false, texto: 'Grava só uma aba do navegador. Use quando o sistema abre no navegador. No Edge, se chama “Guia do Microsoft Edge”.' },
+  { titulo: 'Tela inteira', imagem: '/gravacao/opcao-tela-inteira.png', recomendada: false, texto: 'Grava tudo o que aparece no monitor, inclusive a janelinha de controles. Use só se precisar mostrar vários programas.' },
+];
+
 export default function NovaGravacaoPage() {
   const router = useRouter();
   const [nome, setNome] = useState('');
@@ -281,8 +288,22 @@ export default function NovaGravacaoPage() {
             <label className="check"><input type="checkbox" checked={microfone} onChange={(e) => setMicrofone(e.target.checked)} />Gravar minha narração (microfone)</label>
             <label className="check"><input type="checkbox" checked={audioSistema} onChange={(e) => setAudioSistema(e.target.checked)} />Incluir o áudio da tela (ex.: vídeo ou reunião)</label>
           </div>
+          <section className="opcoes-tela" aria-labelledby="titulo-opcoes-tela">
+            <h2 id="titulo-opcoes-tela">O que escolher quando o navegador perguntar o que gravar</h2>
+            <p>Ao clicar em <b>Iniciar gravação</b>, o navegador abre uma janela com três abas. Veja o que cada uma grava:</p>
+            <div className="opcoes-tela-grade">
+              {OPCOES_DE_TELA.map((o) => (
+                <figure key={o.titulo} className={`opcao-tela${o.recomendada ? ' recomendada' : ''}`}>
+                  <img src={o.imagem} alt={`Aba "${o.titulo}" na janela de compartilhamento do navegador`} width={560} height={331} />
+                  <figcaption>
+                    <b>{o.titulo}</b>{o.recomendada && <span className="selo-recomendada">Recomendada</span>}
+                    <span>{o.texto}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
           <ol className="dicas">
-            <li>Escolha a <b>janela do sistema</b> (aba "Janela") ou a aba do navegador. Evite "Tela inteira": nela, a janelinha de controles aparece nos prints.</li>
             <li>{temPip ? <>Uma <b>janela flutuante</b> do INCFlow fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
             <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução: ela vai junto quando a tela for levada para o POP.</li>
           </ol>
