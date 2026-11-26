@@ -329,12 +329,6 @@ function EditorPop() {
     if (s.marcacao_id && pop!.telas[s.marcacao_id]?.pop_id) void excluirTelaDoPop(id, s.marcacao_id).catch(() => {});
   }
 
-  function passoComPrint(i: number) {
-    const k = c.procedimentos[i].passos.length;
-    setProc(i, { passos: [...c.procedimentos[i].passos, { texto: '' }] });
-    setAnexando({ i, k });
-  }
-
   // Ctrl+V com uma imagem copiada, estando num passo: o print entra nele.
   async function aoColar(e: React.ClipboardEvent) {
     const f = imagemColada(e.nativeEvent);
@@ -670,10 +664,8 @@ function EditorPop() {
                 </div>
               </div>
             ))}
-            <span className="passo-adicionar">
-              <button className="link-acao" onClick={() => setProc(i, { passos: [...p.passos, { texto: '' }] })}><Icone nome="mais" tamanho={16} />Adicionar passo</button>
-              <button className="link-acao" onClick={() => passoComPrint(i)} title="Cria um passo e já abre a captura do print"><Icone nome="camera" tamanho={16} />Adicionar passo com print</button>
-            </span>
+            {/* Botão amarelo, em destaque (decisão 144). O print entra pelo "Anexar print" de cada passo. */}
+            <button type="button" className="btn btn-adicionar-passo" onClick={() => setProc(i, { passos: [...p.passos, { texto: '' }] })}><Icone nome="mais" tamanho={16} />Adicionar passo</button>
             </div>
           </div>
         ))}

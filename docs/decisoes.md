@@ -1228,6 +1228,13 @@ O Rafael pediu um botão de voltar no topo das telas do POP e do processo e, dep
   - A primeira versão voltava à tela anterior; o Rafael pediu que voltasse ao nível anterior.
 - **No POP**, antes de sair, o botão salva o que estiver pendente, como "Pausar e sair".
 
+## 144. "Adicionar passo" em amarelo; sai o "Adicionar passo com print"
+
+O Rafael pediu mais destaque para o "Adicionar passo" no editor do POP. Validamos em HTML: quatro opções (contornado, tom suave, próximo passo, sólido), depois cinco cores do botão sólido e, por fim, seis versões em amarelo. Ficou o amarelo cheio.
+
+- **O botão:** amarelo (#FFC531) com texto escuro e uma borda mais escura embaixo, como uma tecla, no fim de cada etapa. O amarelo não aparece em outro lugar do app, então o botão se destaca sem competir com os botões índigo (Publicar, Baixar PDF). O contraste do texto é de 8,5:1.
+- **Sai o "Adicionar passo com print":** fazia o mesmo que criar o passo e usar o "Anexar print" dele.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
