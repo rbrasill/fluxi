@@ -1262,6 +1262,14 @@ Quem digitava um e-mail do domínio sem cadastro via "Se o e-mail estiver cadast
 - **O que muda:** e-mail sem cadastro fica na etapa do e-mail com "Este e-mail não está cadastrado no INCFlow. Para ter acesso, fale com um administrador da sua empresa." Nenhum código é gerado nem enviado. Quem tem cadastro vê "O código chega em instantes".
 - **O que se perde:** a resposta igual para todos (decisão 50) escondia quem tem cadastro. Agora dá para saber se um e-mail do domínio está cadastrado. Ficam os freios: só e-mails do domínio da empresa, e os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail, contados antes da consulta.
 
+## 148. Login aceita qualquer domínio de e-mail
+
+O INCFlow vai ser oferecido ao mercado, então o login não pode valer só para `@meuinc.com.br`. O Rafael pediu para tirar a regra do domínio.
+
+- **O que muda:** o login e o cadastro em Pessoas e acessos aceitam e-mail de qualquer domínio. Continua entrando só quem um administrador cadastrou; quem não tem cadastro vê o aviso da decisão 147. A variável `INC_AUTH_DOMINIO` deixou de existir.
+- **O que se perde:** o domínio era um freio a mais contra quem testa e-mails. Ficam os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail.
+- **Carteiro (Pipedream):** o passo `validar_envio` também recusava e-mails de fora do domínio. O código em `docs/login.md` foi atualizado; é preciso aplicar a mesma mudança no workflow, senão o código não chega para outros domínios.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

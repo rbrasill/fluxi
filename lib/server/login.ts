@@ -20,14 +20,13 @@ const LIMITE_SOLICITAR_EMAIL: [number, number] = [5, 60 * 60];
 const LIMITE_VALIDAR_IP: [number, number] = [20, 10 * 60];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MENSAGEM_ENVIADO = 'O código chega em instantes.';
-/** E-mail do domínio que não está em `pessoas` (decisão 147): a pessoa fica sabendo que não tem cadastro. */
+/** E-mail que não está em `pessoas` (decisão 147): a pessoa fica sabendo que não tem cadastro. */
 export const MENSAGEM_NAO_CADASTRADO = 'Este e-mail não está cadastrado no INCFlow. Para ter acesso, fale com um administrador da sua empresa.';
 
 export type Nivel = 'comum' | 'gestor' | 'admin';
 export type Pessoa = { id: string; tenant_id: string; nome: string; email: string; nivel: Nivel; versao_sessao: number };
 
 export const segredo = () => process.env.INC_AUTH_SECRET || '';
-export const dominio = () => (process.env.INC_AUTH_DOMINIO || '@meuinc.com.br').toLowerCase();
 export const emProducao = () => process.env.NODE_ENV === 'production';
 
 function exigirConfigurado() {
@@ -37,7 +36,6 @@ function exigirConfigurado() {
 export function normalizarEmail(bruto: unknown) {
   const email = String(bruto ?? '').trim().toLowerCase();
   if (!EMAIL.test(email)) throw new ErroApi(400, 'Informe um e-mail válido.');
-  if (!email.endsWith(dominio())) throw new ErroApi(403, `Acesso restrito a e-mails ${dominio()}.`);
   return email;
 }
 
@@ -75,7 +73,8 @@ const chamarCarteiro = (email: string, nome: string, codigo: string) => enviarEm
 
 /**
  * Passo 1: gera o código e manda por e-mail. E-mail sem cadastro recebe 404 com a mensagem clara (decisão 147): nada é
- * gerado nem enviado. Os limites por IP e por e-mail valem antes da consulta, para quem tentar descobrir e-mails.
+ * gerado nem enviado. Qualquer domínio é aceito (decisão 148): entra quem está em `pessoas`. Os limites por IP e por
+ * e-mail valem antes da consulta, para quem tentar descobrir e-mails.
  */
 export async function solicitarCodigo(emailBruto: unknown, ip: string) {
   exigirConfigurado();

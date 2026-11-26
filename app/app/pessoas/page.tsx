@@ -131,7 +131,7 @@ function Pessoas() {
               <h3 id="titulo-cadastrar">Cadastrar pessoa</h3>
             </div>
             <label className="field"><span>Nome</span><input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} required minLength={2} placeholder="Ex.: Ana Souza" /></label>
-            <label className="field"><span>E-mail corporativo</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required placeholder="ana.souza@meuinc.com.br" /></label>
+            <label className="field"><span>E-mail corporativo</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required placeholder="ana.souza@empresa.com.br" /></label>
             <fieldset className="opcoes-acesso">
               <legend>Acesso</legend>
               {NIVEIS.map((n) => (

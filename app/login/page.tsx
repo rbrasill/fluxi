@@ -80,7 +80,7 @@ export default function Login() {
               </div>
               <label className="login-campo">
                 <span>E-mail corporativo</span>
-                <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@meuinc.com.br" required autoFocus />
+                <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nome@empresa.com.br" required autoFocus />
               </label>
               {erro && <p className="login-erro" role="alert">{erro}</p>}
               <button className="login-botao" disabled={enviando || !email.trim()}>{enviando ? 'Enviando…' : 'Enviar código'}<Icone nome="seta-direita" tamanho={18} /></button>

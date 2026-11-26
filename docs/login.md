@@ -1,6 +1,6 @@
 # Login por código de e-mail (decisão 50)
 
-Sem senha: a pessoa digita o e-mail corporativo (`@meuinc.com.br`), recebe um código de 6 dígitos por e-mail, digita o código e entra. A sessão dura 6 horas. Só entra quem um administrador cadastrou em **Pessoas e acessos**. Segue a especificação do login do Atylux, já com as correções da auditoria de 06/11/2026.
+Sem senha: a pessoa digita o e-mail corporativo (de qualquer domínio, decisão 148), recebe um código de 6 dígitos por e-mail, digita o código e entra. A sessão dura 6 horas. Só entra quem um administrador cadastrou em **Pessoas e acessos**. Segue a especificação do login do Atylux, já com as correções da auditoria de 06/11/2026.
 
 ## Como funciona
 
@@ -16,7 +16,7 @@ Sem senha: a pessoa digita o e-mail corporativo (`@meuinc.com.br`), recebe um c�
 Rotas: `POST /api/auth/solicitar` `{ email }`, `POST /api/auth/validar` `{ email, codigo }`, `GET /api/auth/eu`, `POST /api/auth/sair`. Abertas sem login: `/login`, `/api/auth/*`, as páginas públicas (`/p/`, `/f/`, `/pr/`, `/api/publico/*`) e os arquivos estáticos por extensão.
 
 Detalhes de segurança:
-- E-mail do domínio sem cadastro recebe 404 com "Este e-mail não está cadastrado no INCFlow…" (decisão 147; antes a resposta era igual à de quem tem cadastro). Os limites por IP (5 a cada 10 min) e por e-mail (5 por hora) valem antes da consulta, o que freia quem tentar descobrir e-mails cadastrados.
+- E-mail sem cadastro recebe 404 com "Este e-mail não está cadastrado no INCFlow…" (decisão 147; antes a resposta era igual à de quem tem cadastro). Os limites por IP (5 a cada 10 min) e por e-mail (5 por hora) valem antes da consulta, o que freia quem tentar descobrir e-mails cadastrados.
 - A tentativa é consumida antes de comparar, num comando só: com pedidos em paralelo, no máximo 5 passam (testado no banco com 20 em paralelo).
 - Comparações em tempo constante; código com gerador criptográfico; o código de uma pessoa não vale para outra.
 - "Sair", remover a pessoa ou mudar o nível dela incrementa `versao_sessao`: os tokens antigos param de valer.
@@ -51,8 +51,6 @@ Step `validar_envio`:
 ```js
 import crypto from "node:crypto";
 
-const DOMINIO = "@meuinc.com.br";
-
 export default defineComponent({
   async run({ steps, $ }) {
     const recusar = async (status, motivo) => {
@@ -67,7 +65,7 @@ export default defineComponent({
     const email = String(corpo.email || "").trim().toLowerCase();
     const codigo = String(corpo.codigo || "");
     const nome = String(corpo.nome || "").trim() || email.split("@")[0];
-    if (!email.endsWith(DOMINIO) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return recusar(400, "E-mail fora do domínio.");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return recusar(400, "E-mail inválido.");
     if (!/^\d{6}$/.test(codigo)) return recusar(400, "Código malformado.");
     // Não registre o código: $.export e console.log ficam visíveis no histórico.
     return { email, nome, codigo };
