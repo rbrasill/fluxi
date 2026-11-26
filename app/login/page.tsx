@@ -46,7 +46,7 @@ export default function Login() {
       if (r.status === 429 && etapa === 'codigo') setEspera(CARENCIA_S);
       return;
     }
-    setAviso(r.mensagem || 'Se o e-mail estiver cadastrado, o código chega em instantes.');
+    setAviso(r.mensagem || 'O código chega em instantes.');
     setCodigo('');
     setEtapa('codigo');
     setEspera(CARENCIA_S);

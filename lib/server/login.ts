@@ -19,7 +19,9 @@ const LIMITE_SOLICITAR_IP: [number, number] = [5, 10 * 60];
 const LIMITE_SOLICITAR_EMAIL: [number, number] = [5, 60 * 60];
 const LIMITE_VALIDAR_IP: [number, number] = [20, 10 * 60];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const MENSAGEM_ENVIADO = 'Se o e-mail estiver cadastrado, o código chega em instantes.';
+export const MENSAGEM_ENVIADO = 'O código chega em instantes.';
+/** E-mail do domínio que não está em `pessoas` (decisão 147): a pessoa fica sabendo que não tem cadastro. */
+export const MENSAGEM_NAO_CADASTRADO = 'Este e-mail não está cadastrado no INCFlow. Para ter acesso, fale com um administrador da sua empresa.';
 
 export type Nivel = 'comum' | 'gestor' | 'admin';
 export type Pessoa = { id: string; tenant_id: string; nome: string; email: string; nivel: Nivel; versao_sessao: number };
@@ -71,9 +73,10 @@ export const nomeDoEmail = (email: string) =>
 // O código vai pelo carteiro (lib/server/carteiro.ts). Sem carteiro, só em desenvolvimento, fica no log do servidor.
 const chamarCarteiro = (email: string, nome: string, codigo: string) => enviarEmail({ tipo: 'codigo', email, nome, codigo });
 
-const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/** Passo 1: gera o código e manda por e-mail. A resposta é a mesma para e-mail cadastrado ou não. */
+/**
+ * Passo 1: gera o código e manda por e-mail. E-mail sem cadastro recebe 404 com a mensagem clara (decisão 147): nada é
+ * gerado nem enviado. Os limites por IP e por e-mail valem antes da consulta, para quem tentar descobrir e-mails.
+ */
 export async function solicitarCodigo(emailBruto: unknown, ip: string) {
   exigirConfigurado();
   if (emProducao() && !process.env.AUTH_MAILER_URL) throw new ErroApi(503, 'O envio do código por e-mail ainda não está configurado.');
@@ -81,12 +84,7 @@ export async function solicitarCodigo(emailBruto: unknown, ip: string) {
   await limitar(`ip:${ip}:solicitar`, LIMITE_SOLICITAR_IP);
   await limitar(`email:${email}:solicitar`, LIMITE_SOLICITAR_EMAIL);
   const pessoa = await pessoaPorEmail(email);
-  if (!pessoa) {
-    // Não cadastrado: nada é gerado nem enviado, mas a resposta (e a carência, e o tempo) é igual à de quem é.
-    await limitar(`carencia:${email}`, [1, CARENCIA_S], `Um código já foi enviado há pouco. Aguarde ${CARENCIA_S}s para pedir outro.`);
-    await esperar(400 + Math.random() * 600);
-    return { ok: true, message: MENSAGEM_ENVIADO };
-  }
+  if (!pessoa) throw new ErroApi(404, MENSAGEM_NAO_CADASTRADO, 'nao_cadastrado');
   const codigo = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, '0');
   const { data: gravou, error } = await supabase().rpc('login_gravar_codigo', { p_email: email, p_hash: hashDoCodigo(email, codigo), p_validade_s: VALIDADE_S, p_carencia_s: CARENCIA_S });
   if (error) throw error;

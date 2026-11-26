@@ -1255,6 +1255,13 @@ O Rafael pediu que a tela de iniciar a gravação mostrasse, com imagens e texto
 - Na primeira versão a recomendada era a Janela; o Rafael preferiu a Tela inteira.
 - As imagens são as que o Rafael enviou, recortadas (`public/gravacao/`). A dica antiga sobre qual opção escolher saiu da lista, porque os cartões já explicam.
 
+## 147. Login: avisar quem não tem cadastro
+
+Quem digitava um e-mail do domínio sem cadastro via "Se o e-mail estiver cadastrado, o código chega em instantes" e ficava esperando um e-mail que nunca chegava. O Rafael pediu uma mensagem clara.
+
+- **O que muda:** e-mail sem cadastro fica na etapa do e-mail com "Este e-mail não está cadastrado no INCFlow. Para ter acesso, fale com um administrador da sua empresa." Nenhum código é gerado nem enviado. Quem tem cadastro vê "O código chega em instantes".
+- **O que se perde:** a resposta igual para todos (decisão 50) escondia quem tem cadastro. Agora dá para saber se um e-mail do domínio está cadastrado. Ficam os freios: só e-mails do domínio da empresa, e os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail, contados antes da consulta.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
