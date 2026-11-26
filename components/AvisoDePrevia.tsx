@@ -6,17 +6,17 @@ import { Icone } from '@/components/Icone';
 export type SituacaoDaPrevia = { pendente: boolean; versao_publicada: string | null };
 
 export function AvisoDePrevia({ documento, previa, voltar }: { documento: 'POP' | 'processo'; previa: SituacaoDaPrevia; voltar: string }) {
-  const so = `Só você, que criou o ${documento}, vê esta página.`;
+  const so = <span className="aviso-previa-linha">Esta página é visível exclusivamente para você, responsável pela criação {documento === 'POP' ? 'deste POP' : 'deste processo'}.</span>;
   return (
     <div className={`aviso aviso-previa${previa.pendente ? '' : ' igual'}`} role="status">
       <Icone nome="olho" tamanho={20} />
-      <span>
+      <span className="aviso-previa-texto">
         {!previa.pendente ? (
-          <><b>Sem alterações a publicar.</b> Esta prévia está igual à versão {previa.versao_publicada}, que é a publicada. {so}</>
+          <><b className="aviso-previa-linha">Sem alterações a publicar</b><span className="aviso-previa-linha">Esta prévia está igual à versão oficial, a <b>{previa.versao_publicada}</b>.</span>{so}</>
         ) : previa.versao_publicada ? (
-          <><b>Prévia das alterações ainda não publicadas.</b> O conteúdo abaixo não tem validade oficial: a versão oficial é a {previa.versao_publicada}, até você publicar de novo. {so}</>
+          <><b className="aviso-previa-linha">Prévia de alterações não publicadas</b><span className="aviso-previa-linha">O conteúdo exibido abaixo é apenas uma prévia e não possui validade oficial. Até que uma nova versão seja publicada, a versão oficial permanece sendo a <b>{previa.versao_publicada}</b>.</span>{so}</>
         ) : (
-          <><b>Prévia: este {documento} ainda não foi publicado.</b> O conteúdo abaixo não tem validade oficial e pode mudar até a publicação. {so}</>
+          <><b className="aviso-previa-linha">Prévia {documento === 'POP' ? 'de POP' : 'de processo'} ainda não publicado</b><span className="aviso-previa-linha">O conteúdo exibido abaixo é apenas uma prévia e não possui validade oficial. Ainda não há versão oficial: ela passa a existir quando {documento === 'POP' ? 'o POP' : 'o processo'} for publicado.</span>{so}</>
         )}
       </span>
       <span className="aviso-acoes"><a href={voltar} className="btn"><Icone nome="voltar" tamanho={16} />Voltar para o {documento}</a></span>

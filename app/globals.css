@@ -1204,6 +1204,9 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .aviso-previa { position: sticky; top: 8px; z-index: 30; align-items: flex-start; background: #FFF4D6; border: 2px dashed #D97706; color: #6B3406; box-shadow: 0 6px 18px rgba(107, 52, 6, .12); }
 .aviso-previa > svg { flex: none; margin-top: 2px; }
 .aviso-previa > span:first-of-type { flex: 1 1 320px; min-width: 0; line-height: 1.5; }
+.aviso-previa-texto { display: flex; flex-direction: column; gap: 4px; }
+.aviso-previa-linha { display: block; }
+.aviso-previa-texto > b.aviso-previa-linha { font-size: 15px; }
 .aviso-previa.igual { background: var(--verde-50); border-color: var(--verde-300); color: var(--verde-900); }
 .previa-indisponivel { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
 .previa-indisponivel p { margin: 0; }
