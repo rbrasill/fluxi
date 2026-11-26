@@ -192,10 +192,11 @@ export default function NovaGravacaoPage() {
   const retomar = () => { gravador.current?.retomar(); setPausado(false); };
   // Ao encerrar pela janela flutuante, a pessoa pode estar em outro programa: o clique traz esta aba de volta para a
   // frente, onde ela acompanha o fim do envio e vai para a página da gravação, e a janela flutuante fecha (decisão 145).
-  // O Chrome (123+) só deixa a janela flutuante trazer a aba durante o clique, por isso é feito já aqui, e não ao fim do envio.
+  // O navegador só deixa a janela flutuante trazer a aba durante o clique, por isso é feito já aqui, e não ao fim do envio.
+  // Quem pede primeiro é o script da própria janela flutuante (components/gravacao/pip.ts); aqui fica o reforço.
   function encerrarGravacao() {
     const janela = pip;
-    if (janela) window.focus();
+    if (janela) { try { window.focus(); } catch { /* segue sem trazer a aba */ } }
     void gravador.current?.encerrar();
     janela?.close();
   }

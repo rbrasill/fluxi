@@ -45,12 +45,12 @@ export function PainelGravacao(p: PropsPainel) {
           ) : (
             <button type="button" className="btn btn-icon" onClick={p.aoPausar} aria-label="Pausar" title="Pausar: o que já foi gravado fica salvo"><Icone nome="pausa" /></button>
           )}
-          <button type="button" className="btn btn-parar" onClick={p.aoEncerrar}><Icone nome="parar" tamanho={14} />Encerrar</button>
+          <button type="button" className="btn btn-parar" data-voltar-aba onClick={p.aoEncerrar}><Icone nome="parar" tamanho={14} />Encerrar</button>
         </span>
       </div>
       {p.pausado && (
         <p className="painel-pausa">
-          O que foi gravado até aqui está salvo. Pode <button type="button" className="link-sec" onClick={p.aoContinuarDepois}>continuar outro dia</button>: a gravação fica pausada e você retoma de onde parou.
+          O que foi gravado até aqui está salvo. Pode <button type="button" className="link-sec" data-voltar-aba onClick={p.aoContinuarDepois}>continuar outro dia</button>: a gravação fica pausada e você retoma de onde parou.
         </p>
       )}
 

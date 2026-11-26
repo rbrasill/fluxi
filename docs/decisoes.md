@@ -1240,8 +1240,9 @@ O Rafael pediu mais destaque para o "Adicionar passo" no editor do POP. Validamo
 Durante a gravação, a pessoa trabalha em outros programas e janelas, e a aba do INCFlow fica escondida. O Rafael pediu que, ao encerrar, a tela da gravação voltasse sozinha.
 
 - **O que acontece:** ao clicar em **Encerrar** (ou em "continuar outro dia", na pausa) na janela flutuante, a aba do INCFlow volta para a frente e a janela flutuante fecha. Na aba, a pessoa acompanha o envio das últimas partes e, em seguida, vai para a página da gravação, como antes.
-- **Como:** o Chrome e o Edge (123 ou mais novo) deixam a janela flutuante trazer de volta a aba que a abriu, desde que seja no próprio clique. Por isso a aba volta no momento do clique, e não ao fim do envio, que pode levar mais tempo.
-- **Limites:** se a pessoa parar pelo "Parar compartilhamento" do navegador, não há clique na janela flutuante e a aba não volta sozinha (a gravação termina do mesmo jeito). No Firefox, a janela flutuante fecha, mas a aba pode não vir para a frente.
+- **Como:** o navegador deixa a janela flutuante trazer de volta a aba que a abriu, desde que o pedido parta dela e seja no próprio clique. Por isso a aba volta no momento do clique, e não ao fim do envio, que pode levar mais tempo. O pedido é feito de dois jeitos no mesmo clique: por um script da própria janela flutuante (a forma prevista no padrão) e, como reforço, pela página.
+- **Navegadores:** Chrome e Edge 123 ou mais novos (o Edge usa a mesma base do Chrome). No Firefox (151 ou mais novo, quando ganhou a janela flutuante), usamos a forma do padrão, que os testes do próprio Firefox cobrem; não foi possível testar nele daqui. No Safari não há janela flutuante: os controles já ficam na aba.
+- **Limites:** se a pessoa parar pelo "Parar compartilhamento" do navegador, não há clique na janela flutuante e a aba não volta sozinha (a gravação termina do mesmo jeito). Se algum navegador recusar o pedido, a janela flutuante fecha e a gravação termina normalmente; a pessoa só precisa clicar na aba.
 
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50

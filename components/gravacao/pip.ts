@@ -37,5 +37,13 @@ export async function abrirPip(largura = 480, altura = 520): Promise<Window | nu
   doc.documentElement.lang = 'pt-BR';
   doc.title = 'INCFlow · Gravação';
   doc.body.className = 'pip-body';
+  // Botões marcados com data-voltar-aba (Encerrar, "continuar outro dia") trazem a aba do INCFlow de volta para a
+  // frente (decisão 145). O pedido precisa partir de um script da própria janela flutuante, dentro do clique: é a
+  // forma prevista no padrão (Chrome e Edge 123+, Firefox 151+). Roda na captura, antes de o clique fechar a janela.
+  try {
+    const script = doc.createElement('script');
+    script.textContent = "document.addEventListener('click',function(e){var a=e.target&&e.target.closest&&e.target.closest('[data-voltar-aba]');if(a&&window.opener){try{window.opener.focus()}catch(_){}}},true);";
+    doc.head.appendChild(script);
+  } catch { /* sem o script, a página ainda tenta trazer a aba pelo próprio clique */ }
   return janela;
 }
