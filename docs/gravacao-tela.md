@@ -32,6 +32,7 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
 - Ao clicar em **Incluir esta tela**: captura o quadro, marca o **tempo** na gravação e guarda a instrução digitada (se houver). Um "flash" e o contador confirmam.
 - A instrução pode ficar vazia: depois, a IA escreve a instrução a partir da **narração** dos segundos ao redor da marcação (ex.: 10 s antes e 5 s depois).
 - Atalho de teclado dentro da janela flutuante (Enter = incluir tela).
+- **Encerrar** (ou "continuar outro dia") na janela flutuante traz a aba do INCFlow de volta para a frente e fecha a janelinha (decisão 145): a pessoa acompanha o fim do envio ali e segue para a página da gravação.
 - Abaixo do cronômetro, a **prévia da tela** sendo gravada. A janela abre com 480×520 px e a prévia ocupa todo o espaço livre: aumentando a janela, a prévia cresce junto.
 
 ## Pausar e continuar depois

@@ -1235,6 +1235,14 @@ O Rafael pediu mais destaque para o "Adicionar passo" no editor do POP. Validamo
 - **O botão:** amarelo (#FFC531) com texto escuro e uma borda mais escura embaixo, como uma tecla, no fim de cada etapa. O amarelo não aparece em outro lugar do app, então o botão se destaca sem competir com os botões índigo (Publicar, Baixar PDF). O contraste do texto é de 8,5:1.
 - **Sai o "Adicionar passo com print":** fazia o mesmo que criar o passo e usar o "Anexar print" dele.
 
+## 145. Encerrar pela janela flutuante traz a aba do INCFlow de volta
+
+Durante a gravação, a pessoa trabalha em outros programas e janelas, e a aba do INCFlow fica escondida. O Rafael pediu que, ao encerrar, a tela da gravação voltasse sozinha.
+
+- **O que acontece:** ao clicar em **Encerrar** (ou em "continuar outro dia", na pausa) na janela flutuante, a aba do INCFlow volta para a frente e a janela flutuante fecha. Na aba, a pessoa acompanha o envio das últimas partes e, em seguida, vai para a página da gravação, como antes.
+- **Como:** o Chrome e o Edge (123 ou mais novo) deixam a janela flutuante trazer de volta a aba que a abriu, desde que seja no próprio clique. Por isso a aba volta no momento do clique, e não ao fim do envio, que pode levar mais tempo.
+- **Limites:** se a pessoa parar pelo "Parar compartilhamento" do navegador, não há clique na janela flutuante e a aba não volta sozinha (a gravação termina do mesmo jeito). No Firefox, a janela flutuante fecha, mas a aba pode não vir para a frente.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

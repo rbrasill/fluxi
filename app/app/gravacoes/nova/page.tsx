@@ -190,9 +190,18 @@ export default function NovaGravacaoPage() {
 
   const pausar = () => { gravador.current?.pausar(); setPausado(true); setTempo(gravador.current?.tempoMs() ?? 0); };
   const retomar = () => { gravador.current?.retomar(); setPausado(false); };
-  const encerrar = () => void gravador.current?.encerrar();
+  // Ao encerrar pela janela flutuante, a pessoa pode estar em outro programa: o clique traz esta aba de volta para a
+  // frente, onde ela acompanha o fim do envio e vai para a página da gravação, e a janela flutuante fecha (decisão 145).
+  // O Chrome (123+) só deixa a janela flutuante trazer a aba durante o clique, por isso é feito já aqui, e não ao fim do envio.
+  function encerrarGravacao() {
+    const janela = pip;
+    if (janela) window.focus();
+    void gravador.current?.encerrar();
+    janela?.close();
+  }
+  const encerrar = () => encerrarGravacao();
   // Libera a tela e deixa a gravação pausada: a pessoa retoma pela página da gravação.
-  const continuarOutroDia = () => { continuarDepois.current = true; void gravador.current?.encerrar(); };
+  const continuarOutroDia = () => { continuarDepois.current = true; encerrarGravacao(); };
 
   const painel = (flutuante: boolean) => (
     <PainelGravacao
