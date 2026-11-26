@@ -1249,9 +1249,10 @@ Durante a gravação, a pessoa trabalha em outros programas e janelas, e a aba d
 O Rafael pediu que a tela de iniciar a gravação mostrasse, com imagens e texto simples, o que cada aba da janela de compartilhamento do navegador grava.
 
 - **Onde:** na tela "Gravar a tela para o POP", acima das dicas, três cartões com a imagem de cada aba e uma frase curta.
-- **Janela (recomendada):** grava só o programa escolhido; a janelinha de controles não aparece nos prints.
-- **Guia do Chrome (no Edge, "Guia do Microsoft Edge"):** grava só uma aba do navegador, para sistemas que abrem no navegador.
-- **Tela inteira:** grava tudo o que aparece no monitor, inclusive a janelinha de controles; só para mostrar vários programas.
+- **Tela inteira (recomendada):** grava tudo o que aparece no monitor, e a pessoa troca de programa à vontade; a janelinha de controles aparece nos prints, então ela deve ficar num canto. O seletor do navegador já abre nesta aba.
+- **Janela:** grava só o programa escolhido; o que for aberto fora dele não entra.
+- **Guia:** grava só uma aba do navegador, para sistemas que abrem no navegador. O nome é só "Guia" porque cada navegador chama de um jeito ("Guia do Chrome", "Guia do Microsoft Edge").
+- Na primeira versão a recomendada era a Janela; o Rafael preferiu a Tela inteira.
 - As imagens são as que o Rafael enviou, recortadas (`public/gravacao/`). A dica antiga sobre qual opção escolher saiu da lista, porque os cartões já explicam.
 
 ## Em aberto

@@ -84,7 +84,7 @@ export function PainelGravacao(p: PropsPainel) {
       </form>
 
       {p.flutuante && p.telaInteira && (
-        <p className="painel-aviso">Você está gravando a tela inteira, então esta janelinha aparece nos prints. Arraste-a para um canto ou grave só a janela do sistema.</p>
+        <p className="painel-aviso">Você está gravando a tela inteira, então esta janelinha aparece nos prints. Deixe-a num canto, longe do que importa.</p>
       )}
 
       <div className="painel-rodape">

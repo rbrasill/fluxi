@@ -58,8 +58,8 @@ export class Gravador {
       },
       audio: op.audioDoSistema,
       // Não oferecer a própria aba do INCFlow; permitir trocar de aba durante a gravação.
-      // Abre o seletor na aba "Janela": gravando uma janela, a janelinha de controles não aparece nos prints.
-      ...({ displaySurface: 'window', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: op.audioDoSistema ? 'include' : 'exclude' } as object),
+      // Abre o seletor na aba "Tela inteira", a opção recomendada (decisão 146): a pessoa troca de programa à vontade.
+      ...({ displaySurface: 'monitor', selfBrowserSurface: 'exclude', surfaceSwitching: 'include', systemAudio: op.audioDoSistema ? 'include' : 'exclude' } as object),
     } as DisplayMediaStreamOptions);
     this.tela = tela;
     const trilha = tela.getVideoTracks()[0];

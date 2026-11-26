@@ -25,9 +25,9 @@ function mensagemDeErro(e: unknown) {
 
 // As três abas da janela de compartilhamento do navegador, explicadas em texto simples (decisão 146).
 const OPCOES_DE_TELA = [
-  { titulo: 'Janela', imagem: '/gravacao/opcao-janela.png', recomendada: true, texto: 'Grava só o programa que você escolher, como o sistema da empresa. A janelinha de controles do INCFlow não aparece nos prints.' },
-  { titulo: 'Guia do Chrome', imagem: '/gravacao/opcao-guia.png', recomendada: false, texto: 'Grava só uma aba do navegador. Use quando o sistema abre no navegador. No Edge, se chama “Guia do Microsoft Edge”.' },
-  { titulo: 'Tela inteira', imagem: '/gravacao/opcao-tela-inteira.png', recomendada: false, texto: 'Grava tudo o que aparece no monitor, inclusive a janelinha de controles. Use só se precisar mostrar vários programas.' },
+  { titulo: 'Tela inteira', imagem: '/gravacao/opcao-tela-inteira.png', recomendada: true, texto: 'Grava tudo o que aparece no monitor, e você pode trocar de programa à vontade. A janelinha de controles aparece nos prints: deixe-a num canto.' },
+  { titulo: 'Janela', imagem: '/gravacao/opcao-janela.png', recomendada: false, texto: 'Grava só o programa que você escolher. Se você abrir outro programa, ele não entra na gravação.' },
+  { titulo: 'Guia', imagem: '/gravacao/opcao-guia.png', recomendada: false, texto: 'Grava só uma aba do navegador. Use quando o sistema abre no navegador.' },
 ];
 
 export default function NovaGravacaoPage() {
