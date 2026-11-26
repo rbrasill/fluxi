@@ -1,4 +1,5 @@
 import 'server-only';
+import { semColunaDoCriador } from './criador';
 import { createHash } from 'node:crypto';
 import { gerarCodigo } from '@/lib/codigo';
 import type { ConteudoPop } from '@/lib/pop/schema';
@@ -50,13 +51,17 @@ export async function tocar(id: string | null | undefined) {
 // O processo nasce fora do ar (decisão 128): só a pessoa coloca a página pública no ar, pela chave da página do
 // processo. Vale também para a cópia, que é criada por aqui. A coluna tem o mesmo padrão no banco (migração 0027),
 // mas o valor vai explícito para não depender dela.
-export async function criar(d: { nome: string; area_id: string; descricao?: string; icone?: IconeDoProcesso | null }) {
+// `criadorId` é quem criou (decisão 149): a prévia antes de publicar só abre para essa pessoa. Com o banco ainda sem a
+// coluna (migração 0034), o processo é gravado sem ela.
+export async function criar(d: { nome: string; area_id: string; descricao?: string; icone?: IconeDoProcesso | null }, criadorId: string | null = null) {
   await garantirArea(d.area_id);
-  for (let i = 0; i < 3; i++) {
+  let comCriador = !!criadorId;
+  for (let i = 0; i < 4; i++) {
     const { data, error } = await supabase().from('processos')
-      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '', link_publico_ativo: false, icone: d.icone ?? null })
+      .insert({ tenant_id: TENANT_PADRAO, codigo: gerarCodigo(), nome: d.nome, area_id: d.area_id, descricao: d.descricao ?? '', link_publico_ativo: false, icone: d.icone ?? null, ...(comCriador ? { criado_por_id: criadorId } : {}) })
       .select(CAMPOS).single();
     if (!error) return data;
+    if (comCriador && semColunaDoCriador(error)) { comCriador = false; continue; }
     if (error.code !== '23505') throw error;
   }
   throw new ErroApi(500, 'Não foi possível gerar um código único');

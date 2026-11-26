@@ -8,4 +8,4 @@ const Novo = z.object({ nome: z.string().trim().max(200).optional(), processo_id
 
 export const GET = (req: Request) => responder(() => listar(new URL(req.url).searchParams.get('arquivados') === '1'));
 /** "Elaborado por" sai de quem está logado (decisão 137). */
-export const POST = (req: Request) => responder(async () => { const dados = Novo.parse(await req.json()); return criar(dados, (await pessoaLogada())?.nome ?? ''); });
+export const POST = (req: Request) => responder(async () => { const dados = Novo.parse(await req.json()); const pessoa = await pessoaLogada(); return criar(dados, pessoa?.nome ?? '', pessoa?.id ?? null); });

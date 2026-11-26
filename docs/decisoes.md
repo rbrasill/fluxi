@@ -1270,6 +1270,21 @@ O INCFlow vai ser oferecido ao mercado, então o login não pode valer só para 
 - **O que se perde:** o domínio era um freio a mais contra quem testa e-mails. Ficam os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail.
 - **Carteiro (Pipedream):** o passo `validar_envio` também recusava e-mails de fora do domínio. O código em `docs/login.md` foi atualizado; é preciso aplicar a mesma mudança no workflow, senão o código não chega para outros domínios.
 
+## 149. Cabeçalho em duas linhas e prévia antes de publicar (POP e processo)
+
+O Rafael pediu dois ajustes nas telas do POP e do processo.
+
+**Cabeçalho.** Os botões ficavam ao lado do título, desalinhados dos selos, e tomavam o espaço do nome. Agora o título ocupa a largura toda e, embaixo, os selos ficam à esquerda e os botões à direita, na mesma linha.
+
+**Prévia antes de publicar.** O botão "Ver prévia" abre o POP (ou o processo) como está agora no editor, no formato da página pública, para conferir antes de publicar.
+
+- **O aviso:** um aviso fica preso no topo enquanto a pessoa rola, dizendo que é uma prévia, que o conteúdo não tem validade oficial e qual é a versão oficial, se houver. No POP, a ficha mostra "Versão: Prévia" e o histórico ganha a linha "Prévia: ainda não publicado".
+- **Quem vê: só quem criou.** A prévia fica dentro do app (`/app/pops/<id>/previa` e `/app/processos/<id>/previa`) e o servidor só a entrega a quem criou o documento. Outra pessoa, mesmo logada e com o endereço em mãos, vê só o aviso de que a prévia é restrita; o botão nem aparece para ela. É para a prévia não circular com cara de documento oficial.
+- **Quem criou:** passa a ficar guardado em `criado_por_id` (migração 0034), ao criar e ao copiar. No que já existia, a migração deduz: no POP, a pessoa do "Elaborado por"; senão, quem publicou a primeira versão. O que ficar sem criador só abre para administradores, para não ficar sem prévia para ninguém.
+- **Quando o botão aparece:** quando há o que conferir, ou seja, documento nunca publicado ou com alterações não publicadas. Antes de abrir, o que estiver pendente é salvo.
+- **Processo:** a prévia mostra o nome, a descrição e o fluxograma de hoje, e os POPs que já estão no ar. Cada POP tem a sua prévia.
+- **Fora da prévia:** o "Baixar PDF" do POP continua igual; o PDF de um POP com alterações já sai marcado como "Rascunho" (decisão 138). O editor continua aberto a quem já tinha acesso.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

@@ -192,14 +192,27 @@ function ProcessoPage() {
   // publicação é uma versão do processo (decisão 139): a janela mostra o número que vai sair e, a partir da segunda,
   // pede o tamanho da alteração e o que mudou. Antes, salva o nome e a descrição que ainda estiverem pendentes, para
   // a versão publicada ser a que está na tela.
+  /** Salva o nome e a descrição que ainda estiverem pendentes (antes de publicar e de abrir a prévia). */
+  async function salvarPendente() {
+    if (timer.current) { clearTimeout(timer.current); timer.current = null; }
+    const pendente: { nome?: string; descricao?: string } = {};
+    if (nome.trim() && nome.trim() !== p!.nome) pendente.nome = nome.trim();
+    if (descricao !== p!.descricao) pendente.descricao = descricao;
+    if (Object.keys(pendente).length) { await atualizarProcesso(p!.id, pendente); setSalvandoDescricao(''); setP((x) => x && { ...x, ...pendente }); }
+  }
+  /** Abre a prévia (decisão 149), já com o que estiver pendente salvo. */
+  async function verPrevia() {
+    try {
+      await salvarPendente();
+      router.push(`/app/processos/${p!.id}/previa`);
+    } catch (e) {
+      void avisar('Não foi possível salvar as alterações.', e instanceof Error ? e.message : 'Tente de novo antes de abrir a prévia.');
+    }
+  }
   async function abrirPublicar() {
     setPublicando(true);
     try {
-      if (timer.current) { clearTimeout(timer.current); timer.current = null; }
-      const pendente: { nome?: string; descricao?: string } = {};
-      if (nome.trim() && nome.trim() !== p!.nome) pendente.nome = nome.trim();
-      if (descricao !== p!.descricao) pendente.descricao = descricao;
-      if (Object.keys(pendente).length) { await atualizarProcesso(p!.id, pendente); setSalvandoDescricao(''); setP((x) => x && { ...x, ...pendente }); }
+      await salvarPendente();
       setJanelaDePublicar(true);
     } catch (e) {
       void avisar('Não foi possível salvar as alterações.', e instanceof Error ? e.message : 'Tente de novo antes de publicar.');
@@ -286,14 +299,19 @@ function ProcessoPage() {
             <input className="titulo-editavel" value={nome} onChange={(e) => { setNome(e.target.value); setMudouDesdePublicar(true); }} aria-label="Nome do processo" readOnly={arquivado}
               onBlur={() => nome.trim() && nome !== p.nome && salvar({ nome: nome.trim() })} />
           </div>
+          {/* Os selos e os botões ficam na mesma linha, embaixo do título, que ocupa a largura toda (decisão 149). */}
+          <div className="cab-linha">
           <div className="processo-meta">
             <SeloDocumento tipo="processo" />
             {!arquivado && <SeloStatus status={publicado ? 'publicado' : 'rascunho'} offline={publicado && !p.link_publico_ativo} />}
             {versaoAtual && <button type="button" className="chip-versao" onClick={() => irPara('versoes')} title="Versão publicada do processo. Clique para ver todas as versões">v{versaoAtual}</button>}
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
           </div>
-        </div>
         <div className="actions">
+          {/* A prévia antes de publicar (decisão 149): só quem criou o processo a vê. */}
+          {!arquivado && p.pode_ver_previa && (!publicado || naoPublicadas) && (
+            <button className="btn" onClick={() => void verPrevia()} disabled={ocupado} title="Veja como o processo vai ficar antes de publicar. Só você, que criou o processo, vê a prévia"><Icone nome="olho" tamanho={16} />Ver prévia</button>
+          )}
           {!arquivado && (!publicado || naoPublicadas) && (
             <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando || ocupado}
               title={versaoAtual ? 'Publica uma versão nova do processo: você diz o tamanho da alteração e o que mudou' : 'Publica o processo como versão 1.0.0: a página pública passa a mostrar esta versão'}>
@@ -302,6 +320,8 @@ function ProcessoPage() {
           )}
           {!arquivado && <button className="btn" title="Mover para outra área ou criar uma cópia" onClick={() => setMovendo(true)} disabled={ocupado}><Icone nome="mover" tamanho={16} />Mover ou copiar</button>}
           {!arquivado && <button className="btn" title="Tira o processo das listas, com tudo o que tem; dá para restaurar depois" onClick={arquivar} disabled={ocupado}><Icone nome="arquivar" tamanho={16} />Arquivar</button>}
+        </div>
+          </div>
         </div>
       </div>
 

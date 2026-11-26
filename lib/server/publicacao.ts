@@ -128,7 +128,7 @@ export async function definirLinkPublico(id: string, ativo: boolean) {
 type Onde = { id: string; nome: string; arquivado_em: string | null; link_publico?: string; link_publico_ativo?: boolean; area: { nome: string; organizacao: { nome: string } | null } | null } | null;
 
 /** O que a página pública mostra de cada referência: sem os endereços internos do app. */
-const paraPublico = (r: Record<string, ReferenciaResolvida>) =>
+export const paraPublico = (r: Record<string, ReferenciaResolvida>) =>
   Object.fromEntries(Object.entries(r).map(([k, { url_app: _u, ...x }]) => [k, x])) as Record<string, Omit<ReferenciaResolvida, 'url_app'>>;
 /** "Referenciado em" da página pública: só documentos que também estão no ar. */
 const referenciadoPublico = async (doc: referencias.Doc) => (await referencias.referenciadoEm(doc)).filter((x) => x.publico).map(({ url_app: _u, ...x }) => x);
@@ -292,7 +292,7 @@ export async function tituloPublico(de: string | null) {
  * publicar o processo, e aparece com a página do processo no ar ou com um POP do processo publicado e no ar (a página
  * e o PDF dele mostram o fluxograma). Sem isso, o link `/f/<link>` e o SVG respondem "não disponível".
  */
-async function fluxogramaExposto(processo: { id: string; arquivado_em: string | null; link_publico_ativo?: boolean } | null) {
+export async function fluxogramaExposto(processo: { id: string; arquivado_em: string | null; link_publico_ativo?: boolean } | null) {
   if (!processo || processo.arquivado_em) return false;
   if (processo.link_publico_ativo) return true;
   const { count, error } = await supabase().from('pops').select('id', { count: 'exact', head: true }).eq('tenant_id', TENANT_PADRAO)

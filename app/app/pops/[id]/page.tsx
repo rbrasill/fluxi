@@ -264,6 +264,14 @@ function EditorPop() {
     window.location.href = urlPdf(id);
   }
 
+  /** Abre a prévia (decisão 149), já com o que estiver pendente salvo. */
+  async function verPrevia() {
+    if (timer.current) clearTimeout(timer.current);
+    await enviar();
+    salvarPosicao();
+    router.push(`/app/pops/${id}/previa`);
+  }
+
   /** Salva tudo, guarda onde parou e volta ao processo. Retomar = "Continuar" no processo ou no Início. */
   async function pausarESair() {
     if (timer.current) clearTimeout(timer.current);
@@ -503,6 +511,8 @@ function EditorPop() {
       <div className="page-head proc-cabecalho">
         <div className="proc-titulo">
           <input className="titulo-editavel" value={pop.nome} onChange={(e) => alterar({ nome: e.target.value })} aria-label="Nome do procedimento" readOnly={arquivado} />
+          {/* Os selos e os botões ficam na mesma linha, embaixo do título, que ocupa a largura toda (decisão 149). */}
+          <div className="cab-linha">
           <p className="status-linha">
             <SeloDocumento tipo="pop" />
             <SeloStatus status={pop.status} offline={!pop.link_publico_ativo} />
@@ -519,9 +529,12 @@ function EditorPop() {
               </button>
             )}
           </p>
-        </div>
         <div className="actions">
           {!arquivado && !publicado && <button className="btn" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>}
+          {/* A prévia antes de publicar (decisão 149): só quem criou o POP a vê. */}
+          {!arquivado && pop.pode_ver_previa && (!publicado || naoPublicadas) && (
+            <button className="btn" onClick={() => void verPrevia()} title="Veja como o POP vai ficar antes de publicar. Só você, que criou o POP, vê a prévia"><Icone nome="olho" tamanho={16} />Ver prévia</button>
+          )}
           {!arquivado && (!publicado || naoPublicadas) && (
             <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando}
               title={versaoAtual ? 'Publica uma versão nova: você diz o tamanho da alteração e o que mudou' : 'Publica o POP como versão 1.0.0: a página pública passa a mostrar esta versão'}>
@@ -531,6 +544,8 @@ function EditorPop() {
           {!arquivado && <button className="btn btn-icon" onClick={abrirMover} aria-label="Mover ou copiar" title="Mover para outro processo ou criar uma cópia"><Icone nome="mover" tamanho={16} /></button>}
           {!arquivado && <button className="btn btn-icon" onClick={arquivar} disabled={ocupado} aria-label="Arquivar POP" title="Arquivar: tira o POP das listas; dá para restaurar depois"><Icone nome="arquivar" tamanho={16} /></button>}
           <button className="btn btn-primary" onClick={() => void baixarPdf()}><Icone nome="baixar" tamanho={16} />Baixar PDF</button>
+        </div>
+          </div>
         </div>
       </div>
 

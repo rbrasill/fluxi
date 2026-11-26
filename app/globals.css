@@ -1194,6 +1194,19 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .avatar-rosa { background: #FDE1E7; color: #9F1239; }
 .avatar-pessego { background: #FFEDD5; color: #9A3412; }
 .proc-titulo { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Cabeçalho do POP e do processo (decisão 149): o título ocupa a largura toda; embaixo, os selos à esquerda e os botões à direita, na mesma linha. */
+.cab-linha { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+.cab-linha > :first-child { flex: 1 1 320px; min-width: 0; }
+.cab-linha .actions { margin-left: auto; }
+.pagina-pop .proc-titulo .titulo-editavel, .pagina-processo .proc-titulo .titulo-editavel { max-width: none; }
+.pagina-pop .proc-titulo, .pagina-processo .proc-titulo { gap: 10px; }
+/* Prévia antes de publicar (decisão 149): o aviso fica preso no topo enquanto a pessoa rola. */
+.aviso-previa { position: sticky; top: 8px; z-index: 30; align-items: flex-start; background: #FFF4D6; border: 2px dashed #D97706; color: #6B3406; box-shadow: 0 6px 18px rgba(107, 52, 6, .12); }
+.aviso-previa > svg { flex: none; margin-top: 2px; }
+.aviso-previa > span:first-of-type { flex: 1 1 320px; min-width: 0; line-height: 1.5; }
+.aviso-previa.igual { background: var(--verde-50); border-color: var(--verde-300); color: var(--verde-900); }
+.previa-indisponivel { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+.previa-indisponivel p { margin: 0; }
 .pagina-processo .titulo-editavel { font-size: 30px; font-weight: 700; width: 100%; max-width: 720px; }
 .pagina-processo .processo-meta { margin: 0; flex-wrap: wrap; gap: 8px; }
 .chip-tipo { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--indigo-100); color: var(--indigo-700); font-size: 12px; font-weight: 700; }

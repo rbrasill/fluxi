@@ -10,12 +10,13 @@ import * as referencias from './referencias';
 // cópias dos POPs ativos (como rascunho, com os prints). Gravações de tela e páginas públicas não
 // vão: a cópia tem links próprios.
 
-export async function copiarProcesso(id: string, p: { area_id: string; nome?: string }) {
+/** `pessoa` é quem copia: fica como quem criou o processo novo e os POPs dele (decisão 149). */
+export async function copiarProcesso(id: string, p: { area_id: string; nome?: string }, pessoa: { id: string } | null = null) {
   const origem = await processos.obter(id);
   const area = await garantirArea(p.area_id);
   const nome = p.nome?.trim() || (origem.area_id === area.id ? `${origem.nome} (cópia)` : origem.nome);
   const descricao = (origem.descricao as string | null) ?? '';
-  const novo = await processos.criar({ nome, area_id: area.id, descricao, icone: (origem as { icone?: IconeDoProcesso | null }).icone ?? null }); // a cópia leva o ícone
+  const novo = await processos.criar({ nome, area_id: area.id, descricao, icone: (origem as { icone?: IconeDoProcesso | null }).icone ?? null }, pessoa?.id ?? null); // a cópia leva o ícone
   if (descricao) await referencias.indexar({ tipo: 'processo', id: novo.id as string }, [{ campo: 'descricao', valor: descricao }]);
 
   let fluxograma = false;
@@ -29,6 +30,6 @@ export async function copiarProcesso(id: string, p: { area_id: string; nome?: st
   }
 
   const ativos = origem.pops.filter((o) => !o.arquivado_em);
-  for (const o of ativos) await pops.copiar(o.id as string, { processo_id: novo.id as string, nome: o.nome as string });
+  for (const o of ativos) await pops.copiar(o.id as string, { processo_id: novo.id as string, nome: o.nome as string }, '', pessoa?.id ?? null);
   return { id: novo.id as string, pops: ativos.length, fluxograma };
 }

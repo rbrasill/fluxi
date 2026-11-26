@@ -8,6 +8,7 @@ import { conteudoVazio, type ConteudoPop, type Historico, type Passo, type Posic
 import { historicoDasVersoes } from '@/lib/pop/versao';
 import * as anexos from './anexos';
 import { ErroApi } from './http';
+import { semColunaDoCriador } from './criador';
 import { doProcesso as fluxogramaDoProcesso } from './fluxogramas';
 import { excluir as excluirGravacao } from './gravacoes';
 import * as referencias from './referencias';
@@ -25,7 +26,7 @@ type Arquivavel = { arquivado_em: string | null; processo: { arquivado_em: strin
 /** Arquivado por si ou pelo processo: some das listas e não pode ser editado. */
 export const arquivado = (p: Arquivavel) => !!p.arquivado_em || !!p.processo?.arquivado_em;
 
-const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+export const hoje = () => new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
 /** POPs ativos (ou só os arquivados, por si ou pelo processo). */
 export async function listar(arquivados = false) {
@@ -188,9 +189,16 @@ export async function obter(id: string) {
   return { ...resto, imagens, telas: telasDoPop, gravacoes, arquivos, versoes: lista, alteracoes_nao_publicadas, referencias: refs, referenciado_em };
 }
 
+/** Grava o POP novo com quem o criou (decisão 149). Com o banco ainda sem a coluna (migração 0034), grava sem ela. */
+async function inserirPop(linha: Record<string, unknown>, criadorId: string | null) {
+  const inserir = (l: Record<string, unknown>) => supabase().from('pops').insert(l).select('id').single();
+  const r = await inserir(criadorId ? { ...linha, criado_por_id: criadorId } : linha);
+  return r.error && criadorId && semColunaDoCriador(r.error) ? inserir(linha) : r;
+}
+
 /** POP novo, em branco, dentro de um processo. As gravações de tela são feitas a partir dele. */
-/** `autor` ("Elaborado por") é o nome de quem está logado e criou o POP (decisão 137). */
-export async function criar(p: { nome?: string; processo_id?: string }, autor = '') {
+/** `autor` ("Elaborado por") é o nome de quem está logado e criou o POP (decisão 137); `criadorId`, a pessoa (decisão 149). */
+export async function criar(p: { nome?: string; processo_id?: string }, autor = '', criadorId: string | null = null) {
   const processoId = p.processo_id ?? null;
   let conteudo = conteudoVazio();
   const nome = p.nome?.trim() || 'Novo POP';
@@ -203,7 +211,7 @@ export async function criar(p: { nome?: string; processo_id?: string }, autor = 
     if (area) conteudo = { ...conteudo, area };
   }
 
-  const { data, error } = await supabase().from('pops').insert({
+  const { data, error } = await inserirPop({
     tenant_id: TENANT_PADRAO,
     nome,
     codigo,
@@ -212,7 +220,7 @@ export async function criar(p: { nome?: string; processo_id?: string }, autor = 
     versao: '', // a versão vem da publicação (decisão 138)
     historico: [],
     processo_id: processoId,
-  }).select('id').single();
+  }, criadorId);
   if (error) throw error;
   await tocar(processoId);
   return data;
@@ -293,16 +301,17 @@ export async function moverParaProcesso(id: string, processoId: string) {
  * as marcações), arquivos anexados e referências. A cópia nasce como rascunho, versão 1.0, com link público próprio e
  * a mesma identificação (a pessoa ajusta). Gravações de tela não vão.
  */
-export async function copiar(id: string, p: { processo_id: string; nome?: string }, quemCopia = '') {
+export async function copiar(id: string, p: { processo_id: string; nome?: string }, quemCopia = '', criadorId: string | null = null) {
   const pop = await buscar(id);
   const destino = await processoDestino(p.processo_id);
   const mesmo = pop.processo_id === destino.id;
   const nome = p.nome?.trim() || (mesmo ? `${pop.nome} (cópia)` : pop.nome);
   const db = supabase();
-  const { data: novo, error } = await db.from('pops').insert({
+  // Quem copia é quem criou a cópia (decisão 149): a prévia dela é dessa pessoa.
+  const { data: novo, error } = await inserirPop({
     tenant_id: TENANT_PADRAO, nome, codigo: destino.codigo, identificacao: pop.identificacao, versao: '', autor: quemCopia || pop.autor, status: 'rascunho',
     processo_id: destino.id, conteudo: conteudoVazio(), historico: [],
-  }).select('id').single();
+  }, criadorId);
   if (error) throw error;
   const novoId = novo.id as string;
   const marcs = await marcacoesDoPop(pop.conteudo);
