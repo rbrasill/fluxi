@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
+import { BotaoVoltar } from '@/components/BotaoVoltar';
 import { Icone } from '@/components/Icone';
 import { CentralDeArquivos } from '@/components/arquivos/CentralDeArquivos';
 import { listarArquivosDoProcesso, type PopComArquivos } from '@/lib/anexos';
@@ -264,11 +265,15 @@ function ProcessoPage() {
   return (
     <ReferenciasContext.Provider value={p.referencias}>
     <div className="page fundo-processo pagina-processo">
-      <nav className="trilha" aria-label="Caminho">
-        {p.area?.organizacao && <><Link href={`/app/organizacoes/${p.area.organizacao.id}`}>{p.area.organizacao.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
-        {p.area && <><Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
-        <span aria-current="page">{p.nome}</span>
-      </nav>
+      {/* Voltar (para a página anterior ou, sem ela, para a área) e o caminho até o processo. */}
+      <div className="topo-voltar">
+        <BotaoVoltar destino={p.area ? `/app/areas/${p.area.id}` : '/app/areas'} rotulo={p.area ? 'a área' : 'as áreas'} />
+        <nav className="trilha" aria-label="Caminho">
+          {p.area?.organizacao && <><Link href={`/app/organizacoes/${p.area.organizacao.id}`}>{p.area.organizacao.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+          {p.area && <><Link href={`/app/areas/${p.area.id}`}>{p.area.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+          <span aria-current="page">{p.nome}</span>
+        </nav>
+      </div>
 
       <div className="page-head proc-cabecalho">
         <div className="proc-titulo">

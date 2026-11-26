@@ -1167,6 +1167,12 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .trilha a:hover { color: var(--indigo-700); }
 .trilha svg { flex: none; }
 .trilha [aria-current='page'] { color: var(--neutro-texto); font-weight: 500; }
+/* Botão de voltar ao lado do caminho, nas telas do POP e do processo */
+.topo-voltar { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.topo-voltar > .trilha { min-width: 0; }
+.topo-voltar .migalha { margin-bottom: 0; }
+.btn-voltar { flex: none; width: 36px; height: 36px; border-radius: 999px; border: 1px solid var(--neutro-borda); background: var(--surface); color: var(--neutro-texto); }
+.btn-voltar:hover:not(:disabled) { border-color: var(--indigo-300); background: var(--indigo-50); color: var(--indigo-700); }
 .proc-cabecalho { align-items: center; gap: 18px; }
 .proc-avatar { flex: none; width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center; font-size: 19px; font-weight: 700; }
 .avatar { flex: none; width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; font-size: 13px; font-weight: 700; }

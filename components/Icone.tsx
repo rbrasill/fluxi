@@ -2,6 +2,7 @@ import { TRACO_DOS_ICONES } from '@/lib/icones';
 
 const caminhos: Record<string, string> = {
   voltar: 'M15 6l-6 6 6 6',
+  'seta-esquerda': 'M19 12H5M12 19l-7-7 7-7', // botão de voltar à página anterior
   mais: 'M12 5v14M5 12h14',
   busca: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   'zoom-mais': 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5M8 11h6M11 8v6',

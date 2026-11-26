@@ -1219,6 +1219,14 @@ O Rafael pediu para navegar pelas etapas a partir do índice "Nesta página" (ma
 - **Índice.** Embaixo de "Procedimentos", em árvore, a lista das etapas ("Etapa N" e o nome; "Sem nome" quando não tem). Clicar leva à etapa e a destaca por um instante; ao rolar a página, a etapa que está na tela fica marcada. A lista acompanha na hora o que muda: etapa nova, nome digitado, ordem. Com muitas etapas, a lista rola dentro do índice.
 - **De passagem:** o "Mover para…" de cada passo ficava da largura do nome de etapa mais longo e, com um nome comprido, a tela do celular passava a rolar para o lado. Agora tem largura máxima.
 
+## 143. Botão de voltar nas telas do POP e do processo
+
+O Rafael pediu um botão para voltar à página anterior nas telas do POP e do processo.
+
+- **Onde:** um botão redondo com seta, à esquerda do caminho (organização › área › processo › POP), no topo das duas telas.
+- **O que faz:** volta para a página anterior quando ela é do app e desta aba. O histórico do navegador não diz se a página anterior é do app, então o app guarda o caminho das páginas abertas na aba (na memória da aba, `sessionStorage`). Quando a tela foi aberta direto (link colado, aba nova, depois do login), o botão sobe um nível: do POP para o processo (na aba POPs), do processo para a área. A dica do botão diz qual dos dois vai acontecer.
+- **No POP**, antes de sair, o botão salva o que estiver pendente, como "Pausar e sair".
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
