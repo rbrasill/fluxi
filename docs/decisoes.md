@@ -1211,6 +1211,14 @@ O Rafael mandou a especificação (anexar, descrever, ligar a etapas, visualizar
 - **Não tem:** versões ou histórico do arquivo (pedido expresso) e aviso por e-mail de vencimento. A aba do POP e a do processo mostram em laranja quando há arquivo expirado ou perto de vencer.
 - **Onde está:** tabela `pop_arquivos` (migração 0033); `lib/anexos.ts` (regras da validade, formatos, chamadas do navegador) e `lib/server/anexos.ts`; telas em `components/arquivos/`. No código o nome é "anexo", para não confundir com "arquivar"; na tela é sempre "arquivo". Os endereços dos arquivos são temporários e pedidos ao servidor na hora de abrir.
 
+## 142. Etapas no editor do POP: faixa escura e lista no índice
+
+O Rafael pediu para navegar pelas etapas a partir do índice "Nesta página" (mandou um esboço) e para deixar o título da etapa mais evidente: no editor, ela se parecia muito com um passo.
+
+- **Faixa da etapa.** O topo da etapa no editor virou a mesma faixa escura do documento publicado (decisão 140): "Etapa N" numa caixa branca com texto laranja, o nome em branco e maior, e quantos passos ela tem. O nome continua editável ali mesmo; os botões de subir, descer e excluir ficam na faixa. Há mais espaço entre uma etapa e outra. No celular, o nome desce para uma linha própria.
+- **Índice.** Embaixo de "Procedimentos", em árvore, a lista das etapas ("Etapa N" e o nome; "Sem nome" quando não tem). Clicar leva à etapa e a destaca por um instante; ao rolar a página, a etapa que está na tela fica marcada. A lista acompanha na hora o que muda: etapa nova, nome digitado, ordem. Com muitas etapas, a lista rola dentro do índice.
+- **De passagem:** o "Mover para…" de cada passo ficava da largura do nome de etapa mais longo e, com um nome comprido, a tela do celular passava a rolar para o lado. Agora tem largura máxima.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

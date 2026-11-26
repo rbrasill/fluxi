@@ -65,6 +65,7 @@ function EditorPop() {
   // Passo recebendo um print (capturado, colado ou de arquivo).
   const [anexando, setAnexando] = useState<{ i: number; k: number } | null>(null);
   const [destaque, setDestaque] = useState<string | null>(null); // campo em que a pessoa parou, ao retomar, ou passo recém-movido
+  const [etapaAtual, setEtapaAtual] = useState<number | null>(null); // a etapa que está na tela, marcada no índice
   const [chipOculto, setChipOculto] = useState(false);
   const [movendo, setMovendo] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -135,6 +136,28 @@ function EditorPop() {
     if (location.hash === '#arquivos') setAba('arquivos');
   }, []);
   useEffect(() => { if (abaPedida === 'versoes' || abaPedida === 'gravacoes' || abaPedida === 'arquivos') irParaAba(abaPedida); }, [abaPedida, irParaAba]);
+
+  // A etapa que está na tela: a última cujo topo já passou de um terço da janela. Marca a etapa no índice.
+  const totalDeEtapas = pop?.conteudo.procedimentos.length ?? 0;
+  useEffect(() => {
+    if (aba !== 'conteudo' || !totalDeEtapas) { setEtapaAtual(null); return; }
+    let quadro = 0;
+    const medir = () => {
+      quadro = 0;
+      const linha = window.innerHeight / 3;
+      let atual: number | null = null;
+      for (let i = 0; i < totalDeEtapas; i++) {
+        const r = document.getElementById(`pos-proc-${i}`)?.getBoundingClientRect();
+        if (r && r.top <= linha) atual = r.bottom > 0 ? i : null;
+      }
+      setEtapaAtual(atual);
+    };
+    const pedir = () => { if (!quadro) quadro = requestAnimationFrame(medir); };
+    medir();
+    window.addEventListener('scroll', pedir, { passive: true });
+    window.addEventListener('resize', pedir);
+    return () => { window.removeEventListener('scroll', pedir); window.removeEventListener('resize', pedir); if (quadro) cancelAnimationFrame(quadro); };
+  }, [aba, totalDeEtapas]);
 
   const irParaPosicao = useCallback((p: Posicao) => {
     // O histórico de revisões virou a aba Versões (decisão 138): quem tinha parado nele vai para ela.
@@ -216,6 +239,12 @@ function EditorPop() {
       procedimentos: c.procedimentos.map((p, j) =>
         j === i ? { ...p, passos: p.passos.filter((_, x) => x !== k) } : j === destino ? { ...p, passos: [...p.passos, passo] } : p),
     });
+  };
+  // O índice leva à etapa e a destaca por um instante.
+  const irParaEtapa = (i: number) => {
+    document.getElementById(`pos-proc-${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setDestaque(`proc-${i}`);
+    setTimeout(() => setDestaque((d) => (d === `proc-${i}` ? null : d)), 3000);
   };
   // Digitar a posição no número do passo: vai direto para lá, e a tela acompanha e destaca o passo.
   const moverPassoParaPosicao = (i: number, k: number, destino: number) => {
@@ -581,9 +610,11 @@ function EditorPop() {
         </div>
         {c.procedimentos.map((p, i) => (
           <div key={i} className={`etapa ${destaque === `proc-${i}` ? 'retomado' : ''}`} id={`pos-proc-${i}`} data-pos={`proc-${i}`} data-rotulo={`Etapa ${i + 1}${p.nome ? `: ${p.nome}` : ''}`}>
+            {/* A etapa abre com uma faixa escura, como no documento publicado (decisão 140): não se confunde com os passos. */}
             <div className="etapa-topo">
-              <span className="chip-tipo">Etapa {i + 1}</span>
-              <input className="proc-nome" value={p.nome} onChange={(e) => setProc(i, { nome: e.target.value })} placeholder="Nome da etapa" aria-label="Nome da etapa" />
+              <span className="etapa-rotulo">Etapa {i + 1}</span>
+              <input className="proc-nome" value={p.nome} onChange={(e) => setProc(i, { nome: e.target.value })} placeholder="Nome da etapa" aria-label={`Nome da etapa ${i + 1}`} />
+              <span className="etapa-conta">{p.passos.length} {p.passos.length === 1 ? 'passo' : 'passos'}</span>
               <button className="btn btn-ghost btn-icon" aria-label="Subir etapa" title="Subir etapa" disabled={i === 0} onClick={() => setConteudo({ procedimentos: mover(c.procedimentos, i, i - 1) })}><Icone nome="seta-cima" tamanho={16} /></button>
               <button className="btn btn-ghost btn-icon" aria-label="Descer etapa" title="Descer etapa" disabled={i === c.procedimentos.length - 1} onClick={() => setConteudo({ procedimentos: mover(c.procedimentos, i, i + 1) })}><Icone nome="seta-para-baixo" tamanho={16} /></button>
               <button className="btn btn-ghost btn-icon btn-lixo" aria-label="Excluir etapa" title="Excluir etapa" onClick={async () => (await confirmar({ titulo: 'Excluir esta etapa?', mensagem: 'Os passos dela também saem do POP.', acao: 'Excluir', perigo: true })) && setConteudo({ procedimentos: c.procedimentos.filter((_, j) => j !== i) })}><Icone nome="lixo" tamanho={16} /></button>
@@ -675,6 +706,19 @@ function EditorPop() {
                   <span className="indice-nome">{x.nome}</span>
                   {x.conta && <small>{x.conta}</small>}
                 </button>
+                {/* As etapas, para ir direto a cada uma; a que está na tela fica marcada. */}
+                {x.alvo === 'pos-procedimentos' && c.procedimentos.length > 0 && (
+                  <ul className="indice-etapas" aria-label="Etapas">
+                    {c.procedimentos.map((p, i) => (
+                      <li key={i}>
+                        <button type="button" onClick={() => irParaEtapa(i)} aria-current={etapaAtual === i ? 'location' : undefined} title={p.nome.trim() || undefined}>
+                          <span className="indice-etapa-num">Etapa {i + 1}</span>
+                          <span className={`indice-etapa-nome${p.nome.trim() ? '' : ' sem-nome'}`}>{p.nome.trim() || 'Sem nome'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             ))}
           </ul>

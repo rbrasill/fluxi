@@ -461,7 +461,7 @@ input.passo-num:focus { outline: none; border-color: var(--primary); background:
 .ia-acoes { align-items: center; flex-wrap: wrap; }
 .ia-acoes .notice { margin-right: auto; }
 @media (max-width: 700px) { .ia-comparacao { grid-template-columns: minmax(0, 1fr); } }
-.passo-acoes select { height: 34px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; background: #fff; }
+.passo-acoes select { height: 34px; max-width: 150px; border: 1px solid var(--line-strong); border-radius: 8px; font-size: 12px; background: #fff; } /* sem o limite, fica da largura do nome de etapa mais longo */
 .hist-cab, .hist-linha { display: grid; grid-template-columns: 140px 1fr 140px 40px; gap: 8px; align-items: center; }
 .hist-cab span { font-size: 12px; font-weight: 700; color: var(--muted); }
 .lista-pops { display: flex; flex-direction: column; gap: 8px; }
@@ -1371,15 +1371,30 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .field-ajuda { font-size: 13px; font-weight: 300; line-height: 1.45; color: var(--neutro-texto-2); }
 .btn-lixo:hover:not(:disabled) { color: var(--vermelho-600); background: var(--vermelho-50); }
 /* Etapas e passos */
+/* A etapa no editor: uma faixa escura no topo, como no documento publicado (decisão 140), para não parecer um passo. */
 .etapa { border: 1px solid var(--neutro-borda); border-radius: 15px; background: #FAFBFC; scroll-margin-top: 20px; }
-.etapa-topo { display: flex; align-items: center; gap: 8px; padding: 12px 14px 12px 16px; border-bottom: 1px solid var(--neutro-borda); }
-.etapa-topo .chip-tipo { flex: none; }
-.pagina-pop .proc-nome { min-width: 0; height: 40px; border-color: transparent; background: transparent; font-size: 16px; font-weight: 600; color: var(--neutro-texto); }
-.pagina-pop .proc-nome:hover { border-color: var(--neutro-borda); background: #fff; }
-.pagina-pop .proc-nome:focus { background: #fff; }
-.etapa-topo .btn-icon, .passo-acoes .btn-icon { width: 34px; height: 34px; border-radius: 9px; color: var(--neutro-rotulo); }
-.etapa-topo .btn-icon:hover:not(:disabled), .passo-acoes .btn-icon:hover:not(:disabled) { color: var(--neutro-texto); }
-.etapa-topo .btn-lixo:hover:not(:disabled), .passo-acoes .btn-lixo:hover:not(:disabled) { color: var(--vermelho-600); }
+#pos-procedimentos { gap: 22px; }
+.etapa-topo { display: flex; align-items: center; gap: 8px; margin: -1px -1px 0; padding: 12px 12px 12px 14px; border-radius: 15px 15px 0 0; background: #3f4a64; color: #fff; }
+.etapa-rotulo { flex: none; display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 8px; background: #fff; color: #ff3c00; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.pagina-pop .etapa-topo .proc-nome { min-width: 0; height: 40px; border-color: transparent; background: transparent; font-size: 18px; font-weight: 600; color: #fff; }
+.pagina-pop .etapa-topo .proc-nome::placeholder { color: rgba(255, 255, 255, .55); font-weight: 400; }
+.pagina-pop .etapa-topo .proc-nome:hover { border-color: rgba(255, 255, 255, .25); background: rgba(255, 255, 255, .06); }
+.pagina-pop .etapa-topo .proc-nome:focus { border-color: rgba(255, 255, 255, .7); background: rgba(255, 255, 255, .1); box-shadow: 0 0 0 3px rgba(255, 255, 255, .18); }
+.etapa-conta { flex: none; margin: 0 4px; font-size: 13px; color: rgba(255, 255, 255, .7); white-space: nowrap; }
+.etapa-topo .btn-icon { color: rgba(255, 255, 255, .75); }
+.etapa-topo .btn-icon:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, .1); }
+.etapa-topo .btn-icon:disabled { color: rgba(255, 255, 255, .3); opacity: 1; }
+.etapa-topo .btn-lixo:hover:not(:disabled) { color: #fff; background: #B42318; }
+.etapa-topo .btn-icon:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+@media (max-width: 560px) {
+  .etapa-topo { flex-wrap: wrap; row-gap: 6px; }
+  .pagina-pop .etapa-topo .proc-nome { order: 5; flex: 1 1 100%; }
+  .etapa-conta { margin-left: auto; }
+}
+.etapa-topo .btn-icon, .passo-acoes .btn-icon { width: 34px; height: 34px; border-radius: 9px; }
+.passo-acoes .btn-icon { color: var(--neutro-rotulo); }
+.passo-acoes .btn-icon:hover:not(:disabled) { color: var(--neutro-texto); }
+.passo-acoes .btn-lixo:hover:not(:disabled) { color: var(--vermelho-600); }
 .etapa-corpo { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
 .pagina-pop .passo { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px 14px; border: 1px solid var(--neutro-borda); border-radius: 15px; background: #fff; scroll-margin-top: 20px; }
 .passo-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -1408,6 +1423,19 @@ a.fluxo-palco:hover { background-color: var(--indigo-50); }
 .indice-marca.feito { border: 0; background: var(--verde-100); color: var(--verde-700); }
 .indice-nome { flex: 1; min-width: 0; }
 .nesta-pagina small { font-size: 12px; color: var(--neutro-texto-2); white-space: nowrap; }
+/* As etapas embaixo de "Procedimentos", em árvore; a que está na tela fica marcada. */
+.indice-etapas { list-style: none; margin: 0 0 4px 9px; padding: 0; max-height: 40vh; overflow-y: auto; }
+.indice-etapas li { position: relative; padding-left: 18px; }
+.indice-etapas li::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1.5px solid #D5DAE2; }
+.indice-etapas li:last-child::before { bottom: 50%; }
+.indice-etapas li::after { content: ''; position: absolute; left: 0; top: 50%; width: 12px; border-top: 1.5px solid #D5DAE2; }
+.nesta-pagina .indice-etapas button { width: 100%; margin: 0; display: flex; align-items: baseline; gap: 8px; padding: 6px 8px; border-radius: 10px; font-size: 13.5px; }
+.indice-etapa-num { flex: none; font-size: 12px; font-weight: 700; color: var(--neutro-rotulo); }
+.indice-etapa-nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.indice-etapa-nome.sem-nome { color: var(--neutro-rotulo); font-style: italic; }
+.nesta-pagina .indice-etapas button[aria-current] { background: var(--indigo-50); color: var(--indigo-700); font-weight: 600; }
+.indice-etapas button[aria-current] .indice-etapa-num { color: var(--indigo-700); }
+.indice-etapas li:has(button[aria-current])::after { border-color: var(--indigo-500); }
 /* Gravações de tela (coluna lateral) */
 .pop-lateral .lateral-topo { justify-content: space-between; }
 .btn-gravar-tela { height: 36px; padding: 0 12px; font-size: 13px; }
