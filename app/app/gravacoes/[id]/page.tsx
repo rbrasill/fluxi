@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import { BotaoVoltar } from '@/components/BotaoVoltar';
 import { Icone } from '@/components/Icone';
 import { avisar, confirmar } from '@/components/Dialogos';
 import { PlayerSegmentos } from '@/components/gravacao/PlayerSegmentos';
@@ -146,12 +147,16 @@ function Detalhe() {
 
   return (
     <div className="page pagina-gravacao">
-      <nav className="trilha" aria-label="Caminho">
-        {g.processo && <><Link href={`/app/processos/${g.processo.id}`}>{g.processo.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
-        {g.pop && <><Link href={`/app/pops/${g.pop.id}`}>POP {g.pop.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
-        {!g.processo && !g.pop && <><Link href="/app/inicio">Início</Link><Icone nome="avancar" tamanho={14} /></>}
-        <span aria-current="page">Gravação</span>
-      </nav>
+      {/* Voltar um nível (para o POP, na aba Gravações) e o caminho até a gravação. */}
+      <div className="topo-voltar">
+        <BotaoVoltar destino={g.pop ? `/app/pops/${g.pop.id}#gravacoes` : g.processo ? `/app/processos/${g.processo.id}` : '/app/inicio'} rotulo={g.pop ? 'o POP' : g.processo ? 'o processo' : 'o Início'} />
+        <nav className="trilha" aria-label="Caminho">
+          {g.processo && <><Link href={`/app/processos/${g.processo.id}`}>{g.processo.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+          {g.pop && <><Link href={`/app/pops/${g.pop.id}`}>POP {g.pop.nome}</Link><Icone nome="avancar" tamanho={14} /></>}
+          {!g.processo && !g.pop && <><Link href="/app/inicio">Início</Link><Icone nome="avancar" tamanho={14} /></>}
+          <span aria-current="page">Gravação</span>
+        </nav>
+      </div>
       <div className="page-head proc-cabecalho">
         <span className="proc-avatar avatar-neutro" aria-hidden="true"><Icone nome="tela-video" tamanho={26} /></span>
         <div className="proc-titulo">

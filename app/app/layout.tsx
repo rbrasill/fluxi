@@ -4,7 +4,6 @@ import { ContaMenu } from '@/components/ContaMenu';
 import { Icone } from '@/components/Icone';
 import { NavLink } from '@/components/NavLink';
 import { RecolherMenu } from '@/components/RecolherMenu';
-import { RastreadorDeNavegacao } from '@/components/BotaoVoltar';
 import { AvisoDeRegras } from '@/components/regra/AvisoDeRegras';
 import { VoltarAoTopo } from '@/components/VoltarAoTopo';
 import { CHAVE_MENU } from '@/lib/menu';
@@ -37,7 +36,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="main">{children}</div>
       <VoltarAoTopo />
-      <RastreadorDeNavegacao />
       <AvisoDeRegras />
     </div>
   );

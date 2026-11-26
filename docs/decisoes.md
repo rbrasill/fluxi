@@ -1219,12 +1219,13 @@ O Rafael pediu para navegar pelas etapas a partir do índice "Nesta página" (ma
 - **Índice.** Embaixo de "Procedimentos", em árvore, a lista das etapas ("Etapa N" e o nome; "Sem nome" quando não tem). Clicar leva à etapa e a destaca por um instante; ao rolar a página, a etapa que está na tela fica marcada. A lista acompanha na hora o que muda: etapa nova, nome digitado, ordem. Com muitas etapas, a lista rola dentro do índice.
 - **De passagem:** o "Mover para…" de cada passo ficava da largura do nome de etapa mais longo e, com um nome comprido, a tela do celular passava a rolar para o lado. Agora tem largura máxima.
 
-## 143. Botão de voltar nas telas do POP e do processo
+## 143. Botão de voltar: sobe um nível
 
-O Rafael pediu um botão para voltar à página anterior nas telas do POP e do processo.
+O Rafael pediu um botão de voltar no topo das telas do POP e do processo e, depois, também nas telas da área (as pastas dos processos) e da gravação.
 
-- **Onde:** um botão redondo com seta, à esquerda do caminho (organização › área › processo › POP), no topo das duas telas.
-- **O que faz:** volta para a página anterior quando ela é do app e desta aba. O histórico do navegador não diz se a página anterior é do app, então o app guarda o caminho das páginas abertas na aba (na memória da aba, `sessionStorage`). Quando a tela foi aberta direto (link colado, aba nova, depois do login), o botão sobe um nível: do POP para o processo (na aba POPs), do processo para a área. A dica do botão diz qual dos dois vai acontecer.
+- **Onde:** um botão redondo com seta, à esquerda do caminho (organização › área › processo › POP), no topo das telas do POP, do processo, da área e da gravação.
+- **O que faz: sobe sempre um nível na hierarquia**, venha a pessoa de onde vier. Da gravação vai para o POP (aba Gravações; sem POP, para o processo), do POP para o processo (aba POPs), do processo para a área e da área para a organização. A dica do botão diz para onde ele leva. Para voltar à tela anterior, continua valendo o voltar do navegador.
+  - A primeira versão voltava à tela anterior; o Rafael pediu que voltasse ao nível anterior.
 - **No POP**, antes de sair, o botão salva o que estiver pendente, como "Pausar e sair".
 
 ## Em aberto

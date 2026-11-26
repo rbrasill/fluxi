@@ -484,7 +484,7 @@ function EditorPop() {
   return (
     <ReferenciasContext.Provider value={pop.referencias}>
     <div className="page fundo-pop pagina-pop" onFocusCapture={aoFocar} onPaste={aoColar}>
-      {/* Voltar (para a página anterior ou, sem ela, para o processo) e o caminho até o POP. */}
+      {/* Voltar um nível (para o processo, na aba POPs) e o caminho até o POP. */}
       <div className="topo-voltar">
       <BotaoVoltar destino={pop.processo_id ? `/app/processos/${pop.processo_id}#pops` : '/app/pops'} rotulo={pop.processo_id ? 'o processo' : 'a lista de POPs'}
         antes={async () => { if (timer.current) clearTimeout(timer.current); await enviar(); salvarPosicao(); }} />

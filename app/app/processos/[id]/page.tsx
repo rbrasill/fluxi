@@ -265,7 +265,7 @@ function ProcessoPage() {
   return (
     <ReferenciasContext.Provider value={p.referencias}>
     <div className="page fundo-processo pagina-processo">
-      {/* Voltar (para a página anterior ou, sem ela, para a área) e o caminho até o processo. */}
+      {/* Voltar um nível (para a área) e o caminho até o processo. */}
       <div className="topo-voltar">
         <BotaoVoltar destino={p.area ? `/app/areas/${p.area.id}` : '/app/areas'} rotulo={p.area ? 'a área' : 'as áreas'} />
         <nav className="trilha" aria-label="Caminho">

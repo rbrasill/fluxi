@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { BotaoVoltar } from '@/components/BotaoVoltar';
 import { Icone } from '@/components/Icone';
 import { confirmar } from '@/components/Dialogos';
 import { ListaDeProcessos } from '@/components/ListaDeProcessos';
@@ -48,10 +49,14 @@ export default function AreaPage() {
     <div className="page">
       <div className="page-head">
         <div>
-          <nav className="migalha" aria-label="Caminho">
-            <Link href="/app/organizacoes">Organizações</Link><span>›</span>
-            {a.organizacao && <Link href={`/app/organizacoes/${a.organizacao.id}`}>{a.organizacao.nome}</Link>}
-          </nav>
+          {/* Voltar um nível (para a organização) e o caminho até a área. */}
+          <div className="topo-voltar topo-voltar-cabecalho">
+            <BotaoVoltar destino={a.organizacao ? `/app/organizacoes/${a.organizacao.id}` : '/app/organizacoes'} rotulo={a.organizacao ? 'a organização' : 'as organizações'} />
+            <nav className="migalha" aria-label="Caminho">
+              <Link href="/app/organizacoes">Organizações</Link><span>›</span>
+              {a.organizacao && <Link href={`/app/organizacoes/${a.organizacao.id}`}>{a.organizacao.nome}</Link>}
+            </nav>
+          </div>
           <input className="titulo-editavel" value={nome} onChange={(e) => setNome(e.target.value)} onBlur={renomear} aria-label="Nome da área" />
           <p className="page-meta">{ativos.length} {ativos.length === 1 ? 'processo' : 'processos'}{arquivados.length ? ` · ${arquivados.length} ${arquivados.length === 1 ? 'arquivado' : 'arquivados'}` : ''}</p>
         </div>
