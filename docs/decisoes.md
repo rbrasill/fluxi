@@ -1303,6 +1303,14 @@ O Rafael pediu o selo "POP" (abaixo do nome do POP) no estilo de uma referência
 - **O selo:** fundo #E8FBD3, texto #14612E (contraste de 7:1), cantos de 8 px, sem borda. Continua com o ícone de documento do INCFlow. Troca o violeta da decisão 134.
 - O selo "Processo" continua azul.
 
+## 152. Fundo do processo em azul-céu
+
+O Rafael pediu o degradê azul da tela do processo no azul de uma imagem de referência (um céu azul-ciano). Validamos três opções em HTML: o céu inteiro no topo com texto branco, o brilho de hoje em azul-céu e uma faixa clara no topo. Ficou o brilho no canto.
+
+- **O que muda:** o mesmo desenho da decisão 126 (brilho no canto de cima e no de baixo, à direita, sobre o cinza claro), trocando o azul-lavanda pelo azul-céu: rgba(60, 180, 233, .55) em cima e rgba(158, 221, 248, .6) embaixo.
+- **Contraste:** o texto que fica direto sobre o fundo (caminho, selos, abas) tem 5,3:1 ou mais, medido na tela a 1440 px e 1920 px.
+- O fundo verde do POP não muda.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

@@ -96,15 +96,17 @@ input { font-family: inherit; }
    para a pessoa saber onde está sem depender do título. Tons pastel, só no lado direito: a mancha maior no canto de
    cima (chega até perto da borda direita da coluna principal) e outra, mais clara, no canto de baixo; o lado esquerdo
    e o meio ficam no cinza claro de sempre. O degradê fica preso à janela (não estica com a rolagem). Os cartões
-   continuam brancos e opacos; o que fica direto sobre o fundo (caminho, título, abas) mantém 5,6:1 ou mais. */
+   continuam brancos e opacos; o que fica direto sobre o fundo (caminho, título, abas) mantém 5,3:1 ou mais (medido com o
+   azul-céu da decisão 152). */
 body:has(.fundo-processo) { background: var(--fundo-processo); }
 body:has(.fundo-pop) { background: var(--fundo-pop); }
 @media screen {
   body:has(.fundo-processo)::before, body:has(.fundo-pop)::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none; }
   body:has(.fundo-processo)::before {
     background:
-      radial-gradient(65% 80% at 100% 0%, rgba(188, 213, 250, .85) 0%, rgba(188, 213, 250, 0) 72%),
-      radial-gradient(45% 60% at 100% 100%, rgba(207, 226, 252, .8) 0%, rgba(207, 226, 252, 0) 72%);
+      /* Azul-céu (decisão 152), no lugar do azul-lavanda da decisão 125. */
+      radial-gradient(65% 80% at 100% 0%, rgba(60, 180, 233, .55) 0%, rgba(60, 180, 233, 0) 72%),
+      radial-gradient(45% 60% at 100% 100%, rgba(158, 221, 248, .6) 0%, rgba(158, 221, 248, 0) 72%);
   }
   body:has(.fundo-pop)::before {
     background:
