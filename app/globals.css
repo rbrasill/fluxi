@@ -1,9 +1,12 @@
 :root {
   /* Redesign (decisões 75 e 77): as variáveis de base passaram a apontar para o sistema de cores novo (índigo na
      ação, neutros no resto). As telas ainda não redesenhadas herdam as cores novas por aqui. */
-  --bg: #F6F7F9;
-  --fundo-processo: #F6F7F9; /* base do degradê azul da página do processo: o cinza claro de sempre (decisões 125 e 126) */
-  --fundo-pop: #F6F7F9; /* base do degradê verde da página do POP: o cinza claro de sempre (decisões 125 e 126) */
+  --bg: #F6F7F9; /* tom de apoio dentro de cartões e menus (passar o mouse, caixas); não é mais o fundo da página */
+  /* Fundo da plataforma (decisão 156): em teste o #fafbf7de. Para voltar ao de antes, troque pelo valor guardado abaixo. */
+  --fundo-plataforma: #fafbf7de;
+  --fundo-plataforma-anterior: #F6F7F9; /* o cinza claro de antes (decisões 125 e 126) */
+  --fundo-processo: var(--fundo-plataforma); /* base do degradê azul da página do processo */
+  --fundo-pop: var(--fundo-plataforma); /* base do degradê verde da página do POP */
   --surface: #ffffff;
   --ink: #2B3D55; /* cor dos textos (decisão 121); antes, #0E1525 */
   --muted: #5A6372;
@@ -38,7 +41,7 @@
 html, body { margin: 0; height: 100%; }
 body {
   font-family: var(--font-body), system-ui, sans-serif;
-  background: var(--bg);
+  background: var(--fundo-plataforma);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }

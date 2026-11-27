@@ -1331,6 +1331,13 @@ O Rafael pediu as abas não selecionadas das telas do processo e do POP na cor #
 - **O que muda:** só a cor do texto das abas não selecionadas. A aba selecionada e o passar do mouse continuam em índigo. As outras telas com abas não mudam.
 - **Contraste:** as abas passam de 4,9:1 para mais de 12:1 sobre o brilho do fundo. O menor contraste da tela agora é o do caminho no topo (5,2:1).
 
+## 156. Fundo da plataforma em teste: #fafbf7de
+
+O Rafael pediu para testar o fundo da plataforma em #fafbf7de (um off-white levemente esverdeado, com 87% de opacidade) e guardar a cor de antes.
+
+- **O que muda:** o fundo das páginas do app, inclusive a base das telas do processo e do POP (por baixo dos brilhos azul e verde). Os cartões continuam brancos. O tom cinza usado dentro de cartões e menus (passar o mouse, caixas de apoio) continua o de antes, para não sumir sobre o branco. As páginas públicas não mudam.
+- **Para voltar:** a cor de antes (#F6F7F9) está guardada em `app/globals.css`, na variável `--fundo-plataforma-anterior`. Basta trocar o valor de `--fundo-plataforma` por ela.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
