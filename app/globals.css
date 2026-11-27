@@ -1230,6 +1230,8 @@ html[data-menu='recolhido'] .side .conta-sair { margin: 0; }
 .abas button { display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px; margin-bottom: -1px; border: 0; border-bottom: 3px solid transparent; border-radius: 15px 15px 0 0; background: none; color: var(--neutro-texto-2); font-size: 15px; font-weight: 500; white-space: nowrap; transition: background .15s, color .15s; }
 .abas button:hover { color: var(--indigo-700); background: var(--neutro-superficie); }
 .abas button[aria-selected='true'] { color: var(--indigo-700); font-weight: 700; background: var(--indigo-100); border-bottom-color: var(--indigo-700); }
+/* Processo e POP (decisão 155): as abas não selecionadas em #1f2a3c, mais escuras, para ler bem sobre o brilho do fundo. */
+:is(.pagina-processo, .pagina-pop) .abas button:not([aria-selected='true']):not(:hover) { color: #1f2a3c; }
 .aba-conta { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--neutro-borda); color: var(--neutro-texto-2); font-size: 12px; font-weight: 700; }
 .abas button:hover .aba-conta { background: var(--indigo-100); color: var(--indigo-700); }
 .abas button[aria-selected='true'] .aba-conta { background: var(--indigo-700); color: #fff; }

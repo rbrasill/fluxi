@@ -1324,6 +1324,13 @@ O Rafael pediu para estender o azul do fundo do processo até o meio da tela e f
 - **O que muda:** a mancha de cima (canto direito) ficou mais larga: vai clareando até perto do meio da tela, em vez de sumir logo depois do canto. A cor e a força no canto não mudaram (azul-céu da decisão 152 no processo, verde da decisão 126 no POP). A mancha de baixo continua igual.
 - **Contraste:** o texto direto sobre o fundo (caminho, selos, abas) ficou com 4,9:1 ou mais, medido na tela do processo a 1440 px e 1920 px (o mínimo recomendado é 4,5:1).
 
+## 155. Abas não selecionadas mais escuras (processo e POP)
+
+O Rafael pediu as abas não selecionadas das telas do processo e do POP na cor #1f2a3c, mais escura que o cinza de antes.
+
+- **O que muda:** só a cor do texto das abas não selecionadas. A aba selecionada e o passar do mouse continuam em índigo. As outras telas com abas não mudam.
+- **Contraste:** as abas passam de 4,9:1 para mais de 12:1 sobre o brilho do fundo. O menor contraste da tela agora é o do caminho no topo (5,2:1).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
