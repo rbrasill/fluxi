@@ -92,12 +92,12 @@ input { font-family: inherit; }
 /* Lista */
 /* Centralizada: em telas largas (ou com o menu recolhido) a sobra fica dividida entre os dois lados. */
 .page { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-width: 1280px; width: 100%; margin: 0 auto; }
-/* Identidade de cada ambiente (decisões 125 e 126): o processo tem fundo em degradê azul e o POP, em degradê verde,
-   para a pessoa saber onde está sem depender do título. Tons pastel, só no lado direito: a mancha maior no canto de
-   cima (chega até perto da borda direita da coluna principal) e outra, mais clara, no canto de baixo; o lado esquerdo
+/* Identidade de cada ambiente (decisões 125, 126 e 154): o processo tem fundo em degradê azul e o POP, em degradê verde,
+   para a pessoa saber onde está sem depender do título. Tons pastel, do lado direito: a mancha maior no canto de
+   cima vai clareando até perto do meio da tela (decisão 154) e outra, mais clara, no canto de baixo; o lado esquerdo
    e o meio ficam no cinza claro de sempre. O degradê fica preso à janela (não estica com a rolagem). Os cartões
-   continuam brancos e opacos; o que fica direto sobre o fundo (caminho, título, abas) mantém 5,3:1 ou mais (medido com o
-   azul-céu da decisão 152). */
+   continuam brancos e opacos; o que fica direto sobre o fundo (caminho, título, abas) mantém 4,9:1 ou mais (medido com o
+   azul-céu das decisões 152 e 154). */
 body:has(.fundo-processo) { background: var(--fundo-processo); }
 body:has(.fundo-pop) { background: var(--fundo-pop); }
 @media screen {
@@ -105,12 +105,12 @@ body:has(.fundo-pop) { background: var(--fundo-pop); }
   body:has(.fundo-processo)::before {
     background:
       /* Azul-céu (decisão 152), no lugar do azul-lavanda da decisão 125. */
-      radial-gradient(65% 80% at 100% 0%, rgba(60, 180, 233, .55) 0%, rgba(60, 180, 233, 0) 72%),
+      radial-gradient(95% 85% at 100% 0%, rgba(60, 180, 233, .55) 0%, rgba(60, 180, 233, .18) 45%, rgba(60, 180, 233, 0) 78%),
       radial-gradient(45% 60% at 100% 100%, rgba(158, 221, 248, .6) 0%, rgba(158, 221, 248, 0) 72%);
   }
   body:has(.fundo-pop)::before {
     background:
-      radial-gradient(65% 80% at 100% 0%, rgba(196, 240, 210, .8) 0%, rgba(196, 240, 210, 0) 72%),
+      radial-gradient(95% 85% at 100% 0%, rgba(196, 240, 210, .8) 0%, rgba(196, 240, 210, .3) 45%, rgba(196, 240, 210, 0) 78%),
       radial-gradient(45% 60% at 100% 100%, rgba(212, 245, 222, .8) 0%, rgba(212, 245, 222, 0) 72%);
   }
 }

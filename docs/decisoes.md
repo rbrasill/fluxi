@@ -1317,6 +1317,13 @@ O Rafael pediu o selo "Processo" (abaixo do nome do processo) no azul-céu do fu
 
 - **O selo:** fundo #DDF2FC, texto #075985 (contraste de 6,5:1), cantos de 8 px e sem borda, no mesmo formato do selo do POP (decisão 151). Continua com o ícone do processo. Troca o azul da decisão 125.
 
+## 154. Brilho do fundo até o meio da tela (processo e POP)
+
+O Rafael pediu para estender o azul do fundo do processo até o meio da tela e fazer o mesmo no verde do POP.
+
+- **O que muda:** a mancha de cima (canto direito) ficou mais larga: vai clareando até perto do meio da tela, em vez de sumir logo depois do canto. A cor e a força no canto não mudaram (azul-céu da decisão 152 no processo, verde da decisão 126 no POP). A mancha de baixo continua igual.
+- **Contraste:** o texto direto sobre o fundo (caminho, selos, abas) ficou com 4,9:1 ou mais, medido na tela do processo a 1440 px e 1920 px (o mínimo recomendado é 4,5:1).
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
