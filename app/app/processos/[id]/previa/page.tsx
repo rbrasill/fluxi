@@ -12,7 +12,7 @@ import { dataBr } from '@/lib/publico';
 
 // Prévia do processo antes de publicar (decisão 149): o nome, a descrição e o fluxograma como estão agora, no formato
 // da página pública, com o aviso de que não é documento oficial. Os POPs listados são os que já estão no ar (cada POP
-// tem a sua prévia). Só abre para quem criou o processo: para os outros, o servidor responde 403.
+// tem a sua prévia). Abre para todos os perfis (decisão 150).
 
 export default function PreviaDoProcessoPage() {
   const { id } = useParams<{ id: string }>();

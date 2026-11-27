@@ -1285,6 +1285,17 @@ O Rafael pediu dois ajustes nas telas do POP e do processo.
 - **Processo:** a prévia mostra o nome, a descrição e o fluxograma de hoje, e os POPs que já estão no ar. Cada POP tem a sua prévia.
 - **Fora da prévia:** o "Baixar PDF" do POP continua igual; o PDF de um POP com alterações já sai marcado como "Rascunho" (decisão 138). O editor continua aberto a quem já tinha acesso.
 
+## 150. Prévia para todos os perfis e aviso de alterações
+
+O Rafael pediu que o "Ver prévia" apareça para todos os perfis de acesso e que a prévia deixe claro quando o documento tem alterações ainda não publicadas. Muda a regra de acesso da decisão 149.
+
+- **Quem vê:** qualquer pessoa logada, de qualquer perfil (comum, gestor ou administrador), no POP e no processo. Sai a regra de "só quem criou" e, do aviso, a frase "Esta página é visível exclusivamente para você…". A prévia continua dentro do app: sem login, ninguém a abre. Quem criou continua guardado (`criado_por_id`), mas não decide mais o acesso.
+- **Quando o botão aparece:** sempre, menos no que está arquivado. Antes só aparecia com alterações a publicar.
+- **O aviso diz se há alterações:**
+  - Com alterações: "Prévia de alterações não publicadas. Este POP foi alterado depois da versão 1.0.0 e as alterações ainda não foram publicadas. Última alteração em dd/mm/aaaa." Em seguida, o texto da decisão 149 sobre a validade oficial.
+  - Nunca publicado: "Prévia de POP ainda não publicado", sem validade oficial, com a data da última alteração.
+  - Sem alterações: "Prévia sem alterações", igual à versão oficial, em verde.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)

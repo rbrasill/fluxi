@@ -14,7 +14,6 @@ export type ProcessoResumo = {
 export type Processo = Omit<ProcessoResumo, 'total'> & {
   link_publico: string; link_publico_ativo: boolean; // página pública /pr/<link> (decisão 35)
   publicado_em: string | null; alteracoes_nao_publicadas: boolean; // versão publicada (decisão 129)
-  pode_ver_previa?: boolean; // só quem criou o processo vê a prévia antes de publicar (decisão 149)
   versoes: VersaoPublicada[]; // as versões publicadas, da mais nova para a mais antiga (decisão 139)
   referencias: Record<string, ReferenciaResolvida>; referenciado_em: ReferenciadoEm[];
   fluxograma: { id: string; codigo: string; nome: string; origem: string; miniatura: string | null; link_publico: string; tem_svg: boolean; atualizado_em: string } | null; // um por processo
@@ -59,14 +58,14 @@ export type VersaoPublicadaDoProcesso = {
   referencias: Record<string, ReferenciaPublica>;
   desta_versao: { tipo: TipoDeVersao; o_que_mudou: string; publicado_por: string; versao_atual: string; processo_nome: string };
 };
-/** A prévia do processo antes de publicar (decisão 149): o que está na página do processo hoje. Só para quem criou. */
+/** A prévia do processo antes de publicar (decisões 149 e 150): o que está na página do processo hoje. */
 export type PreviaDoProcesso = {
   nome: string; codigo: string; descricao: string;
   onde: { organizacao: string | null; area: string | null; processo: string | null };
   fluxograma: { id: string; nome: string; tem_svg: boolean } | null;
   pops: { nome: string; identificacao: string | null; codigo: string; versao: string; link_publico: string; publicado_em: string | null }[];
   referencias: Record<string, ReferenciaPublica>;
-  previa: { pendente: boolean; versao_publicada: string | null };
+  previa: { pendente: boolean; versao_publicada: string | null; alterado_em: string };
 };
 export const obterPreviaDoProcesso = (id: string) => api<PreviaDoProcesso>(`/api/processos/${id}/previa`);
 export const obterVersaoDoProcesso = (id: string, versao: string) => api<VersaoPublicadaDoProcesso>(`/api/processos/${id}/versoes/${encodeURIComponent(versao)}`);

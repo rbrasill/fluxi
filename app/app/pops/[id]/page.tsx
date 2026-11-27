@@ -531,10 +531,8 @@ function EditorPop() {
           </p>
         <div className="actions">
           {!arquivado && !publicado && <button className="btn" onClick={pausarESair} title="Salva tudo e guarda onde você parou, para continuar depois"><Icone nome="pausa" tamanho={16} />Pausar e sair</button>}
-          {/* A prévia antes de publicar (decisão 149): só quem criou o POP a vê. */}
-          {!arquivado && pop.pode_ver_previa && (!publicado || naoPublicadas) && (
-            <button className="btn" onClick={() => void verPrevia()} title="Veja como o POP vai ficar antes de publicar. Só você, que criou o POP, vê a prévia"><Icone nome="olho" tamanho={16} />Ver prévia</button>
-          )}
+          {/* A prévia antes de publicar (decisões 149 e 150): para todos os perfis. */}
+          {!arquivado && <button className="btn" onClick={() => void verPrevia()} title="Veja como o POP vai ficar ao ser publicado"><Icone nome="olho" tamanho={16} />Ver prévia</button>}
           {!arquivado && (!publicado || naoPublicadas) && (
             <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando}
               title={versaoAtual ? 'Publica uma versão nova: você diz o tamanho da alteração e o que mudou' : 'Publica o POP como versão 1.0.0: a página pública passa a mostrar esta versão'}>

@@ -1,9 +1,7 @@
 import 'server-only';
 import { historicoDasVersoes } from '@/lib/pop/versao';
 import * as anexos from './anexos';
-import { exigirCriador } from './criador';
 import { ErroApi } from './http';
-import type { Pessoa } from './login';
 import * as pops from './pops';
 import * as processos from './processos';
 import { fluxogramaExposto, paraPublico, type PublicacaoProcesso } from './publicacao';
@@ -12,16 +10,13 @@ import { TENANT_PADRAO, supabase } from './supabase';
 import * as telas from './telas';
 import * as versoes from './versoes';
 
-// Prévia antes de publicar (decisão 149): o POP e o processo como estão agora no editor, no formato da página
-// pública, para conferir antes de publicar. Não é documento oficial e só abre para quem criou (`criador.ts`): o
-// endereço da prévia, mandado a outra pessoa, não mostra nada. Nada é gravado: a prévia é montada na hora.
-
-type Quem = Pick<Pessoa, 'id' | 'nivel'> | null;
+// Prévia antes de publicar (decisões 149 e 150): o POP e o processo como estão agora no editor, no formato da página
+// pública, para conferir antes de publicar. Não é documento oficial. Abre para qualquer pessoa logada, de qualquer
+// perfil (a rota exige o login). Nada é gravado: a prévia é montada na hora.
 type Area = { nome: string; organizacao: { nome: string } | null } | null;
 
 /** O POP como sairia se fosse publicado agora, no formato que a página pública recebe. */
-export async function previaDoPop(id: string, pessoa: Quem) {
-  await exigirCriador('pops', id, pessoa);
+export async function previaDoPop(id: string) {
   const pop = await pops.buscar(id);
   const [{ conteudo, arquivos: anexados }, lista] = await Promise.all([pops.estadoFinal(pop), versoes.doPop.listar(id)]);
   const daVersao = anexados.map(({ id: arquivoId, nome, descricao }) => ({ id: arquivoId, nome, descricao }));
@@ -58,16 +53,16 @@ export async function previaDoPop(id: string, pessoa: Quem) {
     referencias: paraPublico(refs),
     referenciado_em: [],
     // O que a página da prévia diz no aviso.
-    previa: { pendente, versao_publicada: publicada },
+    // Desde quando há alteração: a última vez que o POP foi salvo.
+    previa: { pendente, versao_publicada: publicada, alterado_em: pop.atualizado_em },
   };
 }
 
 /** O processo como sairia se fosse publicado agora: a descrição e o fluxograma de hoje, e os POPs que já estão no ar. */
-export async function previaDoProcesso(id: string, pessoa: Quem) {
-  await exigirCriador('processos', id, pessoa);
+export async function previaDoProcesso(id: string) {
   const db = supabase();
   const [p, f, o, lista] = await Promise.all([
-    db.from('processos').select('id, nome, codigo, descricao, publicado_em, publicacao_hash:publicacao->>versao_hash, area:areas(nome, organizacao:organizacoes(nome))').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
+    db.from('processos').select('id, nome, codigo, descricao, publicado_em, atualizado_em, publicacao_hash:publicacao->>versao_hash, area:areas(nome, organizacao:organizacoes(nome))').eq('tenant_id', TENANT_PADRAO).eq('id', id).maybeSingle(),
     db.from('fluxogramas').select('id, nome, xml, tem_svg').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id).maybeSingle(),
     // Como na página pública: só os POPs publicados e no ar (cada POP tem a sua prévia).
     db.from('pops').select('nome, identificacao, codigo, versao, link_publico, publicado_em').eq('tenant_id', TENANT_PADRAO).eq('processo_id', id)
@@ -76,7 +71,7 @@ export async function previaDoProcesso(id: string, pessoa: Quem) {
   ]);
   for (const r of [p, f, o]) if (r.error) throw r.error;
   if (!p.data) throw new ErroApi(404, 'Processo não encontrado');
-  const processo = p.data as unknown as { nome: string; codigo: string; descricao: string | null; publicado_em: string | null; publicacao_hash: string | null; area: Area };
+  const processo = p.data as unknown as { nome: string; codigo: string; descricao: string | null; publicado_em: string | null; atualizado_em: string; publicacao_hash: string | null; area: Area };
   const fluxo = f.data as { id: string; nome: string; xml: string | null; tem_svg: boolean | null } | null;
   const descricao = processo.descricao ?? '';
   const publicada = lista[0]?.versao ?? null;
@@ -88,6 +83,6 @@ export async function previaDoProcesso(id: string, pessoa: Quem) {
     fluxograma: fluxo ? { id: fluxo.id, nome: fluxo.nome, tem_svg: !!fluxo.tem_svg } : null,
     pops: (o.data ?? []).map((x) => ({ nome: x.nome as string, identificacao: (x.identificacao as string) || null, codigo: x.codigo as string, versao: x.versao as string, link_publico: x.link_publico as string, publicado_em: x.publicado_em as string | null })),
     referencias: paraPublico(await referencias.resolverDosTextos([descricao])),
-    previa: { pendente, versao_publicada: publicada },
+    previa: { pendente, versao_publicada: publicada, alterado_em: processo.atualizado_em },
   };
 }

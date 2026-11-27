@@ -1,8 +1,7 @@
 import { responder } from '@/lib/server/http';
 import { previaDoProcesso } from '@/lib/server/previa';
-import { pessoaLogada } from '@/lib/server/sessao';
 
 export const dynamic = 'force-dynamic';
-/** A prévia do processo antes de publicar (decisão 149): só para quem criou o processo; os outros recebem 403. */
+/** A prévia do processo antes de publicar (decisões 149 e 150): para qualquer pessoa logada. */
 export const GET = (_: Request, { params }: { params: Promise<{ id: string }> }) =>
-  responder(async () => previaDoProcesso((await params).id, await pessoaLogada()));
+  responder(async () => previaDoProcesso((await params).id));

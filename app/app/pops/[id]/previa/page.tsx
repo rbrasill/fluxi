@@ -8,7 +8,7 @@ import { abrirArquivo } from '@/lib/anexos';
 import { obterPreviaDoPop, urlPdf, type PreviaDoPop } from '@/lib/pops';
 
 // Prévia do POP antes de publicar (decisão 149): o que está no editor agora, no formato da página pública, com o aviso
-// de que não é documento oficial. Só abre para quem criou o POP: para os outros, o servidor responde 403.
+// de que não é documento oficial. Abre para todos os perfis (decisão 150).
 
 export default function PreviaDoPopPage() {
   const { id } = useParams<{ id: string }>();

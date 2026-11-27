@@ -308,10 +308,8 @@ function ProcessoPage() {
             {naoPublicadas && !arquivado && <span className="chip-nao-publicado" title="A página pública mostra a versão publicada; publique de novo para atualizá-la">Alterações não publicadas</span>}
           </div>
         <div className="actions">
-          {/* A prévia antes de publicar (decisão 149): só quem criou o processo a vê. */}
-          {!arquivado && p.pode_ver_previa && (!publicado || naoPublicadas) && (
-            <button className="btn" onClick={() => void verPrevia()} disabled={ocupado} title="Veja como o processo vai ficar antes de publicar. Só você, que criou o processo, vê a prévia"><Icone nome="olho" tamanho={16} />Ver prévia</button>
-          )}
+          {/* A prévia antes de publicar (decisões 149 e 150): para todos os perfis. */}
+          {!arquivado && <button className="btn" onClick={() => void verPrevia()} disabled={ocupado} title="Veja como o processo vai ficar ao ser publicado"><Icone nome="olho" tamanho={16} />Ver prévia</button>}
           {!arquivado && (!publicado || naoPublicadas) && (
             <button className={`btn ${naoPublicadas ? 'btn-destaque' : ''}`} onClick={abrirPublicar} disabled={publicando || ocupado}
               title={versaoAtual ? 'Publica uma versão nova do processo: você diz o tamanho da alteração e o que mudou' : 'Publica o processo como versão 1.0.0: a página pública passa a mostrar esta versão'}>

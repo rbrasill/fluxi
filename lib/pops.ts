@@ -30,8 +30,6 @@ export type Pop = PopResumo & {
   versoes: VersaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
   alteracoes_nao_publicadas: boolean;
-  /** Só quem criou o POP vê a prévia antes de publicar (decisão 149). */
-  pode_ver_previa?: boolean;
   /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
   referencias: Record<string, ReferenciaResolvida>;
   referenciado_em: ReferenciadoEm[];
@@ -61,8 +59,8 @@ export const publicarPop = (id: string, pedido: { tipo?: TipoDeAlteracao; o_que_
 /** Uma versão publicada do POP, como saiu naquele dia (só leitura), e o PDF dela. */
 export type VersaoPublicadaDoPop = PopPublico & { desta_versao: { tipo: TipoDeVersao; o_que_mudou: string; publicado_por: string; versao_atual: string; pop_nome: string } };
 export const obterVersaoDoPop = (id: string, versao: string) => api<VersaoPublicadaDoPop>(`/api/pops/${id}/versoes/${encodeURIComponent(versao)}`);
-/** A prévia do POP antes de publicar (decisão 149): o que está no editor, no formato da página pública. Só para quem criou. */
-export type PreviaDoPop = PopPublico & { previa: { pendente: boolean; versao_publicada: string | null } };
+/** A prévia do POP antes de publicar (decisões 149 e 150): o que está no editor, no formato da página pública. */
+export type PreviaDoPop = PopPublico & { previa: { pendente: boolean; versao_publicada: string | null; alterado_em: string } };
 export const obterPreviaDoPop = (id: string) => api<PreviaDoPop>(`/api/pops/${id}/previa`);
 export const urlPdfDaVersao = (id: string, versao: string) => `/api/pops/${id}/versoes/${encodeURIComponent(versao)}/pdf`;
 /** Volta para rascunho: a página pública deixa de mostrar o POP. */
