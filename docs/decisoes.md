@@ -1296,6 +1296,13 @@ O Rafael pediu que o "Ver prévia" apareça para todos os perfis de acesso e que
   - Nunca publicado: "Prévia de POP ainda não publicado", sem validade oficial, com a data da última alteração.
   - Sem alterações: "Prévia sem alterações", igual à versão oficial, em verde.
 
+## 151. Selo do POP em verde-claro
+
+O Rafael pediu o selo "POP" (abaixo do nome do POP) no estilo de uma referência: fundo verde-claro, texto verde-escuro e cantos arredondados, sem o ícone da referência.
+
+- **O selo:** fundo #E8FBD3, texto #14612E (contraste de 7:1), cantos de 8 px, sem borda. Continua com o ícone de documento do INCFlow. Troca o violeta da decisão 134.
+- O selo "Processo" continua azul.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
