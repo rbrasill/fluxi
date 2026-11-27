@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ConteudoPopSchema, HistoricoSchema, PosicaoSchema } from '@/lib/pop/schema';
+import { ConteudoPopSchema, PosicaoSchema } from '@/lib/pop/schema';
 import { responder } from '@/lib/server/http';
 import { excluirPop } from '@/lib/server/exclusao';
 import { atualizar, obter } from '@/lib/server/pops';
@@ -8,10 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const Patch = z.object({
   nome: z.string().trim().min(1).max(200).optional(),
   identificacao: z.string().trim().max(40).optional(),
-  versao: z.string().trim().min(1).max(20).optional(),
-  autor: z.string().trim().max(120).optional(),
   conteudo: ConteudoPopSchema.optional(),
-  historico: z.array(HistoricoSchema).optional(),
   posicao: PosicaoSchema.nullable().optional(),
   processo_id: z.string().uuid().nullable().optional(),
 });

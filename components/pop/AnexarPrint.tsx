@@ -62,9 +62,9 @@ export function AnexarPrint({ titulo, aoAnexar, aoFechar, telasDaGravacao, aoEsc
   }
 
   return (
-    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="anexar-print" onClick={() => !ocupado && aoFechar()}>
+    <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="anexar-print anexar-print-passo" onClick={() => !ocupado && aoFechar()}>
       <div
-        className="dialog dialog-lg anexar"
+        className={`dialog dialog-lg anexar${telasDaGravacao ? ' anexar-largo' : ''}`}
         ref={caixa}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
@@ -76,7 +76,13 @@ export function AnexarPrint({ titulo, aoAnexar, aoFechar, telasDaGravacao, aoEsc
           void obter(() => imagemParaPng(f));
         }}
       >
-        <h2 id="anexar-print">Anexar print · {titulo}</h2>
+        <div className="dialogo-topo">
+          <div className="dialogo-topo-texto">
+            <h2 id="anexar-print">Anexar print</h2>
+            <p className="notice" id="anexar-print-passo">{titulo}</p>
+          </div>
+          <button type="button" className="btn btn-ghost btn-icon dialog-fechar" onClick={aoFechar} disabled={!!ocupado} title="Fechar" aria-label="Fechar"><Icone nome="fechar" tamanho={18} /></button>
+        </div>
         {telas ? (
           <>
             {telas.length === 0 && <p className="notice">Nenhuma tela marcada nas gravações deste POP.</p>}
@@ -109,21 +115,25 @@ export function AnexarPrint({ titulo, aoAnexar, aoFechar, telasDaGravacao, aoEsc
             <div className={`options ${telasDaGravacao ? 'options-4' : 'options-3'} anexar-opcoes`}>
               {telasDaGravacao && (
                 <button type="button" className="option" onClick={abrirTelas} disabled={!!ocupado || carregandoTelas}>
-                  <strong><Icone nome="tela" tamanho={14} /> {carregandoTelas ? 'Carregando…' : 'Tela da gravação'}</strong>
-                  <span>Escolha uma tela marcada numa gravação deste POP.</span>
+                  <span className="option-icone" aria-hidden="true"><Icone nome="tela" tamanho={20} /></span>
+                  <strong>{carregandoTelas ? 'Carregando…' : 'Tela da gravação'}</strong>
+                  <span className="option-texto">Selecione uma tela já marcada na gravação deste POP.</span>
                 </button>
               )}
               <button type="button" className="option" onClick={() => obter(capturarTela)} disabled={!temCaptura || !!ocupado}>
-                <strong><Icone nome="camera" tamanho={14} /> {ocupado === 'capturando' ? 'Escolha a janela…' : 'Capturar uma janela agora'}</strong>
-                <span>Deixe a tela que faltou aberta no sistema, escolha a janela e o INCFlow tira o print.</span>
+                <span className="option-icone" aria-hidden="true"><Icone nome="camera" tamanho={20} /></span>
+                <strong>{ocupado === 'capturando' ? 'Escolha a janela…' : 'Capturar uma janela'}</strong>
+                <span className="option-texto">Selecione a janela aberta no sistema. O INCFlow captura a tela automaticamente.</span>
               </button>
               <button type="button" className="option" onClick={() => obter(lerPrintDaAreaDeTransferencia)} disabled={!!ocupado}>
-                <strong><Icone nome="copiar" tamanho={14} /> Colar print copiado</strong>
-                <span>Tire o print (Print Screen ou Win+Shift+S) e cole. Ctrl+V nesta janela também funciona.</span>
+                <span className="option-icone" aria-hidden="true"><Icone nome="copiar" tamanho={20} /></span>
+                <strong>Colar print copiado</strong>
+                <span className="option-texto">Tire um print (Print Screen ou Win + Shift + S) e cole aqui com Ctrl + V.</span>
               </button>
               <button type="button" className="option" onClick={() => arquivo.current?.click()} disabled={!!ocupado}>
-                <strong><Icone nome="pasta" tamanho={14} /> Escolher arquivo</strong>
-                <span>PNG, JPG ou WebP salvo no computador.</span>
+                <span className="option-icone" aria-hidden="true"><Icone nome="pasta" tamanho={20} /></span>
+                <strong>Escolher arquivo</strong>
+                <span className="option-texto">Selecione uma imagem salva no computador (PNG, JPG ou WebP).</span>
               </button>
             </div>
             <input

@@ -23,6 +23,13 @@ function mensagemDeErro(e: unknown) {
   return e instanceof Error ? e.message : 'Não foi possível iniciar a gravação.';
 }
 
+// As três abas da janela de compartilhamento do navegador, explicadas em texto simples (decisão 146).
+const OPCOES_DE_TELA = [
+  { titulo: 'Tela inteira', imagem: '/gravacao/opcao-tela-inteira.png', recomendada: true, texto: 'Grava tudo o que aparece no monitor, e você pode trocar de programa à vontade. A janelinha de controles aparece nos prints: deixe-a num canto.' },
+  { titulo: 'Janela', imagem: '/gravacao/opcao-janela.png', recomendada: false, texto: 'Grava só o programa que você escolher. Se você abrir outro programa, ele não entra na gravação.' },
+  { titulo: 'Guia', imagem: '/gravacao/opcao-guia.png', recomendada: false, texto: 'Grava só uma aba do navegador. Use quando o sistema abre no navegador.' },
+];
+
 export default function NovaGravacaoPage() {
   const router = useRouter();
   const [nome, setNome] = useState('');
@@ -40,21 +47,21 @@ export default function NovaGravacaoPage() {
   const [suportado, setSuportado] = useState(true);
   const [temPip, setTemPip] = useState(true);
   // POP de onde a gravação foi aberta (?pop=): a gravação nasce nele (decisão 31); título e "voltar" apontam para ele.
-  const [pop, setPop] = useState<{ id: string; nome: string } | null>(null);
+  const [pop, setPop] = useState<{ id: string; nome: string; processo?: { id: string; nome: string } | null } | null>(null);
   const [semPop, setSemPop] = useState(false);
   const [continuacao, setContinuacao] = useState<Continuacao | null>(null);
 
   useEffect(() => {
     const q = new URLSearchParams(location.search);
     const pid = q.get('pop');
-    if (pid) obterPop(pid).then((p) => { setPop({ id: p.id, nome: p.nome }); setNome((n) => n || p.nome); }).catch(() => setSemPop(true));
+    if (pid) obterPop(pid).then((p) => { setPop({ id: p.id, nome: p.nome, processo: p.processo ? { id: p.processo.id, nome: p.processo.nome } : null }); setNome((n) => n || p.nome); }).catch(() => setSemPop(true));
     const cid = q.get('continuar');
     if (!pid && !cid) setSemPop(true);
     if (cid) {
       obterGravacao(cid).then((g) => {
         setContinuacao({ id: g.id, tempoMs: tempoGravado(g), proximoIndice: Math.max(-1, ...g.segmentos.map((s) => s.indice)) + 1, totalTelas: g.marcacoes.length });
         setNome(g.nome);
-        if (g.pop) setPop({ id: g.pop.id, nome: g.pop.nome });
+        if (g.pop) setPop({ id: g.pop.id, nome: g.pop.nome, processo: g.processo ? { id: g.processo.id, nome: g.processo.nome } : null });
         // As telas já marcadas entram na lista, para o contador seguir de onde parou.
         setTelas(g.marcacoes.map((m) => ({ chave: m.tempo_ms, url: m.imagem_anotada_url ?? m.imagem_url ?? '', tempoMs: m.tempo_ms, instrucao: m.instrucao ?? '', status: 'ok' })));
       }).catch(() => setErro('Não foi possível abrir a gravação para continuar.'));
@@ -190,9 +197,19 @@ export default function NovaGravacaoPage() {
 
   const pausar = () => { gravador.current?.pausar(); setPausado(true); setTempo(gravador.current?.tempoMs() ?? 0); };
   const retomar = () => { gravador.current?.retomar(); setPausado(false); };
-  const encerrar = () => void gravador.current?.encerrar();
+  // Ao encerrar pela janela flutuante, a pessoa pode estar em outro programa: o clique traz esta aba de volta para a
+  // frente, onde ela acompanha o fim do envio e vai para a página da gravação, e a janela flutuante fecha (decisão 145).
+  // O navegador só deixa a janela flutuante trazer a aba durante o clique, por isso é feito já aqui, e não ao fim do envio.
+  // Quem pede primeiro é o script da própria janela flutuante (components/gravacao/pip.ts); aqui fica o reforço.
+  function encerrarGravacao() {
+    const janela = pip;
+    if (janela) { try { window.focus(); } catch { /* segue sem trazer a aba */ } }
+    void gravador.current?.encerrar();
+    janela?.close();
+  }
+  const encerrar = () => encerrarGravacao();
   // Libera a tela e deixa a gravação pausada: a pessoa retoma pela página da gravação.
-  const continuarOutroDia = () => { continuarDepois.current = true; void gravador.current?.encerrar(); };
+  const continuarOutroDia = () => { continuarDepois.current = true; encerrarGravacao(); };
 
   const painel = (flutuante: boolean) => (
     <PainelGravacao
@@ -271,8 +288,22 @@ export default function NovaGravacaoPage() {
             <label className="check"><input type="checkbox" checked={microfone} onChange={(e) => setMicrofone(e.target.checked)} />Gravar minha narração (microfone)</label>
             <label className="check"><input type="checkbox" checked={audioSistema} onChange={(e) => setAudioSistema(e.target.checked)} />Incluir o áudio da tela (ex.: vídeo ou reunião)</label>
           </div>
+          <section className="opcoes-tela" aria-labelledby="titulo-opcoes-tela">
+            <h2 id="titulo-opcoes-tela">O que escolher quando o navegador perguntar o que gravar</h2>
+            <p>Ao clicar em <b>Iniciar gravação</b>, o navegador abre uma janela com três abas. Veja o que cada uma grava:</p>
+            <div className="opcoes-tela-grade">
+              {OPCOES_DE_TELA.map((o) => (
+                <figure key={o.titulo} className={`opcao-tela${o.recomendada ? ' recomendada' : ''}`}>
+                  <img src={o.imagem} alt={`Aba "${o.titulo}" na janela de compartilhamento do navegador`} width={560} height={331} />
+                  <figcaption>
+                    <b>{o.titulo}</b>{o.recomendada && <span className="selo-recomendada">Recomendada</span>}
+                    <span>{o.texto}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
           <ol className="dicas">
-            <li>Escolha a <b>janela do sistema</b> (aba "Janela") ou a aba do navegador. Evite "Tela inteira": nela, a janelinha de controles aparece nos prints.</li>
             <li>{temPip ? <>Uma <b>janela flutuante</b> do INCFlow fica por cima de tudo com os controles.</> : <>Seu navegador não tem janela flutuante: os controles ficam nesta aba. Para a melhor experiência, use o <b>Chrome</b> ou o <b>Edge</b>.</>}</li>
             <li>Narre o que está fazendo e clique em <b>Incluir esta tela no POP</b> em cada passo importante. Se quiser, digite a instrução: ela vai junto quando a tela for levada para o POP.</li>
           </ol>
@@ -288,33 +319,66 @@ export default function NovaGravacaoPage() {
     );
   }
 
+  const titulo = fase === 'encerrando' ? (continuarDepois.current ? 'Pausando a gravação…' : 'Finalizando a gravação…') : pausado ? 'Gravação pausada' : 'Gravando';
   return (
-    <div className="page page-estreita">
+    <div className="page pagina-gravando">
+      <nav className="trilha" aria-label="Caminho">
+        {pop?.processo && <><span>{pop.processo.nome}</span><Icone nome="avancar" tamanho={14} /></>}
+        {pop && <><span>POP {pop.nome}</span><Icone nome="avancar" tamanho={14} /></>}
+        <span aria-current="page">{continuacao ? 'Continuar gravação' : 'Nova gravação'}</span>
+      </nav>
       <div className="page-head">
         <div>
-          <h1>{fase === 'encerrando' ? (continuarDepois.current ? 'Pausando a gravação…' : 'Finalizando a gravação…') : pausado ? 'Gravação pausada' : 'Gravando'}</h1>
+          <h1 className="titulo-gravando">{titulo}{fase === 'gravando' && <span className={`selo-rec${pausado ? ' pausado' : ''}`}><span className="rec-dot" />{pausado ? 'PAUSADO' : 'REC'}</span>}</h1>
           <p>
             {fase === 'encerrando'
               ? `Enviando os últimos arquivos${enviando ? ` (${enviando})` : ''}. Não feche esta aba.`
-              : pip
-                ? 'Os controles estão na janela flutuante. Você pode trabalhar no sistema normalmente.'
-                : 'Use os controles abaixo. Não feche esta aba enquanto grava.'}
+              : <>{pop ? `Gravando para o POP ${pop.nome}. ` : ''}{pip
+                ? 'Os controles também estão na janela flutuante, então você pode trabalhar no sistema normalmente.'
+                : 'Use os controles abaixo. Não feche esta aba enquanto grava.'}</>}
           </p>
         </div>
       </div>
       {erro && <div className="aviso erro" role="alert">{erro}</div>}
-
-      {fase === 'gravando' && (
-        <section className="cartao">
-          {painel(false)}
-          {!pip && temPip && (
-            <button className="btn" onClick={abrirControles}><Icone nome="expandir" tamanho={16} />Abrir controles flutuantes</button>
-          )}
-        </section>
-      )}
       {fase === 'encerrando' && <p className="form-etapa"><span className="spinner" />Salvando {formatarTempo(tempo)} de gravação e {telas.length} tela(s)…</p>}
 
-      {grade}
+      <div className="proc-grade gravando-grade">
+        <div className="proc-coluna">
+          {fase === 'gravando' && <section className="cartao">{painel(false)}</section>}
+          <section className="cartao lista-pops-cartao" aria-labelledby="titulo-telas-marcadas">
+            <div className="telas-marcadas-topo">
+              <h2 id="titulo-telas-marcadas">Telas marcadas</h2>
+              <span>{telas.length} {telas.length === 1 ? 'tela marcada' : 'telas marcadas'}</span>
+            </div>
+            {telas.length === 0
+              ? <p className="telas-marcadas-vazio">Nenhuma tela marcada ainda. A cada passo importante, clique em “Incluir esta tela no POP”.</p>
+              : <div className="telas-marcadas-corpo">{grade}</div>}
+          </section>
+        </div>
+        <aside className="proc-coluna">
+          <section className="cartao cartao-lateral">
+            <h3>Janela flutuante</h3>
+            <p className="lateral-texto">{temPip
+              ? 'Os mesmos controles ficam numa janelinha por cima do sistema que você está gravando. Pode trabalhar normalmente.'
+              : 'Este navegador não tem janela flutuante: os controles ficam só nesta aba. No Chrome ou no Edge, eles ficam por cima do sistema que você está gravando.'}</p>
+            {temPip && (
+              <div className="pip-ilustracao" aria-hidden="true">
+                <span /><span /><span />
+                <div className="pip-pilula"><i />{formatarTempo(tempo)}<b>Incluir tela</b><em /></div>
+              </div>
+            )}
+            {!pip && temPip && fase === 'gravando' && <button className="btn btn-largo" onClick={abrirControles}><Icone nome="expandir" tamanho={16} />Abrir a janela flutuante</button>}
+          </section>
+          <section className="cartao cartao-lateral">
+            <h3>Para uma boa gravação</h3>
+            <ol className="dicas-numeradas">
+              <li>Faça o processo no ritmo normal, como se ninguém estivesse olhando.</li>
+              <li>Inclua a tela logo depois de cada ação importante, não antes.</li>
+              <li>Pause antes de abrir algo com dados sensíveis.</li>
+            </ol>
+          </section>
+        </aside>
+      </div>
 
       {pip && fase === 'gravando' && createPortal(painel(true), pip.document.body)}
     </div>

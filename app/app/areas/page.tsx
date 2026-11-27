@@ -4,11 +4,12 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DialogoNome } from '@/components/DialogoNome';
 import { Icone } from '@/components/Icone';
-import { criarArea, listarAreas, porOrganizacao, type AreaResumo } from '@/lib/areas';
+import { ListaDeAreas } from '@/components/ListaDeAreas';
+import { criarArea, listarAreas, type AreaResumo } from '@/lib/areas';
 import { listarOrganizacoes, type OrganizacaoResumo } from '@/lib/organizacoes';
 
-// As áreas (setores) de todas as organizações, porta de entrada do menu. Com mais de uma organização,
-// ficam agrupadas por ela; a estrutura completa continua em Organizações.
+// As áreas (setores) de todas as organizações, porta de entrada do menu. Mesma lista da página da organização,
+// com busca, ordem e cartões ou lista (decisão 104); com mais de uma organização, agrupadas por ela.
 export default function AreasPage() {
   const router = useRouter();
   const [areas, setAreas] = useState<AreaResumo[] | null>(null);
@@ -22,9 +23,6 @@ export default function AreasPage() {
       .then(([a, o]) => { setAreas(a); setOrgs(o); setOrgNova(o[0]?.id ?? ''); })
       .catch((e) => { setErro(e.message); setAreas([]); });
   }, []);
-
-  const grupos = porOrganizacao(areas ?? []);
-  const agrupar = grupos.length > 1;
 
   return (
     <div className="page">
@@ -55,27 +53,7 @@ export default function AreasPage() {
               </>}
         </div>
       )}
-      {grupos.map(([org, lista]) => {
-        const orgId = lista[0]?.organizacao?.id;
-        return (
-          <section key={org} className={agrupar ? 'secao-areas' : undefined} aria-label={agrupar ? org : undefined}>
-            {agrupar && (
-              <h2 className="secao-areas-titulo">
-                {orgId ? <Link href={`/app/organizacoes/${orgId}`}>{org}</Link> : org}
-              </h2>
-            )}
-            <div className="grid grid-areas">
-              {lista.map((a) => (
-                <Link key={a.id} href={`/app/areas/${a.id}`} className="card card-area">
-                  <span className="pop-icone"><Icone nome="areas" tamanho={22} /></span>
-                  <strong>{a.nome}</strong>
-                  <span className="notice">{a.total_processos} {a.total_processos === 1 ? 'processo' : 'processos'}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        );
-      })}
+      {areas && areas.length > 0 && <ListaDeAreas areas={areas} titulo="Todas as áreas" agruparPorOrganizacao aoNova={orgs.length > 0 ? () => setNova(true) : undefined} />}
       {nova && (
         <DialogoNome titulo="Nova área" rotulo="Nome da área" exemplo="Ex.: Comercial" aoFechar={() => setNova(false)}
           extra={orgs.length > 1 && (

@@ -64,7 +64,7 @@ export function Orbe({ modo, niveis, tamanho = 260 }: { modo: ModoOrbe; niveis?:
       const m = modoRef.current;
       const n = niveis?.current ?? { ia: 0, pessoa: 0 };
       const alvoIa = m === 'conversa' ? n.ia : m === 'processando' ? 0.3 + 0.25 * Math.sin(t * 2.4) : 0.05;
-      const alvoPessoa = m === 'conversa' ? n.pessoa : 0;
+      const alvoPessoa = 0; // a esfera vibra só com a voz da Maia; a voz de quem é entrevistado não mexe nela (decisão 86)
       ia = suav(ia, alvoIa, alvoIa > ia ? 0.3 : 0.07);
       pessoa = suav(pessoa, alvoPessoa, alvoPessoa > pessoa ? 0.3 : 0.07);
       const amp = (reduzido ? 0.03 : 0.065) + 0.22 * ia + 0.03 * pessoa;
@@ -96,19 +96,20 @@ export function Orbe({ modo, niveis, tamanho = 260 }: { modo: ModoOrbe; niveis?:
 
       // Halo de luz atrás da esfera.
       const halo = ctx.createRadialGradient(cx, cy, R * 0.15, cx, cy, R * 1.6);
-      halo.addColorStop(0, `rgba(96, 86, 255, ${0.26 + 0.3 * ia})`);
-      halo.addColorStop(0.55, `rgba(168, 64, 255, ${0.12 + 0.12 * ia})`);
-      halo.addColorStop(1, 'rgba(255, 60, 214, 0)');
+      // As cores da Maia (decisão 96): rosa, do F472B6 ao DB2777.
+      halo.addColorStop(0, `rgba(244, 114, 182, ${0.26 + 0.3 * ia})`);
+      halo.addColorStop(0.55, `rgba(219, 39, 119, ${0.12 + 0.12 * ia})`);
+      halo.addColorStop(1, 'rgba(251, 207, 232, 0)');
       ctx.fillStyle = halo;
       ctx.beginPath();
       ctx.arc(cx, cy, R * 1.6, 0, 2 * Math.PI);
       ctx.fill();
 
-      // Cor pela posição: azul em cima à esquerda, magenta embaixo à direita.
+      // Cor pela posição: rosa claro em cima à esquerda, rosa fechado embaixo à direita.
       const grad = ctx.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
-      grad.addColorStop(0, '#4f86ff');
-      grad.addColorStop(0.5, '#9a5cff');
-      grad.addColorStop(1, '#ff3ad6');
+      grad.addColorStop(0, '#F9A8D4');
+      grad.addColorStop(0.5, '#F472B6');
+      grad.addColorStop(1, '#DB2777');
 
       // Linhas da malha, separadas em fundo e frente pela profundidade.
       const fundo = new Path2D();
@@ -132,7 +133,7 @@ export function Orbe({ modo, niveis, tamanho = 260 }: { modo: ModoOrbe; niveis?:
       ctx.globalAlpha = 0.16 + 0.3 * ia;
       ctx.lineWidth = 3.4 * dpr;
       ctx.shadowBlur = 12 * dpr;
-      ctx.shadowColor = `rgba(${Math.round(120 + 120 * ia)}, 80, 255, 0.9)`;
+      ctx.shadowColor = `rgba(${Math.round(219 + 25 * ia)}, ${Math.round(39 + 75 * ia)}, ${Math.round(119 + 63 * ia)}, 0.9)`;
       ctx.stroke(frente);
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 0.9;

@@ -11,7 +11,7 @@ import { ErroApi } from './http';
 // sugestão e decide se usa (decisão 30).
 
 export type PedidoMelhoria = {
-  campo: 'passo' | 'objetivo' | 'descricao';
+  campo: 'passo' | 'objetivo' | 'descricao' | 'atividades';
   texto: string;
   processo?: string; // nome do processo (descrição)
   area?: string; // área do processo (descrição)
@@ -49,8 +49,9 @@ const REGRAS_CAMPO = {
 - Itens numerados ("1 -", "1.", "4.") costumam corresponder aos números marcados no print ou continuar a numeração do passo anterior: mantenha os mesmos números, a mesma ordem e a mesma quantidade de itens, um por linha, no formato que o autor usou. Não renumere, não junte nem divida itens e não crie numeração onde não havia.
 - Títulos e subtítulos dentro do texto (ex.: "Validação da Assinatura Digital", "Resultado da Validação") continuam em linha própria; se o texto começa com um título, deixe-o em negrito.
 - Referências ao print ("na tela abaixo", "ícones destacados", "na aba sinalizada") continuam no texto.`,
-  objetivo: `É o OBJETIVO do processo: para que serve o procedimento e qual resultado ele garante. Escreva em frases completas, sem descrever os passos. Não resuma nem encurte um objetivo longo: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
-  descricao: `É a DESCRIÇÃO de um PROCESSO (não de um POP): o que o processo é, para que serve, onde começa e onde termina, os sistemas e as áreas envolvidos e o resultado. Escreva em frases completas e bem pontuadas; se for uma frase longa demais, divida em frases menores na mesma ordem. Não transforme em lista de passos, não resuma nem encurte: só corrija e deixe mais claro. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
+  objetivo: `É o OBJETIVO do processo: para que serve o procedimento e qual resultado ele garante. Escreva em frases completas, sem descrever os passos. Não resuma nem encurte um objetivo longo e não perca nenhuma informação: reescreva para ficar claro e bem escrito. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
+  atividades: `É o texto em que UMA PESSOA conta o que faz no trabalho, com as palavras dela, no perfil dela (decisão 84). Mantenha a primeira pessoa ("mapeio", "reviso", "atendo") e o jeito dela de falar; corrija e reescreva para ficar mais claro, em frases curtas. Não invente atividades, sistemas, áreas nem responsabilidades que ela não escreveu, não transforme em lista se ela escreveu em frases e não use tom de currículo.`,
+  descricao: `É a DESCRIÇÃO de um PROCESSO (não de um POP): o que o processo é, para que serve, onde começa e onde termina, os sistemas e as áreas envolvidos e o resultado. Escreva em frases completas e bem pontuadas; se for uma frase longa demais, divida em frases menores na mesma ordem. Não transforme em lista de passos, não resuma nem encurte e não perca nenhuma informação: reescreva para ficar claro e bem escrito. Se for só um título ou um fragmento, transforme numa frase completa com as mesmas informações.`,
 };
 
 const EXEMPLOS = `Exemplos (antes → depois):
@@ -59,7 +60,9 @@ const EXEMPLOS = `Exemplos (antes → depois):
 <p>1 - Faça a pesquisa pelo seu nome dos itens  aprovados.</p><p>2 - Selecione o box</p><p>3 - Clique em aplicar</p>
 → <p>1 - Pesquise pelo seu nome os itens aprovados.</p><p>2 - Selecione o box.</p><p>3 - Clique em Aplicar.</p>
 <p>4.	Clique em Sistemas Gerais e Portais.</p><p>5.	Selecione a opção Fluig.</p>
-→ igual (já está bom; a numeração continua a do passo anterior).`;
+→ igual (já está bom; a numeração continua a do passo anterior).
+<p>O pedido de pagamento quando chega no financeiro, que confere se esta tudo certo com a nota e se o valor bate com o contrato e depois que confere ele manda pra aprovação.</p>
+→ <p>Quando o pedido de pagamento chega ao Financeiro, confira se a nota está correta e se o valor bate com o contrato. Depois da conferência, envie o pedido para aprovação.</p>`;
 
 const curto = (s: string | undefined, n = 400) => {
   const t = textoPuro(s ?? '');
@@ -109,7 +112,8 @@ ${REGRAS_CAMPO[p.campo]}
 
 Regras:
 - Corrija ortografia, acentuação, gramática, concordância e pontuação.
-- Deixe mais claro e objetivo: frases curtas, linguagem simples e profissional, sem gírias. Português do Brasil.
+- Melhore o texto de verdade, não só a ortografia: reescreva frases confusas, truncadas ou cheias de rodeios para que quem lê entenda de primeira; corte repetições e palavras que não acrescentam nada; ponha as ideias na ordem em que fazem sentido; troque palavras vagas ou informais por termos profissionais e simples. Frases curtas, uma ideia por frase, sem gírias. Português do Brasil.
+- Melhorar é reescrever a forma, nunca o conteúdo: toda informação do texto original tem de continuar no texto novo, e nada pode ser acrescentado.
 - NÃO invente nada: nada de passos, campos, valores, prazos, nomes ou regras que não estejam no texto. Não remova informação.
 - Mantenha exatamente como estão: nomes de sistemas e portais (ex.: RM, TOTVS, Fluig, Agidesk, eSocial, Approvo, Gov.br), telas, abas, menus, botões, campos e opções; siglas e códigos (ex.: ASO, CID, S-2220, B31, NR-7, "02 - Alteração de Função"); textos em MAIÚSCULAS ou entre aspas (costumam ser o nome exato na tela: não mude nem a acentuação); links, caminhos de pasta (ex.: Z:\\Pasta\\Arquivo) e de menu (ex.: "Administração de Pessoal > Funcionário", "A → B").
 - Texto muito curto ou que é só uma referência ao print (ex.: "2", "caminho pasta"): devolva igual.
@@ -139,7 +143,7 @@ export async function melhorarTexto(p: PedidoMelhoria) {
       // Mesmo instruído, o modelo às vezes deforma um nome ("Fluig" → "FluFlig"): descarta e tenta o próximo.
       const alterados = termosAlterados(textoPuro(html), textoPuro(texto));
       if (alterados.length) {
-        throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Tente de novo.`);
+        throw new ErroApi(422, `A IA alterou ${alterados.length > 1 ? 'termos que precisam ficar iguais' : 'um termo que precisa ficar igual'} (${alterados.slice(0, 3).join('; ')}) e a sugestão foi descartada. Se for erro de digitação no seu texto, corrija lá e peça de novo; senão, tente de novo.`);
       }
       return { texto: restaurarReferencias(texto, refs), mudancas: r.mudancas.map((m) => m.trim()).filter(Boolean).slice(0, 6) };
     },

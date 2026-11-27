@@ -1,7 +1,9 @@
 // Referências entre POPs e processos (decisão 35). Um documento cita outro dentro do texto rico, com
 // um tipo de relação; o destino é guardado por id e o nome é resolvido na hora de mostrar.
-// Este módulo não depende do navegador nem do servidor: o editor, as páginas públicas, o DOCX e o
+// Este módulo não depende do navegador nem do servidor: o editor, as páginas públicas e o
 // PDF usam os mesmos rótulos e cores.
+
+import { TRACO_DOS_ICONES } from '@/lib/icones';
 
 export type TipoDoc = 'pop' | 'processo';
 export type Relacao = 'proxima' | 'anterior' | 'depende' | 'consulta';
@@ -16,7 +18,7 @@ export const RELACOES: Record<Relacao, { rotulo: string; inverso: string; cor: s
 
 /** O ícone da relação como SVG (para HTML montado em texto, como o da página pública). */
 export const svgRelacao = (r: Relacao, tamanho = 14) =>
-  `<svg class="ref-icone" width="${tamanho}" height="${tamanho}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${RELACOES[r].icone}"/></svg>`;
+  `<svg class="ref-icone" width="${tamanho}" height="${tamanho}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${TRACO_DOS_ICONES}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${RELACOES[r].icone}"/></svg>`;
 export const ORDEM_RELACOES: Relacao[] = ['proxima', 'anterior', 'depende', 'consulta'];
 export const TIPOS_DOC: Record<TipoDoc, string> = { pop: 'POP', processo: 'Processo' };
 
@@ -72,7 +74,7 @@ export type ReferenciadoEm = ReferenciaResolvida & { relacoes: Relacao[] };
 /** Resultado da busca para inserir uma referência. */
 export type ResultadoBusca = { tipo: TipoDoc; id: string; nome: string; identificacao: string | null; codigo: string; rotulo: string; onde: string; situacao: Situacao };
 
-/** Texto de uma referência num documento (PDF, DOCX): "Próxima etapa: POP MKT-002 · Nome". */
+/** Texto de uma referência no PDF: "Próxima etapa: POP MKT-002 · Nome". */
 export const textoReferencia = (relacao: Relacao, rotulo: string) => `${RELACOES[relacao].rotulo}: ${rotulo}`;
 
 /** Parâmetro ?de= das páginas públicas: de onde a pessoa veio ("p:<link>" ou "pr:<link>"). */

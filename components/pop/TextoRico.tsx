@@ -11,7 +11,7 @@ import { SeletorReferencia } from '@/components/pop/SeletorReferencia';
 import { CORES_MARCA_TEXTO, CORES_TEXTO, normalizarDoEditor, paraEditor } from '@/lib/pop/texto-rico';
 import type { Doc, Relacao, ResultadoBusca } from '@/lib/referencias';
 
-// Campo de texto com formatação do POP (objetivo e passos). Só o que sai igual no DOCX e no PDF:
+// Campo de texto com formatação do POP (objetivo e passos). Só o que sai igual no PDF:
 // negrito, itálico, sublinhado, tachado, cor, marca-texto, listas e tabelas simples (sem mesclar
 // células). Sem fonte, tamanho, títulos, links ou imagens (o modelo do POP define esses). A única
 // "ligação" é a referência a outro POP ou processo (decisão 35), um chip que o leitor clica.
@@ -32,7 +32,7 @@ const extensoes = [
   ReferenciaNode,
 ];
 
-// Células mescladas não saem iguais no DOCX/PDF: tabela colada de outro lugar entra sem mesclas.
+// Células mescladas não saem iguais no PDF: tabela colada de outro lugar entra sem mesclas.
 const semMesclas = (html: string) => html.replace(/\s(colspan|rowspan)\s*=\s*("[^"]*"|'[^']*'|\d+)/gi, '');
 
 const GRADE = { linhas: 6, colunas: 6 }; // tamanho máximo oferecido ao inserir uma tabela

@@ -69,7 +69,7 @@ export default function EntrevistasPage() {
         <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
         <Nome href={`/app/entrevistas/${x.id}`} className="pop-nome">
           <span className="rotulo-processo">{x.processo ? `Processo${x.processo.area ? ` · ${x.processo.area.nome}` : ''}` : 'Sem processo'}</span>
-          <strong>{x.processo?.nome ?? x.tema ?? 'Entrevista'}</strong>
+          <strong>{x.processo?.nome ?? x.tema ?? 'Entrevista'}{x.finalidade === 'regras' && <span className="chip-regra chip-maia chip-finalidade">Regras de negócio</span>}</strong>
           <span>{!minha && x.entrevistado ? `${x.entrevistado} · ` : ''}{quandoFoiAEntrevista(x)}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}{x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}</span>
         </Nome>
         <SeloSituacao entrevista={x} />

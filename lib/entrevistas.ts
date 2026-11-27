@@ -1,8 +1,9 @@
 // Cliente da API da entrevista por voz com a Maia (decisões 39, 41 e 53).
-import type { Complemento, Metricas, PendenciaOutraPessoa, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
+import type { Complemento, Finalidade, Metricas, PendenciaOutraPessoa, ResultadoEntrevista, StatusEntrevista, Turno } from './entrevista/topicos';
 import { ErroCliente } from './fluxogramas';
 
 export type Entrevista = {
+  finalidade: Finalidade; // mapeamento de processo ou regras de negócio (decisão 89)
   id: string; processo_id: string | null; tema: string; contexto: string; motor: string; status: StatusEntrevista;
   turnos: Turno[]; sessoes: string[]; metricas: Metricas;
   resultado: ResultadoEntrevista | null; erro: string | null; audios: string[]; frase_final: string; frase_pausa: string;
@@ -20,6 +21,7 @@ export type Entrevista = {
   criado_em: string; encerrado_em: string | null; atualizado_em: string;
 };
 export type EntrevistaResumo = {
+  finalidade: Finalidade;
   id: string; tema: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null;
   processo: { id: string; nome: string; area: { id: string; nome: string } | null } | null;
   convidado_por: string | null; convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
@@ -28,6 +30,7 @@ export type EntrevistaResumo = {
 };
 /** Uma entrevista na página do processo. */
 export type EntrevistaDoProcesso = {
+  finalidade: Finalidade; regras_sugeridas: number | null; // na entrevista de regras concluída: quantas regras a Maia sugeriu
   id: string; status: StatusEntrevista; entrevistado_id: string | null; entrevistado: string | null; entrevistado_area: string | null; convidado_por: string | null;
   convidado_em: string | null; convite_enviado_em: string | null; iniciada_em: string | null; criado_em: string; encerrado_em: string | null;
   complemento_pendencias: number | null; em_ligacao: boolean; arquivado_em: string | null; arquivado_por: string | null;
@@ -56,10 +59,11 @@ export const restaurarEntrevista = (id: string) => api<{ ok: true }>(`/api/entre
 /** As entrevistas de um processo. */
 export const listarEntrevistasDoProcesso = (processoId: string) => api<EntrevistaDoProcesso[]>(`/api/processos/${processoId}/entrevistas`);
 /** Convida até três pessoas para entrevistas sobre o processo (gestores e administradores). */
-export const convidarParaEntrevista = (processoId: string, dados: { pessoas: string[]; nota?: string }) =>
+export const convidarParaEntrevista = (processoId: string, dados: { pessoas: string[]; nota?: string; finalidade?: Finalidade }) =>
   api<ResultadoConvite>(`/api/processos/${processoId}/entrevistas`, { method: 'POST', body: JSON.stringify(dados) });
 /** Entrevista imediata (decisão 74): abre na hora a entrevista de quem está logado sobre o processo, sem convite (só quem pode). */
-export const iniciarEntrevistaAgora = (processoId: string) => api<{ id: string; nova: boolean }>(`/api/processos/${processoId}/entrevistas/iniciar`, { method: 'POST' });
+export const iniciarEntrevistaAgora = (processoId: string, finalidade: Finalidade = 'processo') =>
+  api<{ id: string; nova: boolean }>(`/api/processos/${processoId}/entrevistas/iniciar`, { method: 'POST', body: JSON.stringify({ finalidade }) });
 /** Manda o e-mail do convite de novo. */
 export const reenviarConvite = (id: string) => api<{ ok: true }>(`/api/entrevistas/${id}/convite`, { method: 'POST' });
 /** Aquece no servidor a rota que abre a sessão (sem custo: não chama a OpenAI). */

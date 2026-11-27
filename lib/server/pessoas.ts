@@ -15,6 +15,7 @@ export const PessoaNovaSchema = z.object({
 });
 export const PessoaAlteracaoSchema = z.object({
   nome: z.string().trim().min(2, 'Informe o nome.').max(120).optional(),
+  email: z.string().max(200).optional(),
   nivel: z.enum(NIVEIS).optional(),
 });
 
@@ -59,11 +60,19 @@ export async function alterar(id: string, d: z.infer<typeof PessoaAlteracaoSchem
     if (quem?.id === p.id) throw new ErroApi(409, 'Você não pode tirar o seu próprio acesso de administrador.');
     if ((await admins()).length <= 1) throw new ErroApi(409, 'É preciso ter pelo menos um administrador.');
   }
+  // Corrigir o e-mail (digitado errado no cadastro): a pessoa passa a entrar com o novo. O próprio e-mail não
+  // se muda por aqui, para um erro de digitação não trancar o administrador do lado de fora.
+  const novoEmail = d.email === undefined ? p.email : normalizarEmail(d.email);
+  if (novoEmail !== p.email && quem?.id === p.id) throw new ErroApi(409, 'Você não pode mudar o seu próprio e-mail. Peça a outro administrador.');
   const { error } = await supabase().from('pessoas')
-    .update({ ...(d.nome ? { nome: d.nome.trim() } : {}), nivel: novoNivel, atualizado_em: new Date().toISOString() })
+    .update({ ...(d.nome ? { nome: d.nome.trim() } : {}), email: novoEmail, nivel: novoNivel, atualizado_em: new Date().toISOString() })
     .eq('tenant_id', TENANT_PADRAO).eq('id', id);
-  if (error) throw error;
-  if (novoNivel !== p.nivel) await revogarSessoes(p); // o nível novo vale a partir do próximo login
+  if (error) {
+    if ((error as { code?: string }).code === '23505') throw new ErroApi(409, 'Já existe uma pessoa com esse e-mail.');
+    throw error;
+  }
+  // O nível novo vale a partir do próximo login; com o e-mail novo, a sessão aberta com o antigo cai.
+  if (novoNivel !== p.nivel || novoEmail !== p.email) await revogarSessoes(p);
   return { ok: true };
 }
 

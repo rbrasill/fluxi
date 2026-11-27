@@ -5,7 +5,7 @@
 // Células mescladas não existem: colspan/rowspan são ignorados (cada célula conta uma).
 // Texto sem HTML (o que a IA escreve e os POPs antigos) continua valendo: cada linha é um parágrafo.
 // Referência a outro POP ou processo (decisão 35): <a data-ref="pop:<id>" data-rel="proxima">rótulo</a>.
-// Este arquivo não depende do navegador: o DOCX e o PDF leem o mesmo formato no servidor.
+// Este arquivo não depende do navegador: o PDF lê o mesmo formato no servidor.
 import { RELACOES, chaveRef, lerRef, textoReferencia, type Relacao, type TipoDoc } from '../referencias';
 
 export type Trecho = {
@@ -18,7 +18,7 @@ export type Trecho = {
   fundo?: string; // #rrggbb (marca-texto)
   /** Referência a outro documento: o texto é o rótulo guardado ao inserir (o nome atual é resolvido ao mostrar). */
   referencia?: { tipo: TipoDoc; id: string; relacao: Relacao };
-  /** Só nos documentos (PDF/DOCX): endereço da página pública do destino. Nunca vem do HTML. */
+  /** Só no PDF: endereço da página pública do destino. Nunca vem do HTML. */
   link?: string;
 };
 export type Celula = { cabecalho: boolean; blocos: Bloco[] };
@@ -36,7 +36,7 @@ export const linhasDeCabecalho = (t: Extract<Bloco, { tipo: 'tabela' }>) => {
   return n;
 };
 
-/** Cores oferecidas no editor (as mesmas saem no DOCX e no PDF). */
+/** Cores oferecidas no editor (as mesmas saem no PDF). */
 export const CORES_TEXTO = [
   { nome: 'Vermelho', cor: '#C0392B' },
   { nome: 'Laranja', cor: '#D35400' },
@@ -315,7 +315,7 @@ export function referenciasDoTexto(valor: string | null | undefined): NonNullabl
 }
 
 /**
- * Para os documentos (PDF e DOCX): cada referência vira o texto "Relação: POP X · Nome", na cor da
+ * Para o PDF: cada referência vira o texto "Relação: POP X · Nome", na cor da
  * relação, com link para a página pública do destino quando ela existe. `resolvidas` é por chave
  * "tipo:id"; sem ela, fica o rótulo guardado no texto.
  */

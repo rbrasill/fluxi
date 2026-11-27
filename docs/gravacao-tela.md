@@ -32,6 +32,7 @@ Sem PiP (Safari): os controles ficam na aba do Fluxi e a pessoa usa a gravação
 - Ao clicar em **Incluir esta tela**: captura o quadro, marca o **tempo** na gravação e guarda a instrução digitada (se houver). Um "flash" e o contador confirmam.
 - A instrução pode ficar vazia: depois, a IA escreve a instrução a partir da **narração** dos segundos ao redor da marcação (ex.: 10 s antes e 5 s depois).
 - Atalho de teclado dentro da janela flutuante (Enter = incluir tela).
+- **Encerrar** (ou "continuar outro dia") na janela flutuante traz a aba do INCFlow de volta para a frente e fecha a janelinha (decisão 145): a pessoa acompanha o fim do envio ali e segue para a página da gravação.
 - Abaixo do cronômetro, a **prévia da tela** sendo gravada. A janela abre com 480×520 px e a prévia ocupa todo o espaço livre: aumentando a janela, a prévia cresce junto.
 
 ## Pausar e continuar depois
@@ -52,7 +53,7 @@ No editor do POP, qualquer passo aceita um print sem gravar de novo (**Anexar pr
 - Até 1080p, 15 quadros/s, VP9 a 1,5 Mbps (texto de sistema nítido) + áudio Opus 96 kbps. Configuração em `lib/gravacao/config.ts`.
 - O Supabase limita cada arquivo a 50 MB, então o vídeo é gravado em **partes independentes de 3 minutos** (~35 MB), enviadas enquanto a gravação continua. Uma parte é fechada antes se chegar a 85% do limite. Não há limite de duração total.
 - Cada parte recebe a duração no arquivo (`fix-webm-duration`), para o player conseguir avançar e voltar. O player toca as partes em sequência, com o tempo contado desde o início.
-- Prints das telas em **PNG** (texto nítido e compatível com o DOCX do POP).
+- Prints das telas em **PNG** (texto nítido e compatível com o PDF do POP).
 - Num storage sem esse limite (sistema definitivo), basta aumentar `SEGMENTO_MS` e a taxa de bits.
 
 ## Dados (novas tabelas)

@@ -19,7 +19,7 @@ export async function buscar(q: string, excluir?: Doc | null): Promise<Resultado
   const [o, p] = await Promise.all([
     db.from('pops').select('id, nome, identificacao, codigo, status, link_publico_ativo, arquivado_em, processo:processos(nome, arquivado_em, area:areas(nome, organizacao:organizacoes(nome)))')
       .eq('tenant_id', TENANT_PADRAO).is('arquivado_em', null),
-    db.from('processos').select('id, nome, codigo, link_publico_ativo, arquivado_em, area:areas(nome, organizacao:organizacoes(nome))')
+    db.from('processos').select('id, nome, codigo, link_publico_ativo, publicado_em, arquivado_em, area:areas(nome, organizacao:organizacoes(nome))')
       .eq('tenant_id', TENANT_PADRAO).is('arquivado_em', null),
   ]);
   if (o.error) throw o.error;
@@ -37,7 +37,7 @@ export async function buscar(q: string, excluir?: Doc | null): Promise<Resultado
       const a = x.area as unknown as Onde;
       return { tipo: 'processo' as const, id: x.id as string, nome: x.nome as string, identificacao: null, codigo: x.codigo as string,
         rotulo: rotuloDoc({ tipo: 'processo', nome: x.nome as string, codigo: x.codigo as string }), onde: caminho(a?.organizacao?.nome, a?.nome),
-        situacao: (x.link_publico_ativo ? 'ok' : 'offline') as Situacao };
+        situacao: (!x.publicado_em ? 'nao_publicado' : x.link_publico_ativo ? 'ok' : 'offline') as Situacao };
     }),
   ].filter((x) => !(excluir && x.tipo === excluir.tipo && x.id === excluir.id));
   const termo = normalizar(q);
@@ -86,15 +86,15 @@ export async function resolver(docs: Doc[]): Promise<Record<string, ReferenciaRe
   const procIds = [...new Set(docs.filter((d) => d.tipo === 'processo').map((d) => d.id))];
   const db = supabase();
   const [o, p] = await Promise.all([
-    popIds.length ? db.from('pops').select('id, nome, identificacao, codigo, status, arquivado_em, link_publico, link_publico_ativo, processo:processos(arquivado_em)').eq('tenant_id', TENANT_PADRAO).in('id', popIds) : { data: [], error: null },
-    procIds.length ? db.from('processos').select('id, nome, codigo, arquivado_em, link_publico, link_publico_ativo').eq('tenant_id', TENANT_PADRAO).in('id', procIds) : { data: [], error: null },
+    popIds.length ? db.from('pops').select('id, nome, identificacao, codigo, status, arquivado_em, link_publico, link_publico_ativo, publicacao_hash:publicacao->>versao_hash, processo:processos(arquivado_em)').eq('tenant_id', TENANT_PADRAO).in('id', popIds) : { data: [], error: null },
+    procIds.length ? db.from('processos').select('id, nome, codigo, arquivado_em, link_publico, link_publico_ativo, publicado_em').eq('tenant_id', TENANT_PADRAO).in('id', procIds) : { data: [], error: null },
   ]);
   if (o.error) throw o.error;
   if (p.error) throw p.error;
   const saida: Record<string, ReferenciaResolvida> = {};
   for (const x of o.data ?? []) {
     const processoArquivado = !!(x.processo as unknown as { arquivado_em: string | null } | null)?.arquivado_em;
-    const situacao: Situacao = x.arquivado_em || processoArquivado ? 'arquivado' : x.status !== 'publicado' ? 'nao_publicado' : !x.link_publico_ativo ? 'offline' : 'ok';
+    const situacao: Situacao = x.arquivado_em || processoArquivado ? 'arquivado' : x.status !== 'publicado' || !x.publicacao_hash ? 'nao_publicado' : !x.link_publico_ativo ? 'offline' : 'ok';
     saida[`pop:${x.id}`] = {
       tipo: 'pop', id: x.id as string, nome: x.nome as string, identificacao: (x.identificacao as string) || null, codigo: x.codigo as string,
       rotulo: rotuloDoc({ tipo: 'pop', nome: x.nome as string, identificacao: x.identificacao as string, codigo: x.codigo as string }),
@@ -102,7 +102,7 @@ export async function resolver(docs: Doc[]): Promise<Record<string, ReferenciaRe
     };
   }
   for (const x of p.data ?? []) {
-    const situacao: Situacao = x.arquivado_em ? 'arquivado' : !x.link_publico_ativo ? 'offline' : 'ok';
+    const situacao: Situacao = x.arquivado_em ? 'arquivado' : !x.publicado_em ? 'nao_publicado' : !x.link_publico_ativo ? 'offline' : 'ok';
     saida[`processo:${x.id}`] = {
       tipo: 'processo', id: x.id as string, nome: x.nome as string, identificacao: null, codigo: x.codigo as string,
       rotulo: rotuloDoc({ tipo: 'processo', nome: x.nome as string, codigo: x.codigo as string }),
@@ -142,7 +142,7 @@ export async function referenciadoEm(destino: Doc): Promise<ReferenciadoEm[]> {
     .sort((a, b) => a.rotulo.localeCompare(b.rotulo, 'pt-BR'));
 }
 
-/** Para o PDF e o DOCX: rótulo atual e endereço absoluto da página pública de cada destino. */
+/** Para o PDF: rótulo atual e endereço absoluto da página pública de cada destino. */
 export function paraDocumento(resolvidas: Record<string, ReferenciaResolvida>, origem: string) {
   const saida: Record<string, { rotulo?: string; url: string | null }> = {};
   for (const [k, r] of Object.entries(resolvidas)) saida[k] = { rotulo: r.rotulo || undefined, url: r.url_publica ? `${origem}${r.url_publica}` : null };

@@ -4,11 +4,12 @@ import 'server-only';
 // tem o seu workflow, com URL e segredo próprios, para um não mexer no outro:
 //   · `codigo`  → AUTH_MAILER_URL / AUTH_MAILER_SECRET       (o código de login, decisão 50; docs/login.md)
 //   · `convite` → CONVITE_MAILER_URL / CONVITE_MAILER_SECRET (o convite para entrevista com a Maia, decisão 53; docs/convites.md)
+//     O convite leva a `finalidade` da entrevista ('processo' ou 'regras', decisão 89): o workflow escolhe o texto por ela.
 // O carteiro recebe os dados, autentica o servidor pelo segredo e não gera, não valida nem guarda nada.
 
 export type Mensagem =
   | { tipo: 'codigo'; email: string; nome: string; codigo: string }
-  | { tipo: 'convite'; email: string; nome: string; processo: string; convidado_por: string; link: string; nota: string };
+  | { tipo: 'convite'; email: string; nome: string; processo: string; convidado_por: string; link: string; nota: string; finalidade: 'processo' | 'regras' };
 
 const CARTEIROS = {
   codigo: { url: 'AUTH_MAILER_URL', segredo: 'AUTH_MAILER_SECRET' },

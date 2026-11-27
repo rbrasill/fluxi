@@ -559,6 +559,7 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Logo:** o logo do menu tem o nome em branco, para fundo escuro. No cartão branco entra `public/logo-incflow-escuro.png`, o mesmo logo com o nome na cor do texto, gerado por `scripts/gerar-logo-escuro.mjs`.
 - **Celular:** o painel com a ilustração vai para cima, menor, e o formulário ocupa a largura toda.
 - **A ilustração** (`public/login-ilustracao.png`) tem 450 × 450 px: em telas de alta densidade fica um pouco suave. Uma versão com 900 px ou mais deixaria mais nítida, é só trocar o arquivo.
+- **Substituída pela decisão 76** (o login do redesign).
 
 ## 74. Entrevista imediata: o administrador abre a sua na hora, sem convite (12/11/2026)
 - **Pedido do Rafael:** quem já conhece o processo e quer ser entrevistado pela Maia precisava se convidar, abrir o e-mail do convite e só então entrar. O fluxo tem que ser instantâneo, sem o autoconvite. Por enquanto, só para administradores.
@@ -568,6 +569,775 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - **Como aparece:** a entrevista nasce sem convite (`convidado_em` vazio, sem `convidado_por`). Enquanto a ligação não começa, a linha mostra "Aberta sem convite em …" e o selo "Ainda não começou", sem "Reenviar convite" (não há e-mail); "Cancelar" apaga a entrevista vazia. Depois da primeira ligação, ela segue igual às outras (pausar, concluir, complemento, arquivar).
 - **Sem migração:** usa as colunas que já existem.
 
+## 75. Redesign: sistema de cores novo (12/11/2026)
+- **Pedido do Rafael:** reformular o design de toda a plataforma a partir de telas desenhadas com uma IA, enviadas aos poucos. A primeira entrega foi o **sistema de cores** e a **tela de login**; as cores ficam guardadas para todas as telas seguintes.
+- **O sistema:** quatro famílias com papel fixo (**índigo** = ação e marca, **teal** = Maia e IA, **verde** = concluído e no ar, **rosa e pêssego** = atenção) sobre uma base de neutros (80% da tela). Seis regras de uso (um só botão índigo sólido por área, teal só para IA, verde, rosa e pêssego só para estado, texto sempre em tom 700 ou mais escuro, selos com fundo 100, texto 700 e ponto 500, botão sólido teal ou rosa só nos tons 700/600). Tudo em `docs/design/sistema-de-cores.md`, com a referência em `docs/design/referencias/`.
+- **O que muda em relação a hoje:** a cor de ação deixa de ser o azul-petróleo (`#005f73`) e passa a ser o índigo (`#4338CA`); o teal fica reservado ao que a Maia e a IA fazem. O fluxograma continua com as cores da biblioteca (decisão 62) e a fonte continua a Plus Jakarta Sans (decisão 71).
+- **Como entra:** as cores estão como variáveis em `app/globals.css` e são aplicadas tela a tela, à medida que as telas do redesign chegam e são validadas.
+
+## 76. Redesign: tela de login (12/11/2026)
+- **Pedido do Rafael:** a tela de login do redesign, no sistema de cores novo (decisão 75), com a ilustração que ele mandou (`docs/design/referencias/login.webp` é a referência), ajustada às cores do sistema; **o logo continua o original** (o símbolo em degradê com o nome), não o quadrado índigo com "∞" do desenho.
+- **Como ficou:** fundo neutro (`#F6F7F9`) e um cartão branco em duas partes. À esquerda, o logo, "Entrar no INCFlow", a explicação, o campo "E-mail corporativo" com borda, o botão índigo na largura toda (cinza enquanto o e-mail está vazio), a caixa "Acesso sem senha" com o escudo e, embaixo, a ajuda "Não consegue entrar? Só pessoas cadastradas têm acesso. Fale com um administrador da sua empresa." À direita, o painel índigo-claro (`#E0E7FF`) com a ilustração e a frase "Gestão de conhecimento do estratégico ao operacional". Foco dos campos com o anel índigo (`#A5B4FC`), erros em rosa 600, links em índigo 700. A etapa do código segue o mesmo desenho.
+- **A ilustração** (`public/login-ilustracao.svg`, vetorial, nítida em qualquer tela) é a do Rafael com as cores trocadas pelas do sistema por `scripts/recolorir-ilustracao-login.py`: contornos e moldura em índigo 950, círculos e roupas em índigo 700 e 500, detalhes em índigo 300 e 100, o diamante, os terminais, a lâmpada e as placas em pêssego e rosa 400, e sem o fundo branco. A imagem 3D da decisão 73 saiu.
+- **O que não muda:** o fluxo (e-mail, código de 6 dígitos, reenviar e trocar e-mail) e a fonte (Plus Jakarta Sans). No celular, o painel com a ilustração e a frase vai para cima.
+
+## 77. Redesign: menu lateral, página do processo e diálogo de convite (12/11/2026)
+
+Segunda tela do redesign (referência em `docs/design/referencias/processo.webp`), no sistema de cores da decisão 75.
+
+- **Cores de base para o app todo.** As variáveis antigas (`--primary`, `--bg`, `--ink`, `--line`, `--danger`) passaram a apontar para o sistema novo: índigo na ação, neutros no resto. As telas ainda não redesenhadas herdam as cores por aqui, para o app não ficar metade teal, metade índigo. O que é da IA ("Melhorar com IA", "Gerar com IA", convidar para entrevista) ficou em teal, como manda a decisão 75; na imagem de referência o "Melhorar com IA" aparece em índigo, e valeu a regra do sistema de cores.
+- **Menu lateral** branco, com o logo original (nome escuro), item ativo em índigo claro, botão de recolher ao lado do logo e o cartão da conta (iniciais, nome, nível e sair) no rodapé.
+- **Página do processo:** caminho no topo, cabeçalho com avatar de iniciais, selo "Processo", código com copiar e a área; abas **Visão geral**, **POPs** e **Entrevistas** (a aba fica no endereço: `#pops`, `#entrevistas`). A aba ativa fica em índigo (texto 700, fundo 100, sublinhado e contagem sólida); as outras, em cinza, ficam brancas ao passar o mouse. Na visão geral, o fluxograma e a descrição à esquerda; à direita, os cartões Resumo, Página pública (chave em índigo) e Entrevistas com a Maia (botão teal "Convidar pessoa"), nessa ordem. O cartão "Atividade recente" chegou a entrar e foi removido a pedido do Rafael.
+- **Resumo** (o primeiro cartão da coluna lateral): organização, área, POPs (com quantos publicados), entrevistas ativas e a data da alteração mais recente entre o processo, o fluxograma e os POPs.
+- **Diálogo de convite** no estilo novo: ícone da Maia, busca, pessoas com avatar, botão teal. Os demais diálogos herdam a moldura nova (cantos, borda, foco).
+- **Ficou de fora, a pedido do Rafael:** o cartão "Maturidade do processo".
+- **Ficou para depois:** "Regras de negócio" (aba e cartão). É funcionalidade nova: a Maia extrair regras das entrevistas para o gestor confirmar pede tabela, extração e tela próprias. A barra fixa de formatação da descrição também não entrou: a barra continua aparecendo ao clicar no texto.
+
+## 78. Redesign: aba POPs da página do processo (12/11/2026)
+
+Referência em `docs/design/referencias/processo-pops.webp`. Só com o que já temos, sem mudar o banco.
+
+- **Um cartão** com "POPs do processo", a explicação e o botão "Novo POP"; embaixo, o filtro por situação (**Todos**, **Rascunhos**, **Publicados**, cada um com a contagem; **Arquivados** só aparece quando há algum) e a busca por nome ou identificação. No rodapé, "Mostrando X de Y POPs".
+- **Cada linha:** ícone na cor da situação (pêssego no rascunho, verde no publicado, cinza no arquivado), nome com o selo (Rascunho, Publicado ou Publicado · offline), e a linha de dados: identificação (ou **"Sem identificação · Definir"**, em pêssego, que leva ao campo no POP), versão e data. À direita, o botão PDF (o DOCX saiu na decisão 79) e a ação: **"Continuar edição"** (índigo, retoma onde parou) no rascunho, **"Abrir POP"** no publicado, **"Restaurar"** no arquivado.
+- **"Sem código" virou "Sem identificação"**: no INCFlow o "código" é o identificador interno; o que falta preencher é a "Identificação POP" (ex.: POP-001), que é o que a linha mostra.
+- **Selos no sistema de cores** (vale para o app todo): Rascunho em pêssego, Publicado em verde, Publicado · offline em rosa.
+- **Não entrou:** a aba "Regras de negócio" da imagem (mesma avaliação da decisão 77).
+
+## 79. O POP sai só em PDF: o DOCX saiu da plataforma (12/11/2026)
+
+**Pedido do Rafael:** não ter mais a opção de baixar o POP em DOCX; agora é somente PDF. Não é só um ajuste de tela: a plataforma deixa de ter a funcionalidade.
+
+- **Telas:** saíram os botões DOCX do editor do POP, da lista de POPs, da aba POPs do processo e da página pública do POP. Os textos que citavam "o PDF e o DOCX" passaram a citar só o PDF.
+- **Servidor:** saíram as rotas `/api/pops/<id>/docx` e `/api/publico/pops/<link>/docx` (respondem 404), o gerador `lib/pop/docx.ts`, o template com marcadores (`modelo-pop-v3.template.docx`), o script que o gerava (`npm run modelo-pop`) e as bibliotecas `docxtemplater` e `pizzip`. O que o PDF aproveitava do gerador antigo (dados, cores, cabeçalho e sequência de passos) foi para `lib/pop/documento.ts`.
+- **Fica:** o `Modelo_POP_v3.docx` original, como referência do layout, e as imagens já extraídas dele (`templates/pop/imagens/`), que o PDF usa. Se o modelo mudar, as imagens novas precisam ser extraídas à mão (o script saiu junto com o DOCX).
+- Muda o que dizem as decisões anteriores que falam do DOCX (entre elas, 18, 19, 21, 24, 28, 29, 31, 32, 34, 35 e 37): onde citam os dois formatos, vale só o PDF.
+
+## 80. Redesign: editor do POP (12/11/2026)
+
+Referência em `docs/design/referencias/pop.webp`. Só com o que já temos, sem mudar o banco; o que o editor salva continua igual.
+
+- **Esqueleto igual ao da página do processo:** caminho no topo (termina em "POP <identificação>"), cabeçalho com o ícone na cor da situação, o selo "POP", a situação, a data da publicação e "Tudo salvo"; à direita, mover e arquivar como ícones e "Baixar PDF". Para o rascunho continuam "Pausar e sair" e "Publicar" (e "Publicar alterações", em pêssego, quando há alteração não publicada). O fundo pêssego da página saiu: fundo neutro.
+- **Coluna principal:** Identificação (com a faixa "Preenchidos automaticamente": código do processo e data de criação), Objetivo, Envolvidos (com os títulos Área e Cargo), Procedimentos, Fluxograma do processo, Referenciado em e Histórico de revisões.
+- **Coluna lateral** (acompanha a rolagem): Página pública (o mesmo cartão do processo), **"Nesta página"** (índice das seções, com a marca verde no que já está preenchido e as contagens) e Gravações de tela.
+- **Procedimentos em etapas e passos:** o que o editor chamava de "procedimento" passou a se chamar **etapa** ("Etapa 1", "Adicionar etapa"), e o passo aparece como "Passo 1.2" (etapa.passo). O número do passo continua editável para mover de posição. O print fica ao lado das ações (Marcar tela, Trocar print, Remover imagem).
+- **Atenção:** no PDF os passos continuam numerados do início ao fim do POP (Passo 1, 2, 3…), como no modelo; só o editor mostra etapa.passo.
+- **Ficou como está hoje:** "Área" continua campo de texto (na imagem é uma lista); "Adicionar passo com print", "Levar telas para os passos" e o histórico de revisões, que a imagem não mostra, foram mantidos. O botão DOCX da imagem não existe (decisão 79).
+
+## 81. Redesign: Pessoas e acessos (12/11/2026)
+
+Referência em `docs/design/referencias/pessoas.webp`. Só com o que já temos, sem mudar o banco nem as regras de acesso.
+
+- **Lista "Pessoas com acesso"** num cartão: contagem, busca por nome ou e-mail e filtro por acesso com a contagem (**Todos**, **Administradores**, **Gestores**, **Comuns**). Cada linha tem o avatar de iniciais, nome, e-mail, a lista para mudar o acesso (em índigo quando é Administrador) e a lixeira para remover. Quem está logado aparece com o selo "você" e não pode mudar o próprio acesso nem se remover, como já era.
+- **"Cadastrar pessoa"** foi para a coluna lateral, com o acesso escolhido em cartões que explicam cada nível; embaixo, o cartão "Acesso sem senha".
+- **Três níveis, não dois:** a imagem mostra só Comum e Administrador, mas o INCFlow tem também o **Gestor** (convida pessoas para conversas com a Maia, decisão 53). O Gestor foi mantido no filtro, na lista e no cadastro.
+- **Botão principal desabilitado** fica cinza (vale para o app todo), como na imagem.
+
+## 82. Redesign: página da organização, com as áreas em pastas (12/11/2026)
+
+Referência em `docs/design/referencias/organizacao.webp`. Só com o que já temos, sem mudar o banco.
+
+- **Cabeçalho:** voltar para Organizações, a sigla da organização num quadrado índigo escuro, o nome (editável, como antes) e "Organização · N áreas · N processos". À direita, o menu "…" (onde ficou "Excluir organização") e "Nova área".
+- **Áreas em pastas:** cada área é uma pasta com a sigla colorida, o nome e, embaixo, a quantidade de processos. **O ícone da quantidade é uma engrenagem, não uma pasta** (pedido do Rafael: representa melhor "processos"). A pasta inteira abre a área. No fim, a pasta tracejada "Nova área".
+- **Busca, ordem e vista:** busca por nome, ordem (A–Z, Z–A, mais processos) e a troca entre pastas e lista. A escolha vale enquanto a página está aberta; não fica guardada.
+- **Siglas dos avatares:** organização, área e processo usam a primeira palavra quando ela já é uma sigla ("INC", "SST"); senão, a inicial das duas primeiras palavras, pulando "de", "da", "e" ("Baú da Felicidade" → BF). Pessoas usam a inicial do primeiro e do último nome.
+
+## 83. Redesign: gravação de tela, com player próprio (12/11/2026)
+
+Referências em `docs/design/referencias/gravando.webp` e `gravacao.webp`. Sem mudar o banco nem a forma de gravar.
+
+- **Player próprio, sem biblioteca.** O vídeo da gravação tocava com os controles do navegador. Agora o player é nosso (`components/gravacao/PlayerSegmentos.tsx`): moldura índigo escura, vídeo arredondado, botão de tocar, tempo e a **linha do tempo com cada tela marcada como um número; clicar no número leva até a tela**. Também dá para clicar ou arrastar na linha, usar as setas do teclado (5 s), tirar o som e abrir em tela cheia.
+- **Por que sem biblioteca:** o que a imagem pede (controles e marcadores sobre a linha do tempo) se faz com o `<video>` do navegador e pouco código. Uma biblioteca de player (Vidstack, Plyr, Video.js) traria peso e tema próprios, e nenhuma resolve o que temos de particular: a gravação é salva em várias partes (uma a cada 3 minutos, ou uma por retomada) que precisam tocar em sequência numa linha do tempo só. Isso já era código nosso e continua sendo.
+- **Tela da gravação:** caminho (processo › POP › Gravação), cabeçalho com o resumo (tempo, telas marcadas, quantas no POP), "Continuar gravando", "Abrir POP" e o menu "…" com "Excluir gravação". A faixa pêssego avisa das telas novas, com "Levar N telas para o POP". Cada tela tem o número, o tempo (leva ao vídeo), "Marcar na tela", "Incluir no POP", a lixeira e a instrução do passo.
+- **Tela "Gravando":** título com o selo REC, o cartão com o tempo grande, pausar, Encerrar, o botão "Incluir esta tela no POP" e a instrução do passo; embaixo, as telas marcadas. Ao lado, os cartões "Janela flutuante" e "Para uma boa gravação". O painel da janela flutuante usa o mesmo desenho.
+- **Não mudou:** a tela de preparar a gravação (nome, microfone e áudio), que só herdou as cores novas.
+
+## 84. Meu perfil (12/11/2026)
+
+Tela nova do redesign (referência em `docs/design/referencias/perfil.webp`): não existia. Avaliação do que a imagem pede e o que entrou.
+
+- **Entrou agora:** a página **Meu perfil** (`/app/perfil`), aberta pelo cartão da conta no rodapé do menu. Cada pessoa vê e muda só o próprio perfil: nome, **cargo**, **área** (uma das áreas cadastradas), **gestor(a) direto(a)** e **"O que você faz"**, com "Melhorar com IA". Salva sozinho. No topo, quanto do perfil está preenchido (nome, e-mail, cargo, área e atividades; o gestor é opcional). Ao lado, o cartão **Acesso** (tipo de acesso, e-mail de entrada e organização), só para ver: e-mail e nível continuam com os administradores, em Pessoas e acessos.
+- **A Maia usa o perfil:** quando a pessoa preencheu a área, o cargo ou as atividades, a Maia já abre a entrevista sabendo quem ela é e não pergunta de novo (a mesma regra da decisão 67, que antes só valia para o que a pessoa contou numa conversa anterior). O perfil vale mais que a conversa antiga.
+- **Banco:** migração `0023_perfil.sql` (colunas `cargo`, `area_id`, `gestor` e `atividades` em `pessoas`, todas opcionais). Antes da migração, a página abre, avisa e não deixa salvar; o resto do app e a Maia seguem como antes.
+- **"Processos em que você participa"** mostra só o papel que o INCFlow sabe de verdade: **Entrevistado** (os processos sobre os quais a pessoa conversou com a Maia). Os outros papéis da imagem ficaram para depois, porque hoje não há esse dado: **Responsável** (o processo não tem um responsável cadastrado), **Elaborador** ("Elaborado por" no POP é texto livre, não a pessoa) e **Executor** ("Executor" no POP é um cargo em texto livre). Para tê-los, é preciso ligar processos e POPs a pessoas, o que é uma entrega própria.
+- **Ficou para depois:** a foto do perfil (a imagem tem o botão de câmera; pede envio e armazenamento de imagem).
+
+## 85. Redesign: resultado da entrevista (12/11/2026)
+
+Referência em `docs/design/referencias/entrevista.webp`. **Pedido do Rafael:** manter as informações que a tela já tem (ele gosta da estrutura atual) e só seguir o desenho da imagem; a quantidade de falas não precisa aparecer.
+
+- **As mesmas informações, no desenho novo.** À esquerda, a **Ficha do processo** (os destaques Objetivo, Começa quando e Termina com; as etapas numeradas, com o responsável, o que entra, o que sai, as ferramentas, as regras de negócio em teal e as exceções em pêssego; as dificuldades relatadas), a **Descrição do processo** e a **Conversa transcrita**. Ao lado, **Ficou em aberto** (cada dúvida num cartão com a caixa de marcar; o botão fica travado até marcar alguma), **Quem foi entrevistado** e **Para outra pessoa responder**.
+- **Cabeçalho:** caminho, o ícone da Maia, o tema com o selo "Entrevista concluída" e "Entrevista com Fulano · convite de Sicrano em data". O mesmo cabeçalho vale para as outras telas da entrevista.
+- **Saiu a quantidade de falas** do título da conversa transcrita. (Nas outras telas da entrevista, onde ela explica o estado da conversa pausada, continua.)
+- **Não entrou o que a imagem tem e o INCFlow não tem:** "Gerar POP com esta ficha", "Ouvir conversa" com o player em ondas, a busca na conversa, "Carregar mais falas" e "Regras encontradas". A conversa continua recolhida, abrindo ao clicar, com os áudios no player do navegador.
+
+## 86. Redesign: a tela da ligação com a Maia (12/11/2026)
+
+Referência em `docs/design/referencias/ligacao.webp`. Sem mudar o banco nem o jeito de a Maia conversar.
+
+- **Tela inteira, sem o menu:** quem está na ligação vê só a entrevista. No topo, "Entrevista sobre <processo>", quem convidou e a área, o tempo de conversa e **Sair** (pausa a entrevista e sai; a conversa fica guardada).
+- **A esfera vibra só com a voz da Maia** (pedido do Rafael): a voz de quem é entrevistado não mexe mais nela. Embaixo, o que a Maia está fazendo ("Maia está ouvindo", "Maia está falando", "Chamando a Maia…") e os controles: **microfone** (desliga e religa), **Pausar** e **Encerrar entrevista**.
+- **Sem transcrição ao vivo.** A imagem traz a transcrição ao lado e ela chegou a entrar, mas o Rafael pediu para tirar: a tela da ligação continua sem o texto da conversa, como na decisão 52. A conversa transcrita aparece depois, no resultado.
+- **Microfone desligado:** a Maia não ouve nada e a tela avisa. As proteções de custo continuam valendo (muito tempo em silêncio, a ligação pausa sozinha).
+- **Não entrou, porque o INCFlow não tem esse dado ao vivo:** o **"Roteiro da conversa"** (os tópicos marcados conforme a conversa anda) e os selos **"Regra de negócio identificada"** nas falas. Os dois pedem que a Maia avise, durante a ligação, em que tópico está e o que reconheceu; é uma entrega própria, junto com as regras de negócio (decisão 77).
+
+## 87. Editor do POP em abas: Conteúdo e Recursos (12/11/2026)
+
+- O editor do POP ganhou duas abas, no mesmo estilo das abas do processo: **Conteúdo** (identificação, objetivo, envolvidos, procedimentos, referências, histórico e a coluna lateral) e **Recursos**.
+- **Recursos** reúne o que apoia o POP: o fluxograma do processo e as gravações de tela (gravar, abrir, continuar e levar as telas para os passos). O número na aba é a soma das gravações com o fluxograma, quando existe.
+- A aba fica no endereço (`#recursos`), então recarregar ou compartilhar o link abre no mesmo lugar. O índice "Nesta página" troca de aba sozinho quando o destino está na outra.
+- À direita das abas fica o resumo "N etapas · N passos".
+- Nada muda no banco.
+
+## 88. Áreas em cartões, sem forma de pasta (12/11/2026)
+
+- Corrige a decisão 82: a forma de pasta é só dos **processos**. As áreas voltam a ser cartões simples: ícone da área num quadrado colorido, nome e "N processos".
+- O mesmo cartão (`components/CartaoArea.tsx`) vale na lista de Áreas e na página da organização; nesta, a busca, a ordem, a vista em lista, o menu "…" e o cartão tracejado "Nova área" continuam.
+- A cor do quadrado sai da paleta dos avatares, fixa por área.
+- Nada muda no banco.
+
+## 89. Regras de negócio: uma segunda finalidade para a Maia (12/11/2026)
+
+A entrevista com a Maia passa a ter uma **finalidade**: mapeamento de processo (a de sempre) ou **regras de negócio**. Cada uma tem a sua condução, a sua análise e o seu convite.
+
+- **Escopo:** as regras são do processo. Cada regra se aplica ao processo inteiro ou a um POP dele. Regras de uma área inteira ficam para depois.
+- **Condução da entrevista de regras** (`instrucoesDeRegras`, em `lib/server/entrevistas.ts`): a Maia avisa, na abertura, que não vai pedir o passo a passo. Fecha uma regra por vez (a condição, o valor ou o prazo, a quem se aplica, a exceção), pede casos reais, testa a regra com uma situação no limite, desconfia de "sempre" e "nunca", pergunta de onde a regra vem e o que acontece quando não é cumprida, e repete cada regra para a pessoa confirmar. Se a pessoa começa a descrever etapas, traz de volta para a regra. Antes de se despedir, confere limites e alçadas, prazos, proibições, exceções e comportamento. O jeito de falar e as políticas de voz são os mesmos do mapeamento. A Maia já entra sabendo as regras confirmadas do processo e as dúvidas marcadas para a conversa.
+- **Análise** (`lib/server/regras.ts`): no fim, o Claude separa as regras que a pessoa afirmou ou confirmou. Cada sugestão vem com o tipo (**RN**, regra de negócio, ou **RC**, regra de comportamento), o trecho da fala e o número da fala (que vira o ponto da gravação), o POP a que se aplica e, se for o caso, o possível conflito com uma regra já confirmada. A análise recebe as regras confirmadas, as sugestões em revisão e as descartadas, para não repetir.
+- **Nada entra sem confirmação.** As sugestões ficam na aba **Regras de negócio** do processo. Quem confirma, edita e descarta é **a pessoa escolhida para o processo** por um gestor ou administrador (pode ser a própria pessoa entrevistada) e os administradores. Só a regra confirmada ganha código (RN-01, RC-01: sequência por processo e por tipo). Regra escrita à mão por quem confirma já nasce confirmada. Quem confirma vê, no Início, o aviso das regras à espera.
+- **Conflito e dúvida:** quando a sugestão pode conflitar com uma regra confirmada, a aba avisa e oferece "Perguntar na próxima entrevista". A dúvida vai para as instruções da Maia na próxima entrevista de regras do processo; o que a pessoa responder fica anotado na sugestão, e quem confirma decide.
+- **Ouvir o trecho:** o botão toca a gravação a partir da fala. O navegador passa a guardar onde cada sessão de voz começa na linha do tempo (`bases_ms`), para achar a fala quando a conversa teve pausas.
+- **Convite:** o diálogo pede a finalidade e o e-mail muda com ela (`finalidade` nos dados do carteiro; os dois passos do workflow do Pipedream precisam ser atualizados, ver `docs/convites.md`). Uma pessoa pode ter uma entrevista aberta de cada finalidade no mesmo processo.
+- **Fontes:** só as entrevistas de regras. A conversa de regras não entra no fluxograma. Ler também os POPs e as fichas das entrevistas de mapeamento fica para depois.
+- **Banco:** migração 0024 (`entrevistas.finalidade`, `processos.confirmador_regras_id` e a tabela `regras`). Enquanto ela não está aplicada, o app segue como antes: a aba não aparece e o convite não mostra a finalidade.
+- **Ficou para a segunda entrega:** as regras confirmadas na página pública do processo e numa seção do PDF dos POPs.
+
+## 90. Ajustes da Maia de regras depois da primeira entrevista real (13/11/2026)
+
+A primeira entrevista de regras de negócio de verdade (6 minutos, com uma volta para completar) mostrou pontos a acertar na condução e na análise.
+
+- **Condução:**
+  - perguntar com palavras do dia a dia e com exemplos, sem termos de análise ("condição", "o que precisa ser verdade"), que confundiram a pessoa;
+  - resposta vaga ("talvez", "acho que") pede um exemplo do que entra e do que não entra antes de seguir;
+  - caso real: pedir uma vez só por regra e não insistir;
+  - se a pessoa disser que a pergunta não é sobre regra, concordar e seguir, sem discutir;
+  - se a pessoa falar de regras de outro assunto, perguntar se valem para o processo da entrevista.
+- **Análise:**
+  - quem autoriza ou aprova faz parte da regra, não vira regra separada ("o CEO dá o aval" tinha virado uma sugestão à parte);
+  - falta de regra ("não tem formato obrigatório") e recomendação ("o ideal é") não viram regra;
+  - "o que um cargo pode decidir" é regra de negócio (alçada), não de comportamento;
+  - a regra só vai para um POP quando o assunto dela aparece no nome ou no objetivo dele (uma regra sobre projetos estratégicos tinha ido para o POP de sorteio);
+  - o trecho sai sem hesitações e repetições;
+  - pendência é sobre regra, não sobre como uma tarefa é feita (formato, canal, antecedência).
+- As regras já confirmadas não mudam. Nada muda no banco.
+
+## 91. Definição como terceiro tipo de regra, ajuda dos tipos e a saudação da Maia (13/11/2026)
+
+- **Definição (DF):** além da regra de negócio (RN) e da regra de comportamento (RC), a regra pode ser uma definição: o que um termo quer dizer no processo ("Projeto estratégico: …"). As regras dependem dessas palavras, e a primeira entrevista real mostrou isso (a regra sobre projetos estratégicos ficou sem dizer quais são). Tem numeração própria (DF-01) e filtro na lista. Boa prática ("o ideal é") continua fora: não é regra.
+- **Maia:** na entrevista de regras, quando uma regra depende de uma palavra que cada um entende de um jeito, ela pergunta o que a palavra quer dizer, com um exemplo do que é e do que não é, e confirma. A análise registra como definição só o que a pessoa explicou com clareza; termo vago vira pendência.
+- **Ajuda dos tipos:** um botão de informação bem à vista, em rosa claro, abre a explicação da diferença entre os três tipos (o que é, como reconhecer, exemplos, o que não é regra). Fica em "Para revisar", no cartão "Tipos de regra" e ao lado da escolha do tipo, ao criar ou editar uma regra. O texto sai de `TIPOS_REGRA`, em `lib/entrevista/topicos.ts`.
+- **Saudação:** a Maia cumprimenta com "bom dia", "boa tarde" ou "boa noite", pelo horário de Brasília na hora em que a ligação começa (5h às 12h, 12h às 18h, e o resto), na abertura e quando a pessoa volta. Vale para as duas finalidades.
+- **Banco:** migração 0025 (o tipo `definicao` na tabela `regras`). Enquanto ela não está aplicada, criar uma definição à mão avisa o que falta, e a definição que a Maia sugerir entra como regra de negócio, para não se perder.
+
+## 92. Ajuda dos tipos de regra: ícone discreto e texto simples, sem exemplos (13/11/2026)
+
+- Ajusta a decisão 91. O botão de ajuda passa a ser **só o ícone de informação**, sem texto, num rosa bem claro e pequeno (32 px): o anterior chamava atenção demais.
+- A explicação de cada tipo deixa de trazer exemplos e "como reconhecer": um exemplo que não encaixa na realidade de quem lê confunde mais do que ajuda. Fica um texto curto, em linguagem simples, para qualquer pessoa: o que é a regra de negócio, a de comportamento e a definição, mais "Na dúvida" e "O que não é regra".
+- O campo de escrever a regra troca o exemplo por uma dica do que escrever em cada tipo.
+- Nada muda no banco.
+
+## 93. Cabeçalho do processo mais limpo (13/11/2026)
+
+- Saem do alto da página do processo: o quadrado com a sigla do nome, o código do processo (com o botão de copiar) e a escolha da área. Fica o nome, o selo "Processo" e as ações (Mover ou copiar, Arquivar).
+- Trocar de área continua possível por **Mover ou copiar**. O código continua existindo (nos POPs e no fluxograma), só não aparece mais ali.
+- As abas não mostram mais barra de rolagem: aparecia uma, vertical, ao lado delas no Windows.
+- Nada muda no banco.
+
+## 94. Cabeçalho do POP mais limpo (13/11/2026)
+
+- Como no processo (decisão 93), saem do alto do editor do POP: o quadrado com o ícone do POP, a data de publicação ao lado do selo "Publicado" e o resumo "N etapas · N passos" ao lado das abas.
+- A contagem de etapas e passos continua no cartão Procedimentos; a data de publicação continua no cartão da página pública.
+- Nada muda no banco.
+
+## 95. Convite para entrevista: nada espremido em tela baixa (13/11/2026)
+
+- Com a escolha da finalidade (decisão 89), o diálogo do convite ficou mais alto que a tela em monitores comuns, e o navegador espremia a busca e a lista de pessoas para caber: a lista quase sumia e os campos se encostavam.
+- Agora nenhum diálogo espreme o conteúdo: quando não cabe na altura da tela, o diálogo rola por inteiro (regra geral, em `.dialog > *`).
+- No convite, as opções de finalidade ficaram mais compactas e a lista de pessoas tem altura mínima (duas pessoas à vista) e, em telas baixas, altura máxima menor.
+- Nada muda no banco.
+
+## 96. A Maia em rosa (13/11/2026)
+
+- Tudo o que envolve a Maia e a IA troca o teal pelo **rosa**, escolhido pelo Rafael por ser mais feminino e humano. Depois de comparar opções num HTML de teste, ficou o `#F472B6` "nos detalhes, botão um tom mais fechado": o F472B6 aparece na esfera, nos ícones, no play e nas bordas; o botão sólido usa o `#DB2777` (texto branco legível, 4,6:1); textos em `#BE185D` e `#9D174D`; fundos e bordas em `#FDF2F8`, `#FCE7F3` e `#FBCFE8`.
+- Entra em tudo o que era teal: os botões da Maia e "Melhorar com IA", o convite, os selos "Gerada/Sugerida pela Maia", a aba de regras, o trecho com o play, a esfera e os estados da ligação ("Maia está falando" em rosa sólido), o cartão escuro de "gerando o resultado" (agora vinho), o avatar da Maia.
+- Para nada ser confundido com a Maia: o rosa avermelhado que marcava perigo (erro, excluir, "Offline", gravando) passa a **vermelho** (`#DC2626`), e o ícone de ajuda dos tipos de regra passa a **cinza**. As cores de identidade de pessoas e áreas (avatares teal e rosa) continuam como estavam.
+- O sistema de cores (`docs/design/sistema-de-cores.md`) foi atualizado. Nada muda no banco.
+
+## 97. O rosa é só da Maia; as outras IAs voltam ao teal (13/11/2026)
+
+- Ajusta a decisão 96: o rosa fica só no que é da Maia (entrevistas, convites, ligação, resultado das conversas, regras sugeridas, "Perguntar na próxima entrevista", Conversas e Painel da Maia).
+- As outras IAs voltam ao teal de antes: "Melhorar com IA" (descrição, objetivo, passos do POP, atividades do perfil), "Gerar com IA" e "Gerar de novo com IA" (fluxograma) e a sugestão de texto.
+- Perigo continua vermelho e a ajuda continua cinza. Nada muda no banco.
+
+## 98. Ajustes da Maia depois da entrevista de mapeamento com quem não executa o processo
+
+Na entrevista do processo de Permuta, a pessoa entrevistada era de TI e conhecia só uma parte. A Maia perguntou "esse processo" sem dizer o nome, seguiu perguntando o que a pessoa não sabia, juntou duas e três perguntas na mesma fala, não voltou às outras modalidades e fez o resumo sem pedir confirmação. Ajustes no roteiro e na análise:
+
+- A primeira pergunta sobre o processo diz o nome dele.
+- Logo no começo a Maia pergunta qual é a parte da pessoa no processo e aprofunda o que ela conhece de perto.
+- Diante de "não sei", pergunta quem saberia (área e, se a pessoa souber, o nome) e volta para o que a pessoa conhece.
+- Processo com mais de uma modalidade: percorre a que a pessoa conhece melhor e, antes de encerrar, pergunta o que muda nas outras.
+- Uma pergunta por fala.
+- O resumo traz só o que foi dito e termina com "é isso mesmo?".
+- Na análise, "quem sabe" leva o nome citado entre parênteses e não é adivinhado ("A definir" quando a conversa não mostra); o nome de quem faz uma etapa entra na descrição da etapa, e o responsável continua sendo a área ou o cargo.
+
+## 99. Editar o nome e o e-mail de uma pessoa cadastrada
+
+Quem cadastra pode digitar o nome ou o e-mail errado, e a única saída era remover e cadastrar de novo. Em Pessoas e acessos, cada linha ganhou um botão de editar, que abre um diálogo com o nome e o e-mail.
+
+- Só administradores editam (a mesma rota que muda o nível).
+- O e-mail novo passa pelas mesmas regras do cadastro (domínio corporativo, sem repetir) e derruba a sessão aberta com o e-mail antigo.
+- O administrador não muda o próprio e-mail, para um erro de digitação não o trancar do lado de fora; o próprio nome ele muda.
+
+## 100. Etapas da ficha em texto simples
+
+O formato do redesign (decisão 85), com caixas "Entra" e "Sai" em cada etapa, ficou difícil de ler, e nem toda etapa tem uma entrada e uma saída claras. Cada etapa volta a ser texto simples: nome, responsável, descrição e, quando houver, linhas curtas "Precisa de:", "Resulta em:" e "Usa:". A regra de negócio e a exceção continuam em destaque, cada uma na sua caixa colorida.
+
+Na análise, ferramentas, entradas e saídas só entram quando a pessoa disse; a IA não deduz um documento ou um resultado para preencher a lista.
+
+## 101. Sugestão da IA: erro de digitação consertado não conta como termo deformado
+
+A conferência de termos da IA de texto (decisão 30) descartava a sugestão quando uma palavra com inicial maiúscula no meio da frase mudava de forma parecida, para pegar casos como "Fluig" virar "FluFlig". Mas "Pedio" e "Pagaemnto" eram erros de digitação do próprio texto, e a IA os consertou ("Pedido", "Pagamento"): a conferência tomou o conserto por deformação e recusou a sugestão toda.
+
+Agora, se a palavra nova já aparece escrita certa em outro ponto do texto original (mesmo em minúscula ou sem acento), é conserto, não deformação. A deformação de um nome que não existe no texto original ("FluFlig") continua barrada. Quando a recusa acontece, a mensagem agora diz que, se for erro de digitação no texto, vale corrigir lá e pedir de novo.
+
+## 102. A IA de texto melhora de verdade, não só corrige
+
+O pedido pedia "corrigir e deixar mais claro", mas o resto do roteiro ("só corrija", exemplos que mudavam pouco) empurrava o modelo para trocar poucas letras. O pedido agora diz que melhorar é reescrever a forma: desfazer frases confusas ou truncadas, cortar repetições e rodeios, pôr as ideias em ordem e usar termos profissionais e simples. A trava continua: nenhuma informação do texto original some e nada é acrescentado. Entrou um exemplo de reescrita de verdade no roteiro. Não foi possível testar com o modelo real nesta sessão (a chave da IA não está no ambiente), então vale experimentar com textos reais e ajustar.
+
+## 103. Mover e copiar: destino escolhido em etapas
+
+Com muitos processos e POPs, a lista única de destinos (agrupada por "Organização › Área") ficava longa e difícil de percorrer. O diálogo agora pede o destino em etapas, cada campo só com o que pertence à escolha anterior: organização, área e processo (para o POP). Trocar um campo zera os de baixo. As opções mostram só o nome (a contagem de áreas, processos e POPs na frente do texto foi tirada a pedido), e o local de hoje aparece como "(atual)", bloqueado ao mover e permitido ao copiar.
+
+Para um processo são só dois campos, organização e área. O nome da cópia segue como era. A lista "o que já está no destino" e o quadro de resumo do que muda ao mover ou copiar um POP foram tirados a pedido; o resumo de mover ou copiar um processo continua. A opção foi escolhida em protótipo (a outra era uma lista com caminho e busca).
+
+## 104. A tela Áreas igual à lista da organização
+
+A tela Áreas do menu mostrava só os cartões, sem a busca, a ordem e a troca entre cartões e lista que a página da organização tem (decisão 82). As duas agora usam a mesma lista (componente ListaDeAreas): busca sem acento, ordem por nome ou por mais processos, cartões ou lista e o cartão "Nova área" no fim da grade. Na tela Áreas, com mais de uma organização, as áreas continuam agrupadas por organização, e a busca e a ordem valem para todos os grupos.
+
+## 105. O draw.io continua no servidor deles (embed.diagrams.net)
+
+O editor de fluxograma continua abrindo o draw.io hospedado por eles, em modo embed, e não uma cópia nossa. Segundo a página de segurança e a política de privacidade do draw.io (novembro de 2026), o diagrama fica no navegador enquanto é editado e não é gravado nos servidores deles; só passa por lá em exportação para PDF, imagem em navegador antigo, colaboração em tempo real, abrir arquivo por endereço e IA, e é apagado em seguida. O INCFlow usa só exportação SVG e PNG feita no navegador, e o arquivo é guardado no nosso banco (Supabase). As mensagens do editor só são aceitas vindas de embed.diagrams.net.
+
+Pontos em aberto para quando o INCFlow for oferecido a outras empresas: os termos de uso do draw.io não citam o embed.diagrams.net nem uso dentro de um produto vendido a terceiros, e o serviço é gratuito, sem garantia de disponibilidade, podendo mudar ou ser encerrado. Antes de vender, confirmar com o draw.io se esse uso é permitido. Se for preciso sair do servidor deles, o plano B é servir o editor como arquivos estáticos (ou a imagem Docker jgraph/drawio) e trocar só o endereço em lib/drawio.ts; o repositório deles avisa que essa versão é de teste e que há uma versão paga para produção.
+
+## 106. Colaboração em tempo real e IA do draw.io: fica como está
+
+Pesquisa na documentação oficial do draw.io (novembro de 2026), para testes futuros:
+
+- Colaboração em tempo real: várias pessoas editam o mesmo diagrama ao mesmo tempo, cada uma com uma cor, cursor com o nome e seleção destacada. Só funciona com o arquivo guardado no Google Drive, OneDrive, Confluence ou Nextcloud; vem ligada por padrão nesses casos (parâmetro sync=auto, manual ou none). As alterações passam por servidores do draw.io (Cloudflare, União Europeia), criptografadas, e ficam lá no máximo 5 minutos. A página do modo embed não fala desse recurso. Como os fluxogramas do INCFlow ficam no nosso banco, ela não se aplica. Para ter colaboração no INCFlow, o modo embed oferece troca de alterações entre o editor e o sistema (diffSync, getDiff, patch, resetDiff), que a documentação diz servir para construir colaboração; a sincronização entre as pessoas teria de ser feita por nós. A configuração tem ainda shareCursorPosition e showRemoteCursors.
+- IA (Gerar diagrama): cria e altera diagramas a partir de texto, com OpenAI, Claude ou Gemini; gratuita no serviço deles, com pedidos de até 10 mil caracteres. Vai só o texto, a não ser que a pessoa anexe o diagrama; os provedores não treinam com os pedidos e apagam em até 30 dias. Só vem ligada por padrão no app.diagrams.net (enableAi), então está desligada no INCFlow. Dá para usar chave própria (claudeApiKey, gptApiKey, geminiApiKey), mas a configuração vai para o navegador e a chave ficaria visível aos usuários; para uso no mercado, a geração teria de passar pelo nosso servidor. O INCFlow já gera fluxogramas com IA a partir das entrevistas.
+
+Decisão: manter como está; colaboração pode ser testada no futuro.
+
+## 107. Regras de negócio em PDF
+
+Na aba "Regras de negócio" do processo, o botão "Baixar PDF" (aparece quando há regras confirmadas) gera um documento com as regras do processo, com a identidade do POP: o logo da INC, títulos em azul-marinho e o laranja da marca nos detalhes. No topo, o nome do processo, a organização e a área, quantas regras e a data de emissão, e três quadros com a quantidade de cada tipo. Depois, uma seção por tipo (regras de negócio, de comportamento e definições), com o que o tipo quer dizer e as regras na ordem do código (RN-01, RN-02…), cada uma com "Aplica-se a" quando vale só para um POP. O título de cada seção nunca fica sozinho no pé da página, e nenhuma regra é cortada entre páginas; o rodapé traz o processo e o número da página.
+
+Entram só as regras confirmadas. Quem falou, quem confirmou e de onde veio não aparecem no corpo: ficam num resumo de "Observações e histórico" no fim (quem confirma as regras do processo, quantas vieram da Maia e quantas foram escritas pela equipe, as entrevistas consideradas, quem confirmou e quantas, a data da última confirmação e quantas sugestões ainda estão em revisão). Qualquer pessoa logada que vê o processo pode baixar.
+
+## 108. Validação das regras: aviso que acompanha a pessoa e pedido de ajuste
+
+Revisão do fluxo de confirmação das regras de negócio. Antes, o aviso só aparecia no Início, era carregado uma vez e os administradores eram avisados de todos os processos, mesmo dos que têm uma pessoa escolhida para confirmar.
+
+- Quem é avisado: a pessoa escolhida para confirmar as regras do processo; nos processos sem ninguém escolhido, os administradores. Os administradores continuam podendo confirmar em qualquer processo.
+- Selo no menu: o item "Início" mostra quantas regras esperam a pessoa (com o menu recolhido, o número fica sobre o ícone).
+- Aviso flutuante: ao entrar na plataforma, e sempre que chegam regras novas enquanto a pessoa usa, aparece no canto um aviso com quantas regras esperam e em que processo, com o botão "Revisar". Ao fechar, só volta se o número aumentar. No Início e no próprio processo das regras ele não aparece, porque a página já mostra.
+- Sem precisar entrar de novo: o selo e os avisos se atualizam a cada minuto com a aba aberta, ao voltar para a aba e logo depois de cada confirmação.
+- Na aba do processo, quem confirma vê o que fazer com cada regra: confirmar, editar, pedir ajuste ou descartar. As regras confirmadas mostram quem confirmou e quando.
+- Pedir ajuste (migração 0026): quem confirma diz o que precisa mudar. A regra continua em revisão, com o pedido guardado (o que, quem e quando), sai da fila de quem confirma e vai para os administradores, que são avisados. Quando alguém edita a regra, o pedido é resolvido e ela volta para quem confirma. Confirmar ou descartar também resolve o pedido. Sem a migração, o botão não aparece.
+
+Fica para depois: avisar por e-mail quando a Maia sugerir regras (o carteiro já existe, mas o e-mail ainda está sendo acertado).
+
+## 109. Entrevista de regras: objetivo claro, contexto usado, regras aprofundadas e resultado organizado
+
+Ajustes depois da entrevista de regras do processo de Viabilidades, com as observações de quem convidou.
+
+Na condução da Maia:
+- Objetivo dito com todas as letras na abertura: levantar as regras de negócio do processo (o que pode, o que não pode, limites, prazos e quem autoriza), e não mapear nem avaliar o processo. Durante a conversa, quando precisa perguntar como algo é feito, ela diz que é para entender a regra, e lembra de vez em quando que o assunto são as regras.
+- Contexto: o que foi escrito no convite deixou de ser um texto solto no meio das instruções. O pedido de quem convidou é o assunto principal: vem na primeira pergunta de regra e entra na conferência antes da despedida. A descrição do processo no cadastro serve para perguntar com precisão, sem valer como regra. O mesmo vale para a entrevista de mapeamento.
+- Aprofundar: cada regra só é deixada depois de saber quando vale e a quem se aplica, o valor e sobre o que ele é calculado, o que tem de ser verdade para ela valer, as exceções e quem autoriza, e o que acontece quando não é cumprida. Nada fica subentendido: grupo de coisas citado sem a lista ("as premissas") pede a lista com os valores; número pede a base; valores estranhos juntos pedem conferência; sigla e termo técnico pedem o significado.
+- Repetição: na entrevista analisada, a pergunta sobre o que é proibido repetiu a pergunta de abertura (vinha do roteiro), e a lista de premissas foi relida inteira depois de uma correção; a segunda correção do "G&A" partiu do entrevistado. Agora o que já foi respondido conta como feito na conferência do fim, a regra é repetida para confirmar uma vez só, e depois de uma correção ela confirma só o item corrigido.
+- Repasse final: uma regra por frase curta, numerada em voz ("primeira", "segunda"), com valores de uma mesma lista juntos.
+
+Na análise:
+- Redação da regra: começa por quem ou pelo quê vale, usa verbo direto ("deve", "só pode", "não pode") e termina com a condição, o valor ou o prazo, em frase curta; o que a pessoa disse que delimita a regra vai para o texto.
+- Lista de valores do mesmo assunto (as premissas fixas de um cálculo) vira uma regra só, com os itens em sequência.
+- Conferência ou controle do processo é regra de negócio; comportamento é só a atitude de quem executa.
+- Descrição geral da conversa organizada: um parágrafo curto, uma lista com um item por assunto e, se houver, o que ficou em aberto.
+- Pendências passam a incluir o que sustenta a regra e ficou implícito, e o pedido de quem convidou, quando a conversa não o fechou.
+- Regra descartada por quem revisa não volta: além da instrução, o sistema barra a sugestão que repete uma descartada com outras palavras (texto quase igual, ou mesmo trecho da conversa e mesmo assunto).
+
+No resultado da entrevista de regras, além da descrição geral, aparecem as regras daquela conversa organizadas por tipo, com a situação de cada uma (código quando confirmada, "Em revisão" ou "Ajuste pedido").
+
+Ficou como estava, a pedido: a Maia falar mais que a pessoa e manter a sigla entre parênteses quando a pessoa a corrige.
+
+## 110. Entrevista de regras: visão ampla do processo; as observações do convite são direcionadores
+
+Ajuste depois da segunda entrevista de regras (processo de viabilidade de lançamento) e da avaliação de quem convidou: a Maia deu peso demais à observação escrita no convite, que citava um caso específico, e a conversa ficou nas regras de um assunto só. A decisão 109 tinha feito do "pedido de quem convidou" o assunto principal e a primeira pergunta da conversa; essa parte foi desfeita.
+
+O que se espera: a entrevista de regras busca a visão geral das regras do processo. O que quem convida escreve são pontos que a Maia não pode deixar de abordar e validar, não o assunto da conversa. Ela tem autonomia para ir além deles e precisa perceber quando a pessoa fica só neles.
+
+Na condução da Maia:
+- Roteiro em fases: abertura; visão geral (em que assuntos o processo tem regra, antes de aprofundar qualquer uma); assunto por assunto; ampliar; pergunta de fechamento, repasse e despedida.
+- A primeira pergunta de regra é sempre a de visão geral ("em que pontos desse processo tem regra?"), com "E além disso?" até ter os assuntos principais. Mapa curto não trava a conversa: ela aprofunda o que a pessoa citou e abre o resto depois.
+- Observações do convite: cada ponto pede uma pergunta dela e a confirmação da pessoa (ser citado de passagem não conta). Ela não abre a conversa por eles. Se a observação cita um caso (um empreendimento, um cliente), o caso serve para testar as regras: o que um caso assim tem de cumprir, do começo ao fim, e se alguma regra muda por causa do tamanho, do lugar ou do tipo; depois, o que vale nos outros casos.
+- Do exemplo para a regra geral: regra que aparece a partir de um caso pede a pergunta "vale sempre ou só nesse caso?" e pelo menos um cenário diferente.
+- Ampliar: uma lista numerada, percorrida com uma pergunta concreta por item, que é também a conferência obrigatória antes da despedida: as observações de quem convidou (quando há); o que decide o resultado do processo (o que faz um caso ser aprovado ou recusado); limites, valores e alçadas; prazos; o que é proibido; exceções; como as pessoas devem agir; outro cenário (um caso bem diferente); as partes do processo que não apareceram. No item que já apareceu, ela só pergunta se existe mais alguma regra daquele tipo.
+- "Só cuido de uma parte" não encerra a busca: ela pergunta que outras regras existem no processo e quem cuida de cada uma.
+- Estreitamento: resposta que se restringe sozinha ("para essa premissa, não", "nesse caso é assim") vale só para aquilo; ela refaz a pergunta para o resto. Se continuar, diz que quer olhar o processo inteiro e volta à lista.
+- Amplitude não substitui profundidade: regra citada sem o valor, a condição ou o prazo não está levantada. Palavra sem medida ("muito", "completamente") pede o número.
+- Antes do repasse, a pergunta de fechamento: "Pensando no processo todo, e não só no que a gente conversou: ficou de fora alguma regra importante?"
+- Com regras já confirmadas no processo, a visão geral parte do que elas cobrem e procura o que falta.
+- Quando a pessoa volta só para completar pontos em aberto, nada disso entra: ela percorre só os pontos escolhidos, como antes.
+- A entrevista de mapeamento usa as observações do mesmo jeito: são direcionadores, e o assunto é o processo de ponta a ponta.
+
+Na análise:
+- Regra na forma geral: vale para os casos do processo e é escrita sem o nome do caso citado. O que valia só para aquele caso não vira regra; se ficou em dúvida, vira pendência.
+- A consequência do descumprimento e o pedido de exceção ficam na mesma regra, não em regras separadas.
+- Observação do convite que não foi abordada vira pendência escrita na forma geral. Conversa que ficou em um assunto ou em um caso só é dita na descrição geral e gera uma pendência que abre os outros assuntos.
+
+Nas telas: o campo do convite passou de "O que a Maia deve focar" para "Pontos que a Maia não pode deixar de abordar", com a explicação de que a conversa é sobre o processo inteiro. A tela de quem foi convidado e o modelo do e-mail (`docs/pipedream-convite-enviar.js`, que precisa ser copiado para o Pipedream) dizem o mesmo.
+
+Como foi conferido: além dos testes automáticos, com 30 entrevistas simuladas em texto, usadas também para ajustar as instruções. Um modelo fez a Maia com as instruções do app e outro fez um entrevistado fictício, com nove assuntos de regra inventados, que puxa toda resposta para o caso do convite.
+- Com as instruções da decisão 109 (três simulações), a Maia entrou no caso do convite na segunda fala e levantou 4 ou 5 dos 9 assuntos.
+- Com as novas, nas quatro últimas simulações ela começou pela visão geral, trouxe o ponto do convite depois de percorrer os assuntos e levantou os 9; nas versões intermediárias, de 7 a 9.
+- Com um entrevistado que insiste em dizer que só cuida de um assunto, as instruções novas não foram melhores que as antigas (de 1 a 7 assuntos, contra 4 e 5), e em parte dessas conversas a Maia não chegou a fazer a pergunta sobre o ponto do convite. Nesse caso o que a conversa consegue é registrar quem saberia responder, e a análise leva o ponto não abordado para as pendências.
+- As conversas ficaram mais longas: de 30 a 50 falas da Maia, contra cerca de 20.
+A simulação usa modelos de texto, não o modelo de voz, e dados inventados: serve de indício. A confirmação é a próxima entrevista de verdade.
+
+## 111. Maia: orientações por princípio, adaptadas ao negócio de cada entrevista
+
+Ajuste pedido logo depois da decisão 110: as instruções da Maia não podem ser regras fixas e específicas, iguais para toda situação. Ela conversa com pessoas de áreas, empresas e ramos diferentes, e precisa entender a realidade de cada negócio e conduzir a conversa de acordo com ela. A decisão 110 tinha criado uma lista numerada de itens a percorrer em ordem, com perguntas pensadas para um processo de aprovação (o que faz um caso ser aprovado ou recusado, a partir de que valor muda, o que vem depois da decisão).
+
+O que mudou:
+- **Cada negócio é um.** Uma seção nova, nas duas entrevistas (mapeamento e regras): entender primeiro em que realidade o processo acontece (que negócio é, o que o processo entrega e para quem), falar a língua da pessoa, tratar os exemplos das instruções só como ilustração do jeito de perguntar, e usar o julgamento quando uma orientação não fizer sentido naquele processo. O que não muda: o objetivo da conversa, a abertura e as frases de encerramento.
+- **Caminho, não roteiro.** A sequência da entrevista de regras (visão geral, assunto por assunto, observações do convite, ampliar, fechamento) passou a ser "um caminho que costuma funcionar", que ela adapta à conversa; saiu o "siga nesta ordem".
+- **Ampliar sem lista fixa.** Saiu a lista numerada. Ela continua tendo de procurar o que a pessoa não lembrou de citar, mas olhando os tipos de regra (condições, limites, prazos, obrigações, proibições, exceções, comportamento e os demais) e perguntando só sobre os que fazem sentido naquele processo, com as palavras e as situações dele. O que não cabe, ela pula.
+- **Conferência por julgamento.** Antes do repasse, ela confere se os assuntos citados foram percorridos, se as observações do convite foram perguntadas e confirmadas, se fez as perguntas de ampliação e se ficou algo citado sem detalhe. Deixou de ser uma lista obrigatória de itens.
+- **Primeira pergunta.** Continua sendo a de visão geral, mas os exemplos que ela dá do que procura saem do próprio processo.
+- **Exemplos neutros.** Saíram das instruções e da análise os exemplos tirados do caso de um cliente (viabilidade, premissas, percentuais reais). Entraram exemplos genéricos, e a análise passou a dizer que eles só mostram a forma.
+- Os tipos de regra do objetivo viraram referência ("servem para reconhecer uma regra e lembrar do que procurar"), não lista a cumprir.
+
+O que ficou como estava, de propósito: o objetivo dito na abertura, o foco nas regras, a visão geral primeiro, as observações do convite como pontos a abordar e validar (decisão 110), o aprofundamento de cada regra e o repasse numerado (decisão 109). Na entrevista de mapeamento, a conferência do fim (quem faz, prazos, o que acontece quando dá errado, o que dá problema) também ficou, porque vale para qualquer processo.
+
+Como foi conferido: testes automáticos e 11 novas entrevistas simuladas em texto, agora em quatro ramos fictícios (incorporação, farmácia de hospital, qualidade em indústria de alimentos e secretaria de escola), cada um com nove assuntos de regra inventados.
+- Com a lista fixa da decisão 110, as perguntas saíam iguais em todo lugar e às vezes não cabiam (numa farmácia: "o que acontece depois da decisão?"; numa escola: "o que faz um pedido ser aprovado ou recusado?"). Cobertura: 33 de 36 assuntos.
+- Na primeira versão flexível, a Maia adaptou as perguntas, mas trocou a ampliação por "falta alguma coisa?" e a cobertura caiu para 28 de 36. Por isso a ampliação voltou a ser uma etapa que ela não pula, só que sem lista fixa.
+- Na versão final, 32 de 36, com perguntas na linguagem de cada negócio (na farmácia, armazenamento e transporte dos medicamentos; na escola, como agir quando a família reclama) e conversas um pouco mais curtas.
+É uma simulação com modelos de texto e dados inventados, uma rodada por cenário: serve de indício. A confirmação é nas próximas entrevistas de verdade, de preferência em áreas diferentes.
+
+## 112. Mapeamento: o mesmo espírito da decisão 111, mantendo o que já funciona
+
+A entrevista de mapeamento ficou como está, a pedido (o jeito de conduzir agrada): visão geral e início, etapas na ordem, e a conferência obrigatória do fim com os quatro pontos (quem faz, prazos, o que acontece quando dá errado, o que dá problema). Entraram só dois ajustes de flexibilidade, além da seção "Cada negócio é um" da decisão 111:
+- A ordem das etapas é o caminho que costuma funcionar: se a pessoa começar por outra parte, a Maia acompanha e depois volta para completar o processo do início ao fim.
+- Na conferência do fim, as perguntas são feitas com as palavras e as situações do processo; o que a pessoa já respondeu com clareza conta como perguntado, e o ponto que de fato não couber pode ser pulado. A lista continua obrigatória.
+
+Conferido só com os testes automáticos; não foi simulado.
+
+## 113. Mapeamento: observações do convite confirmadas, pistas seguidas e resumo no fim
+
+Ajustes depois da entrevista de mapeamento do processo de assistência técnica. A conversa cobriu o processo de ponta a ponta, mas a observação do convite ("quando de fato o problema do cliente está solucionado") não foi validada com a pessoa, o processo novo que ela citou não foi explorado e algumas pontas ficaram soltas.
+
+Na condução do mapeamento (o resto continua como estava):
+- Observações de quem convidou: antes do resumo final, cada ponto pede uma pergunta da Maia e a confirmação da pessoa, como já era na entrevista de regras. Aparecer de passagem não conta.
+- Pistas: o que a pessoa cita de passagem e de que o processo depende (uma compra, uma espera, uma recusa, outra área) é retomado antes do resumo. Resposta confusa pede que a Maia diga o que entendeu e confirme.
+- Processo em mudança: se a pessoa disser que há um jeito novo sendo implantado, a Maia pergunta qual dos dois está sendo descrito e, depois do atual, o que muda no novo.
+- O resumo com "é isso mesmo?" vem depois da conferência, como último passo antes da despedida.
+- Perguntas: em geral uma por fala; duas, quando forem do mesmo assunto e uma completar a outra. Deixou de ser "uma por fala, sempre".
+
+Na análise do mapeamento: viram pendência o ponto das observações do convite que a conversa não abordou ou não fechou e aquilo de que o processo depende e foi citado sem explicação.
+
+Conferido só com os testes automáticos; não foi simulado.
+
+## 114. Tela de ligar para a Maia: texto novo e sem a caixa de ciência
+
+- Na entrevista de mapeamento, o "Como funciona" passou a ter quatro itens curtos, com o texto pedido: conversar por voz (pode interromper, corrigir ou complementar), tirar dúvidas em tempo real, documentação automática ao final e a dica dos fones. A entrevista de regras manteve o texto dela.
+- Saiu a caixa "Estou ciente de que a conversa é gravada e processada por serviços de IA": o aviso vai para os termos de uso. O botão "Ligar para a Maia" fica liberado de saída.
+- Como era a caixa que pedia o microfone antes (decisão 55), agora o navegador pede a permissão ao ligar. Na primeira vez, a ligação espera a pessoa permitir.
+
+## 115. Tela da ligação: sem o selo de quem fala e sem o contador de tempo
+
+- Saiu o selo que alternava entre "Maia está ouvindo" e "Maia está falando": mudava a todo momento e a esfera já mostra quem fala. Continuam só os avisos de transição ("Chamando a Maia…", "Encerrando a conversa…" e as etapas do processamento).
+- Saiu o contador de tempo da ligação, no topo. A duração continua registrada nas métricas da entrevista.
+
+## 116. Tela de ligar, entrevista de regras: o mesmo formato do mapeamento
+
+O "Como funciona" da entrevista de regras passou para os quatro itens da decisão 114, adaptados: conversar por voz sobre as regras de negócio (o que pode, o que não pode, os limites e os prazos), tirar dúvidas em tempo real, regras organizadas ao final para quem cuida do processo confirmar, e a dica dos fones.
+
+## 117. Mapeamento: a abertura diz o objetivo, como na entrevista de regras
+
+A abertura falada do mapeamento dizia só quem é a Maia, com quem trabalha e que a conversa fica gravada. Passou a dizer também o objetivo, como a de regras já fazia (decisão 109): entender como funciona o processo, do começo ao fim (as etapas, quem faz cada uma, os sistemas usados e o que costuma dar problema), e que não é uma avaliação de ninguém, só o registro de como o trabalho acontece hoje. O resto da abertura continua igual: a pergunta sobre a pessoa e depois "para que serve o processo".
+
+## 118. Mapeamento: fechar pontas na própria conversa, com a pendência como rede de segurança
+
+Depois da entrevista de reserva de salas, que foi boa mas deixou três pontas sem pergunta (o que é "reunião importante", como a chave volta, como funciona a sala alternativa). Quatro orientações, por princípio:
+- Palavra que decide um caminho ("quando é importante", "se for urgente"): a Maia pergunta na hora o que quer dizer ali e quem decide.
+- Saída alternativa citada (outro lugar, outro fornecedor): ela pergunta como funciona, quem aciona e com quem.
+- Fim de verdade: antes do resumo, confere se o que foi entregue, aberto ou emprestado teve destino; se a conversa não disse como termina, pergunta.
+- Pergunta que a pessoa não entendeu não é repetida com as mesmas palavras: vira uma situação concreta do dia a dia dela.
+
+Rede de segurança na análise: se mesmo assim escapar, a palavra não explicada, a saída alternativa sem explicação e o fim que faltou viram pendência, para a volta rápida.
+
+Conferido só com os testes automáticos; não foi simulado.
+
+## 119. Menu lateral sem o item "Início"
+
+O item "Início" saiu do menu lateral; "Áreas" passou a ser o primeiro. A página Início continua existindo: o logo leva a ela, o endereço raiz também, e o aviso flutuante das regras com vários processos aponta para ela.
+
+Junto saiu o selo com o número de regras esperando confirmação, que ficava nesse item (decisão 108). Continua o aviso flutuante, que aparece ao entrar e quando chega regra nova.
+
+## 120. Ícone de aba
+
+A aba do navegador passou a mostrar a marca do INCFlow (o símbolo colorido, o mesmo do menu recolhido), em vez do ícone genérico. O arquivo é `app/icon.png`, com uma cópia em `app/apple-icon.png` para o atalho na tela de início do iPhone. Aparece em todas as páginas, inclusive no login e nas páginas públicas.
+
+## 121. Cor dos textos: #2B3D55
+
+O texto principal passou de `#0E1525` (quase preto) para `#2B3D55`, um azul-ardósia mais suave, a pedido. Vale para títulos e textos de todas as telas, porque as duas variáveis de texto (`--ink` e `--neutro-texto`) mudaram juntas. Os textos secundários (`#5A6372`) e as cores de ação, da Maia e de status ficaram como estavam. Contraste sobre o branco: 11:1 (sobre o fundo cinza da página, 10,3:1), acima do mínimo de acessibilidade (4,5:1). O fundo escuro do avatar da Maia continua `#0E1525`.
+
+## 122. Raio de borda de 15px em todo o site
+
+Os cantos arredondados passaram para 15px em todo o site: cartões (antes 20px), diálogos, botões, campos, listas, menus, avisos, abas e painéis, que antes variavam entre 10px e 28px. A variável `--radius` também passou para 15px.
+
+Ficaram como estavam, porque são de outro tipo: o que é pílula ou círculo (etiquetas, contadores, avatares redondos, a chave liga/desliga), os detalhes pequenos (até 9px, como selos e marcadores) e os ícones quadrados pequenos (os quadradinhos coloridos com ícone), que com 15px virariam quase círculos.
+
+## 123. Página do processo: descrição antes do fluxograma, e prévia do fluxograma menor
+
+Na visão geral do processo, a descrição passou a vir primeiro e o fluxograma depois. A prévia do fluxograma ficou menor: a área tem no mínimo 160px de altura (antes, 230px), a imagem do fluxograma vai até 170px (antes, 260px) e o desenho de exemplo, quando ainda não há fluxograma, até 340px de largura (antes, 460px).
+
+## 124. Cartão do fluxograma: miniatura de verdade e "Processo sem fluxograma"
+
+- **Com fluxograma:** o cartão mostra a miniatura do desenho. Antes, só aparecia quando o editor tinha salvo uma miniatura (2 dos 15 fluxogramas); nos outros, aparecia o desenho ilustrativo. Agora, sem miniatura salva, a prévia usa o SVG publicado pelo editor, que todos têm, servido por uma rota nova só para quem está logado (`/api/fluxogramas/[id]/svg`, com a mesma política de segurança da rota pública e funcionando também em processo arquivado). Se nenhuma das duas existir ou a imagem não carregar, fica o desenho ilustrativo.
+- **Sem fluxograma:** continua o desenho ilustrativo (a imagem de referência enviada não foi usada). Saíram os textos "Este processo ainda não tem fluxograma" e "O fluxograma mostra o processo como um todo…". A etiqueta "Fluxograma" virou a pílula "Processo sem fluxograma", com ícone de alerta, fundo amarelo-claro (`#FEF9C3`), borda `#FDE68A` e texto dourado (`#854D0E`, contraste 6,4:1): atenção, sem cara de erro. Os botões Desenhar e Gerar com IA continuam; em processo arquivado, o cartão fica só com o desenho e a pílula.
+
+## 125. Identidade de cada ambiente: azul no processo, verde no POP
+
+Para a pessoa perceber, sem ler o título, se está num processo ou num POP. Validado pelo Rafael num exemplo em HTML montado sobre as telas reais.
+
+- **Fundo em degradê:** a página do processo tem um degradê azul e a do POP, um degradê verde, no mesmo desenho: a cor mais forte no alto, à direita, um tom bem claro no alto, à esquerda, e outro no canto de baixo, à direita, sobre uma base quase branca (`#F7F9FC` no processo, `#F7FBF9` no POP). O degradê fica preso à janela (não estica com a rolagem) e não aparece na impressão. As outras telas continuam com o fundo neutro.
+- **Leitura:** os cartões continuam brancos e opacos, então nada dentro deles muda. O que fica direto sobre o fundo (caminho, título e abas) tem contraste de 4,9:1 ou mais; para isso, os links do caminho, nessas duas páginas, passaram do cinza `#6B7280` para `#5A6372` (sem isso, cairiam para 3,9:1 sobre o azul).
+- **Selos do tipo:** "Processo" e "POP", abaixo do nome, deixaram de ser iguais (índigo claro). "Processo" ficou azul (fundo `#EFF6FF`, borda `#BFDBFE`, texto `#1D4ED8`, 6,2:1), com o ícone das duas etapas ligadas; "POP" ficou verde (fundo `#ECFDF5`, borda `#A7F3D0`, texto `#047857`, 5,2:1), com o ícone do documento. O selo é o componente `SeloDocumento`, que já existia e estava sem uso nas páginas.
+
+## 126. Degradê dos ambientes mais suave, só à direita e sobre o cinza claro
+
+O Rafael achou o azul e o verde da decisão 125 fortes demais e as manchas grandes demais. Validado num exemplo em HTML montado sobre as telas reais, a partir de uma imagem de referência.
+
+- **Tons pastel:** azul `rgba(188, 213, 250, .85)` e verde `rgba(196, 240, 210, .8)` no canto de cima, e um tom ainda mais claro de cada um no canto de baixo. Os dois ficaram com a mesma intensidade aparente.
+- **Só no lado direito:** saiu a mancha do alto à esquerda. A mancha de cima chega até perto da borda direita da coluna principal (onde o Rafael marcou) e desce até mais ou menos o começo dos cartões; a de baixo é menor.
+- **Base no cinza claro de sempre** (`#F6F7F9`), no lugar do quase branco da decisão 125: o lado esquerdo e o meio da tela ficam como nas outras telas.
+- **Leitura:** o que fica direto sobre o fundo tem contraste de 5,6:1 ou mais (antes, 4,9:1). Os selos da decisão 125 não mudaram.
+
+## 127. Processos da área com busca, ordem e pastas ou lista
+
+A página da área ganhou os mesmos controles da lista de áreas (decisão 82): uma barra "Processos" com a busca, a ordem e o botão de ver em pastas ou em lista. O componente novo é `ListaDeProcessos`.
+
+- **Busca:** pelo nome ou pelo código do processo, sem diferença de acento nem de maiúscula ("cotacao" acha "Cotação"). Sem resultado, aparece "Nenhum processo com “…”".
+- **Ordem:** Nome (A–Z), que é a de sempre; Nome (Z–A); Atualizados recentemente; e Mais POPs (no empate, pelo nome). Nas áreas, a terceira opção é "Mais processos".
+- **Pastas ou lista:** as pastas continuam como eram (decisão 61). Na lista, cada linha tem a cor da pasta, o nome, a data da última atualização e o selo Online ou Offline; a linha inteira abre o processo. No arquivado, aparece a data de arquivamento e o botão Restaurar, fora do link. No celular, a data e o selo descem para baixo do nome.
+- **Abas de arquivo:** "Ativos" e "Arquivados" ficam entre a barra e a lista; a busca, a ordem e a vista valem para a aba aberta e continuam ao trocar de aba. Como nas áreas, a escolha de pastas ou lista não fica guardada.
+
+## 128. A publicação nunca é automática
+
+Regra do Rafael: "a publicação de processo e POP não pode nunca ser automática; sempre tem que ser o usuário publicar". Verificado o que ficava público sem ação de ninguém:
+
+- **Processo:** a página pública (`/pr/<link>`) nascia **no ar**: a coluna `processos.link_publico_ativo` tinha padrão `true` (decisão 35, "ligada por padrão"), e a cópia de processo também nascia no ar. Em 25/11/2026, 37 dos 42 processos ativos estavam no ar. **Agora o processo novo e a cópia nascem fora do ar**; só a pessoa liga a chave "Página pública" na página do processo. O código grava `false` ao criar (não depende do banco) e a migração 0027 muda o padrão da coluna para `false`. Os processos que já existem não foram alterados.
+- **Fluxograma:** a página `/f/<link>` e o SVG público abriam para qualquer processo não arquivado, mesmo sem nada publicado. **Agora só abrem com a página do processo no ar ou com um POP do processo publicado e no ar** (a página e o PDF desse POP mostram o fluxograma e levam a esse link); senão, "Este fluxograma não está disponível".
+- **POP:** já seguia a regra. Só fica público quando a pessoa clica em "Publicar", e a página mostra a versão guardada nesse clique (decisão 32): editar depois não muda o que está publicado até publicar de novo. A cópia de POP nasce como rascunho.
+- **Em aberto (resolvido na decisão 129):** com a página do processo no ar, o que se mudava na descrição e no fluxograma aparecia na hora na página pública, sem um "Publicar" como o do POP.
+
+## 129. Tudo fora do ar, e o processo passa a ter "Publicar"
+
+Pedido do Rafael: tirar do ar todos os processos e POPs, e as mudanças só irem para a página pública quando a pessoa publicar.
+
+- **Tudo fora do ar** (migração 0028, aplicada pelo Rafael): `link_publico_ativo = false` em todos os processos e POPs. Nada foi apagado: a versão publicada de cada POP e os links continuam; quem abre um link vê "não disponível" até a chave ser ligada de novo.
+- **"Publicar" no processo**, como no POP (decisão 32). Ao publicar, o INCFlow guarda o nome, o código, a descrição e o fluxograma: o nome do desenho, o link e a imagem SVG (migração 0029: `processos.publicacao`, `publicacao_svg` e `publicado_em`). A página pública do processo, a página do fluxograma (`/f/<link>`), o SVG público e o fluxograma mostrado na página e no PDF de um POP passam a usar só essa cópia. Editar depois não muda o que está no ar até publicar de novo.
+- **Na página do processo:** o selo de situação ao lado de "Processo" (Rascunho, Publicado ou Publicado · offline), o botão "Publicar" (ou "Publicar alterações", em destaque) e o aviso "Alterações não publicadas" quando o nome, a descrição ou o desenho do fluxograma mudaram desde a publicação. A conta usa o XML do fluxograma, não a imagem, que o editor refaz ao abrir; refazer a imagem não vira alteração. O "Publicar" salva antes o nome e a descrição que ainda estiverem pendentes. A chave "Página pública" fica travada até a primeira publicação ("Não publicado"; "Publique o processo para poder colocar a página pública no ar"), e o servidor recusa ligar a chave sem publicação. "Ver na página pública" do fluxograma só aparece com o processo publicado e no ar.
+- **Fluxograma sem imagem:** depois de "Gerar de novo com IA", a imagem só existe quando o editor abre. Publicar nesse momento é recusado com o pedido de abrir o fluxograma antes, para a página não ficar sem o desenho.
+- **POP publicado antes da decisão 32** (3 em produção, sem versão guardada): antes, a primeira visita à página pública publicava o conteúdo atual sozinho. Agora a página responde "não disponível" até alguém clicar em "Publicar alterações" no editor do POP, que já mostra o aviso.
+- **Referências e "Voltar para":** um processo nunca publicado aparece como "Não publicado" no seletor de referências e não ganha link na página pública; o "Voltar para" usa o nome publicado.
+- **Na página pública do processo:** o rodapé mostra "Versão publicada em …".
+
+## 130. Selo "Offline" no lugar de "Publicado · offline"
+
+Pedido do Rafael: "Publicado · offline" confundia. O selo de quem está publicado com a página pública desligada passa a dizer só **"Offline"** (mesma cor vermelha clara), no topo do POP e do processo e nas listas de POPs. Passando o mouse, o título explica: publicado, com a página pública desligada; a versão publicada está guardada, fora do ar. Rascunho continua "Rascunho" e no ar continua "Publicado".
+
+## 131. Textos mais diretos no diálogo "Anexar print"
+
+Textos enviados pelo Rafael para as opções do diálogo (com ou sem a opção "Tela da gravação"):
+
+- **Tela da gravação:** "Selecione uma tela já marcada na gravação deste POP."
+- **Capturar uma janela** (antes, "Capturar uma janela agora"): "Selecione a janela aberta no sistema. O INCFlow captura a tela automaticamente."
+- **Colar print copiado:** "Tire um print (Print Screen ou Win + Shift + S) e cole aqui com Ctrl + V."
+- **Escolher arquivo:** "Selecione uma imagem salva no computador (PNG, JPG ou WebP)."
+
+Na lista de três opções, o título veio como "Colar uma captura" e, na de quatro, "Colar print copiado". Como é o mesmo botão nas duas, ficou um título só: "Colar print copiado", que usa a palavra "print" como o resto do diálogo ("Anexar print", "Usar este print").
+
+## 132. Layout do diálogo "Anexar print"
+
+Pedido do Rafael: melhorar o layout da janela e dos cartões. Antes, quatro cartões estreitos numa janela de 680px: os títulos quebravam em duas linhas com um ícone pequeno ao lado e as descrições ficavam em colunas de quatro ou cinco linhas.
+
+- **Janela:** 720px com três opções e 900px quando há "Tela da gravação". O topo tem "Anexar print", o passo logo abaixo ("Passo 1.1") e o botão de fechar (X), como os outros diálogos do redesign; "Cancelar" continua no rodapé.
+- **Cartões:** todos com a mesma largura e altura, o ícone em destaque em cima (quadrado de 40px em índigo claro), o título numa linha só (15px) e a descrição embaixo (13px, até quatro linhas). Ao passar o mouse, a borda e o fundo ficam em índigo claro, com uma sombra leve.
+- **Telas menores:** até 900px, as quatro opções ficam em duas colunas; até 640px, viram uma lista, com o ícone ao lado do título e da descrição.
+
+## 133. Ícone do processo, escolhido entre todos os ícones do Lucide
+
+Ideia do Rafael: trocar o quadradinho colorido da pasta por um ícone de verdade, escolhido pela pessoa. Validado num exemplo em HTML; depois dele, o Rafael pediu a biblioteca inteira (a plataforma vai atender empresas de vários segmentos), os nomes em português e a troca dentro do processo, ao lado do nome.
+
+- **Biblioteca:** [Lucide](https://lucide.dev), pacote `lucide-static` na versão 1.80.0, fixada: 2.119 ícones, no mesmo traço dos ícones que o INCFlow já usa. Licença ISC (uso comercial liberado; o aviso de licença está em `docs/licencas-de-terceiros.md`). Os desenhos vêm do pacote instalado: nenhum arquivo de ícone é baixado ou guardado à mão no projeto.
+- **Em português:** `lib/icones/pt.json` tem, para cada um dos 2.119 ícones, o nome em português, as palavras de busca e uma de 20 categorias (Pessoas e RH, Saúde e segurança, Financeiro, Documentos e arquivos, Jurídico e proteção, Compras e estoque, Logística e transporte, Obras e manutenção, Imóveis e lugares, Comercial e atendimento, Comunicação, Tecnologia, Gestão e indicadores, Tempo e agenda, Alimentação, Educação e ciência, Lazer, esporte e viagem, Natureza e clima, Design, texto e mídia, Setas, formas e símbolos). A tradução foi feita em lotes e conferida (sem nome repetido, toda categoria válida). Ao atualizar a versão do Lucide, um ícone novo sem tradução aparece com o nome em inglês até ganhar a dele; o teste de servidor acusa o que faltar.
+- **Onde troca:** na página do processo, o quadro do ícone fica ao lado do nome; clicar abre o seletor. Não há lápis nem outra marca de edição sobre o ícone (o Rafael pediu para tirar o lápis da primeira versão): o que avisa é o contorno ao passar o mouse e a dica "Trocar o ícone do processo". Processo arquivado não troca.
+- **O seletor:** prévia no topo, busca em português sem diferença de acento (o nome em inglês também serve), as 20 categorias, a lista (120 por vez, com "Mostrar mais"), as 12 cores (decisão 134) e "Sem ícone", que volta ao quadradinho. Nada é sugerido nem aplicado sozinho (decisão 134).
+- **Onde aparece:** ao lado do nome do processo, na pasta e na lista da área e em "Todos os processos". Quem não tem ícone continua com o quadradinho colorido de sempre.
+- **Cores:** as 8 cores pastel das pastas e, desde a decisão 134, mais 4; o ícone usa um tom escuro de cada uma (contraste de 4,2:1 ou mais sobre o fundo). Sem escolha, a cor continua saindo do id do processo, só entre as 8 das pastas.
+- **Como carrega:** o catálogo completo (109 KB compactado) só é pedido quando alguém abre o seletor (`GET /api/icones`, com login, guardado um dia pelo navegador). Para mostrar o ícone nas pastas não se carrega nada: o processo guarda o nome do ícone, a cor e o desenho (`processos.icone`, migração 0030).
+- **Segurança:** o navegador manda só o nome do ícone e a cor (`PUT /api/processos/[id]/icone`); o desenho guardado é o do catálogo do servidor, e nome fora do Lucide é recusado. Na tela, o desenho é montado elemento por elemento, só com as marcas e os atributos que um ícone do Lucide usa.
+- **Não muda:** trocar o ícone não altera a data de atualização do processo nem conta como alteração a publicar; a cópia de processo leva o ícone.
+
+## 134. Seletor de ícone sem sugestões, 12 cores e selo do POP em violeta
+
+Respostas do Rafael às pendências dos ícones e dos selos.
+
+- **Processo sem ícone escolhido:** continua com o quadradinho colorido de sempre. O sistema não põe ícone sozinho.
+- **Seletor sem "Sugestões pelo nome":** a seção saiu do seletor e o código que calculava as sugestões foi removido. Fica a busca em português e as 20 categorias.
+- **12 cores:** além das 8 das pastas, entram Vermelho, Lima, Marrom e Grafite (cada uma com tom escuro de contraste de 4,5:1 ou mais sobre o fundo). As 4 novas só aparecem por escolha: a cor que o processo recebe sozinho continua saindo do id, entre as 8 primeiras, então nenhuma pasta mudou de cor. No celular as cores ficam em 2 linhas de 6.
+- **Selo do POP em violeta:** o verde do selo parecia o verde de "Publicado" lado a lado. O selo "POP" passou a violeta, o lilás que o sistema de cores já usa (fundo `#F5F3FE`, borda `#DDD5F7`, texto `#6448BD`, 6:1), com o mesmo ícone. O degradê verde do fundo da página do POP não mudou.
+- **Mantidos:** o título "Colar print copiado" e a vista em pastas como padrão a cada visita (a escolha entre pastas e lista não é lembrada por enquanto).
+- **Tradução dos ícones:** os 2.119 ícones do Lucide 1.80.0 estão traduzidos (nenhum sem tradução). A conferência de qualidade foi por amostra; nome estranho se ajusta quando for apontado.
+- **Deixado para depois:** o Rafael publica os 3 POPs antigos ("Publicar alterações") quando puder; o aviso de gravação e IA nos termos de uso entra quando a plataforma estiver mais madura.
+
+## 135. Traço dos ícones mais fino: 1,65
+
+O Rafael pediu ícones com traço mais fino. Comparamos 1,8 (o de antes), 1,65 e 1,5 nos tamanhos que o app usa (14, 16, 18 e 22 px) e em contexto (menu, botões, busca); ele escolheu 1,65.
+
+- **Por que não 1,5:** o traço na tela é a espessura × tamanho ÷ 24. Aos 16 px, o tamanho mais usado, 1,5 desenha 1,0 px, no limite do nítido em tela comum (não retina), e os ícones cinza perdem contraste. 1,65 desenha 1,1 px.
+- **Vale para todos os ícones da interface:** os do app (antes 1,8), o ícone do processo e os do seletor do Lucide (antes 2) e os das referências no texto rico, no editor e nas páginas públicas (antes 2).
+- **Um lugar só:** a espessura fica em `TRACO_DOS_ICONES` (`lib/icones/index.ts`); os componentes leem dali.
+- **Não muda:** os traços do fluxograma e dos desenhos de marcação no print, que não são ícones.
+
+## 136. Seletor de ícone com o nome do processo como título
+
+Pedido do Rafael: no topo do seletor de ícone, o título "Ícone do processo" deu lugar ao nome do processo, e o subtítulo (o nome do processo e o do ícone escolhido) saiu. Ao lado do título fica só a prévia do ícone na cor escolhida; o ícone escolhido aparece marcado na lista. Para leitor de tela, a janela continua se apresentando como "Ícone do processo" seguido do nome.
+
+## 137. POP: área e "Elaborado por" automáticos, aba Gravações
+
+Pedidos do Rafael para o editor do POP.
+
+- **Área:** saiu dos campos de Identificação. A área do documento é sempre o nome atual da área do processo do POP: no PDF, na versão publicada e onde mais aparecer. Se a área for renomeada ou o processo mudar de área, o documento acompanha. POP sem processo fica com a área que estava guardada. Na data desta decisão, nenhum POP tinha área diferente da do processo, então nenhum POP publicado passou a mostrar "Alterações não publicadas" por isso.
+- **Elaborado por:** preenchido sozinho com o nome de quem está logado e cria o POP; não se edita mais (a rota de salvar ignora o campo). Aparece junto dos dados preenchidos automaticamente (código do processo e data de criação). Na cópia de POP, "Elaborado por" é quem copiou, porque a cópia é um POP novo, com histórico próprio. Os POPs que já existiam ficam com o nome que tinham; 35 rascunhos antigos estavam sem nome e continuam assim (aparece "—").
+- **Aba Gravações:** a aba "Recursos" passou a se chamar "Gravações" e mostra só as gravações de tela do POP. O fluxograma do processo saiu dela; ele continua na página do processo, no PDF do POP (link "Abrir diagrama") e na página pública. O endereço antigo `#recursos` ainda abre a aba.
+- **Versão e histórico de revisões:** continuam como estavam até definirmos o versionamento (proposta em aberto: versão semântica X.Y.Z dada na publicação).
+
+## 138. Versionamento do POP: X.Y.Z dado na publicação
+
+O Rafael propôs versionar o POP como software (X.Y.Z). Validamos num exemplo em HTML; ele pediu "Ajuste" no lugar de "Melhoria" (uma mudança nem sempre melhora), "O que mudou" obrigatório com mínimo de caracteres e o histórico numa aba, não no rodapé.
+
+- **A versão vem da publicação, não é digitada.** Rascunho nunca publicado não tem versão. A primeira publicação é a **1.0.0**. O campo "Versão" saiu da Identificação: a versão aparece nos dados automáticos e num selo ao lado de "Publicado".
+- **Janela de publicar.** A partir da segunda publicação, quem publica escolhe o tamanho da alteração e escreve o que mudou; a janela mostra a versão que vai sair:
+  - **Correção** (Z, 1.2.0 → 1.2.1): não muda o que a pessoa faz (erro de digitação, print trocado, texto mais claro).
+  - **Ajuste** (Y, 1.2.0 → 1.3.0): muda um detalhe; o jeito de fazer continua o mesmo (passo novo ou mais detalhado, envolvido novo, ordem dos passos).
+  - **Mudança no procedimento** (X, 1.2.0 → 2.0.0): o jeito de fazer mudou; quem executa precisa ser avisado.
+  - **"O que mudou":** obrigatório, de 10 a 300 caracteres (espaços repetidos não contam). O servidor confere de novo.
+  - Sem alteração desde a última versão, não há o que publicar: o servidor recusa.
+- **Aba Versões.** O "Histórico de revisões" digitado à mão, no fim do conteúdo, deu lugar à aba Versões (Conteúdo, Gravações, Versões): uma linha por versão, com data, quem publicou, tamanho e o que mudou. É preenchida sozinha. Todos os POPs só tinham a linha "Rev. 01" que o sistema criava, então nada digitado se perdeu; a coluna `pops.historico` fica no banco, sem uso.
+- **Cada versão fica guardada** (tabela `pop_versoes`, migração 0031), com o documento e os prints daquele dia. Na aba, "Ver" abre a versão só para leitura (com aviso quando não é a atual) e o botão ao lado baixa o PDF dela. O print que não mudou de uma versão para a outra é reaproveitado, sem cópia nova.
+- **Documentos.** No PDF e na página pública, "Versão" é a publicada e a tabela "Históricos de Revisões" tem uma linha por versão: data, quem publicou e "versão · tamanho: o que mudou" (a coluna "Revisão" ficou mais larga). O PDF baixado do editor sai como "Rascunho" quando o POP nunca foi publicado ou tem alterações não publicadas, com uma linha dizendo isso.
+- **POPs que já existiam.** Os publicados com cópia guardada viraram 1.0.0 ("Versão inicial (publicada antes do versionamento)"), tendo como quem publicou o "Elaborado por", porque não havia esse registro. Eles não passam a mostrar "Alterações não publicadas": a comparação com a cópia antiga continua sendo feita do jeito antigo até a próxima publicação. Os 3 publicados sem cópia guardada ganham a 1.0.0 na próxima publicação. Os rascunhos ficam sem versão.
+- **Duas pessoas publicando ao mesmo tempo:** a segunda é recusada, com aviso para recarregar.
+- **Processo:** o versionamento do processo fica para uma etapa posterior (ver "Em aberto").
+
+## 139. Versionamento do processo
+
+O processo ganhou versão, com a regra sugerida na decisão 138 e aceita pelo Rafael: a mesma mecânica do POP, sem medir o fluxograma.
+
+- **Versão própria, independente dos POPs.** Publicar um POP não muda a versão do processo, e publicar o processo não muda a dos POPs.
+- **Muda só ao publicar o processo**, que guarda o nome, a descrição e o fluxograma. A primeira publicação é a **1.0.0**.
+- **A pessoa escolhe o tamanho**, na mesma janela do POP, com as palavras do processo:
+  - **Correção** (Z): não muda como o processo funciona (erro de digitação, texto mais claro, aparência do fluxograma).
+  - **Ajuste** (Y): muda um detalhe; o caminho continua o mesmo (etapa mais detalhada, anotação nova, descrição complementada).
+  - **Mudança no processo** (X): o caminho mudou (etapas, decisões ou responsáveis diferentes); quem participa precisa ser avisado.
+  - "O que mudou" obrigatório, de 10 a 300 caracteres, como no POP. Sem alteração desde a última versão, o servidor recusa.
+- **Aba Versões** na página do processo (depois de Visão geral, POPs, Entrevistas e Regras de negócio), o selo da versão ao lado de "Publicado" e a versão no resumo.
+- **Cada versão fica guardada** (`processo_versoes`, migração 0032), com a descrição e a imagem do fluxograma daquele dia. "Ver" abre a versão só para leitura, com aviso quando não é a atual. O processo não tem PDF, então não há botão de baixar. Os POPs não aparecem na leitura da versão: cada um tem as suas.
+- **Página pública do processo:** o rodapé diz "Versão X.Y.Z publicada em …".
+- **Processos que já existiam:** nenhum estava publicado na data desta decisão, então todos começam pela 1.0.0 na primeira publicação.
+- **Código comum:** as regras da versão ficam em `lib/versao.ts`; a janela de publicar (`components/PublicarVersao.tsx`), a aba (`components/VersoesPublicadas.tsx`) e o repositório das versões (`lib/server/versoes.ts`) servem ao POP e ao processo.
+
+## 140. Desenho novo do documento do POP (página pública e PDF)
+
+O Rafael mandou um exemplo em HTML com o desenho novo do POP e pediu para aplicar. Perguntei onde, e ele escolheu a página pública e o PDF. O editor não muda.
+
+- **O desenho.** Cabeçalho com a logo num bloco preto sobre o padrão cinza; "POP - Procedimento Operacional Padrão" e a área como título, com régua laranja; cada seção com uma faixa em degradê do azul ao laranja e um ícone; ficha do procedimento (nome, mês/ano e versão; data de criação, código do procedimento e identificação; executor); os envolvidos numa tabela; cada etapa com uma faixa escura ("Etapa N" numa caixa branca e o nome ao lado); cada passo num cartão com o número num selo laranja, o print em cima e o texto embaixo numa caixa creme com barra laranja, e uma linha ligando os passos da etapa; histórico de revisões; rodapé com a identificação, o código e a organização.
+- **Onde vale.** Na página pública do POP (`/p/<link>`), na leitura de uma versão dentro do app (decisão 138) e no PDF, nas três saídas dele: o do editor, o de uma versão e o da página pública. A página e o PDF usam a mesma lista de etapas e passos (`etapasDoDocumento`, em `lib/pop/documento.ts`).
+- **O que ficou diferente do exemplo, e por quê:**
+  - **Toda etapa tem a faixa escura** "Etapa N | nome". No exemplo só algumas tinham; o POP guarda etapas com nome, então a regra é uma só.
+  - **Os passos são numerados do início ao fim do POP** (decisão 24), e não recomeçam em 1 a cada etapa.
+  - **O passo não tem título.** O exemplo tinha um título em negrito em cada passo; o POP guarda um texto só por passo, que aparece como foi escrito. O rótulo "Passo N:" saiu: o número já está no selo.
+  - **Sem o índice "Neste POP"** e sem tema escuro, que o exemplo trazia.
+  - **Fonte:** a página usa a fonte do app; o PDF, a Roboto, como antes.
+  - **"Baixar PDF"** fica ao lado de "POP - Procedimento Operacional Padrão". A imagem do fluxograma continua na página, em "Recursos do processo", abaixo da linha com "Abrir diagrama".
+  - **Seção vazia não aparece** (objetivo sem texto, nenhum envolvido), na página e no PDF. Antes o PDF mostrava a seção com um traço.
+- **PDF.** O gerador (`lib/pop/pdf.ts`) foi refeito no desenho novo; o do Modelo POP v3 (decisão 24) saiu.
+  - **O print não é cortado:** ocupa a largura do cartão; o que é mais alto (tela de celular) fica menor e centralizado. Na página, o print em pé é cortado e amplia ao clicar; no papel não há clique.
+  - **O passo não se parte entre páginas**, e a faixa da etapa fica na mesma página do primeiro passo dela (a da seção, na da primeira etapa). O passo de texto muito longo é a exceção: o selo e o print ficam juntos e o texto continua na página seguinte.
+  - **Rodapé em todas as páginas:** identificação e código à esquerda; organização e "Página X de Y" à direita.
+  - **Arquivos:** a logo e o padrão ficam em `templates/pop/imagens/` (para o PDF) e em `public/pop/` (para a página). As imagens do modelo antigo (faixa, ícones e decoração) saíram; os ícones agora são desenhados no código. O `Modelo_POP_v3.docx` fica no repositório só como registro do desenho anterior.
+- **Sem mudança no banco.** POPs já publicados passam a aparecer no desenho novo, na página e no PDF, sem precisar publicar de novo: o que se guarda é o conteúdo, não a aparência.
+
+## 141. Gestão de arquivos no POP
+
+O Rafael mandou a especificação (anexar, descrever, ligar a etapas, visualizar no navegador, controlar a validade e reunir tudo na tela do processo, sem versões do arquivo). Três pontos dependiam dele, e ele respondeu: os arquivos aparecem na página pública **ao publicar**; o prazo do aviso de vencimento é **por arquivo**; o arquivo expirado **ninguém abre**.
+
+- **Aba Arquivos no POP** (entre Gravações e Versões). Para anexar: o arquivo (até 50 MB, que é o limite do armazenamento), a descrição (obrigatória), as etapas relacionadas (opcional) e a validade. O arquivo em si não se troca: cada atualização é um arquivo novo. Dá para editar a descrição, as etapas e a validade, e excluir.
+- **Etapas.** Um arquivo pode estar em várias etapas ou em nenhuma ("Geral do POP"), sem cópia. A ligação é feita na janela do arquivo ou dentro da própria etapa, no editor ("Adicionar arquivo": escolhe um já anexado ou anexa um novo). Fica guardada no conteúdo do POP (`procedimentos[].arquivos`), então acompanha a etapa quando ela muda de lugar e sai com ela.
+- **Validade.** "Sem validade definida" ou uma data. O arquivo vale até o fim do dia da data e expira no dia seguinte (horário de Brasília). Situações: **Vigente**, **Próximo do vencimento** (faltam os dias do aviso ou menos; 30 por padrão, de 0 a 365, escolhido em cada arquivo) e **Expirado**.
+  - **Expirado:** continua guardado e listado, marcado, mas não abre para ninguém, em lugar nenhum, até alguém alterar a validade ou excluir. Some da página pública e do PDF, e não é oferecido para entrar numa etapa. Quem recusa é o servidor, na hora de abrir.
+- **Visualização dentro da plataforma**, em tela cheia, sem sair da tela: PDF com páginas e zoom (pdf.js, porque o leitor do navegador não mostra PDF dentro da página no celular); imagem ampliada, passando pelas outras imagens da lista; vídeo e áudio com os controles do navegador; nos outros formatos, o download. SVG e HTML só baixam, porque podem trazer script.
+- **Central de arquivos no processo:** aba "Arquivos" na tela do processo, com os arquivos de todos os POPs ativos, agrupados por POP e, dentro dele, por etapa; resumo por situação e filtros por POP, etapa e situação. É só consulta: anexar, editar e excluir é em cada POP.
+- **Publicação** (segue a regra "nada vai ao ar sem publicar"):
+  - Arquivo novo, exclusão e mudança de descrição ou de etapa são alterações a publicar: o POP mostra "Alterações não publicadas" e o arquivo novo só aparece na página pública depois de "Publicar alterações". A versão publicada guarda a lista dos arquivos, com o nome e a descrição daquele dia.
+  - **O que sai, sai na hora:** arquivo excluído ou expirado some da página pública sem publicar. A validade também vale na hora (alterar a data não pede publicação).
+  - Na página pública e na leitura de uma versão, os arquivos da etapa ficam logo abaixo da faixa dela e os gerais, em "Recursos do processo". O PDF lista os mesmos arquivos; "Abrir" leva ao arquivo na página pública, quando ela está no ar.
+  - Qualquer pessoa com o link da página pública abre os arquivos da versão publicada, como já acontece com os prints.
+- **Copiar e excluir o POP:** a cópia leva os arquivos (arquivos novos, nas mesmas etapas); excluir o POP apaga os arquivos dele.
+- **Não tem:** versões ou histórico do arquivo (pedido expresso) e aviso por e-mail de vencimento. A aba do POP e a do processo mostram em laranja quando há arquivo expirado ou perto de vencer.
+- **Onde está:** tabela `pop_arquivos` (migração 0033); `lib/anexos.ts` (regras da validade, formatos, chamadas do navegador) e `lib/server/anexos.ts`; telas em `components/arquivos/`. No código o nome é "anexo", para não confundir com "arquivar"; na tela é sempre "arquivo". Os endereços dos arquivos são temporários e pedidos ao servidor na hora de abrir.
+
+## 142. Etapas no editor do POP: faixa escura e lista no índice
+
+O Rafael pediu para navegar pelas etapas a partir do índice "Nesta página" (mandou um esboço) e para deixar o título da etapa mais evidente: no editor, ela se parecia muito com um passo.
+
+- **Faixa da etapa.** O topo da etapa no editor virou a mesma faixa escura do documento publicado (decisão 140): "Etapa N" numa caixa branca com texto laranja, o nome em branco e maior, e quantos passos ela tem. O nome continua editável ali mesmo; os botões de subir, descer e excluir ficam na faixa. Há mais espaço entre uma etapa e outra. No celular, o nome desce para uma linha própria.
+- **Índice.** Embaixo de "Procedimentos", em árvore, a lista das etapas ("Etapa N" e o nome; "Sem nome" quando não tem). Clicar leva à etapa e a destaca por um instante; ao rolar a página, a etapa que está na tela fica marcada. A lista acompanha na hora o que muda: etapa nova, nome digitado, ordem. Com muitas etapas, a lista rola dentro do índice.
+- **De passagem:** o "Mover para…" de cada passo ficava da largura do nome de etapa mais longo e, com um nome comprido, a tela do celular passava a rolar para o lado. Agora tem largura máxima.
+
+## 143. Botão de voltar: sobe um nível
+
+O Rafael pediu um botão de voltar no topo das telas do POP e do processo e, depois, também nas telas da área (as pastas dos processos) e da gravação.
+
+- **Onde:** um botão redondo com seta, à esquerda do caminho (organização › área › processo › POP), no topo das telas do POP, do processo, da área e da gravação.
+- **O que faz: sobe sempre um nível na hierarquia**, venha a pessoa de onde vier. Da gravação vai para o POP (aba Gravações; sem POP, para o processo), do POP para o processo (aba POPs), do processo para a área e da área para a organização. A dica do botão diz para onde ele leva. Para voltar à tela anterior, continua valendo o voltar do navegador.
+  - A primeira versão voltava à tela anterior; o Rafael pediu que voltasse ao nível anterior.
+- **No POP**, antes de sair, o botão salva o que estiver pendente, como "Pausar e sair".
+
+## 144. "Adicionar passo" em amarelo; sai o "Adicionar passo com print"
+
+O Rafael pediu mais destaque para o "Adicionar passo" no editor do POP. Validamos em HTML: quatro opções (contornado, tom suave, próximo passo, sólido), depois cinco cores do botão sólido e, por fim, seis versões em amarelo. Ficou o amarelo cheio.
+
+- **O botão:** amarelo (#FFC531) com texto escuro e uma borda mais escura embaixo, como uma tecla, no fim de cada etapa. O amarelo não aparece em outro lugar do app, então o botão se destaca sem competir com os botões índigo (Publicar, Baixar PDF). O contraste do texto é de 8,5:1.
+- **Sai o "Adicionar passo com print":** fazia o mesmo que criar o passo e usar o "Anexar print" dele.
+
+## 145. Encerrar pela janela flutuante traz a aba do INCFlow de volta
+
+Durante a gravação, a pessoa trabalha em outros programas e janelas, e a aba do INCFlow fica escondida. O Rafael pediu que, ao encerrar, a tela da gravação voltasse sozinha.
+
+- **O que acontece:** ao clicar em **Encerrar** (ou em "continuar outro dia", na pausa) na janela flutuante, a aba do INCFlow volta para a frente e a janela flutuante fecha. Na aba, a pessoa acompanha o envio das últimas partes e, em seguida, vai para a página da gravação, como antes.
+- **Como:** o navegador deixa a janela flutuante trazer de volta a aba que a abriu, desde que o pedido parta dela e seja no próprio clique. Por isso a aba volta no momento do clique, e não ao fim do envio, que pode levar mais tempo. O pedido é feito de dois jeitos no mesmo clique: por um script da própria janela flutuante (a forma prevista no padrão) e, como reforço, pela página.
+- **Navegadores:** Chrome e Edge 123 ou mais novos (o Edge usa a mesma base do Chrome). No Firefox (151 ou mais novo, quando ganhou a janela flutuante), usamos a forma do padrão, que os testes do próprio Firefox cobrem; não foi possível testar nele daqui. No Safari não há janela flutuante: os controles já ficam na aba.
+- **Limites:** se a pessoa parar pelo "Parar compartilhamento" do navegador, não há clique na janela flutuante e a aba não volta sozinha (a gravação termina do mesmo jeito). Se algum navegador recusar o pedido, a janela flutuante fecha e a gravação termina normalmente; a pessoa só precisa clicar na aba.
+
+## 146. Explicar as opções da janela de compartilhamento antes de gravar
+
+O Rafael pediu que a tela de iniciar a gravação mostrasse, com imagens e texto simples, o que cada aba da janela de compartilhamento do navegador grava.
+
+- **Onde:** na tela "Gravar a tela para o POP", acima das dicas, três cartões com a imagem de cada aba e uma frase curta.
+- **Tela inteira (recomendada):** grava tudo o que aparece no monitor, e a pessoa troca de programa à vontade; a janelinha de controles aparece nos prints, então ela deve ficar num canto. O seletor do navegador já abre nesta aba.
+- **Janela:** grava só o programa escolhido; o que for aberto fora dele não entra.
+- **Guia:** grava só uma aba do navegador, para sistemas que abrem no navegador. O nome é só "Guia" porque cada navegador chama de um jeito ("Guia do Chrome", "Guia do Microsoft Edge").
+- Na primeira versão a recomendada era a Janela; o Rafael preferiu a Tela inteira.
+- As imagens são as que o Rafael enviou, recortadas (`public/gravacao/`). A dica antiga sobre qual opção escolher saiu da lista, porque os cartões já explicam.
+
+## 147. Login: avisar quem não tem cadastro
+
+Quem digitava um e-mail do domínio sem cadastro via "Se o e-mail estiver cadastrado, o código chega em instantes" e ficava esperando um e-mail que nunca chegava. O Rafael pediu uma mensagem clara.
+
+- **O que muda:** e-mail sem cadastro fica na etapa do e-mail com "Este e-mail não está cadastrado no INCFlow. Para ter acesso, fale com um administrador da sua empresa." Nenhum código é gerado nem enviado. Quem tem cadastro vê "O código chega em instantes".
+- **O que se perde:** a resposta igual para todos (decisão 50) escondia quem tem cadastro. Agora dá para saber se um e-mail do domínio está cadastrado. Ficam os freios: só e-mails do domínio da empresa, e os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail, contados antes da consulta.
+
+## 148. Login aceita qualquer domínio de e-mail
+
+O INCFlow vai ser oferecido ao mercado, então o login não pode valer só para `@meuinc.com.br`. O Rafael pediu para tirar a regra do domínio.
+
+- **O que muda:** o login e o cadastro em Pessoas e acessos aceitam e-mail de qualquer domínio. Continua entrando só quem um administrador cadastrou; quem não tem cadastro vê o aviso da decisão 147. A variável `INC_AUTH_DOMINIO` deixou de existir.
+- **O que se perde:** o domínio era um freio a mais contra quem testa e-mails. Ficam os limites de 5 pedidos a cada 10 minutos por IP e 5 por hora por e-mail.
+- **Carteiro (Pipedream):** o passo `validar_envio` também recusava e-mails de fora do domínio. O código em `docs/login.md` foi atualizado; é preciso aplicar a mesma mudança no workflow, senão o código não chega para outros domínios.
+
+## 149. Cabeçalho em duas linhas e prévia antes de publicar (POP e processo)
+
+O Rafael pediu dois ajustes nas telas do POP e do processo.
+
+**Cabeçalho.** Os botões ficavam ao lado do título, desalinhados dos selos, e tomavam o espaço do nome. Agora o título ocupa a largura toda e, embaixo, os selos ficam à esquerda e os botões à direita, na mesma linha.
+
+**Prévia antes de publicar.** O botão "Ver prévia" abre o POP (ou o processo) como está agora no editor, no formato da página pública, para conferir antes de publicar.
+
+- **O aviso:** fica preso no topo enquanto a pessoa rola. Com versão publicada, o texto (do Rafael) é: "**Prévia de alterações não publicadas.** O conteúdo exibido abaixo é apenas uma prévia e não possui validade oficial. Até que uma nova versão seja publicada, a versão oficial permanece sendo a **1.0.0**. Esta página é visível exclusivamente para você, responsável pela criação deste POP." No que nunca foi publicado, o título é "Prévia de POP ainda não publicado" e o texto diz que ainda não há versão oficial. No POP, a ficha mostra "Versão: Prévia" e o histórico ganha a linha "Prévia: ainda não publicado".
+- **Quem vê: só quem criou.** A prévia fica dentro do app (`/app/pops/<id>/previa` e `/app/processos/<id>/previa`) e o servidor só a entrega a quem criou o documento. Outra pessoa, mesmo logada e com o endereço em mãos, vê só o aviso de que a prévia é restrita; o botão nem aparece para ela. É para a prévia não circular com cara de documento oficial.
+- **Quem criou:** passa a ficar guardado em `criado_por_id` (migração 0034), ao criar e ao copiar. No que já existia, a migração deduz: no POP, a pessoa do "Elaborado por"; senão, quem publicou a primeira versão. O que ficar sem criador só abre para administradores, para não ficar sem prévia para ninguém.
+- **Quando o botão aparece:** quando há o que conferir, ou seja, documento nunca publicado ou com alterações não publicadas. Antes de abrir, o que estiver pendente é salvo.
+- **Processo:** a prévia mostra o nome, a descrição e o fluxograma de hoje, e os POPs que já estão no ar. Cada POP tem a sua prévia.
+- **Fora da prévia:** o "Baixar PDF" do POP continua igual; o PDF de um POP com alterações já sai marcado como "Rascunho" (decisão 138). O editor continua aberto a quem já tinha acesso.
+
+## 150. Prévia para todos os perfis e aviso de alterações
+
+O Rafael pediu que o "Ver prévia" apareça para todos os perfis de acesso e que a prévia deixe claro quando o documento tem alterações ainda não publicadas. Muda a regra de acesso da decisão 149.
+
+- **Quem vê:** qualquer pessoa logada, de qualquer perfil (comum, gestor ou administrador), no POP e no processo. Sai a regra de "só quem criou" e, do aviso, a frase "Esta página é visível exclusivamente para você…". A prévia continua dentro do app: sem login, ninguém a abre. Quem criou continua guardado (`criado_por_id`), mas não decide mais o acesso.
+- **Quando o botão aparece:** sempre, menos no que está arquivado. Antes só aparecia com alterações a publicar.
+- **O aviso diz se há alterações:**
+  - Com alterações: "Prévia de alterações não publicadas. Este POP foi alterado depois da versão 1.0.0 e as alterações ainda não foram publicadas. Última alteração em dd/mm/aaaa." Em seguida, o texto da decisão 149 sobre a validade oficial.
+  - Nunca publicado: "Prévia de POP ainda não publicado", sem validade oficial, com a data da última alteração.
+  - Sem alterações: "Prévia sem alterações", igual à versão oficial, em verde.
+
+## 151. Selo do POP em verde-claro
+
+O Rafael pediu o selo "POP" (abaixo do nome do POP) no estilo de uma referência: fundo verde-claro, texto verde-escuro e cantos arredondados, sem o ícone da referência.
+
+- **O selo:** fundo #E8FBD3, texto #14612E (contraste de 7:1), cantos de 8 px, sem borda. Continua com o ícone de documento do INCFlow. Troca o violeta da decisão 134.
+- O selo "Processo" continua azul.
+
+## 152. Fundo do processo em azul-céu
+
+O Rafael pediu o degradê azul da tela do processo no azul de uma imagem de referência (um céu azul-ciano). Validamos três opções em HTML: o céu inteiro no topo com texto branco, o brilho de hoje em azul-céu e uma faixa clara no topo. Ficou o brilho no canto.
+
+- **O que muda:** o mesmo desenho da decisão 126 (brilho no canto de cima e no de baixo, à direita, sobre o cinza claro), trocando o azul-lavanda pelo azul-céu: rgba(60, 180, 233, .55) em cima e rgba(158, 221, 248, .6) embaixo.
+- **Contraste:** o texto que fica direto sobre o fundo (caminho, selos, abas) tem 5,3:1 ou mais, medido na tela a 1440 px e 1920 px.
+- O fundo verde do POP não muda.
+
+## 153. Selo do processo em azul-céu
+
+O Rafael pediu o selo "Processo" (abaixo do nome do processo) no azul-céu do fundo da tela (decisão 152).
+
+- **O selo:** fundo #DDF2FC, texto #075985 (contraste de 6,5:1), cantos de 8 px e sem borda, no mesmo formato do selo do POP (decisão 151). Continua com o ícone do processo. Troca o azul da decisão 125.
+
+## 154. Brilho do fundo até o meio da tela (processo e POP)
+
+O Rafael pediu para estender o azul do fundo do processo até o meio da tela e fazer o mesmo no verde do POP.
+
+- **O que muda:** a mancha de cima (canto direito) ficou mais larga: vai clareando até perto do meio da tela, em vez de sumir logo depois do canto. A cor e a força no canto não mudaram (azul-céu da decisão 152 no processo, verde da decisão 126 no POP). A mancha de baixo continua igual.
+- **Contraste:** o texto direto sobre o fundo (caminho, selos, abas) ficou com 4,9:1 ou mais, medido na tela do processo a 1440 px e 1920 px (o mínimo recomendado é 4,5:1).
+
+## 155. Abas não selecionadas mais escuras (processo e POP)
+
+O Rafael pediu as abas não selecionadas das telas do processo e do POP na cor #1f2a3c, mais escura que o cinza de antes.
+
+- **O que muda:** só a cor do texto das abas não selecionadas. A aba selecionada e o passar do mouse continuam em índigo. As outras telas com abas não mudam.
+- **Contraste:** as abas passam de 4,9:1 para mais de 12:1 sobre o brilho do fundo. O menor contraste da tela agora é o do caminho no topo (5,2:1).
+
+## 156. Fundo da plataforma em teste: #fafbf7de
+
+O Rafael pediu para testar o fundo da plataforma em #fafbf7de (um off-white levemente esverdeado, com 87% de opacidade) e guardar a cor de antes.
+
+- **O que muda:** o fundo das páginas do app, inclusive a base das telas do processo e do POP (por baixo dos brilhos azul e verde). Os cartões continuam brancos. O tom cinza usado dentro de cartões e menus (passar o mouse, caixas de apoio) continua o de antes, para não sumir sobre o branco. As páginas públicas não mudam.
+- **Para voltar:** a cor de antes (#F6F7F9) está guardada em `app/globals.css`, na variável `--fundo-plataforma-anterior`. Basta trocar o valor de `--fundo-plataforma` por ela.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
@@ -575,3 +1345,6 @@ Escolhido por ser familiar. Complementos: `multer` (uploads), Zod (validação),
 - IA dentro do POP: escrever a partir da gravação e apoio no uso (decisão 31)
 - Integração com o Notion
 - Sugestão automática de marcação pela IA (decisão 18)
+- Aviso de gravação e IA nos termos de uso: quando a plataforma estiver mais madura (decisão 134)
+- Salvar a escolha entre pastas e lista nas telas de áreas e de processos (hoje volta a "pastas" a cada visita; decisão 134)
+- Arquivos do POP (decisão 141): aviso por e-mail de arquivo perto de vencer; arquivos maiores que 50 MB (depende do limite do armazenamento)

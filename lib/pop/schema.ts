@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Conteúdo do POP (Modelo POP v3, ver docs/modelo-pop.md). Controle (código,
+// Conteúdo do POP (o documento está em docs/modelo-pop.md). Controle (código,
 // identificação, versão, datas, histórico) vem do sistema; o resto a IA sugere
 // e a pessoa revisa.
 export const PassoSchema = z.object({
@@ -15,6 +15,8 @@ export const PassoSchema = z.object({
 export const ProcedimentoSchema = z.object({
   nome: z.string(),
   passos: z.array(PassoSchema),
+  // Arquivos do POP ligados a esta etapa (ids de `pop_arquivos`, decisão 141). Um arquivo pode estar em várias etapas.
+  arquivos: z.array(z.string().uuid()).max(50).optional(),
 });
 
 export const HistoricoSchema = z.object({ data: z.string(), elaborado_por: z.string(), revisao: z.string() });

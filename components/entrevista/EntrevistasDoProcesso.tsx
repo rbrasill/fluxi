@@ -8,6 +8,7 @@ import { Convidar } from '@/components/entrevista/Convidar';
 import { SeloSituacao } from '@/components/entrevista/SeloSituacao';
 import { ehGestor, podeIniciarSemConvite, souEu, useEu } from '@/lib/auth/eu';
 import { useAcompanharEntrevistas } from '@/lib/entrevista/acompanhar';
+import type { Finalidade } from '@/lib/entrevista/topicos';
 import { confirmacaoDeExclusao, excluirEntrevista, iniciarEntrevistaAgora, listarEntrevistasDoProcesso, notaParaOutraPessoa, pegarAvisoDeEntrevistas, perguntasParaOutrasPessoas, reenviarConvite, restaurarEntrevista, type EntrevistaDoProcesso, type ResultadoConvite } from '@/lib/entrevistas';
 
 // A seção "Entrevistas com a Maia" da página do processo (decisão 53): quem foi convidado, em que pé está cada
@@ -22,13 +23,20 @@ const data = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '
 const duracao = (s: number) => (s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`);
 const msg = (e: unknown) => (e instanceof Error ? e.message : 'Tente de novo em instantes.');
 
-export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: { processoId: string; processoNome: string; arquivado: boolean }) {
+export function EntrevistasDoProcesso({ processoId, processoNome, arquivado, pedidoDeConvite = 0, finalidadeDoPedido = 'processo', regrasDisponiveis = false, aoContar, aoChamarAtencao }: {
+  processoId: string; processoNome: string; arquivado: boolean;
+  pedidoDeConvite?: number; // muda a cada clique em "Convidar pessoa" fora daqui (o cartão da visão geral, a aba de regras): abre o diálogo
+  finalidadeDoPedido?: Finalidade; // a finalidade com que o diálogo abre nesse pedido (decisão 89)
+  regrasDisponiveis?: boolean; // o ambiente já tem a entrevista de regras de negócio
+  aoContar?: (ativas: number) => void; // quantas entrevistas ativas há (a contagem da aba)
+  aoChamarAtencao?: () => void; // há um aviso para mostrar aqui: a página traz esta aba para a frente
+}) {
   const eu = useEu();
   const router = useRouter();
   const gestor = ehGestor(eu);
   const [iniciando, setIniciando] = useState(false);
   const [lista, setLista] = useState<EntrevistaDoProcesso[] | null>(null);
-  const [convidando, setConvidando] = useState<false | { nota?: string; dica?: string }>(false);
+  const [convidando, setConvidando] = useState<false | { nota?: string; dica?: string; finalidade?: Finalidade }>(false);
   const [aviso, setAviso] = useState('');
   const [ocupado, setOcupado] = useState('');
   const [aba, setAba] = useState<'ativas' | 'arquivadas'>('ativas');
@@ -40,8 +48,12 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     const deixado = pegarAvisoDeEntrevistas(processoId);
     if (!deixado) return;
     setAviso(deixado.texto);
+    aoChamarAtencao?.();
     if (deixado.aba) setAba(deixado.aba);
   }, [processoId]);
+  useEffect(() => { if (pedidoDeConvite > 0) setConvidando({ finalidade: finalidadeDoPedido }); }, [pedidoDeConvite]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalAtivas = lista ? lista.filter((x) => !x.arquivado_em).length : null;
+  useEffect(() => { if (totalAtivas !== null) aoContar?.(totalAtivas); }, [totalAtivas]); // eslint-disable-line react-hooks/exhaustive-deps
   useAcompanharEntrevistas(lista, () => listarEntrevistasDoProcesso(processoId).then(setLista).catch(() => {})); // se falhar, fica a lista que já estava
 
   function convidou(r: ResultadoConvite) {
@@ -54,6 +66,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
     else if (semEmail.length) partes.push(`O e-mail de ${semEmail.join(', ')} não pôde ser enviado: use "Reenviar convite".`);
     if (r.repetidas.length) partes.push(`${r.repetidas.join(', ')} já ${r.repetidas.length === 1 ? 'tinha' : 'tinham'} entrevista aberta neste processo.`);
     setAviso(partes.join(' '));
+    aoChamarAtencao?.();
   }
 
   async function reenviar(x: EntrevistaDoProcesso) {
@@ -83,11 +96,12 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
   const arquivadas = gestor ? (lista ?? []).filter((x) => !!x.arquivado_em) : [];
   const abaAtual = arquivadas.length ? aba : 'ativas';
   const visiveis = abaAtual === 'arquivadas' ? arquivadas : ativas;
-  const paraOutros = perguntasParaOutrasPessoas(ativas.filter((x) => x.status === 'concluida'));
-  const abertas = ativas.filter((x) => x.status === 'convidada' || x.status === 'em_andamento').map((x) => x.entrevistado_id).filter((x): x is string => !!x);
+  // As perguntas para outras pessoas das conversas de regras ficam na própria entrevista: o convite daqui é o de mapeamento.
+  const paraOutros = perguntasParaOutrasPessoas(ativas.filter((x) => x.status === 'concluida' && x.finalidade !== 'regras'));
+  const abertas = ativas.filter((x) => (x.status === 'convidada' || x.status === 'em_andamento') && !!x.entrevistado_id).map((x) => ({ id: x.entrevistado_id!, finalidade: x.finalidade }));
 
   return (
-    <section className="secao-processo" aria-labelledby="titulo-entrevistas">
+    <section className="secao-processo secao-entrevistas" aria-labelledby="titulo-entrevistas">
       <div className="secao-head">
         <h2 id="titulo-entrevistas"><Icone nome="microfone" tamanho={18} />Entrevistas com a Maia</h2>
         {gestor && !arquivado && (
@@ -97,7 +111,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
                 <Icone nome="microfone" tamanho={16} />{iniciando ? 'Abrindo…' : 'Iniciar entrevista agora'}
               </button>
             )}
-            <button className="btn btn-primary" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>
+            <button className="btn btn-maia" onClick={() => setConvidando({})}><Icone nome="mais" />Convidar para entrevista</button>
           </div>
         )}
       </div>
@@ -144,10 +158,11 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
               <article key={x.id} className="linha-pop" data-status={x.status} data-em-ligacao={x.em_ligacao ? 'sim' : undefined}>
                 <span className="pop-icone icone-entrevista"><Icone nome="conversa" tamanho={20} /></span>
                 <div className="pop-nome">
-                  <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}</strong>
+                  <strong>{x.entrevistado ?? 'Sem entrevistado'}{x.entrevistado_area ? <small className="entrevistado-area"> · {x.entrevistado_area}</small> : null}{x.finalidade === 'regras' && <span className="chip-regra chip-maia chip-finalidade">Regras de negócio</span>}</strong>
                   <span>
                     {x.convidado_em ? `Convidad${x.entrevistado?.trim().endsWith('a') ? 'a' : 'o'} em ${data(x.convidado_em)}${x.convidado_por ? ` por ${x.convidado_por}` : ''}` : `Aberta sem convite em ${data(x.criado_em)}`}
                     {x.falas > 0 ? ` · ${x.falas} ${x.falas === 1 ? 'fala' : 'falas'}` : ''}{x.duracao_s ? ` · ${duracao(x.duracao_s)}` : ''}
+                    {x.status === 'concluida' && x.regras_sugeridas !== null ? ` · ${x.regras_sugeridas} ${x.regras_sugeridas === 1 ? 'regra sugerida' : 'regras sugeridas'}` : ''}
                     {x.status === 'concluida' && x.pendencias > 0 ? ` · ${x.pendencias} em aberto` : ''}
                   </span>
                 </div>
@@ -186,7 +201,7 @@ export function EntrevistasDoProcesso({ processoId, processoNome, arquivado }: {
         </div>
       )}
       {convidando && (
-        <Convidar processoId={processoId} processoNome={processoNome} indisponiveis={abertas} notaInicial={convidando.nota} dica={convidando.dica} aoConvidar={convidou} aoFechar={() => setConvidando(false)} />
+        <Convidar processoId={processoId} processoNome={processoNome} indisponiveis={abertas} finalidadeInicial={convidando.finalidade} regrasDisponiveis={regrasDisponiveis} notaInicial={convidando.nota} dica={convidando.dica} aoConvidar={convidou} aoFechar={() => setConvidando(false)} />
       )}
     </section>
   );

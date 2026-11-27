@@ -1,15 +1,42 @@
+import { TRACO_DOS_ICONES } from '@/lib/icones';
+
 const caminhos: Record<string, string> = {
   voltar: 'M15 6l-6 6 6 6',
+  'seta-esquerda': 'M19 12H5M12 19l-7-7 7-7', // botão de voltar à página anterior
   mais: 'M12 5v14M5 12h14',
   busca: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5',
   'zoom-mais': 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5M8 11h6M11 8v6',
   'zoom-menos': 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-3.5-3.5M8 11h6',
   avancar: 'M9 6l6 6-6 6',
   'seta-direita': 'M5 12h14M13 6l6 6-6 6',
+  escudo: 'M12 3l7 3v5c0 4.5-3 8.2-7 9.5-4-1.3-7-5-7-9.5V6zM9 12l2 2 4-4',
   fluxo: 'M5 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM10 4h6v5h-6zM10 15h6v5h-6zM7 12h1.5a1.5 1.5 0 0 0 1.5-1.5V6.5M7 12h1.5a1.5 1.5 0 0 1 1.5 1.5v4',
   processos: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4a2 2 0 0 1 2 2V14',
   empresa: 'M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M3 21h18M8 8h3M8 12h3M8 16h3',
   check: 'M5 12.5l4.5 4.5L19 7',
+  'microfone-desligado': 'M4 4l16 16M9 9v3a3 3 0 0 0 5.120 2.120M15 10.500V6a3 3 0 0 0-5.700-1.300M6 11a6 6 0 0 0 9.800 4.650M18 11a6 6 0 0 1-.500 2.400M12 17v4M9 21h6',
+  alvo: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 11.990v.020',
+  duvida: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.500 9.500a2.500 2.500 0 1 1 3.600 2.240c-.700.400-1.100 1-1.100 1.760M12 16.500h.010',
+  entra: 'M4 12h10M10 8l4 4-4 4M19 5v14',
+  sai: 'M5 5v14M9 12h10M15 8l4 4-4 4',
+  balanca: 'M12 4v16M7 20h10M5 8h14M5 8l-2.500 6a2.500 2.500 0 0 0 5 0zM19 8l-2.500 6a2.500 2.500 0 0 0 5 0z',
+  'som-desligado': 'M4 10v4h3l5 4V6l-5 4zM16 9.500l5 5M21 9.500l-5 5',
+  'tela-video': 'M3 4h18v12H3zM8 20h8M12 16v4M10.500 7.500l4 2.500-4 2.500z',
+  engrenagem: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
+  'mais-acoes': 'M5 12h.01M12 12h.01M19 12h.01',
+  grade: 'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+  'pessoa-mais': 'M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M8.500 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
+  cadeado: 'M6 11h12v9H6zM8.5 11V8a3.500 3.500 0 0 1 7 0v3',
+  'seta-cima': 'M12 19V5M6 11l6-6 6 6',
+  'seta-para-baixo': 'M12 5v14M6 13l6 6 6-6',
+  livro: 'M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5v-15zM5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7.5h6M9 11h4',
+  info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.5h.01',
+  maleta: 'M4 7h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zM9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M3 12h18',
+  pessoa: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  alerta: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5v5.5M12 16.5h.01',
+  sair: 'M10 4H5v16h5M15 8l-4 4 4 4M11 12h10',
+  'painel-lateral': 'M4 5h16v14H4zM9.5 5v14',
+  globo: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.500 5.6 12 3z',
   fechar: 'M6 6l12 12M18 6L6 18',
   inicio: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
   pasta: 'M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z',
@@ -35,6 +62,7 @@ const caminhos: Record<string, string> = {
   ajustar: 'M4 4h6M4 4v6M20 4h-6M20 4v6M4 20h6M4 20v-6M20 20h-6M20 20v-6M9 9h6v6H9z',
   layout: 'M3 3h7v7H3zM14 14h7v7h-7zM10 6.5h4v7.5',
   copiar: 'M9 9h12v12H9zM5 15H3V3h12v2',
+  editar: 'M4 20h4L18.500 9.500a2.121 2.121 0 0 0-3-3L5 17zM13.500 8.500l2 2',
   lixo: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   ia: 'M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8zM19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z',
   camera: 'M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
@@ -58,11 +86,20 @@ const caminhos: Record<string, string> = {
   microfone: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM6 11a6 6 0 0 0 12 0M12 17v4M9 21h6',
   conversa: 'M4 5h16v11h-9l-5 4v-4H4zM8 9h8M8 12h5',
   'alto-falante': 'M4 10v4h3l5 4V6l-5 4zM15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10',
+  versoes: 'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2', // relógio com seta: histórico de versões (Lucide "history")
+  // Arquivos do POP (decisão 141)
+  clipe: 'M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48',
+  olho: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  documento: 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6',
+  imagem: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M9 9.500h.010',
+  video: 'M4 6h11v12H4zM15 10l5-3v10l-5-3',
+  audio: 'M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM19 16a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
+  calendario: 'M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4',
 };
 
 export function Icone({ nome, tamanho = 18 }: { nome: keyof typeof caminhos | string; tamanho?: number }) {
   return (
-    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={TRACO_DOS_ICONES} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d={caminhos[nome]} />
     </svg>
   );

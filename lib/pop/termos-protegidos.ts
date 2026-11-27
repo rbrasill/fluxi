@@ -56,8 +56,11 @@ export function termosAlterados(antes: string, depois: string): string[] {
   const deformados = new Map<string, string>();
   const termos = new Set([...nomesNoMeio(antes), ...marcados(antes)].filter((t) => t.length >= 3 && !soNumero(t)));
   const conhecidas = new Set([...(antes.match(/[\p{L}\d]+/gu) ?? []), ...marcados(antes)]);
+  // Palavra que o autor já escreveu certa em outro ponto (mesmo em minúscula ou sem acento) não é deformação:
+  // a IA só consertou o erro de digitação ("Pedio" → "Pedido", com "pedido" escrito certo no mesmo texto).
+  const escritasCertas = new Set((antes.match(/[\p{L}\d]+/gu) ?? []).map((w) => semAcento(w.toLowerCase())));
   for (const nova of new Set([...nomesNoMeio(depois), ...marcados(depois)])) {
-    if (conhecidas.has(nova) || soNumero(nova)) continue;
+    if (conhecidas.has(nova) || soNumero(nova) || escritasCertas.has(semAcento(nova.toLowerCase()))) continue;
     for (const t of termos) if (!deformados.has(t) && parecida(nova, t)) deformados.set(t, nova);
   }
 

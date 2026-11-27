@@ -1,14 +1,18 @@
 // Cliente da API de POPs.
+import type { Arquivo } from './anexos';
 import { ErroCliente } from './fluxogramas';
 import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
 import type { Anotacoes } from './marcacao/anotacoes';
 import { enviarArquivo, type StatusGravacao, type TelaDaGravacao } from './gravacoes';
-import type { ConteudoPop, Historico, Posicao } from './pop/schema';
+import type { ConteudoPop, Posicao } from './pop/schema';
+import type { TipoDeAlteracao, TipoDeVersao, VersaoDoPop } from './pop/versao';
+import type { PopPublico } from './publico';
 
 export type OndePop = { id: string; nome: string; arquivado_em?: string | null; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null } | null;
 export type StatusPop = 'rascunho' | 'publicado';
 export type PopResumo = {
-  id: string; nome: string; codigo: string; identificacao: string; versao: string; status: StatusPop; autor: string;
+  id: string; nome: string; codigo: string; identificacao: string; status: StatusPop; autor: string;
+  versao: string; // a versão publicada atual (X.Y.Z); vazia enquanto o POP não é publicado (decisão 138)
   posicao: Posicao | null; // onde a pessoa parou no editor
   processo: OndePop;
   processo_id: string | null; arquivado_em: string | null; criado_em: string; atualizado_em: string;
@@ -17,15 +21,15 @@ export type PopResumo = {
 };
 /** Gravação de tela do POP (resumo para o editor). */
 export type GravacaoDoPop = { id: string; nome: string; status: StatusGravacao; duracao_ms: number | null; processamento: string; criado_em: string; total_marcacoes: number; telas_novas: number };
-/** O fluxograma do processo do POP (um por processo). */
-export type FluxogramaDoPop = { id: string; nome: string; origem: string; miniatura: string | null; tem_svg: boolean; atualizado_em: string };
 export type TelaDoPop = { gravacao_id: string | null; pop_id: string | null; imagem_url: string | null; largura: number | null; altura: number | null; anotacoes: Anotacoes | null };
 export type Pop = PopResumo & {
-  conteudo: ConteudoPop; historico: Historico[]; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  conteudo: ConteudoPop; imagens: Record<string, string>; telas: Record<string, TelaDoPop>; gravacoes: GravacaoDoPop[];
+  /** Os arquivos anexados (decisão 141). Em que etapas estão fica em `conteudo.procedimentos[].arquivos`. */
+  arquivos: Arquivo[];
+  /** As versões publicadas, da mais nova para a mais antiga (decisão 138). */
+  versoes: VersaoDoPop[];
   /** Publicado, mas o que está no editor ainda não é o que está na página pública. */
   alteracoes_nao_publicadas: boolean;
-  /** O fluxograma do processo (só informativo no editor do POP). */
-  fluxograma: FluxogramaDoPop | null;
   /** Referências do texto, resolvidas (por "tipo:id"), e quem referencia este POP (decisão 35). */
   referencias: Record<string, ReferenciaResolvida>;
   referenciado_em: ReferenciadoEm[];
@@ -40,13 +44,25 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 
 /** POPs ativos; com `arquivados`, só os arquivados (por si ou pelo processo). */
 export const listarPops = (arquivados = false) => api<PopResumo[]>(`/api/pops${arquivados ? '?arquivados=1' : ''}`);
-export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`);
+// `arquivos` chegou com a decisão 141: uma resposta sem a lista (servidor ainda na versão anterior, durante uma publicação do app) vale como "nenhum".
+export const obterPop = (id: string) => api<Pop>(`/api/pops/${id}`).then((p) => ({ ...p, arquivos: p.arquivos ?? [] }));
 export const criarPop = (dados: { nome?: string; processo_id?: string }) =>
   api<{ id: string }>('/api/pops', { method: 'POST', body: JSON.stringify(dados) });
-export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'versao' | 'autor' | 'conteudo' | 'historico' | 'posicao' | 'processo_id'>>, keepalive = false) =>
+export const salvarPop = (id: string, dados: Partial<Pick<Pop, 'nome' | 'identificacao' | 'conteudo' | 'posicao' | 'processo_id'>>, keepalive = false) =>
   api<{ id: string }>(`/api/pops/${id}`, { method: 'PATCH', body: JSON.stringify(dados), keepalive });
-/** Publica o POP como está agora: a página pública passa a mostrar esta versão (decisão 32). */
-export const publicarPop = (id: string) => api<{ publicado_em: string; link_publico: string }>(`/api/pops/${id}/publicar`, { method: 'POST' });
+/**
+ * Publica o POP como uma versão nova: a página pública passa a mostrar esta versão (decisões 32 e 138). A primeira
+ * publicação é a 1.0.0; nas seguintes vão o tamanho da alteração e o que mudou.
+ */
+export const publicarPop = (id: string, pedido: { tipo?: TipoDeAlteracao; o_que_mudou?: string } = {}) =>
+  api<{ publicado_em: string; link_publico: string; versao: string; versoes: VersaoDoPop[] }>(`/api/pops/${id}/publicar`, { method: 'POST', body: JSON.stringify(pedido) });
+/** Uma versão publicada do POP, como saiu naquele dia (só leitura), e o PDF dela. */
+export type VersaoPublicadaDoPop = PopPublico & { desta_versao: { tipo: TipoDeVersao; o_que_mudou: string; publicado_por: string; versao_atual: string; pop_nome: string } };
+export const obterVersaoDoPop = (id: string, versao: string) => api<VersaoPublicadaDoPop>(`/api/pops/${id}/versoes/${encodeURIComponent(versao)}`);
+/** A prévia do POP antes de publicar (decisões 149 e 150): o que está no editor, no formato da página pública. */
+export type PreviaDoPop = PopPublico & { previa: { pendente: boolean; versao_publicada: string | null; alterado_em: string } };
+export const obterPreviaDoPop = (id: string) => api<PreviaDoPop>(`/api/pops/${id}/previa`);
+export const urlPdfDaVersao = (id: string, versao: string) => `/api/pops/${id}/versoes/${encodeURIComponent(versao)}/pdf`;
 /** Volta para rascunho: a página pública deixa de mostrar o POP. */
 /** Liga (online) ou desliga (offline) a página pública do POP. */
 export const definirLinkPublico = (id: string, ativo: boolean) =>
@@ -69,13 +85,12 @@ export const copiarPop = (id: string, dados: { processo_id: string; nome?: strin
 /** Sugestão da IA (Groq) para o texto de um passo ou do objetivo; só aplica se a pessoa escolher. */
 export type SugestaoIa = { texto: string; mudancas: string[]; igual: boolean; modelo: string };
 export type PedidoMelhoria = {
-  campo: 'passo' | 'objetivo' | 'descricao'; texto: string;
+  campo: 'passo' | 'objetivo' | 'descricao' | 'atividades'; texto: string;
   pop?: string; procedimento?: string; numero?: number; anterior?: string; seguinte?: string; // POP
   processo?: string; area?: string; organizacao?: string; // descrição do processo
 };
 export const melhorarTextoComIa = (dados: PedidoMelhoria) =>
   api<SugestaoIa>('/api/ia/melhorar-texto', { method: 'POST', body: JSON.stringify(dados) });
-export const urlDocx = (id: string) => `/api/pops/${id}/docx`;
 export const urlPdf = (id: string) => `/api/pops/${id}/pdf`;
 
 /** "Organização · Área · Processo" de um POP (ou aviso de que está sem processo). */

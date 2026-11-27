@@ -1,14 +1,20 @@
 // Cliente da API de processos (a "pasta" de cada processo).
 import { ErroCliente } from './fluxogramas';
+import type { IconeDoProcesso } from './icones';
+import type { ReferenciaPublica } from './publico';
 import type { ReferenciaResolvida, ReferenciadoEm } from './referencias';
+import type { PedidoDePublicacao, TipoDeVersao, VersaoPublicada } from './versao';
 
 export type ProcessoResumo = {
   id: string; codigo: string; nome: string; descricao: string; area_id: string; area: { id: string; nome: string; organizacao: { id: string; nome: string } | null } | null;
   arquivado_em: string | null; criado_em: string; atualizado_em: string; link_publico_ativo: boolean; // página pública no ar (decisão 35)
+  icone: IconeDoProcesso | null; // ícone escolhido para o processo (decisão 133)
   total: { fluxogramas: number; gravacoes: number; pops: number };
 };
 export type Processo = Omit<ProcessoResumo, 'total'> & {
   link_publico: string; link_publico_ativo: boolean; // página pública /pr/<link> (decisão 35)
+  publicado_em: string | null; alteracoes_nao_publicadas: boolean; // versão publicada (decisão 129)
+  versoes: VersaoPublicada[]; // as versões publicadas, da mais nova para a mais antiga (decisão 139)
   referencias: Record<string, ReferenciaResolvida>; referenciado_em: ReferenciadoEm[];
   fluxograma: { id: string; codigo: string; nome: string; origem: string; miniatura: string | null; link_publico: string; tem_svg: boolean; atualizado_em: string } | null; // um por processo
   gravacoes: { id: string; nome: string; status: string; duracao_ms: number | null; processamento: string; criado_em: string; pop_nome: string | null; total_marcacoes: number }[];
@@ -35,7 +41,36 @@ export const restaurarProcesso = (id: string) => api(`/api/processos/${id}/resta
 /** Copia o processo para uma área (decisão 36), com a descrição, o fluxograma e cópias dos POPs ativos. */
 export const copiarProcesso = (id: string, dados: { area_id: string; nome?: string }) =>
   api<{ id: string; pops: number; fluxograma: boolean }>(`/api/processos/${id}/copiar`, { method: 'POST', body: JSON.stringify(dados) });
-/** Liga (online) ou desliga (offline) a página pública do processo. */
+/** Escolhe o ícone do processo (decisão 133); com `nome` nulo, tira o ícone. */
+export const definirIconeDoProcesso = (id: string, nome: string | null, cor: number | null) =>
+  api<{ icone: IconeDoProcesso | null }>(`/api/processos/${id}/icone`, { method: 'PUT', body: JSON.stringify({ nome, cor }) });
+/**
+ * Publica o processo como uma versão nova (decisões 129 e 139): a página pública passa a mostrar esta versão. A
+ * primeira publicação é a 1.0.0; nas seguintes vão o tamanho da alteração e o que mudou.
+ */
+export const publicarProcesso = (id: string, pedido: PedidoDePublicacao = {}) =>
+  api<{ publicado_em: string; versao: string; versoes: VersaoPublicada[] }>(`/api/processos/${id}/publicar`, { method: 'POST', body: JSON.stringify(pedido) });
+/** Uma versão publicada do processo, como saiu naquele dia (só leitura), e a imagem do fluxograma dela. */
+export type VersaoPublicadaDoProcesso = {
+  nome: string; codigo: string; descricao: string; versao: string; publicado_em: string;
+  onde: { organizacao: string | null; area: string | null; processo: string | null };
+  fluxograma: { nome: string; tem_svg: boolean } | null;
+  referencias: Record<string, ReferenciaPublica>;
+  desta_versao: { tipo: TipoDeVersao; o_que_mudou: string; publicado_por: string; versao_atual: string; processo_nome: string };
+};
+/** A prévia do processo antes de publicar (decisões 149 e 150): o que está na página do processo hoje. */
+export type PreviaDoProcesso = {
+  nome: string; codigo: string; descricao: string;
+  onde: { organizacao: string | null; area: string | null; processo: string | null };
+  fluxograma: { id: string; nome: string; tem_svg: boolean } | null;
+  pops: { nome: string; identificacao: string | null; codigo: string; versao: string; link_publico: string; publicado_em: string | null }[];
+  referencias: Record<string, ReferenciaPublica>;
+  previa: { pendente: boolean; versao_publicada: string | null; alterado_em: string };
+};
+export const obterPreviaDoProcesso = (id: string) => api<PreviaDoProcesso>(`/api/processos/${id}/previa`);
+export const obterVersaoDoProcesso = (id: string, versao: string) => api<VersaoPublicadaDoProcesso>(`/api/processos/${id}/versoes/${encodeURIComponent(versao)}`);
+export const urlSvgDaVersaoDoProcesso = (id: string, versao: string) => `/api/processos/${id}/versoes/${encodeURIComponent(versao)}/svg`;
+/** Liga (online) ou desliga (offline) a página pública do processo (só depois de publicado). */
 export const definirLinkPublicoProcesso = (id: string, ativo: boolean) =>
   api<{ link_publico_ativo: boolean }>(`/api/processos/${id}/link-publico`, { method: 'PUT', body: JSON.stringify({ ativo }) });
 /** Só processo arquivado: apaga com os POPs, gravações e fluxograma dele. */

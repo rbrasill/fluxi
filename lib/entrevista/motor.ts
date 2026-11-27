@@ -54,6 +54,7 @@ export class MotorEntrevista {
   private fase: Fase = 'parado';
   private inicioSessao = 0; // performance.now() do session.started
   private duracaoAnterior_s: number;
+  private base_ms = 0; // onde esta sessão começa na linha do tempo da conversa (para achar uma fala na gravação; decisão 89)
   private usoSessao_s = 0;
   private eventos: Record<string, number> = {};
   private desconhecidos: string[] = [];
@@ -81,8 +82,14 @@ export class MotorEntrevista {
   constructor(private id: string, private aoEvento: (e: Evento) => void, private anteriores: Turno[] = [], private metricasAnteriores: Metricas = {}, private fraseFinal = 'Vamos concluir por aqui', private frasePausa = 'A gente continua depois') {
     // Ao continuar, a sessão nova começa depois do fim da conversa já salva.
     const fim = anteriores.reduce((m, t) => Math.max(m, t.fim_ms ?? t.inicio_ms ?? 0), 0);
-    this.conversa = new Conversa(anteriores, anteriores.length ? fim + 2000 : 0);
+    this.base_ms = anteriores.length ? fim + 2000 : 0;
+    this.conversa = new Conversa(anteriores, this.base_ms);
     this.duracaoAnterior_s = metricasAnteriores.duracao_s ?? 0;
+  }
+
+  /** Desliga ou religa o microfone durante a ligação (decisão 86): com ele desligado, a Maia não ouve nada. */
+  silenciarMicrofone(mudo: boolean) {
+    this.stream?.getAudioTracks().forEach((t) => { t.enabled = !mudo; });
   }
 
   /** Liga. O microfone pode vir pronto da tela (pedido quando a pessoa marcou a ciência, decisão 55): aí a ligação não espera a permissão. */
@@ -332,6 +339,8 @@ export class MotorEntrevista {
       ...metricasDaConversa(turnos),
       duracao_s: Math.round(this.duracaoAnterior_s + sessao_s),
       sessoes: (this.metricasAnteriores.sessoes ?? 0) + 1,
+      // Uma base por sessão, na ordem das gravações. Conversa começada antes desta marca: as sessões antigas ficam em 0.
+      bases_ms: [...(this.metricasAnteriores.bases_ms ?? Array<number>(this.metricasAnteriores.sessoes ?? 0).fill(0)), this.base_ms].slice(-50),
       eventos: somar(this.metricasAnteriores.eventos, this.eventos), // de todas as sessões (as sessões fechadas aparecem em session.closed)
       desconhecidos: this.desconhecidos,
       erros: [...(this.metricasAnteriores.erros ?? []), ...this.erros].slice(-30),

@@ -16,7 +16,8 @@ Resumo da stack. Os motivos de cada escolha estão em [`decisoes.md`](decisoes.m
 ## Worker (Railway, Render ou Fly.io)
 - **Node.js** + **TypeScript**
 - **ffmpeg** (áudio e vídeo)
-- **docxtemplater** (POP no modelo INC v3)
+- **pdfmake** (POP em PDF no modelo INC v3; o DOCX saiu na decisão 79)
+- **lucide-static** (os ícones que a pessoa escolhe para cada processo, decisão 133; versão fixada, licença ISC)
 - Gerador próprio do **XML do draw.io** com a biblioteca de estilos BPMN
 
 ## Banco, arquivos e login

@@ -36,20 +36,21 @@ export function PainelGravacao(p: PropsPainel) {
   return (
     <div className={`painel-grav ${p.flutuante ? 'flutuante' : ''}`}>
       <div className="painel-topo">
-        <span className={`rec ${p.pausado ? 'pausado' : ''}`}><span className="rec-dot" />{p.pausado ? 'PAUSADO' : 'REC'}</span>
+        <span className={`rec-ponto ${p.pausado ? 'pausado' : ''}`} aria-hidden="true" />
         <span className="rec-tempo">{formatarTempo(p.tempoMs)}</span>
+        <span className={`rec ${p.pausado ? 'pausado' : ''}`}>{p.pausado ? 'Pausado' : 'Gravando'}</span>
         <span className="painel-acoes">
           {p.pausado ? (
             <button type="button" className="btn btn-primary" onClick={p.aoRetomar} title="Continua gravando numa parte nova"><Icone nome="play" tamanho={14} />Retomar</button>
           ) : (
             <button type="button" className="btn btn-icon" onClick={p.aoPausar} aria-label="Pausar" title="Pausar: o que já foi gravado fica salvo"><Icone nome="pausa" /></button>
           )}
-          <button type="button" className="btn btn-parar" onClick={p.aoEncerrar}><Icone nome="parar" tamanho={14} />Encerrar</button>
+          <button type="button" className="btn btn-parar" data-voltar-aba onClick={p.aoEncerrar}><Icone nome="parar" tamanho={14} />Encerrar</button>
         </span>
       </div>
       {p.pausado && (
         <p className="painel-pausa">
-          O que foi gravado até aqui está salvo. Pode <button type="button" className="link-sec" onClick={p.aoContinuarDepois}>continuar outro dia</button>: a gravação fica pausada e você retoma de onde parou.
+          O que foi gravado até aqui está salvo. Pode <button type="button" className="link-sec" data-voltar-aba onClick={p.aoContinuarDepois}>continuar outro dia</button>: a gravação fica pausada e você retoma de onde parou.
         </p>
       )}
 
@@ -70,16 +71,20 @@ export function PainelGravacao(p: PropsPainel) {
         <button ref={botao} type="submit" className="btn-marcar">
           <Icone nome="camera" tamanho={20} />Incluir esta tela no POP
         </button>
-        <input
-          value={p.instrucao}
-          onChange={(e) => p.aoMudarInstrucao(e.target.value)}
-          placeholder="Instrução (opcional). Enter inclui a tela"
-          aria-label="Instrução para esta tela"
-        />
+        <label className="painel-instrucao">
+          <span><b>Instrução do passo</b> · opcional</span>
+          <input
+            value={p.instrucao}
+            onChange={(e) => p.aoMudarInstrucao(e.target.value)}
+            placeholder="Ex.: Clique em Salvar e confira a mensagem de sucesso"
+            aria-label="Instrução para esta tela"
+          />
+          <small>Aperte Enter para incluir a tela com esta instrução.</small>
+        </label>
       </form>
 
       {p.flutuante && p.telaInteira && (
-        <p className="painel-aviso">Você está gravando a tela inteira, então esta janelinha aparece nos prints. Arraste-a para um canto ou grave só a janela do sistema.</p>
+        <p className="painel-aviso">Você está gravando a tela inteira, então esta janelinha aparece nos prints. Deixe-a num canto, longe do que importa.</p>
       )}
 
       <div className="painel-rodape">
