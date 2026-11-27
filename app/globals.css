@@ -502,7 +502,8 @@ a.linha-pop { text-decoration: none; color: var(--ink); }
    duas etapas ligadas; "POP" em verde, com o documento. Claro, com borda fina, como os outros selos. */
 .selo-doc { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px 0 8px; border-radius: 999px; border: 1px solid; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .selo-doc svg { flex: none; }
-.selo-processo { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
+/* Selo do processo (decisão 153): o azul-céu do fundo do processo (decisão 152), no mesmo formato do selo do POP. */
+.selo-processo { background: #DDF2FC; border-color: transparent; color: #075985; border-radius: 8px; font-weight: 600; }
 /* Selo do POP (decisão 151): verde-claro, texto verde-escuro, cantos arredondados e sem borda. */
 .selo-pop { background: #E8FBD3; border-color: transparent; color: #14612E; border-radius: 8px; padding: 0 10px 0 8px; font-weight: 600; }
 .area-editavel { border: 1px solid transparent; border-radius: 8px; padding: 2px 6px; background: transparent; color: var(--muted); font-size: 14px; width: min(320px, 100%); }

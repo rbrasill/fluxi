@@ -1311,6 +1311,12 @@ O Rafael pediu o degradê azul da tela do processo no azul de uma imagem de refe
 - **Contraste:** o texto que fica direto sobre o fundo (caminho, selos, abas) tem 5,3:1 ou mais, medido na tela a 1440 px e 1920 px.
 - O fundo verde do POP não muda.
 
+## 153. Selo do processo em azul-céu
+
+O Rafael pediu o selo "Processo" (abaixo do nome do processo) no azul-céu do fundo da tela (decisão 152).
+
+- **O selo:** fundo #DDF2FC, texto #075985 (contraste de 6,5:1), cantos de 8 px e sem borda, no mesmo formato do selo do POP (decisão 151). Continua com o ícone do processo. Troca o azul da decisão 125.
+
 ## Em aberto
 - Entrevistas por convite (decisão 49), sobre o login da decisão 50
 - Entrevista com IA (Maia): o estado atual e os pontos em aberto estão em `docs/entrevista-maia.md` (acesso aberto e risco de custo, que o convite com login resolve, microfone na abertura, "pode encerrar" sem oferecer as quatro perguntas, cargos deduzidos na análise, próximo passo: criar o processo a partir do resultado)
